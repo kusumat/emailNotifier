@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project name="kony" basedir="." default="main" xmlns:ivy="antlib:org.apache.ivy.ant">
+	
+    <target name="main" depends="property,wipe" description="-> generate properties, generate ivy.xlm, retrieve artifacts, delete duplicates">
+    </target>
+    <target name="property" description="-> prepare property files">
+        <property environment="env"/>
+
+        <!--Condition property depends of agent's platform-->
+        <condition property="viz.root" value="C:\Jenkins\KonyVisualizerEnterprise${env.VIZ_VERSION}\" else="/Jenkins/KonyVisualizerEnterprise${env.VIZ_VERSION}/">
+            <os family="windows"/>
+        </condition>
+        <condition property="viz.inner" value="${viz.root}Kony_Visualizer_Enterprise\" else="${viz.root}Kony_Visualizer_Enterprise/">
+            <os family="windows"/>
+        </condition>
+        <condition property="android.home" value="C:\asdk" else="/Jenkins/tools/asdk">
+            <os family="windows"/>
+        </condition>
+
+        <!--Set of condition properties depending of choosed target platrofms-->
+        <condition property="apple.phone" value="true" else="false">
+            <isset property="env.IPHONE" />
+        </condition>
+        <condition property="android.phone" value="true" else="false">
+            <isset property="env.ANDRPHONE"/>
+        </condition>
+        <condition property="win8.phone" value="true" else="false">
+            <isset property="env.WIN8PHONE" />
+        </condition>
+        <condition property="win81s.phone" value="true" else="false">
+            <isset property="env.WIN81SPHONE" />
+        </condition>
+        <condition property="win10.phone" value="true" else="false">
+            <isset property="env.WIN10PHONE" />
+        </condition>
+        <condition property="spa.apple.phone" value="true" else="false">
+            <isset property="env.SPAIPHONE" />
+        </condition>
+        <condition property="spa.android.phone" value="true" else="false">
+            <isset property="env.SPAANDRPHONE" />
+        </condition>
+        <condition property="spa.blackberry" value="true" else="false">
+            <isset property="env.SPABLACKBERRY" />
+        </condition>
+        <condition property="spa.winphone" value="true" else="false">
+            <isset property="env.SPAWINPHONE" />
+        </condition>
+        <condition property="spa.hybrid.blackberry" value="true" else="false">
+            <isset property="env.SPAHYBRIDBB" />
+        </condition>
+        <condition property="apple.tablet" value="true" else="false">
+            <isset property="env.IPAD" />
+        </condition>
+        <condition property="android.tablet" value="true" else="false">
+            <isset property="env.ANDRTAB" />
+        </condition>
+        <condition property="windows81" value="true" else="false">
+            <isset property="env.WINDOWS81" />
+        </condition>
+        <condition property="windows10" value="true" else="false">
+            <isset property="env.WINDOWS10" />
+        </condition>
+        <condition property="spa.apple.tablet" value="true" else="false">
+            <isset property="env.SPAIPAD" />
+        </condition>
+        <condition property="spa.android.tablet" value="true" else="false">
+            <isset property="env.SPAANDRTAB" />
+        </condition>
+        <condition property="spa.win.tablet" value="true" else="false">
+            <isset property="env.SPAWINTAB" />
+        </condition>
+        <condition property="desktop.kiosk" value="true" else="false">
+            <isset property="env.DESKTIOKIOSK" />
+        </condition>
+        <condition property="desktop.web" value="true" else="false">
+            <isset property="env.DWSKTOPWEB" />
+        </condition>
+        <condition property="apple.watch" value="true" else="false">
+            <isset property="env.APPLEWATCH" />
+        </condition>
+
+        <propertyfile file="HeadlessBuild-Global.properties" comment="Generated file">
+            <entry key="imagemagic.home" value="${viz.root}ImageMagick"/>
+            <entry key="workspace.location" value="${env.WORKSPACE}"/>
+            <entry key="bb10.vmware.home" value=""/>
+            <entry key="bb10.emulator.password" value=""/>
+            <entry key="eclipse.equinox.path" value="${viz.inner}plugins/org.eclipse.equinox.launcher_1.3.0.v20130327-1440.jar"/>
+            <entry key="bb10.signing.keys.home" value=""/>
+            <entry key="android.home" value="${android.home}"/>
+            <entry key="bb10.ndk.home" value=""/>
+            <entry key="bb10.emulator.ip" value=""/>
+        </propertyfile>
+
+        <!--
+        <replace file="HeadlessBuild-Global.properties" token="\" value="\\"/>  
+        -->
+        <property environment="env"/>
+        <propertyfile file="HeadlessBuild.properties" comment="Generated file">
+            <entry key="project.name" value="${env.PROJECT_NAME}"/>
+            <entry key="mode" value="0"/>
+            <entry key="build.mode" value="${env.BUILD_MODE}"/>
+            <entry key="appid" value="${env.PROJECT_NAME}"/>
+            <entry key="version" value="1.0.0"/>
+            <entry key="map_google_key" value=""/>
+            <entry key="default_locale" value=""/>
+            <entry key="android.packagename" value="com.orgname.${env.PROJECT_NAME}"/>
+            <entry key="android.versioncode" value="1"/>
+            <entry key="ios.bundleversion" value="1.0"/>
+            <entry key="cloud.username" value="${env.CLOUD_NAME}"/>
+            <entry key="cloud.password" value="${env.CLOUD_PASS}"/>
+            <entry key="mobilefabric.url" value='https://manage.kony.com'/>
+            <entry key="environment.name" value="SoftServe-App Factory Dev"/>
+            <entry key="account.id" value=""/>
+            <entry key="mf.appname" value=""/>
+            <entry key="iphone" value="${apple.phone}"/>
+            <entry key="android" value="${android.phone}"/>
+            <entry key="windowsphone8" value="${win8.phone}"/>
+            <entry key="windowsphone81s" value="${win81s.phone}"/>
+            <entry key="windowsphone10" value="${win10.phone}"/>
+            <entry key="spa.iphone" value="${spa.apple.phone}"/>
+            <entry key="spa.android" value="${spa.android.phone}"/>
+            <entry key="spa.blackberry" value="${spa.blackberry}"/>
+            <entry key="spa.winphone" value="${spa.winphone}"/>
+            <entry key="spa.hybrid.blackberry" value="${spa.hybrid.blackberry}"/>
+            <entry key="ipad" value="${apple.tablet}"/>
+            <entry key="androidtablet" value="${android.tablet}"/>
+            <entry key="windows8.1" value="${windows81}"/>
+            <entry key="windows10" value="${windows10}"/>
+            <entry key="spa.ipad" value="${spa.apple.tablet}"/>
+            <entry key="spa.androidtablet" value="${spa.android.tablet}"/>
+            <entry key="spa.windowstablet" value="${spa.win.tablet}"/>
+            <entry key="desktop_kiosk" value="${desktop.kiosk}"/>
+            <entry key="desktopweb" value="${desktop.web}"/>
+            <entry key="iphonewatch" value="${apple.watch}"/>
+            <entry key="mac.ipaddress" value=""/>
+            <entry key="mac.username" value=""/>
+            <entry key="mac.password" value=""/>
+            <entry key="keychain.password" value=""/>
+            <entry key="development.team" value=""/>
+            <entry key="method" value=""/>
+            <entry key="genipaiphone" value="false"/>
+            <entry key="genipaipad" value="false"/>
+            <entry key="binaries.location" value=""/>
+            <entry key="combinewar.middlewarearchive" value=""/>
+            <entry key="combinewar.context" value=""/>
+            <entry key="combinewar.war" value="false"/>
+            <entry key="combinewar.ear" value="false"/>
+            <entry key="combinewar.dependencylibraries" value=""/>
+        </propertyfile>
+    </target>
+
+    <target name="plugins" description="-> generate ivy.xml from konyplugins.xml">
+        <condition property="plugin.os.ver" value="mac64" else="win64">
+            <os family="mac"/>
+        </condition>
+        <copy file="konyplugins.xml" tofile="ivy.xml" overwrite="true" />
+        <replace file="ivy.xml"> 
+            <replacetoken><![CDATA[<plugins>]]></replacetoken>
+            <replacevalue><![CDATA[<ivy-module version="2.0">
+<info organisation="com.kony" module="PoC"/>
+<dependencies>]]></replacevalue>
+        </replace>
+        <replace file="ivy.xml" token="pluginInfo" value="dependency" />
+        <replace file="ivy.xml" token="plugin-id" value="name" />
+        <replace file="ivy.xml" token="version-no" value="rev" />
+        <replaceregexp file="ivy.xml" match="plugin-name.*$" replace="/>" flags="gm"/>
+        <replace file="ivy.xml"> 
+            <replacetoken><![CDATA[</plugins>]]></replacetoken>
+            <replacevalue><![CDATA[</dependencies>
+</ivy-module>]]>
+            </replacevalue>
+        </replace>
+        <replace file="ivy.xml" token="win64" value="${plugin.os.ver}"/>
+	</target>
+
+    <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
+        <ivy:retrieve pattern="${viz.inner}dropins/[artifact]_[revision].[ext]"/>
+    </target>
+
+    <target name="wipe" depends="retrieve,plugins" description="-> wipe duplacates in plugins directory">
+        <delete>
+            <fileset dir="${viz.inner}plugins" includes="**/*">
+                <present targetdir="${viz.inner}dropins" />
+            </fileset>
+        </delete>
+    </target>
+
+    <target name="clean" description="-> clean dropins directory">
+        <delete dir="${viz.inner}dropins"/>
+    </target>
+
+    <target name="clean-all" depends="clean" description="-> clean dropins directory and ivy cache">
+        <ivy:cleancache />
+    </target>
+
+</project>
