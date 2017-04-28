@@ -1,0 +1,316 @@
+<?jelly escape-by-default='true'?>
+<!DOCTYPE html [
+    <!ENTITY nbsp "&#38;#38;nbsp&#59;">
+]>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define">
+
+<head>
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+    <style>
+        body {
+          font-family: arial,sans-serif;
+          font-size: 14px;
+          color: #333;
+          background: #efefef;
+        }
+
+        table {
+          border-spacing: 0;
+        }
+
+        p {
+          margin: 10px 0;
+          font-size: 14px;
+        }
+
+        .header__logo {
+            background: url("https://kap8.platform.kony.com/Jenkins/images/kony_logo_email.svg") left center no-repeat;
+            background-size: 50%;
+            display: inline-block;
+            background-position: -10px;
+            min-height: 54px;
+            overflow: hidden;
+            position: relative;
+            white-space: nowrap;
+            width: 100%;
+            z-index: 2;
+            transition: all 1s;
+        }
+
+        .icon-stack .icon-glassdoor {
+            background-image: url("https://kap8.platform.kony.com/Jenkins/images/icon-glassdoor.png");
+            background-repeat: no-repeat;
+            background-position: 50% 50%;
+            height: 100%;
+        }
+
+        .footer {
+            background: #dddddd;
+            margin-top: 30px;
+            border-top: 1px solid #d3d5d6;
+            text-align: left;
+            padding: 20px;
+            width: 100%;
+            line-height: 20px;
+            font-size: 13px;
+            clear: both;
+            overflow: auto;
+        }
+
+        .table-border {
+            border-spacing: 0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .table-border th {
+            padding: 15px 10px;
+            display: table-cell;
+            vertical-align: middle;
+            line-height: normal;
+            font-weight: normal;
+            width: 247px;
+            text-align: left;
+            text-transform: uppercase;
+            outline: none;
+            background: #f8f9fb;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .table-border.cell-spacing td{
+            padding: 10px;
+            border: none;
+        }
+
+        .subheading {
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        .table-border td {
+            padding: 15px 10px;
+            display: table-cell;
+            vertical-align: middle;
+            color: #858484;
+            text-align: left;
+            border-bottom: 1px solid #e8e8e8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-all;
+            white-space: normal;
+        }
+
+        a {
+            color: #00a3d7;
+            text-decoration: none;
+        }
+
+        h4 {
+            margin:15px 0;
+            font-size: 16px;
+        }
+
+        h2 {
+            font-size: 18px;
+            border-top: 1px dashed #e8e8e8;
+            border-bottom: 1px dashed #e8e8e8;
+            padding: 10px;
+        }
+
+        .container {
+            width: 650px;
+            -moz-box-shadow: 0 0 5px #888;
+            -webkit-box-shadow: 0 0 5px #888;
+            box-shadow: 0 0 5px #888;
+            margin:0 auto;background:#ffffff;
+        }
+
+        .table-width {
+            width: 650px;
+            margin: 0 auto;
+        }
+
+        .footer-icon-color {
+            color: #999fa5;
+        }
+
+        .fa-inverse {
+            color: #37434f;
+        }
+
+        .copyright-info {
+            margin-top: 5px;
+        }
+
+        .copyright-info p {
+            font-size: 12px;
+        }
+
+        td.table-value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<j:set var="buildenv" value="${build.getEnvironment(listener)}"/>
+<j:set var="s3bucket" value="${buildenv.get('S3_BUCKET_NAME')}"/>
+<j:set var="appname" value="${buildenv.get('PROJECT_NAME')}"/>
+<j:set var="main_build_number" value="${buildenv.get('MAIN_BUILD_NUMBER')}"/>
+<j:set var="iphone" value="${buildenv.get('IPHONE')}"/>
+<j:set var="ipad" value="${buildenv.get('IPAD')}"/>
+<j:set var="andrphone" value="${buildenv.get('ANDRPHONE')}"/>
+<j:set var="andrtab" value="${buildenv.get('ANDRTAB')}"/>
+<j:set var="win8phone" value="${buildenv.get('WIN8PHONE')}"/>
+<j:set var="win81sphone" value="${buildenv.get('WIN81SPHONE')}"/>
+<j:set var="win10phone" value="${buildenv.get('WIN10PHONE')}"/>
+    <table class="container" cellpadding='0'>
+        <tr>
+            <td align="center" style="padding:10px">
+                <table style="width:100%">
+                    <tr style="background:#00a3d9">
+                        <td colspan="2"><a href="#" class="header__logo">Kony</a></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:10px"><p class="text-color">Welcome <strong>USER,</strong></p></td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" style="padding:0 20px;">
+                <table style="width:100%">
+                    <tr>
+                        <td style="text-align:center" class="text-color"><h2>Kony OTA Installers</h2></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align:left" class="text-color"><h4 style="margin-bottom:0">${appname}</h4></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align:left" class="text-color"><h4 class="subheading">Build Details</h4></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <table style="width:100%; text-align:left" class="text-color table-border cell-spacing">
+                            <tr>
+                              <td style="width:100px;text-align:right">Build URL:</td>
+                              <td><a href="#">${rooturl}${build.url}</a></td>
+                            </tr>
+                            <tr>
+                              <td style="text-align:right">Project:</td>
+                              <td class="table-value">${project.name}</td>
+                            </tr>
+                            <tr>
+                              <td style="text-align:right">Build number:</td>
+                              <td class="table-value">${build.number}</td>
+                            </tr>
+                            <tr>
+                              <td style="text-align:right">Date of build:</td>
+                              <td class="table-value">${it.timestampString}</td>
+                            </tr>
+                            <tr>
+                              <td style="text-align:right">Build duration:</td>
+                              <td class="table-value">${build.durationString}</td>
+                            </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align:left" class="text-color"><h4 class="subheading">Build Information</h4></td>
+                    </tr>
+                    <tr>
+                        <td>
+						<j:if test="${build.result==SUCCESS}">
+                          <table style="width:100%; text-align:left" class="text-color table-border">
+                            <thead>
+                              <tr>
+                                <th>Installer</th>
+                                <th>URL</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+							<j:if test="${iphone}">
+                              <tr>
+                                <td>iPhone Mobile</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/iphone/${appname}_${main_build_number}.ipa">${appname}_${main_build_number}.ipa</a></td>
+                              </tr>
+							</j:if>
+							<j:if test="${ipad}">
+                              <tr>
+                                <td>iPhone Tab</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/android/${appname}_${main_build_number}.apk">${appname}_${main_build_number}.apk</a></td>
+                              </tr>
+							</j:if>
+							<j:if test="${andrphone}">
+                              <tr>
+                                <td>Android Mobile</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/android/${appname}_${main_build_number}.apk">${appname}_${main_build_number}.apk</a></td>
+                              </tr>
+							</j:if>
+							<j:if test="${andrtab}">
+                              <tr>
+                                <td>Android Tab</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/android-tablet/${appname}_${main_build_number}.apk">${appname}_${main_build_number}.apk</a></td>
+                              </tr>
+							  </j:if>
+							<j:if test="${win8phone}">
+                              <tr>
+                                <td>Windows 8 Mobile</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows8/${appname}_${main_build_number}.xap">${appname}_${main_build_number}.xap</a></td>
+                              </tr>
+                              <tr>
+                                <td>Windows 8 Mobile ARM</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows8/${appname}_ARM_${main_build_number}.xap">${appname}_ARM_${main_build_number}.xap</a></td>
+                              </tr>
+					          </j:if>
+							<j:if test="${win81sphone}">
+                              <tr>
+                                <td>Windows 8.1 Mobile</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows81s/${appname}_${main_build_number}.xap">${appname}_${main_build_number}.xap</a></td>
+                              </tr>
+                              <tr>
+                                <td>Windows 8.1 Mobile ARM</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows81s/${appname}_ARM_${main_build_number}.xap">${appname}_ARM_${main_build_number}.xap</a></td>
+                              </tr>
+					          </j:if>
+							<j:if test="${win10phone}">
+                              <tr>
+                                <td>Windows 10 Mobile</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows10/${appname}_${main_build_number}.xap">${appname}_${main_build_number}.xap</a></td>
+                              </tr>
+                              <tr>
+                                <td>Windows 10 Mobile ARM</td>
+                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows10/${appname}_ARM_${main_build_number}.xap">${appname}_ARM_${main_build_number}.xap</a></td>
+                              </tr>
+							  </j:if>
+                            </tbody>
+                          </table>
+						  </j:if>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+		<j:getStatic var="resultFailure" field="FAILURE" className="hudson.model.Result"/>
+		<j:if test="${build.result==resultFailure}">
+        <tr>
+            <td style="text-align:left;padding:15px 20px 0" class="text-color"><h4 style="margin-bottom:0">Console Output</h4>
+              <j:forEach var="line" items="${build.getLog(50)}"><p>${line}</p></j:forEach>
+			</td>
+        </tr>
+		</j:if>
+        <tr>
+            <td>&nbsp;
+
+            </td>
+        </tr>
+    </table>
+    <table class="table-width copyright-info">
+        <tr>
+            <td style="color:#8d8d8d; text-align: center">
+                <p style="font-size: 10px">This is a system generated email and responses are not monitored. This message is intended for username@companyemail.com. </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</j:jelly>
