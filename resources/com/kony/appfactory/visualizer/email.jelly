@@ -1,0 +1,143 @@
+<?jelly escape-by-default='true'?>
+<!DOCTYPE html [
+    <!ENTITY nbsp "&#38;#38;nbsp&#59;">
+]>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define">
+
+<STYLE>
+.test-results-header { }
+.test-result-table { border: 1px solid black; width: 500px; }
+.test-result-table-header-cell { border-bottom: 1px solid black; background-color: silver; }
+.test-result-step-command-cell { border-bottom: 1px solid gray; }
+.test-result-step-description-cell { border-bottom: 1px solid gray; }
+.test-result-step-result-cell-ok { border-bottom: 1px solid gray; background-color: green; }
+.test-result-step-result-cell-failure { border-bottom: 1px solid gray; background-color: red; }
+.test-result-step-result-cell-notperformed { border-bottom: 1px solid gray; background-color: white; }
+.test-result-describe-cell { background-color: tan; font-style: italic; }
+.test-result-step-row { }
+.test-result-comment-row { }
+.test-cast-status-box-ok { border: 1px solid black; float: left; margin-right: 10px; width: 45px; height: 25px; background-color: green; }
+</STYLE>
+
+<body>
+<j:set var="buildenv" value="${build.getEnvironment(listener)}"/>
+<j:set var="s3bucket" value="${buildenv.get('S3_BUCKET_NAME')}"/>
+<j:set var="appname" value="${buildenv.get('PROJECT_NAME')}"/>
+<j:set var="main_build_number" value="${buildenv.get('MAIN_BUILD_NUMBER')}"/>
+<j:set var="iphone" value="${buildenv.get('IPHONE')}"/>
+<j:set var="ipad" value="${buildenv.get('IPAD')}"/>
+<j:set var="andrphone" value="${buildenv.get('ANDRPHONE')}"/>
+<j:set var="andrtab" value="${buildenv.get('ANDRTAB')}"/>
+<j:set var="win8phone" value="${buildenv.get('WIN8PHONE')}"/>
+<j:set var="win81sphone" value="${buildenv.get('WIN81SPHONE')}"/>
+<j:set var="win10phone" value="${buildenv.get('WIN10PHONE')}"/>
+<h1 class="test-results-header">Kony OTA Installers</h1>
+<h2 class="test-result-name">${appname}</h2>
+<h3 class="test-result-name">****************************BUILD-DETAILS****************************</h3>
+<table>
+	<tr><td>Build URL</td><td><a href="${rooturl}${build.url}">${rooturl}${build.url}</a></td></tr>
+	<tr><td>Project:</td><td>${project.name}</td></tr>
+	<tr><td>Build number:</td><td>${build.number}</td></tr>
+	<tr><td>Date of build:</td><td>${it.timestampString}</td></tr>
+	<tr><td>Build duration:</td><td>${build.durationString}</td></tr>
+</table>
+<h3 class="test-result-name">************************************************************************</h3>
+<j:if test="${build.result==SUCCESS}">
+<table class="test-result-table" cellspacing="0">
+    <thead>
+    <tr>
+        <td class="test-result-table-header-cell"><b>Installer</b></td>
+        <td class="test-result-table-header-cell"><b>URL</b></td>
+    </tr>
+    </thead>
+    <tbody>
+        <j:if test="${iphone}">
+		<tr class="test-result-step-row test-result-step-row-altone" style="display: $iPhone_Enable;">
+			<td class="test-result-step-command-cell">iPhone Mobile</td>
+			<td class="test-result-step-command-cell">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/iphone/${appname}_${main_build_number}.ipa">${appname}_${main_build_number}.ipa</a>
+            </td>
+		</tr>
+        </j:if>
+        <j:if test="${ipad}">
+		<tr class="test-result-step-row test-result-step-row-altone" style="display: $iPhoneT_Enable;">
+			<td class="test-result-step-command-cell">iPhone Tab</td>
+			<td class="test-result-step-command-cell">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/ipad/${appname}_${main_build_number}.ipa">${appname}_${main_build_number}.ipa</a>
+            </td>
+		</tr>
+        </j:if>
+        <j:if test="${andrphone}">
+		<tr class="test-result-step-row test-result-step-row-altone" style="display: $Android_Enable;">
+			<td class="test-result-step-command-cell">Android Mobile</td>
+			<td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/android/${appname}_${main_build_number}.apk">${appname}_${main_build_number}.apk</a>
+            </td>
+		</tr>
+        </j:if>
+        <j:if test="${andrtab}">
+        <tr class="test-result-step-row test-result-step-row-altone" style="display: $AndroidT_Enable;">
+            <td class="test-result-step-command-cell">Android Tab</td>
+            <td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/android-tablet/${appname}_${main_build_number}.apk">${appname}_${main_build_number}.apk</a>
+            </td>
+        </tr>
+        </j:if>
+        <j:if test="${win8phone}">
+        <tr class="test-result-step-row test-result-step-row-altone" style="display: $Windows8_Enable;">
+            <td class="test-result-step-command-cell">Windows 8 Mobile</td>
+            <td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows8/${appname}_${main_build_number}.xap">${appname}_${main_build_number}.xap</a>
+            </td>
+        </tr>
+        <tr class="test-result-step-row test-result-step-row-altone" style="display: $Windows8_Enable;">
+            <td class="test-result-step-command-cell">Windows 8 Mobile ARM</td>
+            <td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows8/${appname}_ARM_${main_build_number}.xap">${appname}_ARM_${main_build_number}.xap</a>
+            </td>
+        </tr>
+        </j:if>
+        <j:if test="${win81sphone}">
+        <tr class="test-result-step-row test-result-step-row-altone" style="display: $Windows81_Enable;">
+            <td class="test-result-step-command-cell">Windows 8.1 Mobile</td>
+            <td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows81s/${appname}_${main_build_number}.xap">${appname}_${main_build_number}.xap</a>
+            </td>
+        </tr>
+        <tr class="test-result-step-row test-result-step-row-altone" style="display: $Windows81_Enable;">
+            <td class="test-result-step-command-cell">Windows 8.1 Mobile ARM</td>
+            <td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows81s/${appname}_ARM_${main_build_number}.xap">${appname}_ARM_${main_build_number}.xap</a>
+            </td>
+        </tr>
+        </j:if>
+        <j:if test="${win10phone}">
+        <tr class="test-result-step-row test-result-step-row-altone" style="display: $Windows8_Enable;">
+            <td class="test-result-step-command-cell">Windows 10 Mobile</td>
+            <td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows10/${appname}_${main_build_number}.xap">${appname}_${main_build_number}.xap</a>
+            </td>
+        </tr>
+        <tr class="test-result-step-row test-result-step-row-altone" style="display: $Windows8_Enable;">
+            <td class="test-result-step-command-cell">Windows 10 Mobile ARM</td>
+            <td class="test-result-step-result-cell-notperformed">
+                <a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appname}/windows10/${appname}_ARM_${main_build_number}.xap">${appname}_ARM_${main_build_number}.xap</a>
+            </td>
+        </tr>
+        </j:if>
+    </tbody>
+</table>
+</j:if>
+<h5 class="test-result-name"> Please note that this information is for internal Kony use only. Our contract with Apple does not allow us to share these installers outside of the company </h5>
+<!-- CONSOLE OUTPUT -->
+
+<j:getStatic var="resultFailure" field="FAILURE" className="hudson.model.Result"/>
+<j:if test="${build.result==resultFailure}">
+<TABLE width="100%" cellpadding="0" cellspacing="0">
+<TR><TD class="bg1"><B>CONSOLE OUTPUT</B></TD></TR>
+<j:forEach var="line" items="${build.getLog(50)}"><TR><TD class="console">${line}</TD></TR></j:forEach>
+</TABLE>
+<BR/>
+</j:if>
+</body>
+</j:jelly>
