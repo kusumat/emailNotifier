@@ -1,35 +1,23 @@
 package com.kony.appfactory.visualizer
 
-class AppleChannel implements Serializable {
-    private script
+class AppleChannel extends Channel {
     private bundleID
-    private boolean isUnixNode
-    private String workSpace
-    private String projectFullPath
+    private String artifactPath
     private String nodeLabel = 'mac'
-    private String resourceBasePath = 'com/kony/appfactory/visualizer/'
+    private String artifactExtension = 'ipa'
+    private String channelName = (script.params.IPHONE) ? 'iphone' : 'tablet'
 
     /* Build parameters */
-    private String projectName = script.params.PROJECT_NAME
-    private String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
-    private String gitURL = script.params.GIT_URL
-    private String gitBranch = script.params.GIT_BRANCH
-    private String visualizerVersion = script.params.VIZ_VERSION
-    private String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    private String mainBuildNumber = script.params.MAIN_BUILD_NUMBER
-    private String buildMode = script.params.BUILD_MODE
     private String matchType = script.params.MATCH_TYPE
     private String appleID = script.params.APPLE_ID
     private String matchPassword = script.params.MATCH_PASSWORD
     private String matchGitToken = script.params.MATCH_GIT_TOKEN
     private String matchGitURL = script.params.MATCH_GIT_URL
-    private String s3BucketName = script.params.S3_BUCKET_NAME
-    private String environment = script.params.ENVIRONMENT
 
-    private String artifactFileName = projectName + '_' + mainBuildNumber + '.ipa'
+    private String artifactFileName = projectName + '_' + mainBuildNumber + '.' + artifactExtension
 
     AppleChannel(script) {
-        this.script = script
+        super(script)
         setBuildParameters()
     }
 
@@ -57,69 +45,6 @@ class AppleChannel implements Serializable {
         ])
     }
 
-    private final void checkoutProject() {
-        String successMessage = 'Project has been checkout successfully'
-        String errorMessage = 'FAILED to checkout the project'
-
-        catchErrorCustom(successMessage, errorMessage) {
-            script.checkout(
-                    changelog: false,
-                    poll: false,
-                    scm: [$class                           : 'GitSCM',
-                          branches                         : [[name: "*/${gitBranch}"]],
-                          doGenerateSubmoduleConfigurations: false,
-                          extensions                       : [[$class           : 'RelativeTargetDirectory',
-                                                               relativeTargetDir: "${projectName}"]],
-                          submoduleCfg                     : [],
-                          userRemoteConfigs                : [[credentialsId: "${gitCredentialsID}",
-                                                               url          : "${gitURL}"]]]
-            )
-        }
-    }
-
-    private final void visualizerEnvWrapper(closure) {
-        String visualizerBasePath = (isUnixNode) ? "/Jenkins/KonyVisualizerEnterprise${visualizerVersion}/" :
-                "C:\\Jenkins\\KonyVisualizerEnterprise${visualizerVersion}\\"
-        String antHome = visualizerBasePath + 'Ant'
-        String javaHome = visualizerBasePath + ((isUnixNode) ? 'jdk1.8.0_112.jdk/Contents/Home' :
-                'Java\\jdk1.8.0_112\\bin\\java')
-        String javaHomeEnvVarName = (isUnixNode) ? 'JAVA_HOME' : 'JAVACMD'
-
-        script.withEnv(["ANT_HOME=${antHome}", "${javaHomeEnvVarName}=${javaHome}"]) {
-            script.withCredentials([script.usernamePassword(credentialsId: "${cloudCredentialsID}",
-                    passwordVariable: 'CLOUD_PASS', usernameVariable: 'CLOUD_NAME')]) {
-                closure()
-            }
-        }
-    }
-
-    private final void build() {
-        String successMessage = 'Project has been built successfully'
-        String errorMessage = 'FAILED to build the project'
-        def requiredResources = ['property.xml', 'ivysettings.xml']
-
-        catchErrorCustom(successMessage, errorMessage) {
-            script.dir(projectFullPath) {
-                /* Load required resources and store them in project folder */
-                for (int i=0; i<requiredResources.size(); i++) {
-                    String resource = loadLibraryResource(resourceBasePath + requiredResources[i])
-                    script.writeFile file: requiredResources[i], text: resource
-                }
-
-                /* This wrapper responsible for adding ANT_HOME, JAVA_HOME and Kony Cloud credentials */
-                visualizerEnvWrapper() {
-                    if (isUnixNode) {
-                        script.sh '$ANT_HOME/bin/ant -buildfile property.xml'
-                        script.sh '$ANT_HOME/bin/ant'
-                    } else {
-                        script.bat "%ANT_HOME%\\bin\\ant -buildfile property.xml"
-                        script.bat "%ANT_HOME%\\bin\\ant"
-                    }
-                }
-            }
-        }
-    }
-
     private final void createIPA() {
         String successMessage = 'IPA file created successfully'
         String errorMessage = 'FAILED to create IPA file'
@@ -145,7 +70,7 @@ class AppleChannel implements Serializable {
 
             script.dir("${workSpace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
                 script.sh """
-                    cp ${workSpace}/${projectName}/binaries/iphone/konyappiphone.KAR .
+                    cp ${artifactPath}/konyappiphone.KAR .
                     perl extract.pl konyappiphone.KAR sqd
                 """
             }
@@ -177,7 +102,7 @@ class AppleChannel implements Serializable {
                     "MATCH_APP_IDENTIFIER=${bundleID}",
                     "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${(matchGitURL - 'https://')}",
                     "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
-                    "GYM_OUTPUT_DIRECTORY=${projectFullPath + 'binaries/iphone'}",
+                    "GYM_OUTPUT_DIRECTORY=${artifactPath}",
                     "GYM_OUTPUT_NAME=${projectName}",
                     "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                     "FL_PROJECT_SIGNING_PROJECT_PATH=${workSpace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj"
@@ -193,65 +118,16 @@ class AppleChannel implements Serializable {
         return matcher ? matcher[0][1] : null
     }
 
-    private final void publishToS3() {
-        String successMessage = 'Artifact published successfully'
-        String errorMessage = 'FAILED to publish artifact'
+    private final publishArtifact() {
+        String successMessage = 'Artifact renamed successfully'
+        String errorMessage = 'FAILED to rename artifact for publishing'
 
-        catchErrorCustom(successMessage, errorMessage) {
-            script.dir("${projectFullPath + 'binaries/iphone'}") {
-                script.sh "mv ${projectName}.ipa ${artifactFileName}"
-
-                script.step([$class                              : 'S3BucketPublisher',
-                             consoleLogLevel                     : 'INFO',
-                             dontWaitForConcurrentBuildCompletion: false,
-                             entries                             : [
-                                     [bucket           : "${s3BucketName}/${projectName}/${environment}/iphone",
-                                      flatten          : true,
-                                      keepForever      : true,
-                                      managedArtifacts : false,
-                                      noUploadOnFailure: true,
-                                      selectedRegion   : 'eu-west-1',
-                                      sourceFile       : "${artifactFileName}"]
-                             ],
-                             pluginFailureResultConstraint       : 'FAILURE'])
+        script.dir(artifactPath) {
+            catchErrorCustom(successMessage, errorMessage) {
+                script.sh "mv ${projectName}.${artifactExtension} ${artifactFileName}"
             }
+            publishToS3 channel: channelName, artifact: artifactFileName
         }
-    }
-
-    private final void catchErrorCustom(successMsg, errorMsg, closure) {
-        try {
-            closure()
-            script.echo successMsg
-        } catch(Exception e) {
-            script.error errorMsg
-        }
-    }
-
-    private final String loadLibraryResource(resourcePath) {
-        def resource = ''
-        String successMessage = 'Resource loading finished successfully'
-        String errorMessage = 'FAILED to load resource'
-
-        catchErrorCustom(successMessage, errorMessage) {
-            resource = script.libraryResource resourcePath
-        }
-
-        resource
-    }
-
-    private final void sendNotification() {
-        String emailTemplateFolder = 'email/templates/'
-        String emailTemplateName = 'Kony_OTA_Installers.jelly'
-        String emailBody = '${JELLY_SCRIPT, template="' + emailTemplateName + '"}'
-        String emailSubject = "${script.currentBuild.currentResult}: ${projectName} (${script.env.JOB_NAME}-#${script.env.BUILD_NUMBER})"
-        String emailRecipientsList = 'KonyAppFactoryTeam@softserveinc.com'
-
-        /* Load email template */
-        String emailTemplate = loadLibraryResource(resourceBasePath + emailTemplateFolder + emailTemplateName)
-        script.writeFile file: emailTemplateName, text: emailTemplate
-
-        /* Sending email */
-        script.emailext body: emailBody, subject: emailSubject, to: emailRecipientsList
     }
 
     protected final void createWorkflow() {
@@ -259,9 +135,12 @@ class AppleChannel implements Serializable {
             /* Set environment-dependent variables */
             isUnixNode = script.isUnix()
             workSpace = script.env.WORKSPACE
-            projectFullPath = workSpace + '/' + projectName + '/'
+            projectFullPath = workSpace + '/' + projectName
+            artifactPath = projectFullPath + '/binaries/' + channelName
 
             try {
+                script.step([$class: 'WsCleanup', deleteDirs: true])
+
                 script.stage('Checkout') {
                     checkoutProject()
                 }
@@ -275,13 +154,12 @@ class AppleChannel implements Serializable {
                 }
 
                 script.stage("Publish artifact to S3") {
-                    publishToS3()
+                    publishArtifact()
                 }
             } catch(Exception e) {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                script.step([$class: 'WsCleanup', deleteDirs: true])
                 sendNotification()
             }
         }
