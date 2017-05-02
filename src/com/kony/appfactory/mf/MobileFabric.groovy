@@ -31,6 +31,12 @@ class MobileFabric implements Serializable {
         this.script = script
     }
 
+    private final customShell(String command = '') {
+        // Remove default -x key to disable debug mode
+        String commandToRun = '#!/bin/sh -e\n' + command
+        script.sh commandToRun
+    }
+
     private final catchErrorCustom(successMsg, errorMsg, closure) {
         try {
             closure()
@@ -71,10 +77,8 @@ class MobileFabric implements Serializable {
                                      credentialsId   : mfCredID,
                                      passwordVariable: 'mfPassword',
                                      usernameVariable: 'mfUser']]) {
-                script.customShell "java -jar mfcli.jar \"${command}\" \
-                    -u \"${script.env.mfUser}\" \
-                    -p \"${script.env.mfPassword}\" \
-                    ${options}"
+                customShell "java -jar mfcli.jar \"${command}\" -u \"${script.env.mfUser}\" \
+                    -p \"${script.env.mfPassword}\" ${options}"
             }
         }
     }
@@ -94,7 +98,7 @@ class MobileFabric implements Serializable {
                         path: s3Params.path,
                         force: true
             } else {
-                script.customShell "curl -s -f -o ${location}/mfcli.jar ${url}"
+                customShell "curl -s -f -o ${location}/mfcli.jar ${url}"
             }
         }
     }
@@ -112,7 +116,7 @@ class MobileFabric implements Serializable {
                 script.unzip zipFile: currentArchivePath, dir: 'current'
                 
                 status = script.sh (
-                        script: "set +x; diff -r previous current > /dev/null",
+                        script: '#!/bin/sh -e\n' + 'diff -r previous current > /dev/null',
                         returnStatus: true
                 ) != 0
                 
@@ -234,10 +238,10 @@ class MobileFabric implements Serializable {
 
         catchErrorCustom(successMessage, errorMessage) {
             script.dir(gitProject) {
-                script.customShell 'git add .'
+                customShell 'git add .'
 
                 status = script.sh(
-                        script: "set +x; git diff --cached --exit-code > /dev/null",
+                        script: '#!/bin/sh -e\n' + 'git diff --cached --exit-code > /dev/null',
                         returnStatus: true
                 ) != 0
             }
@@ -304,7 +308,7 @@ class MobileFabric implements Serializable {
                 script.deleteDir()
             }
 
-            script.customShell "mv -f ./${exportDir} ./${gitProject}/"
+            customShell "mv -f ./${exportDir} ./${gitProject}/"
         }
     }
 
@@ -313,7 +317,7 @@ class MobileFabric implements Serializable {
         String errorMessage = 'FAILED to store artifacts'
 
         catchErrorCustom(successMessage, errorMessage) {
-            script.customShell "cp -p ${gitProject}.zip ${gitProject}_PREV.zip"
+            customShell "cp -p ${gitProject}.zip ${gitProject}_PREV.zip"
         }
     }
 
@@ -333,7 +337,7 @@ class MobileFabric implements Serializable {
         String errorMessage = "FAILED to create zip file for project ${gitProject}"
 
         catchErrorCustom(successMessage, errorMessage) {
-            script.customShell "zip -r \"${mfAppID}.zip\" \"${gitProject}/export/Apps\" -x *.pretty.json"
+            customShell "zip -r \"${mfAppID}.zip\" \"${gitProject}/export/Apps\" -x *.pretty.json"
         }
     }
 
@@ -411,7 +415,7 @@ class MobileFabric implements Serializable {
                                                      passwordVariable: 'gitPassword',
                                                      usernameVariable: 'gitUser']]) {
                                 script.dir(gitProject) {
-                                    script.customShell(
+                                    customShell(
                                             "git config --local push.default simple" + ' && ' +
                                             "git config --local user.name '${commitAuthor}'"
                                     )
@@ -421,7 +425,7 @@ class MobileFabric implements Serializable {
                                     }
 
                                     if (authorEmail != '') {
-                                        script.customShell "git config --local user.email ${authorEmail}"
+                                        customShell "git config --local user.email ${authorEmail}"
                                     }
                                 }
                             }
@@ -453,7 +457,7 @@ class MobileFabric implements Serializable {
                                             script.env.gitPassword
 
                                     script.dir(gitProject) {
-                                        script.customShell """git checkout '${gitBranch} && git commit -m ${
+                                        customShell """git checkout '${gitBranch} && git commit -m ${
                                             commitMessage
                                         } && git push ${gitProtocol}${script.env.gitUser}:${gitPassword}@${gitDomain}${
                                             organizationName
