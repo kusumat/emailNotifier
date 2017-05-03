@@ -250,33 +250,6 @@ class MobileFabric implements Serializable {
         status
     }
 
-    private final String loadLibraryResource(resourcePath) {
-        def resource = ''
-        String successMessage = 'Resource loading finished successfully'
-        String errorMessage = 'FAILED to load resource'
-
-        catchErrorCustom(successMessage, errorMessage) {
-            resource = script.libraryResource resourcePath
-        }
-
-        resource
-    }
-
-    private final void sendNotification(fillMailClosure) {
-        String buildDetails = String.valueOf(mfCommand.capitalize()) +
-                ' of Mobile Fabric app ' + String.valueOf(mfAppID) +
-                ' is: ' + String.valueOf(script.currentBuild.currentResult)
-        String mailTemplate = loadLibraryResource "com/kony/appfactory/mf/${mfCommand}/email-notif-templ.html"
-        String content = fillMailClosure(buildDetails, mailTemplate)
-
-        script.emailext(
-            body: content,
-            mimeType: 'text/html',
-            subject: "${script.env.JOB_NAME} - #${script.env.BUILD_NUMBER} - ${script.currentBuild.currentResult}",
-            to: recipientList
-        )
-    }
-
     private final void cloneProject() {
         String successMessage = 'Mobile Fabric application cloned successfully'
         String errorMessage = 'FAILED to clone Mobile Fabric application from git'
@@ -343,6 +316,7 @@ class MobileFabric implements Serializable {
 
     protected final void exportApp() {
         mfCommand = 'export'
+        script.env['MOBILE_FABRIC_COMMAND'] = mfCommand.capitalize()
         final boolean appChanged
         final String exportDir = 'export'
 
@@ -351,16 +325,6 @@ class MobileFabric implements Serializable {
         final String authorEmail = (script.params.AUTHOR_EMAIL?.trim()) ? script.params.AUTHOR_EMAIL : ''
         final String commitMessage = script.params.COMMIT_MESSAGE?.trim() ? script.params.COMMIT_MESSAGE :
                 'Automatic backup of MobileFabric services.'
-
-        final fillMailContentPlaceholders = { buildDetails, template ->
-            template.replaceAll('mfAppID', mfAppID)
-                    .replaceAll('buildDetails', buildDetails)
-                    .replaceAll('gitURL', gitURL)
-                    .replaceAll('gitBranch', gitBranch)
-                    .replaceAll('commitAuthor', commitAuthor)
-                    .replaceAll('authorEmail', authorEmail)
-                    .replaceAll('commitMessage', commitMessage)
-        }
 
         if (!(gitCredentialsID &&
                 gitURL &&
@@ -457,11 +421,7 @@ class MobileFabric implements Serializable {
                                             script.env.gitPassword
 
                                     script.dir(gitProject) {
-                                        customShell """git checkout '${gitBranch} && git commit -m ${
-                                            commitMessage
-                                        } && git push ${gitProtocol}${script.env.gitUser}:${gitPassword}@${gitDomain}${
-                                            organizationName
-                                        }${gitProject}.git"""
+                                        customShell "git checkout ${gitBranch} && git commit -m '${commitMessage}' && git push ${gitProtocol}//${script.env.gitUser}:${gitPassword}@${gitDomain}/${organizationName}/${gitProject}.git"
                                     }
                                 }
                                 script.echo 'All changes were pushed to remote git repository successfully'
@@ -479,38 +439,33 @@ class MobileFabric implements Serializable {
                 }
             } catch(Exception e) {
                 script.echo e.getMessage()
-
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 /* Commenting out this while unarchive step not working */
 //                script.archiveArtifacts artifacts: "**/${gitProject}_PREV.zip", onlyIfSuccessful: true
-
                 script.step([$class    : 'WsCleanup',
                              deleteDirs: true,
                              patterns  : [[pattern: "**/${gitProject}_PREV.zip", type: 'EXCLUDE']]])
 
-                sendNotification(fillMailContentPlaceholders)
+                String buildDetails = String.valueOf(mfCommand.capitalize()) +
+                        ' of Mobile Fabric app ' + String.valueOf(mfAppID) +
+                        ' is: ' + String.valueOf(script.currentBuild.currentResult)
+
+                script.env['DETAILS'] = buildDetails
+
+                script.sendMail('com/kony/appfactory/mf/', 'Kony_mobilefabric.jelly', recipientList)
             }
         }
     }
 
     protected final void importApp() {
         mfCommand = 'import'
+        script.env['MOBILE_FABRIC_COMMAND'] = mfCommand.capitalize()
 
         /* Import build parameters */
         final String gitTagID = script.params.TAG_ID
         final boolean overwriteExisting = script.params.OVERWRITE_EXISTING
         final boolean publishApp = script.params.ENABLE_PUBLISH
-
-        final fillMailContentPlaceholders = { buildDetails, template ->
-            template.replaceAll('mfAppID', mfAppID)
-                    .replaceAll('buildDetails', buildDetails)
-                    .replaceAll('gitURL', gitURL)
-                    .replaceAll('gitBranch', gitBranch)
-                    .replaceAll('gitTagID', gitTagID)
-                    .replaceAll('overwriteExisting', overwriteExisting.toString())
-                    .replaceAll('publishApp', publishApp.toString())
-        }
 
         if (!(gitCredentialsID &&
                 gitURL &&
@@ -527,6 +482,8 @@ class MobileFabric implements Serializable {
 
         script.node(nodeLabel) {
             try {
+                script.step([$class: 'WsCleanup', deleteDirs: true])
+
                 script.stage('Prepare environment') {
                     checkEnvironment()
                     parseExportURL()
@@ -552,7 +509,7 @@ class MobileFabric implements Serializable {
 
                 if (publishApp) {
                     script.stage('Trigger Publish Mobile Fabric application job') {
-                        script.build job: 'MF/News_Weather_Sample_MobileFabric_Publish', parameters: [
+                        script.build job: "${mfAppID.replaceAll(' ', '_')}_MobileFabric/${mfAppID.replaceAll(' ', '_')}_MobileFabric_Publish", parameters: [
                                 script.string(name: 'MOBILE_FABRIC_ACCOUNT_ID', value: mfAccountID),
                                 script.string(name: 'MOBILE_FABRIC_APP_ID', value: mfAppID),
                                 script.string(name: 'MF_CREDENTIALS', value: mfCredentialsID),
@@ -565,20 +522,14 @@ class MobileFabric implements Serializable {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                script.step([$class: 'WsCleanup', deleteDirs: true])
-                sendNotification(fillMailContentPlaceholders)
+                script.sendMail('com/kony/appfactory/mf/', 'Kony_mobilefabric.jelly', recipientList)
             }
         }
     }
 
     protected final void publishApp() {
         mfCommand = 'publish'
-
-        final fillMailContentPlaceholders = { buildDetails, template ->
-            template.replaceAll('mfAppID', mfAppID)
-                    .replaceAll('buildDetails', buildDetails)
-                    .replaceAll('mfEnv', mfEnv)
-        }
+        script.env['MOBILE_FABRIC_COMMAND'] = mfCommand.capitalize()
 
         if (!(mfAccountID &&
                 mfCredentialsID &&
@@ -591,6 +542,8 @@ class MobileFabric implements Serializable {
 
         script.node(nodeLabel) {
             try {
+                script.step([$class: 'WsCleanup', deleteDirs: true])
+
                 script.stage('Prepare environment') {
                     checkEnvironment()
                     fetchMFCLI url: mfCLILocation, location: script.pwd()
@@ -605,8 +558,7 @@ class MobileFabric implements Serializable {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                script.step([$class: 'WsCleanup', deleteDirs: true])
-                sendNotification(fillMailContentPlaceholders)
+                script.sendMail('com/kony/appfactory/mf/', 'Kony_mobilefabric.jelly', recipientList)
             }
         }
     }

@@ -18,65 +18,65 @@
         </condition>
 
         <!--Set of condition properties depending of choosed target platrofms-->
-        <condition property="apple.phone" value="true" else="false">
-            <isset property="env.IPHONE" />
+        <condition property="android.phone" value="${env.ANDROID_MOBILE}" else="false">
+            <isset property="env.ANDROID_MOBILE"/>
         </condition>
-        <condition property="android.phone" value="true" else="false">
-            <isset property="env.ANDRPHONE"/>
+        <condition property="spa.android.phone" value="${env.ANDROID_MOBILE_SPA}" else="false">
+            <isset property="env.ANDROID_MOBILE_SPA" />
         </condition>
-        <condition property="win8.phone" value="true" else="false">
-            <isset property="env.WIN8PHONE" />
+        <condition property="android.tablet" value="${env.ANDROID_TABLET}" else="false">
+            <isset property="env.ANDROID_TABLET" />
         </condition>
-        <condition property="win81s.phone" value="true" else="false">
-            <isset property="env.WIN81SPHONE" />
+        <condition property="spa.android.tablet" value="${env.ANDROID_TABLET_SPA}" else="false">
+            <isset property="env.ANDROID_TABLET_SPA" />
         </condition>
-        <condition property="win10.phone" value="true" else="false">
-            <isset property="env.WIN10PHONE" />
+        <condition property="apple.watch" value="${env.APPLE_WATCH}" else="false">
+            <isset property="env.APPLE_WATCH" />
         </condition>
-        <condition property="spa.apple.phone" value="true" else="false">
-            <isset property="env.SPAIPHONE" />
+        <condition property="apple.phone" value="${env.APPLE_MOBILE}" else="false">
+            <isset property="env.APPLE_MOBILE" />
         </condition>
-        <condition property="spa.android.phone" value="true" else="false">
-            <isset property="env.SPAANDRPHONE" />
+        <condition property="spa.apple.phone" value="${env.APPLE_MOBILE_SPA}" else="false">
+            <isset property="env.APPLE_MOBILE_SPA" />
         </condition>
-        <condition property="spa.blackberry" value="true" else="false">
-            <isset property="env.SPABLACKBERRY" />
+        <condition property="apple.tablet" value="${env.APPLE_TABLET}" else="false">
+            <isset property="env.APPLE_TABLET" />
         </condition>
-        <condition property="spa.winphone" value="true" else="false">
-            <isset property="env.SPAWINPHONE" />
+        <condition property="spa.apple.tablet" value="${env.APPLE_TABLET_SPA}" else="false">
+            <isset property="env.APPLE_TABLET_SPA" />
         </condition>
-        <condition property="spa.hybrid.blackberry" value="true" else="false">
-            <isset property="env.SPAHYBRIDBB" />
+        <condition property="win8.phone" value="${env.WINDOWS_MOBILE_WINDOWSPHONE8}" else="false">
+            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE8" />
         </condition>
-        <condition property="apple.tablet" value="true" else="false">
-            <isset property="env.IPAD" />
+        <condition property="win81s.phone" value="${env.WINDOWS_MOBILE_WINDOWSPHONE81s}" else="false">
+            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE81s" />
         </condition>
-        <condition property="android.tablet" value="true" else="false">
-            <isset property="env.ANDRTAB" />
+        <condition property="win10.phone" value="${env.WINDOWS_MOBILE_WINDOWSPHONE10}" else="false">
+            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE10" />
         </condition>
-        <condition property="windows81" value="true" else="false">
-            <isset property="env.WINDOWS81" />
+        <condition property="spa.winphone" value="${env.WINDOWS_MOBILE_SPA}" else="false">
+            <isset property="env.WINDOWS_MOBILE_SPA" />
         </condition>
-        <condition property="windows10" value="true" else="false">
-            <isset property="env.WINDOWS10" />
+        <condition property="spa.win.tablet" value="${env.WINDOWS_TABLET_SPA}" else="false">
+            <isset property="env.WINDOWS_TABLET_SPA" />
         </condition>
-        <condition property="spa.apple.tablet" value="true" else="false">
-            <isset property="env.SPAIPAD" />
+        <condition property="windows81" value="${env.WINDOWS_DESKTOP_81}" else="false">
+            <isset property="env.WINDOWS_DESKTOP_81" />
         </condition>
-        <condition property="spa.android.tablet" value="true" else="false">
-            <isset property="env.SPAANDRTAB" />
+        <condition property="windows10" value="${env.WINDOWS_DESKTOP_10}" else="false">
+            <isset property="env.WINDOWS_DESKTOP_10" />
         </condition>
-        <condition property="spa.win.tablet" value="true" else="false">
-            <isset property="env.SPAWINTAB" />
+        <condition property="spa.blackberry" value="${env.BLACKBERRY_MOBILE_SPA}" else="false">
+            <isset property="env.BLACKBERRY_MOBILE_SPA" />
         </condition>
-        <condition property="desktop.kiosk" value="true" else="false">
-            <isset property="env.DESKTIOKIOSK" />
+        <condition property="spa.hybrid.blackberry" value="${env.BLACKBERRY_MOBILE_HYBRID_SPA}" else="false">
+            <isset property="env.BLACKBERRY_MOBILE_HYBRID_SPA" />
         </condition>
-        <condition property="desktop.web" value="true" else="false">
-            <isset property="env.DWSKTOPWEB" />
+        <condition property="desktop.kiosk" value="${env.KIOSK_DESKTOP}" else="false">
+            <isset property="env.KIOSK_DESKTOP" />
         </condition>
-        <condition property="apple.watch" value="true" else="false">
-            <isset property="env.APPLEWATCH" />
+        <condition property="desktop.web" value="${env.WEB_DESKTOP}" else="false">
+            <isset property="env.WEB_DESKTOP" />
         </condition>
 
         <propertyfile file="HeadlessBuild-Global.properties" comment="Generated file">

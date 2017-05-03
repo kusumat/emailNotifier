@@ -1,10 +1,12 @@
-package com.kony.appfactory.visualizer
+package com.kony.appfactory.visualizer.channels
 
-abstract class Channel implements Serializable {
+class Channel implements Serializable {
     protected script
     protected boolean isUnixNode
     protected String workSpace
     protected String projectFullPath
+    protected String channelName
+    protected String artifactPath
     protected String resourceBasePath = 'com/kony/appfactory/visualizer/'
 
     /* Common build parameters */
@@ -21,13 +23,15 @@ abstract class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
+        this.channelName = this.script.env.JOB_BASE_NAME
+        this.script.env[channelName.toUpperCase()] = true
     }
 
     protected final void checkoutProject() {
         String successMessage = 'Project has been checkout successfully'
         String errorMessage = 'FAILED to checkout the project'
 
-        catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(successMessage, errorMessage) {
             script.checkout(
                     changelog: false,
                     poll: false,
@@ -48,65 +52,27 @@ abstract class Channel implements Serializable {
         String errorMessage = 'FAILED to publish artifact'
 
         String artifact = args.artifact
-        String channel = args.channel
-        String bucket = "${s3BucketName}/${projectName}/${environment}/${channel}"
+        String bucket = "${s3BucketName}/${projectName}/${environment}/${channelName.replaceAll('_','/')}"
 
-        catchErrorCustom(successMessage, errorMessage) {
-            script.step([$class                              : 'S3BucketPublisher',
-                         consoleLogLevel                     : 'INFO',
-                         dontWaitForConcurrentBuildCompletion: false,
-                         entries                             : [
-                                 [bucket           : bucket,
-                                  flatten          : true,
-                                  keepForever      : true,
-                                  managedArtifacts : false,
-                                  noUploadOnFailure: true,
-                                  selectedRegion   : 'eu-west-1',
-                                  sourceFile       : artifact]
-                         ],
-                         pluginFailureResultConstraint       : 'FAILURE'])
+        script.catchErrorCustom(successMessage, errorMessage) {
+            script.dir(artifactPath) {
+                script.step([$class                              : 'S3BucketPublisher',
+                             consoleLogLevel                     : 'INFO',
+                             dontWaitForConcurrentBuildCompletion: false,
+                             entries                             : [
+                                     [bucket           : bucket,
+                                      flatten          : true,
+                                      keepForever      : true,
+                                      managedArtifacts : false,
+                                      noUploadOnFailure: true,
+                                      selectedRegion   : 'eu-west-1',
+                                      sourceFile       : artifact]
+                             ],
+                             pluginFailureResultConstraint       : 'FAILURE'])
+            }
         }
     }
-
-    protected final void sendNotification() {
-        String emailTemplateFolder = 'email/templates/'
-        String emailTemplateName = 'Kony_OTA_Installers.jelly'
-        String emailBody = '${JELLY_SCRIPT, template="' + emailTemplateName + '"}'
-        String emailSubject = String.valueOf(script.currentBuild.currentResult) + ': ' +
-                String.valueOf(projectName) + ' (' +
-                String.valueOf(script.env.JOB_NAME) + '-#' +
-                String.valueOf(script.env.BUILD_NUMBER) + ')'
-        String emailRecipientsList = 'KonyAppFactoryTeam@softserveinc.com'
-
-        /* Load email template */
-        String emailTemplate = loadLibraryResource(resourceBasePath + emailTemplateFolder + emailTemplateName)
-        script.writeFile file: emailTemplateName, text: emailTemplate
-
-        /* Sending email */
-        script.emailext body: emailBody, subject: emailSubject, to: emailRecipientsList
-    }
-
-    protected final void catchErrorCustom(successMsg, errorMsg, closure) {
-        try {
-            closure()
-            script.echo successMsg
-        } catch(Exception e) {
-            script.error errorMsg
-        }
-    }
-
-    protected final String loadLibraryResource(resourcePath) {
-        def resource = ''
-        String successMessage = 'Resource loading finished successfully'
-        String errorMessage = 'FAILED to load resource'
-
-        catchErrorCustom(successMessage, errorMessage) {
-            resource = script.libraryResource resourcePath
-        }
-
-        resource
-    }
-
+    
     protected final void visualizerEnvWrapper(closure) {
         String visualizerBasePath = (isUnixNode) ? "/Jenkins/KonyVisualizerEnterprise${visualizerVersion}/" :
                 "C:\\Jenkins\\KonyVisualizerEnterprise${visualizerVersion}\\"
@@ -128,11 +94,11 @@ abstract class Channel implements Serializable {
         String errorMessage = 'FAILED to build the project'
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
-        catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(successMessage, errorMessage) {
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i<requiredResources.size(); i++) {
-                    String resource = loadLibraryResource(resourceBasePath + requiredResources[i])
+                    String resource = script.loadLibraryResource(resourceBasePath + requiredResources[i])
                     script.writeFile file: requiredResources[i], text: resource
                 }
 

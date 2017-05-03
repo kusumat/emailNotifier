@@ -1,11 +1,9 @@
-package com.kony.appfactory.visualizer
+package com.kony.appfactory.visualizer.channels
 
 class AppleChannel extends Channel {
     private bundleID
-    private String artifactPath
     private String nodeLabel = 'mac'
     private String artifactExtension = 'ipa'
-    private String channelName = (script.params.IPHONE) ? 'iphone' : 'tablet'
 
     /* Build parameters */
     private String matchType = script.params.MATCH_TYPE
@@ -25,22 +23,21 @@ class AppleChannel extends Channel {
     private final void setBuildParameters(){
         script.properties([
                 script.parameters([
-                        script.stringParam( name: 'PROJECT_NAME', defaultValue: '', description: 'Project Name' ),
-                        script.stringParam( name: 'GIT_URL', defaultValue: '', description: 'Project Git URL' ),
-                        script.stringParam( name: 'GIT_BRANCH', defaultValue: '', description: 'Project Git Branch' ),
+                        script.stringParam(name: 'PROJECT_NAME', defaultValue: '', description: 'Project Name'),
+                        script.stringParam(name: 'GIT_URL', defaultValue: '', description: 'Project Git URL'),
+                        script.stringParam(name: 'GIT_BRANCH', defaultValue: '', description: 'Project Git Branch'),
                         [$class: 'CredentialsParameterDefinition', name: 'GIT_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'GitHub.com Credentials', required: true],
-                        script.stringParam( name: 'MAIN_BUILD_NUMBER', defaultValue: '', description: 'Build Number for artifact' ),
-                        script.choice( name: 'BUILD_MODE', choices: "debug\nrelease", defaultValue: '', description: 'Choose build mode (debug or release)' ),
-                        script.choice( name: 'ENVIRONMENT', choices: "dev\nqa\nrelease", defaultValue: 'dev', description: 'Define target environment' ),
+                        script.stringParam(name: 'MAIN_BUILD_NUMBER', defaultValue: '', description: 'Build Number for artifact'),
+                        script.choice(name: 'BUILD_MODE', choices: "debug\nrelease", defaultValue: '', description: 'Choose build mode (debug or release)'),
+                        script.choice(name: 'ENVIRONMENT', choices: "dev\nqa\nrelease", defaultValue: 'dev', description: 'Define target environment'),
                         [$class: 'CredentialsParameterDefinition', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'Apple ID credentials', name: 'APPLE_ID', required: true],
                         [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'The Encryption password', name: 'MATCH_PASSWORD', required: false],
                         [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'GitHub access token', name: 'MATCH_GIT_TOKEN', required: false],
-                        script.stringParam( name: 'VIZ_VERSION', defaultValue: '7.2.1', description: 'Kony Vizualizer version' ),
+                        script.stringParam(name: 'VIZ_VERSION', defaultValue: '7.2.1', description: 'Kony Vizualizer version'),
                         [$class: 'CredentialsParameterDefinition', name: 'CLOUD_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'Cloud Mode credentials (Applicable only for cloud)', required: true],
-                        script.stringParam( name: 'S3_BUCKET_NAME', defaultValue: '', description: 'S3 Bucket Name' ),
-                        script.stringParam( name: 'MATCH_GIT_URL', defaultValue: '', description: 'URL to the git repo containing all the certificates (On-premises only!)' ),
-                        script.choice( name: 'MATCH_TYPE', choices: "appstore\nadhoc\ndevelopment\nenterprise", defaultValue: 'development', description: 'Define the signing profile type' ),
-                        script.booleanParam( name: 'IPHONE', defaultValue: true, description: 'Select the box if your build is for Apple iPhone' )
+                        script.stringParam(name: 'S3_BUCKET_NAME', defaultValue: '', description: 'S3 Bucket Name'),
+                        script.stringParam(name: 'MATCH_GIT_URL', defaultValue: '', description: 'URL to the git repo containing all the certificates (On-premises only!)'),
+                        script.choice(name: 'MATCH_TYPE', choices: "appstore\nadhoc\ndevelopment\nenterprise", defaultValue: 'development', description: 'Define the signing profile type')
                 ])
         ])
     }
@@ -52,7 +49,7 @@ class AppleChannel extends Channel {
         String visualizerDropinsPath = '/Jenkins/KonyVisualizerEnterprise' +
                 visualizerVersion + '/Kony_Visualizer_Enterprise/dropins'
 
-        catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(successMessage, errorMessage) {
             /* Get bundle identifier */
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
@@ -82,6 +79,34 @@ class AppleChannel extends Channel {
                     }
                     script.sh '$HOME/.fastlane/bin/fastlane wildcard_build_' + fastLaneBuildCommand
                 }
+            }
+
+            script.dir(artifactPath) {
+                script.sh "mv ${projectName}.${artifactExtension} ${artifactFileName}"
+            }
+        }
+    }
+
+    private final void createPlist() {
+        String successMessage = 'PLIST file created successfully'
+        String errorMessage = 'FAILED to create PLIST file'
+        String awsRegion = 'us-west-1'
+        String plistFileName = 'apple_orig.plist'
+        String plistPathTagValue = 'https://s3-' + awsRegion + '.amazonaws.com/' + s3BucketName + '/' +
+                projectName + '/' + environment + '/' + 'iphone' + '/' + projectName + '_' +
+                mainBuildNumber + '.ipa'
+
+        script.catchErrorCustom(successMessage, errorMessage) {
+            script.dir(artifactPath) {
+                /* Load property list file template */
+                String plist = script.loadLibraryResource(resourceBasePath + plistFileName)
+
+                /* Substitute required values */
+                String plistUpdated = plist.replaceAll('\\$path', plistPathTagValue)
+                        .replaceAll('\\$bundleIdentifier', bundleID)
+
+                /* Write updated property list file to current working directory */
+                script.writeFile file: "${projectName}_${mainBuildNumber}.plist", text: plistUpdated
             }
         }
     }
@@ -118,25 +143,13 @@ class AppleChannel extends Channel {
         return matcher ? matcher[0][1] : null
     }
 
-    private final publishArtifact() {
-        String successMessage = 'Artifact renamed successfully'
-        String errorMessage = 'FAILED to rename artifact for publishing'
-
-        script.dir(artifactPath) {
-            catchErrorCustom(successMessage, errorMessage) {
-                script.sh "mv ${projectName}.${artifactExtension} ${artifactFileName}"
-            }
-            publishToS3 channel: channelName, artifact: artifactFileName
-        }
-    }
-
     protected final void createWorkflow() {
         script.node(nodeLabel) {
             /* Set environment-dependent variables */
             isUnixNode = script.isUnix()
             workSpace = script.env.WORKSPACE
             projectFullPath = workSpace + '/' + projectName
-            artifactPath = projectFullPath + '/binaries/' + channelName
+            artifactPath = projectFullPath + '/binaries/iphone'
 
             try {
                 script.step([$class: 'WsCleanup', deleteDirs: true])
@@ -149,18 +162,23 @@ class AppleChannel extends Channel {
                     build()
                 }
 
-                script.stage('Make an IPA') {
+                script.stage('Generate IPA file') {
                     createIPA()
                 }
 
+                script.stage("Generate property list file") {
+                    createPlist()
+                }
+
                 script.stage("Publish artifact to S3") {
-                    publishArtifact()
+                    publishToS3 artifact: artifactFileName
+                    publishToS3 artifact: projectName + '_' + mainBuildNumber + '.plist'
                 }
             } catch(Exception e) {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                sendNotification()
+                script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'KonyAppFactoryTeam@softserveinc.com')
             }
         }
     }
