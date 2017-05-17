@@ -1,13 +1,17 @@
 package com.kony.appfactory.visualizer.channels
 
-class Channel implements Serializable {
+abstract class Channel implements Serializable {
     protected script
     protected boolean isUnixNode
     protected String workSpace
     protected String projectFullPath
     protected String channelName
     protected String artifactPath
-    protected String resourceBasePath = 'com/kony/appfactory/visualizer/'
+    protected String s3artifactPath
+    protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
+    /* Required for triggering emails */
+    protected buildCause
+    protected triggeredBy = ''
 
     /* Common build parameters */
     protected String projectName = script.params.PROJECT_NAME
@@ -23,8 +27,16 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
-        this.channelName = this.script.env.JOB_BASE_NAME
-        this.script.env[channelName.toUpperCase()] = true
+
+        channelName = (this.script.env.JOB_NAME - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
+        s3artifactPath = "${s3BucketName}/${projectName}/${environment}/${channelName.toLowerCase().replaceAll('_','/')}"
+
+        /* Workaround to build only specific channel */
+        this.script.env[channelName] = true
+
+        setS3ArtifactURL()
+        getBuildCause()
+        this.script.env['TRIGGERED_BY'] = "${triggeredBy}"
     }
 
     protected final void checkoutProject() {
@@ -52,7 +64,6 @@ class Channel implements Serializable {
         String errorMessage = 'FAILED to publish artifact'
 
         String artifact = args.artifact
-        String bucket = "${s3BucketName}/${projectName}/${environment}/${channelName.replaceAll('_','/')}"
 
         script.catchErrorCustom(successMessage, errorMessage) {
             script.dir(artifactPath) {
@@ -60,7 +71,7 @@ class Channel implements Serializable {
                              consoleLogLevel                     : 'INFO',
                              dontWaitForConcurrentBuildCompletion: false,
                              entries                             : [
-                                     [bucket           : bucket,
+                                     [bucket           : "${s3artifactPath}",
                                       flatten          : true,
                                       keepForever      : true,
                                       managedArtifacts : false,
@@ -114,5 +125,37 @@ class Channel implements Serializable {
                 }
             }
         }
+    }
+
+    @NonCPS
+    private final void getBuildCause() {
+        def causes = []
+        def buildCauses = script.currentBuild.rawBuild.getCauses()
+
+        for (cause in buildCauses) {
+            if (cause instanceof hudson.model.Cause$UpstreamCause) {
+                causes.add('upstream')
+                triggeredBy = cause.getUpstreamRun().getCause(hudson.model.Cause.UserIdCause).getUserName()
+            } else if (cause instanceof hudson.model.Cause$RemoteCause) {
+                causes.add('remote')
+            } else if (cause instanceof hudson.model.Cause$UserIdCause) {
+                causes.add('user')
+                triggeredBy = cause.getUserName()
+            } else {
+                causes.add('unknown')
+            }
+        }
+
+        if (causes.contains('upstream')) {
+            buildCause = 'upstream'
+        } else if (causes.contains('user')) {
+            buildCause = 'user'
+        }
+    }
+
+    @NonCPS
+    private final void setS3ArtifactURL() {
+        String s3ArtifactURL = 'https://' + 's3-eu-west-1.amazonaws.com' + '/' + s3artifactPath
+        script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 }

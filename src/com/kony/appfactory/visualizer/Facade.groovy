@@ -1,10 +1,15 @@
 package com.kony.appfactory.visualizer
 
 class Facade implements Serializable {
-    protected script
+    private script
+    private environment
+    private String nodeLabel = 'master'
+    private channelsLogicToRun = [:]
+    private channelsToRun
 
     Facade(script) {
         this.script = script
+        this.environment = this.script.params.ENVIRONMENT
         setBuildParameters()
     }
 
@@ -32,26 +37,26 @@ class Facade implements Serializable {
                         script.stringParam(name: 'MATCH_GIT_URL', defaultValue: script.params.MATCH_GIT_URL ?: '', description: 'URL to the git repo containing all the certificates (On-premises only!)'),
                         script.choice(name: 'MATCH_TYPE', choices: "appstore\nadhoc\ndevelopment\nenterprise", defaultValue: script.params.MATCH_TYPE ?: 'development', description: 'Define the signing profile type'),
                         script.booleanParam(name: 'TEST_AUTOMATION_ENABLED', defaultValue: false, description: 'Select the box if you want to run Tests against your builds on AWS DeviceFarm (Android and iOS only!)'),
-                        script.booleanParam(name: 'ANDROID_MOBILE', defaultValue: false, description: 'Select the box if your build is for Android phones'),
+                        script.booleanParam(name: 'ANDROID_MOBILE_NATIVE', defaultValue: false, description: 'Select the box if your build is for Android phones'),
                         script.booleanParam(name: 'ANDROID_MOBILE_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for Android phones'),
-                        script.booleanParam(name: 'ANDROID_TABLET', defaultValue: false, description: 'Select the box if your build is for Android tablets'),
+                        script.booleanParam(name: 'ANDROID_TABLET_NATIVE', defaultValue: false, description: 'Select the box if your build is for Android tablets'),
                         script.booleanParam(name: 'ANDROID_TABLET_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for Android tablets'),
-                        script.booleanParam(name: 'APPLE_WATCH', defaultValue: false, description: 'Select the box if your build is for watchOS watches'),
-                        script.booleanParam(name: 'APPLE_MOBILE', defaultValue: false, description: 'Select the box if your build is for iOS phones'),
+                        script.booleanParam(name: 'APPLE_WATCH_NATIVE', defaultValue: false, description: 'Select the box if your build is for watchOS watches'),
+                        script.booleanParam(name: 'APPLE_MOBILE_NATIVE', defaultValue: false, description: 'Select the box if your build is for iOS phones'),
                         script.booleanParam(name: 'APPLE_MOBILE_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for iOS phones'),
-                        script.booleanParam(name: 'APPLE_TABLET', defaultValue: false, description: 'Select the box if your build is for iOS tablets'),
+                        script.booleanParam(name: 'APPLE_TABLET_NATIVE', defaultValue: false, description: 'Select the box if your build is for iOS tablets'),
                         script.booleanParam(name: 'APPLE_TABLET_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for iOS tablets'),
                         script.booleanParam(name: 'WINDOWS_MOBILE_WINDOWSPHONE8', defaultValue: false, description: 'Select the box if your build is for Windows 8 phones'),
-                        script.booleanParam(name: 'WINDOWS_MOBILE_WINDOWSPHONE81s', defaultValue: false, description: 'Select the box if your build is for Windows 8.1s phones'),
+                        script.booleanParam(name: 'WINDOWS_MOBILE_WINDOWSPHONE81S', defaultValue: false, description: 'Select the box if your build is for Windows 8.1s phones'),
                         script.booleanParam(name: 'WINDOWS_MOBILE_WINDOWSPHONE10', defaultValue: false, description: 'Select the box if your build is for Windows 10 phones'),
                         script.booleanParam(name: 'WINDOWS_MOBILE_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for windows phones'),
                         script.booleanParam(name: 'WINDOWS_TABLET_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for windows tablets'),
-                        script.booleanParam(name: 'WINDOWS_DESKTOP_81', defaultValue: false, description: 'Select the box if your build is for Windows 8.1s desktop'),
-                        script.booleanParam(name: 'WINDOWS_DESKTOP_10', defaultValue: false, description: 'Select the box if your build is for Windows 10 desktop'),
+                        script.booleanParam(name: 'WINDOWS_DESKTOP_WINDOWS81', defaultValue: false, description: 'Select the box if your build is for Windows 8.1s desktop'),
+                        script.booleanParam(name: 'WINDOWS_DESKTOP_WINDOWS10', defaultValue: false, description: 'Select the box if your build is for Windows 10 desktop'),
                         script.booleanParam(name: 'BLACKBERRY_MOBILE_SPA', defaultValue: false, description: 'elect the box if your build is for single page application for Blackberry'),
                         script.booleanParam(name: 'BLACKBERRY_MOBILE_HYBRID_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for Blackberry hybrid'),
-                        script.booleanParam(name: 'KIOSK_DESKTOP', defaultValue: false, description: 'SSelect the box if your build is for Kiosk desktop'),
-                        script.booleanParam(name: 'WEB_DESKTOP', defaultValue: false, description: 'Select the box if your build is for Web desktop')
+                        script.booleanParam(name: 'KIOSK_DESKTOP_NATIVE', defaultValue: false, description: 'SSelect the box if your build is for Kiosk desktop'),
+                        script.booleanParam(name: 'WEB_DESKTOP_NATIVE', defaultValue: false, description: 'Select the box if your build is for Web desktop')
                 ])
         ])
     }
@@ -82,13 +87,13 @@ class Facade implements Serializable {
                 script.stringParam(name: 'S3_BUCKET_NAME', description: 'S3 Bucket Name', value: "${script.params.S3_BUCKET_NAME}")
         ]
 
-        if (channel.startsWith('android')) {
+        if (channel.startsWith('ANDROID')) {
             parameters = parameters + [
                     [$class: 'CredentialsParameterValue', name: 'KS_FILE', description: 'Private key and certificate chain reside in the given Java-based KeyStore file', value: "${script.params.KS_FILE}"],
                     [$class: 'CredentialsParameterValue', name: 'KS_PASSWORD', description: 'The password for the KeyStore', value: "${script.params.KS_PASSWORD}"],
                     [$class: 'CredentialsParameterValue', name: 'PRIVATE_KEY_PASSWORD', description: 'The password for the private key', value: "${script.params.PRIVATE_KEY_PASSWORD}"]
             ]
-        } else if (channel.startsWith('apple')) {
+        } else if (channel.startsWith('APPLE')) {
             parameters = parameters + [
                     [$class: 'CredentialsParameterValue', name: 'APPLE_ID', description: 'Apple ID credentials',  value: "${script.params.APPLE_ID}"],
                     [$class: 'CredentialsParameterValue', name: 'MATCH_PASSWORD', description: 'The Encryption password', value: "${script.params.MATCH_PASSWORD}"],
@@ -101,22 +106,41 @@ class Facade implements Serializable {
         return parameters
     }
 
-    protected final void run() {
-        def channelsToRun = getSelectedChannels(script.params)
-        def channelsLogicToRun = [:]
+    private final void prepareRun() {
+        channelsToRun = getSelectedChannels(script.params)
 
-        for (x in channelsToRun) {
-            /* Need to bind the channel variable before the closure - can't do 'for (channel in channelsToRun)' */
-            def channel = x.toLowerCase()
-            def jobParameters = getJobParameters(channel)
-            channelsLogicToRun[channel] = {
-                script.stage(channel) {
-                    script.build job: "${channel}", parameters: jobParameters
+        if (channelsToRun) {
+            for (x in channelsToRun) {
+                /* Need to bind the channel variable before the closure - can't do 'for (channel in channelsToRun)' */
+                def channel = x
+                def jobParameters = getJobParameters(channel)
+                script.env[channel] = true
+                channelsLogicToRun[channel] = {
+                    script.stage(channel) {
+                        script.build job: "${environment}/${channel.toLowerCase().replaceAll('_', '/')}", parameters: jobParameters
+                    }
+                }
+            }
+        } else {
+            script.error 'Please choose channels to build!'
+        }
+    }
+
+    protected final void run() {
+        prepareRun()
+
+        script.node(nodeLabel) {
+            try {
+                script.parallel channelsLogicToRun
+            } catch (Exception e) {
+                script.echo e.getMessage()
+                script.currentBuild.result = 'FAILURE'
+            } finally {
+                if (script.currentBuild.result != 'FAILURE') {
+                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'sshepe@softserveinc.com')
                 }
             }
         }
-
-        script.parallel channelsLogicToRun
 
 //        if (script.params.TEST_AUTOMATION_ENABLED) {
 //            script.stage('Prepare properties for HeadlessBuild') {

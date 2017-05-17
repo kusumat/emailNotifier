@@ -154,21 +154,16 @@
 <body>
 <j:set var="buildEnv" value="${build.getEnvironment(listener)}"/>
 <j:set var="buildCustomEnv" value="${it.getAction('org.jenkinsci.plugins.workflow.cps.EnvActionImpl').getOverriddenEnvironment()}"/>
-<j:set var="userID" value="${build.causes[0].userId}"/>
-<j:invokeStatic var="user" method="get" className="hudson.model.User">
-    <j:arg value="${userID}"/>
-</j:invokeStatic>
-<j:set var="userName" value="${user.getFullName()}"/>
-<j:set var="s3bucket" value="${buildEnv.get('S3_BUCKET_NAME')}"/>
-<j:set var="environment" value="${buildEnv.get('ENVIRONMENT')}"/>
+<j:set var="userName" value="${buildCustomEnv.get('TRIGGERED_BY')}"/>
 <j:set var="appName" value="${buildEnv.get('PROJECT_NAME')}"/>
+<j:set var="s3ArtifactURL" value="${buildCustomEnv.get('S3_ARTIFACT_URL')}"/>
 <j:set var="mainBuildNumber" value="${buildEnv.get('MAIN_BUILD_NUMBER')}"/>
-<j:set var="iphone" value="${buildCustomEnv.get('APPLE_MOBILE')}"/>
-<j:set var="ipad" value="${buildCustomEnv.get('APPLE_TABLET')}"/>
-<j:set var="andrphone" value="${buildCustomEnv.get('ANDROID_MOBILE')}"/>
-<j:set var="andrtab" value="${buildCustomEnv.get('ANDROID_TABLET')}"/>
+<j:set var="iphone" value="${buildCustomEnv.get('APPLE_MOBILE_NATIVE')}"/>
+<j:set var="ipad" value="${buildCustomEnv.get('APPLE_TABLET_NATIVE')}"/>
+<j:set var="andrphone" value="${buildCustomEnv.get('ANDROID_MOBILE_NATIVE')}"/>
+<j:set var="andrtab" value="${buildCustomEnv.get('ANDROID_TABLET_NATIVE')}"/>
 <j:set var="win8phone" value="${buildCustomEnv.get('WINDOWS_MOBILE_WINDOWSPHONE8')}"/>
-<j:set var="win81sphone" value="${buildCustomEnv.get('WINDOWS_MOBILE_WINDOWSPHONE81s')}"/>
+<j:set var="win81sphone" value="${buildCustomEnv.get('WINDOWS_MOBILE_WINDOWSPHONE81S')}"/>
 <j:set var="win10phone" value="${buildCustomEnv.get('WINDOWS_MOBILE_WINDOWSPHONE10')}"/>
     <table class="container" cellpadding='0'>
         <tr>
@@ -198,10 +193,12 @@
                     <tr>
                       <td>
                         <table style="width:100%; text-align:left" class="text-color table-border cell-spacing">
+                            <j:if test="${userName != null}">
                             <tr>
                               <td style="width:100px;text-align:right">Triggered by:</td>
                               <td class="table-value">${userName}</td>
                             </tr>
+                            </j:if>
                             <tr>
                               <td style="width:100px;text-align:right">Build URL:</td>
                               <td><a href="${rooturl}${build.url}">${rooturl}${build.url}</a></td>
@@ -225,12 +222,12 @@
                         </table>
                       </td>
                     </tr>
+                    <j:if test="${build.result==SUCCESS}">
                     <tr>
                         <td style="text-align:left" class="text-color"><h4 class="subheading">Build Information</h4></td>
                     </tr>
                     <tr>
                         <td>
-						<j:if test="${build.result==SUCCESS}">
                           <table style="width:100%; text-align:left" class="text-color table-border">
                             <thead>
                               <tr>
@@ -242,62 +239,62 @@
 							<j:if test="${iphone}">
                               <tr>
                                 <td>Apple Mobile</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/iphone/${appName}_${mainBuildNumber}.plist">${appName}_${mainBuildNumber}.plist</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_${mainBuildNumber}.plist">${appName}_${mainBuildNumber}.plist</a></td>
                               </tr>
 							</j:if>
 							<j:if test="${ipad}">
                               <tr>
                                 <td>Apple Tablet</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/android/${appName}_${mainBuildNumber}.plist">${appName}_${mainBuildNumber}.plist</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_${mainBuildNumber}.plist">${appName}_${mainBuildNumber}.plist</a></td>
                               </tr>
 							</j:if>
 							<j:if test="${andrphone}">
                               <tr>
                                 <td>Android Mobile</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/android/${appName}_${mainBuildNumber}.apk">${appName}_${mainBuildNumber}.apk</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_${mainBuildNumber}.apk">${appName}_${mainBuildNumber}.apk</a></td>
                               </tr>
 							</j:if>
 							<j:if test="${andrtab}">
                               <tr>
                                 <td>Android Tablet</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/android-tablet/${appName}_${mainBuildNumber}.apk">${appName}_${mainBuildNumber}.apk</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_${mainBuildNumber}.apk">${appName}_${mainBuildNumber}.apk</a></td>
                               </tr>
 							  </j:if>
 							<j:if test="${win8phone}">
                               <tr>
                                 <td>Windows 8 Mobile</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/windows8/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
                               </tr>
                               <tr>
                                 <td>Windows 8 Mobile ARM</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/windows8/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
                               </tr>
 					          </j:if>
 							<j:if test="${win81sphone}">
                               <tr>
                                 <td>Windows 8.1 Mobile</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/windows81s/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
                               </tr>
                               <tr>
                                 <td>Windows 8.1 Mobile ARM</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/windows81s/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
                               </tr>
 					          </j:if>
 							<j:if test="${win10phone}">
                               <tr>
                                 <td>Windows 10 Mobile</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/windows10/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
                               </tr>
                               <tr>
                                 <td>Windows 10 Mobile ARM</td>
-                                <td><a href="https://s3-eu-west-1.amazonaws.com/${s3bucket}/${appName}/${environment}/windows10/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
+                                <td><a href="${s3ArtifactURL}/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
                               </tr>
 							</j:if>
                             </tbody>
                           </table>
-						  </j:if>
                         </td>
                     </tr>
+                    </j:if>
                 </table>
             </td>
         </tr>
@@ -305,8 +302,8 @@
 		<j:if test="${build.result==resultFailure}">
         <tr>
             <td style="text-align:left;padding:15px 20px 0" class="text-color"><h4 style="margin-bottom:0">Console Output</h4>
-              <j:forEach var="line" items="${build.getLog(50)}"><p>${line}</p></j:forEach>
-			</td>
+                <j:forEach var="line" items="${build.getLog(50)}"><p>${line}</p></j:forEach>
+            </td>
         </tr>
 		</j:if>
         <tr>

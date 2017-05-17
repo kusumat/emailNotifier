@@ -18,7 +18,7 @@ class AndroidChannel extends Channel {
     }
 
     @NonCPS
-    private final void setBuildParameters(){
+    private final void setBuildParameters() {
         script.properties([
                 script.parameters([
                         script.stringParam(name: 'PROJECT_NAME', defaultValue: '', description: 'Project Name'),
@@ -117,7 +117,7 @@ class AndroidChannel extends Channel {
                     "\\binaries\\android")
 
             try {
-                script.step([$class: 'WsCleanup', deleteDirs: true])
+                script.deleteDir()
 
                 script.stage('Checkout') {
                     checkoutProject()
@@ -142,7 +142,9 @@ class AndroidChannel extends Channel {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'KonyAppFactoryTeam@softserveinc.com')
+                if (buildCause == 'user' || script.currentBuild.result == 'FAILURE') {
+                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'KonyAppFactoryTeam@softserveinc.com')
+                }
             }
         }
     }
