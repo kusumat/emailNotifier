@@ -2,19 +2,18 @@ package com.kony.appfactory.visualizer.channels
 
 class AndroidChannel extends Channel {
     private androidHome
-    private String artifactExtension = 'apk'
-    private String nodeLabel = 'win || mac'
 
     /* Build parameters */
     private String keystoreFileID = script.params.KS_FILE
     private String keystorePasswordID = script.params.KS_PASSWORD
     private String privateKeyPassword = script.params.PRIVATE_KEY_PASSWORD
 
-    private String artifactFileName = projectName + '_' + mainBuildNumber + '.' + artifactExtension
-
     AndroidChannel(script) {
         super(script)
-        setBuildParameters()
+//        setBuildParameters()
+        /* Set build artifact extension, if channel SPA artifact extension should be war */
+        artifactsExtension = (channelName.contains('SPA')) ? 'war' :'apk'
+        nodeLabel = 'win || mac'
     }
 
     @NonCPS
@@ -27,7 +26,7 @@ class AndroidChannel extends Channel {
                         [$class: 'CredentialsParameterDefinition', name: 'GIT_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'GitHub.com Credentials', required: true],
                         script.stringParam(name: 'MAIN_BUILD_NUMBER', defaultValue: '', description: 'Build Number for artifact'),
                         script.choice(name: 'BUILD_MODE', choices: "debug\nrelease", defaultValue: '', description: 'Choose build mode (debug or release)'),
-                        script.choice(name: 'ENVIRONMENT', choices: "dev\nqa\nrelease", defaultValue: 'dev', description: 'Define target environment'),
+                        script.choice(name: 'ENVIRONMENT', choices: "DEV\nQA\nRELEASE", defaultValue: 'dev', description: 'Define target environment'),
                         [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.FileCredentialsImpl', defaultValue: '', description: 'Private key and certificate chain reside in the given Java-based KeyStore file', name: 'KS_FILE', required: false],
                         [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'The password for the KeyStore', name: 'KS_PASSWORD', required: false],
                         [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'The password for the private key', name: 'PRIVATE_KEY_PASSWORD', required: false],
@@ -48,12 +47,12 @@ class AndroidChannel extends Channel {
         }
     }
 
-    private final void signArtifact() {
+    private final void signArtifact(artifactName, artifactPath) {
         String successMessage = 'Artifact signed successfully'
         String errorMessage = 'FAILED to sign artifact'
         String apksigner = androidHome + ((isUnixNode) ? '/build-tools/25.0.0/apksigner' :
                 '\\build-tools\\25.0.0\\apksigner.bat')
-        String debugSingCommand = "${apksigner} sign --ks debug.keystore --ks-pass pass:android ${artifactFileName}"
+        String debugSingCommand = "${apksigner} sign --ks debug.keystore --ks-pass pass:android ${artifactName}"
 
         String keyGenCommandUnix = """\
             keytool -genkey -noprompt \
@@ -72,35 +71,31 @@ class AndroidChannel extends Channel {
         script.catchErrorCustom(successMessage, errorMessage) {
             script.dir(artifactPath) {
                 if (isUnixNode) {
-                    script.sh "mv luavmandroid.${artifactExtension} ${artifactFileName}"
-
                     if (buildMode == 'release') {
                         withKeyStore() {
                             script.sh apksigner +
                                     ' sign --ks $KSFILE --ks-pass pass:$KSPASS --key-pass pass:$KEYPASS ' +
-                                    artifactFileName
+                                    artifactName
                         }
                     } else {
                         script.sh keyGenCommandUnix
                         script.sh debugSingCommand
                     }
 
-                    script.sh "${apksigner} verify --verbose ${artifactFileName}"
+                    script.sh "${apksigner} verify --verbose ${artifactName}"
                 } else {
-                    script.bat "rename luavmandroid.${artifactExtension} ${artifactFileName}"
-
                     if (buildMode == 'release') {
                         withKeyStore() {
                             script.bat apksigner +
                                     ' sign --ks %KSFILE% --ks-pass pass:%KSPASS% --key-pass pass:%KEYPASS% ' +
-                                    artifactFileName
+                                    artifactName
                         }
                     } else {
                         script.bat keyGenCommandWindows
                         script.bat debugSingCommand
                     }
 
-                    script.bat "${apksigner} verify --verbose ${artifactFileName}"
+                    script.bat "${apksigner} verify --verbose ${artifactName}"
                 }
             }
         }
@@ -113,8 +108,7 @@ class AndroidChannel extends Channel {
             workSpace = script.env.WORKSPACE
             projectFullPath = (isUnixNode) ? workSpace + '/' + projectName :
                     workSpace + '\\' + projectName
-            artifactPath = projectFullPath + ((isUnixNode) ? "/binaries/android" :
-                    "\\binaries\\android")
+            artifactsBasePath = projectFullPath + ((isUnixNode) ? "/binaries" : "\\binaries")
 
             try {
                 script.deleteDir()
@@ -125,18 +119,25 @@ class AndroidChannel extends Channel {
 
                 script.stage('Build') {
                     build()
-
                     /* Setting android home variable */
                     androidHome = script.readProperties(
                             file: projectFullPath + '/HeadlessBuild-Global.properties').'android.home'
+                    /* Search for build artifacts */
+                    def foundArtifacts = getArtifacts(artifactsExtension)
+                    /* Rename artifacts for publishing */
+                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
                 }
 
-                script.stage("Sign an APK") {
-                    signArtifact()
+                script.stage("Sign artifact") {
+                    for (artifact in artifacts) {
+                        signArtifact(artifact.name, artifact.path)
+                    }
                 }
 
-                script.stage("Publish artifact to S3") {
-                    publishToS3 artifact: artifactFileName
+                script.stage("Publish artifacts to S3") {
+                    for (artifact in artifacts) {
+                        publishToS3 artifactName: artifact.name, artifactPath: artifact.path
+                    }
                 }
             } catch(Exception e) {
                 script.echo e.getMessage()

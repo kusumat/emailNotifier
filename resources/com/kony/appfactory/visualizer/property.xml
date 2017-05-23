@@ -57,26 +57,26 @@
         <condition property="spa.winphone" value="${env.WINDOWS_MOBILE_SPA}" else="false">
             <isset property="env.WINDOWS_MOBILE_SPA" />
         </condition>
+        <condition property="windows81" value="${env.WINDOWS_TABLET_WINDOWS81}" else="false">
+            <isset property="env.WINDOWS_TABLET_WINDOWS81" />
+        </condition>
+        <condition property="windows10" value="${env.WINDOWS_TABLET_WINDOWS10}" else="false">
+            <isset property="env.WINDOWS_TABLET_WINDOWS10" />
+        </condition>
         <condition property="spa.win.tablet" value="${env.WINDOWS_TABLET_SPA}" else="false">
             <isset property="env.WINDOWS_TABLET_SPA" />
         </condition>
-        <condition property="windows81" value="${env.WINDOWS_DESKTOP_WINDOWS81}" else="false">
-            <isset property="env.WINDOWS_DESKTOP_WINDOWS81" />
+        <condition property="desktop.kiosk" value="${env.WINDOWS_DESKTOP_KIOSK}" else="false">
+            <isset property="env.WINDOWS_DESKTOP_KIOSK" />
         </condition>
-        <condition property="windows10" value="${env.WINDOWS_DESKTOP_WINDOWS10}" else="false">
-            <isset property="env.WINDOWS_DESKTOP_WINDOWS10" />
+        <condition property="desktop.web" value="${env.WINDOWS_DESKTOP_WEB}" else="false">
+            <isset property="env.WINDOWS_DESKTOP_WEB" />
         </condition>
         <condition property="spa.blackberry" value="${env.BLACKBERRY_MOBILE_SPA}" else="false">
             <isset property="env.BLACKBERRY_MOBILE_SPA" />
         </condition>
         <condition property="spa.hybrid.blackberry" value="${env.BLACKBERRY_MOBILE_HYBRID_SPA}" else="false">
             <isset property="env.BLACKBERRY_MOBILE_HYBRID_SPA" />
-        </condition>
-        <condition property="desktop.kiosk" value="${env.KIOSK_DESKTOP_NATIVE}" else="false">
-            <isset property="env.KIOSK_DESKTOP_NATIVE" />
-        </condition>
-        <condition property="desktop.web" value="${env.WEB_DESKTOP_NATIVE}" else="false">
-            <isset property="env.WEB_DESKTOP_NATIVE" />
         </condition>
 
         <propertyfile file="HeadlessBuild-Global.properties" comment="Generated file">

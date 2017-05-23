@@ -2,8 +2,8 @@ package com.kony.appfactory.visualizer.channels
 
 class AppleChannel extends Channel {
     private bundleID
-    private String nodeLabel = 'mac'
-    private String artifactExtension = 'ipa'
+    private karFile = [:]
+    private String plistFileName
 
     /* Build parameters */
     private String matchType = script.params.MATCH_TYPE
@@ -12,11 +12,13 @@ class AppleChannel extends Channel {
     private String matchGitToken = script.params.MATCH_GIT_TOKEN
     private String matchGitURL = script.params.MATCH_GIT_URL
 
-    private String artifactFileName = projectName + '_' + mainBuildNumber + '.' + artifactExtension
-
     AppleChannel(script) {
         super(script)
-        setBuildParameters()
+//        setBuildParameters()
+        /* Set build artifact extension, if channel SPA artifact extension should be war */
+        artifactsExtension = (channelName.contains('SPA')) ? 'war' :'ipa'
+        nodeLabel = 'mac'
+        plistFileName = "${projectName}_${mainBuildNumber}.plist"
     }
 
     @NonCPS
@@ -29,7 +31,7 @@ class AppleChannel extends Channel {
                         [$class: 'CredentialsParameterDefinition', name: 'GIT_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'GitHub.com Credentials', required: true],
                         script.stringParam(name: 'MAIN_BUILD_NUMBER', defaultValue: '', description: 'Build Number for artifact'),
                         script.choice(name: 'BUILD_MODE', choices: "debug\nrelease", defaultValue: '', description: 'Choose build mode (debug or release)'),
-                        script.choice(name: 'ENVIRONMENT', choices: "dev\nqa\nrelease", defaultValue: 'dev', description: 'Define target environment'),
+                        script.choice(name: 'ENVIRONMENT', choices: "DEV\nQA\nRELEASE", defaultValue: 'dev', description: 'Define target environment'),
                         [$class: 'CredentialsParameterDefinition', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'Apple ID credentials', name: 'APPLE_ID', required: true],
                         [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'The Encryption password', name: 'MATCH_PASSWORD', required: false],
                         [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'GitHub access token', name: 'MATCH_GIT_TOKEN', required: false],
@@ -67,8 +69,8 @@ class AppleChannel extends Channel {
 
             script.dir("${workSpace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
                 script.sh """
-                    cp ${artifactPath}/konyappiphone.KAR .
-                    perl extract.pl konyappiphone.KAR sqd
+                    cp ${karFile.path}/${karFile.name} .
+                    perl extract.pl ${karFile.name} sqd
                 """
             }
 
@@ -80,33 +82,26 @@ class AppleChannel extends Channel {
                     script.sh '$HOME/.fastlane/bin/fastlane wildcard_build_' + fastLaneBuildCommand
                 }
             }
-
-            script.dir(artifactPath) {
-                script.sh "mv ${projectName}.${artifactExtension} ${artifactFileName}"
-            }
         }
     }
 
     private final void createPlist() {
         String successMessage = 'PLIST file created successfully'
         String errorMessage = 'FAILED to create PLIST file'
-        String awsRegion = 'us-west-1'
-        String plistFileName = 'apple_orig.plist'
-        String plistPathTagValue = 'https://s3-' + awsRegion + '.amazonaws.com/' + s3BucketName + '/' +
-                projectName + '/' + environment + '/' + 'iphone' + '/' + projectName + '_' +
-                mainBuildNumber + '.ipa'
+        String plistResourcesFileName = 'apple_orig.plist'
+        String plistPathTagValue = script.env.S3_ARTIFACT_URL
 
         script.catchErrorCustom(successMessage, errorMessage) {
-            script.dir(artifactPath) {
+            script.dir(artifacts[0].path) {
                 /* Load property list file template */
-                String plist = script.loadLibraryResource(resourceBasePath + plistFileName)
+                String plist = script.loadLibraryResource(resourceBasePath + plistResourcesFileName)
 
                 /* Substitute required values */
                 String plistUpdated = plist.replaceAll('\\$path', plistPathTagValue)
                         .replaceAll('\\$bundleIdentifier', bundleID)
 
                 /* Write updated property list file to current working directory */
-                script.writeFile file: "${projectName}_${mainBuildNumber}.plist", text: plistUpdated
+                script.writeFile file: plistFileName, text: plistUpdated
             }
         }
     }
@@ -127,7 +122,7 @@ class AppleChannel extends Channel {
                     "MATCH_APP_IDENTIFIER=${bundleID}",
                     "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${(matchGitURL - 'https://')}",
                     "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
-                    "GYM_OUTPUT_DIRECTORY=${artifactPath}",
+                    "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                     "GYM_OUTPUT_NAME=${projectName}",
                     "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                     "FL_PROJECT_SIGNING_PROJECT_PATH=${workSpace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj"
@@ -149,7 +144,7 @@ class AppleChannel extends Channel {
             isUnixNode = script.isUnix()
             workSpace = script.env.WORKSPACE
             projectFullPath = workSpace + '/' + projectName
-            artifactPath = projectFullPath + '/binaries/iphone'
+            artifactsBasePath = projectFullPath + '/binaries'
 
             try {
                 script.deleteDir()
@@ -160,19 +155,30 @@ class AppleChannel extends Channel {
 
                 script.stage('Build') {
                     build()
+                    /* Get KAR file name and path */
+                    def transitArtifacts = getArtifacts('KAR')
+                    karFile.name = transitArtifacts[0].name
+                    karFile.path = artifactsBasePath + '/' + transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
                 }
 
                 script.stage('Generate IPA file') {
                     createIPA()
+                    /* Search for build artifacts */
+                    def foundArtifacts = getArtifacts(artifactsExtension)
+                    /* Rename artifacts for publishing */
+                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
                 }
 
                 script.stage("Generate property list file") {
                     createPlist()
+                    /* Get plist artifact */
+                    artifacts.add([name: plistFileName, path: "${karFile.path}"])
                 }
 
                 script.stage("Publish artifact to S3") {
-                    publishToS3 artifact: artifactFileName
-                    publishToS3 artifact: projectName + '_' + mainBuildNumber + '.plist'
+                    for (artifact in artifacts) {
+                        publishToS3 artifactName: artifact.name, artifactPath: artifact.path
+                    }
                 }
             } catch(Exception e) {
                 script.echo e.getMessage()

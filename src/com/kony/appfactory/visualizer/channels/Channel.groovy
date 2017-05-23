@@ -6,9 +6,13 @@ abstract class Channel implements Serializable {
     protected String workSpace
     protected String projectFullPath
     protected String channelName
-    protected String artifactPath
+    protected artifacts
+    protected String artifactsBasePath
+    protected String artifactsExtension
     protected String s3artifactPath
+    protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
+
     /* Required for triggering emails */
     protected buildCause
     protected triggeredBy = ''
@@ -28,8 +32,8 @@ abstract class Channel implements Serializable {
     Channel(script) {
         this.script = script
 
-        channelName = (this.script.env.JOB_NAME - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
-        s3artifactPath = "${s3BucketName}/${projectName}/${environment}/${channelName.toLowerCase().replaceAll('_','/')}"
+        channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
+        s3artifactPath = getS3AtrifactPath(channelName)
 
         /* Workaround to build only specific channel */
         this.script.env[channelName] = true
@@ -37,6 +41,22 @@ abstract class Channel implements Serializable {
         setS3ArtifactURL()
         getBuildCause()
         this.script.env['TRIGGERED_BY'] = "${triggeredBy}"
+    }
+
+    @NonCPS
+    private final getS3AtrifactPath(channel) {
+        def channelPath = channel.tokenize('_').collect() { item ->
+            /* Workaround for windows phone jobs */
+            if (item.contains('WINDOWSPHONE')) {
+                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
+                /* Workaround for SPA jobs */
+            } else if (item.contains('SPA')) {
+                item
+            } else {
+                item.toLowerCase().capitalize()
+            }
+        }.join('/')
+        return "${s3BucketName}/${projectName}/${environment}/${channelPath}"
     }
 
     protected final void checkoutProject() {
@@ -63,10 +83,8 @@ abstract class Channel implements Serializable {
         String successMessage = 'Artifact published successfully'
         String errorMessage = 'FAILED to publish artifact'
 
-        String artifact = args.artifact
-
         script.catchErrorCustom(successMessage, errorMessage) {
-            script.dir(artifactPath) {
+            script.dir(args.artifactPath) {
                 script.step([$class                              : 'S3BucketPublisher',
                              consoleLogLevel                     : 'INFO',
                              dontWaitForConcurrentBuildCompletion: false,
@@ -77,7 +95,7 @@ abstract class Channel implements Serializable {
                                       managedArtifacts : false,
                                       noUploadOnFailure: true,
                                       selectedRegion   : 'eu-west-1',
-                                      sourceFile       : artifact]
+                                      sourceFile       : "${args.artifactName}"]
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
             }
@@ -157,5 +175,50 @@ abstract class Channel implements Serializable {
     private final void setS3ArtifactURL() {
         String s3ArtifactURL = 'https://' + 's3-eu-west-1.amazonaws.com' + '/' + s3artifactPath
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
+    }
+
+    protected final getArtifacts(extension) {
+        def artifactsFiles
+        String successMessage = 'Artifacts found successfully'
+        String errorMessage = 'FAILED to find artifacts'
+
+        script.catchErrorCustom(successMessage, errorMessage) {
+            script.dir(artifactsBasePath) {
+                artifactsFiles = script.findFiles(glob: "**/*.${extension}")
+            }
+        }
+
+        artifactsFiles
+    }
+
+    protected final renameArtifacts(artifactsList) {
+        def renamedArtifacts = []
+        String successMessage = 'Artifacts renamed successfully'
+        String errorMessage = 'FAILED to rename artifacts'
+        String shell = (isUnixNode) ? 'sh' : 'bat'
+        String shellCommand = (isUnixNode) ? 'mv' : 'rename'
+        String artifactTargetName = projectName + '_' + mainBuildNumber + '.' + artifactsExtension
+
+        script.catchErrorCustom(successMessage, errorMessage) {
+            for (int i=0; i < artifactsList.size(); ++i) {
+                String artifactName = artifactsList[i].name
+                String targetName = (artifactName.toLowerCase().contains('ARM'.toLowerCase())) ?
+                        artifactTargetName.replaceFirst('_', '_ARM_') :
+                        artifactTargetName
+                String targetArtifactFolder = artifactsBasePath +
+                        ((isUnixNode) ? "/" : "\\") +
+                        (artifactsList[i].path.minus(((isUnixNode) ? "/" : "\\") + "${artifactsList[i].name}"))
+                String command = "${shellCommand} ${artifactName} ${targetName}"
+
+                /* Rename artifact */
+                script.dir(targetArtifactFolder) {
+                    script."${shell}" script: command
+                }
+
+                renamedArtifacts.add([name: targetName, path: targetArtifactFolder])
+            }
+        }
+
+        renamedArtifacts
     }
 }

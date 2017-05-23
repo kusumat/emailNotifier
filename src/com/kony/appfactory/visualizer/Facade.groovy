@@ -10,55 +10,6 @@ class Facade implements Serializable {
     Facade(script) {
         this.script = script
         this.environment = this.script.params.ENVIRONMENT
-        setBuildParameters()
-    }
-
-    @NonCPS
-    private final void setBuildParameters() {
-        script.properties([
-                script.parameters([
-                        script.stringParam(name: 'PROJECT_NAME', defaultValue: script.params.PROJECT_NAME ?: '', description: 'Project Name'),
-                        script.stringParam(name: 'GIT_URL', defaultValue: script.params.GIT_URL ?: '', description: 'Project Git URL'),
-                        script.stringParam(name: 'GIT_TEST_URL', defaultValue: script.params.GIT_TEST_URL ?: '', description: 'Project Tests Git URL'),
-                        script.stringParam(name: 'GIT_BRANCH', defaultValue: script.params.GIT_BRANCH ?: '', description: 'Project Git Branch'),
-                        [$class: 'CredentialsParameterDefinition', name: 'GIT_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: script.params.GIT_CREDENTIALS_ID ?: '', description: 'GitHub.com Credentials', required: true],
-                        script.stringParam(name: 'MAIN_BUILD_NUMBER', defaultValue: script.params.MAIN_BUILD_NUMBER ?: '', description: 'Build Number for artifact'),
-                        script.choice(name: 'BUILD_MODE', choices: "debug\nrelease", defaultValue: script.params.BUILD_MODE ?: '', description: 'Choose build mode (debug or release)'),
-                        script.choice(name: 'ENVIRONMENT', choices: "dev\nqa\nrelease", defaultValue: script.params.ENVIRONMENT ?: 'dev', description: 'Define target environment'),
-                        [$class: 'CredentialsParameterDefinition', name: 'KS_FILE', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.FileCredentialsImpl', defaultValue: script.params.KS_FILE ?: '', description: 'Private key and certificate chain reside in the given Java-based KeyStore file', required: false],
-                        [$class: 'CredentialsParameterDefinition', name: 'KS_PASSWORD', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: script.params.KS_PASSWORD ?: '', description: 'The password for the KeyStore', required: false],
-                        [$class: 'CredentialsParameterDefinition', name: 'PRIVATE_KEY_PASSWORD', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: script.params.PRIVATE_KEY_PASSWORD ?: '', description: 'The password for the private key', required: false],
-                        script.stringParam(name: 'VIZ_VERSION', defaultValue: script.params.VIZ_VERSION ?: '7.2.1', description: 'Kony Vizualizer version'),
-                        [$class: 'CredentialsParameterDefinition', name: 'CLOUD_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: script.params.CLOUD_CREDENTIALS_ID ?: '', description: 'Cloud Mode credentials (Applicable only for cloud)', required: true],
-                        script.stringParam(name: 'S3_BUCKET_NAME', defaultValue: script.params.S3_BUCKET_NAME ?: '', description: 'S3 Bucket Name'),
-                        [$class: 'CredentialsParameterDefinition', name: 'APPLE_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: script.params.APPLE_ID ?: '', description: 'Apple ID credentials', required: true],
-                        [$class: 'CredentialsParameterDefinition', name: 'MATCH_PASSWORD', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: script.params.MATCH_PASSWORD ?: '', description: 'The Encryption password', required: false],
-                        [$class: 'CredentialsParameterDefinition', name: 'MATCH_GIT_TOKEN', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: script.params.MATCH_GIT_TOKEN ?: '', description: 'GitHub access token', required: false],
-                        script.stringParam(name: 'MATCH_GIT_URL', defaultValue: script.params.MATCH_GIT_URL ?: '', description: 'URL to the git repo containing all the certificates (On-premises only!)'),
-                        script.choice(name: 'MATCH_TYPE', choices: "appstore\nadhoc\ndevelopment\nenterprise", defaultValue: script.params.MATCH_TYPE ?: 'development', description: 'Define the signing profile type'),
-                        script.booleanParam(name: 'TEST_AUTOMATION_ENABLED', defaultValue: false, description: 'Select the box if you want to run Tests against your builds on AWS DeviceFarm (Android and iOS only!)'),
-                        script.booleanParam(name: 'ANDROID_MOBILE_NATIVE', defaultValue: false, description: 'Select the box if your build is for Android phones'),
-                        script.booleanParam(name: 'ANDROID_MOBILE_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for Android phones'),
-                        script.booleanParam(name: 'ANDROID_TABLET_NATIVE', defaultValue: false, description: 'Select the box if your build is for Android tablets'),
-                        script.booleanParam(name: 'ANDROID_TABLET_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for Android tablets'),
-                        script.booleanParam(name: 'APPLE_WATCH_NATIVE', defaultValue: false, description: 'Select the box if your build is for watchOS watches'),
-                        script.booleanParam(name: 'APPLE_MOBILE_NATIVE', defaultValue: false, description: 'Select the box if your build is for iOS phones'),
-                        script.booleanParam(name: 'APPLE_MOBILE_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for iOS phones'),
-                        script.booleanParam(name: 'APPLE_TABLET_NATIVE', defaultValue: false, description: 'Select the box if your build is for iOS tablets'),
-                        script.booleanParam(name: 'APPLE_TABLET_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for iOS tablets'),
-                        script.booleanParam(name: 'WINDOWS_MOBILE_WINDOWSPHONE8', defaultValue: false, description: 'Select the box if your build is for Windows 8 phones'),
-                        script.booleanParam(name: 'WINDOWS_MOBILE_WINDOWSPHONE81S', defaultValue: false, description: 'Select the box if your build is for Windows 8.1s phones'),
-                        script.booleanParam(name: 'WINDOWS_MOBILE_WINDOWSPHONE10', defaultValue: false, description: 'Select the box if your build is for Windows 10 phones'),
-                        script.booleanParam(name: 'WINDOWS_MOBILE_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for windows phones'),
-                        script.booleanParam(name: 'WINDOWS_TABLET_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for windows tablets'),
-                        script.booleanParam(name: 'WINDOWS_DESKTOP_WINDOWS81', defaultValue: false, description: 'Select the box if your build is for Windows 8.1s desktop'),
-                        script.booleanParam(name: 'WINDOWS_DESKTOP_WINDOWS10', defaultValue: false, description: 'Select the box if your build is for Windows 10 desktop'),
-                        script.booleanParam(name: 'BLACKBERRY_MOBILE_SPA', defaultValue: false, description: 'elect the box if your build is for single page application for Blackberry'),
-                        script.booleanParam(name: 'BLACKBERRY_MOBILE_HYBRID_SPA', defaultValue: false, description: 'Select the box if your build is for single page application for Blackberry hybrid'),
-                        script.booleanParam(name: 'KIOSK_DESKTOP_NATIVE', defaultValue: false, description: 'SSelect the box if your build is for Kiosk desktop'),
-                        script.booleanParam(name: 'WEB_DESKTOP_NATIVE', defaultValue: false, description: 'Select the box if your build is for Web desktop')
-                ])
-        ])
     }
 
     private static getSelectedChannels(buildParams) {
@@ -106,6 +57,22 @@ class Facade implements Serializable {
         return parameters
     }
 
+    @NonCPS
+    private final getChannelPath(channel) {
+        def channelPath = channel.tokenize('_').collect() { item ->
+            /* Workaround for windows phone jobs */
+            if (item.contains('WINDOWSPHONE')) {
+                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
+            /* Workaround for SPA jobs */
+            } else if (item.contains('SPA')) {
+                item
+            } else {
+                item.toLowerCase().capitalize()
+            }
+        }.join('/')
+        return channelPath
+    }
+
     private final void prepareRun() {
         channelsToRun = getSelectedChannels(script.params)
 
@@ -114,10 +81,12 @@ class Facade implements Serializable {
                 /* Need to bind the channel variable before the closure - can't do 'for (channel in channelsToRun)' */
                 def channel = x
                 def jobParameters = getJobParameters(channel)
+                def channelPath = getChannelPath(channel)
                 script.env[channel] = true
                 channelsLogicToRun[channel] = {
                     script.stage(channel) {
-                        script.build job: "${environment}/${channel.toLowerCase().replaceAll('_', '/')}", parameters: jobParameters
+                        /* Trigger channel job */
+                        script.build job: "${environment}/${channelPath}", parameters: jobParameters
                     }
                 }
             }
