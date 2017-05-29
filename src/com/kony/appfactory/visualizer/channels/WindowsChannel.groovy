@@ -6,7 +6,7 @@ class WindowsChannel extends Channel {
         super(script)
 //        setBuildParameters()
         /* Set build artifact extension, if channel SPA artifact extension should be war */
-        artifactsExtension = (channelName.contains('SPA')) ? 'war' : 'xap'
+        artifactsExtension = (isSPA) ? 'war' : 'xap'
         nodeLabel = 'win'
     }
 

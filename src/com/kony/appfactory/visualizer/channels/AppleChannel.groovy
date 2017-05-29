@@ -16,7 +16,7 @@ class AppleChannel extends Channel {
         super(script)
 //        setBuildParameters()
         /* Set build artifact extension, if channel SPA artifact extension should be war */
-        artifactsExtension = (channelName.contains('SPA')) ? 'war' :'ipa'
+        artifactsExtension = (isSPA) ? 'war' : 'ipa'
         nodeLabel = 'mac'
         plistFileName = "${projectName}_${mainBuildNumber}.plist"
     }
@@ -161,18 +161,21 @@ class AppleChannel extends Channel {
                     karFile.path = artifactsBasePath + '/' + transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
                 }
 
-                script.stage('Generate IPA file') {
-                    createIPA()
-                    /* Search for build artifacts */
-                    def foundArtifacts = getArtifacts(artifactsExtension)
-                    /* Rename artifacts for publishing */
-                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
-                }
+                /* Check to not sign artifacts if SPA chosen */
+                if (!isSPA) {
+                    script.stage('Generate IPA file') {
+                        createIPA()
+                        /* Search for build artifacts */
+                        def foundArtifacts = getArtifacts(artifactsExtension)
+                        /* Rename artifacts for publishing */
+                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
+                    }
 
-                script.stage("Generate property list file") {
-                    createPlist()
-                    /* Get plist artifact */
-                    artifacts.add([name: plistFileName, path: "${karFile.path}"])
+                    script.stage("Generate property list file") {
+                        createPlist()
+                        /* Get plist artifact */
+                        artifacts.add([name: plistFileName, path: "${karFile.path}"])
+                    }
                 }
 
                 script.stage("Publish artifact to S3") {

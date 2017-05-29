@@ -12,7 +12,7 @@ class AndroidChannel extends Channel {
         super(script)
 //        setBuildParameters()
         /* Set build artifact extension, if channel SPA artifact extension should be war */
-        artifactsExtension = (channelName.contains('SPA')) ? 'war' :'apk'
+        artifactsExtension = (isSPA) ? 'war' : 'apk'
         nodeLabel = 'win || mac'
     }
 
@@ -128,9 +128,11 @@ class AndroidChannel extends Channel {
                     artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
                 }
 
-                script.stage("Sign artifact") {
-                    for (artifact in artifacts) {
-                        signArtifact(artifact.name, artifact.path)
+                if (!isSPA) {
+                    script.stage("Sign artifact") {
+                        for (artifact in artifacts) {
+                            signArtifact(artifact.name, artifact.path)
+                        }
                     }
                 }
 
