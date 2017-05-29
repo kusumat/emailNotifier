@@ -12,7 +12,7 @@ abstract class Channel implements Serializable {
     protected String s3artifactPath
     protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
-    protected isSPA = channelName.contains('SPA')
+    protected isSPA
 
     /* Required for triggering emails */
     protected buildCause
@@ -35,6 +35,7 @@ abstract class Channel implements Serializable {
 
         channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
         s3artifactPath = getS3AtrifactPath(channelName)
+        isSPA = channelName.contains('SPA')
 
         /* Workaround to build only specific channel */
         this.script.env[channelName] = true
@@ -180,8 +181,8 @@ abstract class Channel implements Serializable {
 
     protected final getArtifacts(extension) {
         def artifactsFiles
-        String successMessage = 'Artifacts found successfully'
-        String errorMessage = 'FAILED to find artifacts'
+        String successMessage = 'Search finished successfully'
+        String errorMessage = 'FAILED to search artifacts'
 
         script.catchErrorCustom(successMessage, errorMessage) {
             script.dir(artifactsBasePath) {
