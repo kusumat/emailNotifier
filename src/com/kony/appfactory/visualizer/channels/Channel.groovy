@@ -12,7 +12,7 @@ abstract class Channel implements Serializable {
     protected String s3artifactPath
     protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
-    protected isSPA = channelName.contains('SPA') 
+    protected isSPA = channelName.contains('SPA')
 
     /* Required for triggering emails */
     protected buildCause
