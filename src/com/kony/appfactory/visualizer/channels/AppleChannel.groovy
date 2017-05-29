@@ -155,10 +155,17 @@ class AppleChannel extends Channel {
 
                 script.stage('Build') {
                     build()
-                    /* Get KAR file name and path */
-                    def transitArtifacts = getArtifacts('KAR')
-                    karFile.name = transitArtifacts[0].name
-                    karFile.path = artifactsBasePath + '/' + transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
+                    if (isSPA) {
+                        /* Search for build artifacts */
+                        def foundArtifacts = getArtifacts(artifactsExtension)
+                        /* Rename artifacts for publishing */
+                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
+                    } else {
+                        /* Get KAR file name and path */
+                        def transitArtifacts = getArtifacts('KAR')
+                        karFile.name = transitArtifacts[0].name
+                        karFile.path = artifactsBasePath + '/' + transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
+                    }
                 }
 
                 /* Check to not sign artifacts if SPA chosen */
