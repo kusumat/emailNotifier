@@ -10,6 +10,8 @@ abstract class Channel implements Serializable {
     protected String artifactsBasePath
     protected String artifactsExtension
     protected String s3artifactPath
+    protected String s3BucketRegion = script.env.S3_BUCKET_REGION
+    protected String s3BucketName = script.env.S3_BUCKET_NAME
     protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
     protected isSPA
@@ -19,14 +21,14 @@ abstract class Channel implements Serializable {
     protected triggeredBy = ''
 
     /* Common build parameters */
-    protected String projectName = script.params.PROJECT_NAME
+    protected String projectName = script.env.PROJECT_NAME
     protected String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
-    protected String gitURL = script.params.GIT_URL
+    protected String gitURL = script.env.PROJECT_GIT_URL
     protected String gitBranch = script.params.GIT_BRANCH
     protected String environment = script.params.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected String visualizerVersion = script.params.VIZ_VERSION
-    protected String s3BucketName = script.params.S3_BUCKET_NAME
+
     protected String mainBuildNumber = script.params.MAIN_BUILD_NUMBER
     protected String buildMode = script.params.BUILD_MODE
 
@@ -175,7 +177,7 @@ abstract class Channel implements Serializable {
 
     @NonCPS
     private final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + 's3-eu-west-1.amazonaws.com' + '/' + s3artifactPath
+        String s3ArtifactURL = 'https://' + s3BucketRegion + '.amazonaws.com/' + s3artifactPath
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 

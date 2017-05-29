@@ -26,16 +26,16 @@ class Facade implements Serializable {
 
     private final getJobParameters(channel) {
         def parameters = [
-                script.stringParam(name: 'PROJECT_NAME', description: 'Project Name', value: "${script.params.PROJECT_NAME}"),
-                script.stringParam(name: 'GIT_URL', description: 'Project Git URL', value: "${script.params.GIT_URL}"),
+//                script.stringParam(name: 'PROJECT_NAME', description: 'Project Name', value: "${script.params.PROJECT_NAME}"),
+//                script.stringParam(name: 'GIT_URL', description: 'Project Git URL', value: "${script.params.GIT_URL}"),
                 script.stringParam(name: 'GIT_BRANCH', description: 'Project Git Branch', value: "${script.params.GIT_BRANCH}"),
                 [$class: 'CredentialsParameterValue', description: 'GitHub.com Credentials', name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"],
                 script.stringParam(name: 'MAIN_BUILD_NUMBER', description: 'Build Number for artifact', value: "${script.params.MAIN_BUILD_NUMBER}"),
                 script.stringParam(name: 'BUILD_MODE', description: 'Build mode (debug or release)', value: "${script.params.BUILD_MODE}"),
                 script.stringParam(name: 'ENVIRONMENT', description: 'Define target environment', value: "${script.params.ENVIRONMENT}"),
                 script.stringParam(name: 'VIZ_VERSION', description: 'Kony Vizualizer version', value: "${script.params.VIZ_VERSION}"),
-                [$class: 'CredentialsParameterValue', name: 'CLOUD_CREDENTIALS_ID', description: 'Cloud Mode credentials (Applicable only for cloud)', value: "${script.params.CLOUD_CREDENTIALS_ID}"],
-                script.stringParam(name: 'S3_BUCKET_NAME', description: 'S3 Bucket Name', value: "${script.params.S3_BUCKET_NAME}")
+                [$class: 'CredentialsParameterValue', name: 'CLOUD_CREDENTIALS_ID', description: 'Cloud Mode credentials (Applicable only for cloud)', value: "${script.params.CLOUD_CREDENTIALS_ID}"]
+//                script.stringParam(name: 'S3_BUCKET_NAME', description: 'S3 Bucket Name', value: "${script.params.S3_BUCKET_NAME}")
         ]
 
         if (channel.startsWith('ANDROID')) {
