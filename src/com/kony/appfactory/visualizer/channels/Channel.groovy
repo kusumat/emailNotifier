@@ -27,7 +27,7 @@ abstract class Channel implements Serializable {
     protected String gitBranch = script.params.GIT_BRANCH
     protected String environment = script.params.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected String visualizerVersion = script.params.VIZ_VERSION
+    protected String visualizerVersion = script.params.VIS_VERSION
 
     protected String mainBuildNumber = script.params.MAIN_BUILD_NUMBER
     protected String buildMode = script.params.BUILD_MODE

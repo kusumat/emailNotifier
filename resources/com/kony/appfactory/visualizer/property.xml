@@ -7,7 +7,7 @@
         <property environment="env"/>
 
         <!--Condition property depends of agent's platform-->
-        <condition property="viz.root" value="C:\Jenkins\KonyVisualizerEnterprise${env.VIZ_VERSION}\" else="/Jenkins/KonyVisualizerEnterprise${env.VIZ_VERSION}/">
+        <condition property="viz.root" value="C:\Jenkins\KonyVisualizerEnterprise${env.VIS_VERSION}\" else="/Jenkins/KonyVisualizerEnterprise${env.VIS_VERSION}/">
             <os family="windows"/>
         </condition>
         <condition property="viz.inner" value="${viz.root}Kony_Visualizer_Enterprise\" else="${viz.root}Kony_Visualizer_Enterprise/">
