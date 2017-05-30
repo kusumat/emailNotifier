@@ -4,31 +4,9 @@ class WindowsChannel extends Channel {
 
     WindowsChannel(script) {
         super(script)
-//        setBuildParameters()
         /* Set build artifact extension, if channel SPA artifact extension should be war */
-        artifactsExtension = (channelName.contains('SPA')) ? 'war' : 'xap'
+        artifactsExtension = (isSPA) ? 'war' : 'xap'
         nodeLabel = 'win'
-    }
-
-    @NonCPS
-    private final void setBuildParameters() {
-        script.properties([
-                script.parameters([
-                        script.stringParam(name: 'PROJECT_NAME', defaultValue: '', description: 'Project Name'),
-                        script.stringParam(name: 'GIT_URL', defaultValue: '', description: 'Project Git URL'),
-                        script.stringParam(name: 'GIT_BRANCH', defaultValue: '', description: 'Project Git Branch'),
-                        [$class: 'CredentialsParameterDefinition', name: 'GIT_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'GitHub.com Credentials', required: true],
-                        script.stringParam(name: 'MAIN_BUILD_NUMBER', defaultValue: '', description: 'Build Number for artifact'),
-                        script.choice(name: 'BUILD_MODE', choices: "debug\nrelease", defaultValue: '', description: 'Choose build mode (debug or release)'),
-                        script.choice(name: 'ENVIRONMENT', choices: "DEV\nQA\nRELEASE", defaultValue: 'dev', description: 'Define target environment'),
-                        [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.FileCredentialsImpl', defaultValue: '', description: 'Private key and certificate chain reside in the given Java-based KeyStore file', name: 'KS_FILE', required: false],
-                        [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'The password for the KeyStore', name: 'KS_PASSWORD', required: false],
-                        [$class: 'CredentialsParameterDefinition', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: '', description: 'The password for the private key', name: 'PRIVATE_KEY_PASSWORD', required: false],
-                        script.stringParam(name: 'VIZ_VERSION', defaultValue: '7.2.1', description: 'Kony Vizualizer version'),
-                        [$class: 'CredentialsParameterDefinition', name: 'CLOUD_CREDENTIALS_ID', credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl', defaultValue: '', description: 'Cloud Mode credentials (Applicable only for cloud)', required: true],
-                        script.stringParam(name: 'S3_BUCKET_NAME', defaultValue: '', description: 'S3 Bucket Name')
-                ])
-        ])
     }
 
     protected final void createWorkflow() {

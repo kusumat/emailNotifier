@@ -10,22 +10,25 @@ abstract class Channel implements Serializable {
     protected String artifactsBasePath
     protected String artifactsExtension
     protected String s3artifactPath
+    protected String s3BucketRegion = script.env.S3_BUCKET_REGION
+    protected String s3BucketName = script.env.S3_BUCKET_NAME
     protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
+    protected isSPA
 
     /* Required for triggering emails */
     protected buildCause
     protected triggeredBy = ''
 
     /* Common build parameters */
-    protected String projectName = script.params.PROJECT_NAME
+    protected String projectName = script.env.PROJECT_NAME
     protected String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
-    protected String gitURL = script.params.GIT_URL
+    protected String gitURL = script.env.PROJECT_GIT_URL
     protected String gitBranch = script.params.GIT_BRANCH
     protected String environment = script.params.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected String visualizerVersion = script.params.VIZ_VERSION
-    protected String s3BucketName = script.params.S3_BUCKET_NAME
+    protected String visualizerVersion = script.params.VIS_VERSION
+
     protected String mainBuildNumber = script.params.MAIN_BUILD_NUMBER
     protected String buildMode = script.params.BUILD_MODE
 
@@ -34,6 +37,7 @@ abstract class Channel implements Serializable {
 
         channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
         s3artifactPath = getS3AtrifactPath(channelName)
+        isSPA = channelName.contains('SPA')
 
         /* Workaround to build only specific channel */
         this.script.env[channelName] = true
@@ -173,14 +177,14 @@ abstract class Channel implements Serializable {
 
     @NonCPS
     private final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + 's3-eu-west-1.amazonaws.com' + '/' + s3artifactPath
+        String s3ArtifactURL = 'https://' + s3BucketRegion + '.amazonaws.com/' + s3artifactPath
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 
     protected final getArtifacts(extension) {
         def artifactsFiles
-        String successMessage = 'Artifacts found successfully'
-        String errorMessage = 'FAILED to find artifacts'
+        String successMessage = 'Search finished successfully'
+        String errorMessage = 'FAILED to search artifacts'
 
         script.catchErrorCustom(successMessage, errorMessage) {
             script.dir(artifactsBasePath) {
