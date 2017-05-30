@@ -33,7 +33,7 @@ class AppleChannel extends Channel {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
             }
 
-            script.dir("${workSpace}/KonyiOSWorkspace") {
+            script.dir("${workspace}/KonyiOSWorkspace") {
                 if (script.fileExists('iOS-plugin/iOS-GA-*.zip')) {
                     script.sh 'unzip iOS-GA-plugin/iOS-GA-*.zip'
                 } else {
@@ -43,14 +43,14 @@ class AppleChannel extends Channel {
                 }
             }
 
-            script.dir("${workSpace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
+            script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
                 script.sh """
                     cp ${karFile.path}/${karFile.name} .
                     perl extract.pl ${karFile.name} sqd
                 """
             }
 
-            script.dir("${workSpace}/KonyiOSWorkspace/VMAppWithKonylib") {
+            script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib") {
                 fastLaneEnvWrapper() {
                     script.dir('fastlane') {
                         script.sh 'cp -f $HOME/fastlane/Fastfile .'
@@ -101,7 +101,7 @@ class AppleChannel extends Channel {
                     "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                     "GYM_OUTPUT_NAME=${projectName}",
                     "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
-                    "FL_PROJECT_SIGNING_PROJECT_PATH=${workSpace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj"
+                    "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj"
             ]) {
                 closure()
             }
@@ -118,8 +118,8 @@ class AppleChannel extends Channel {
         script.node(nodeLabel) {
             /* Set environment-dependent variables */
             isUnixNode = script.isUnix()
-            workSpace = script.env.WORKSPACE
-            projectFullPath = workSpace + '/' + projectName
+            workspace = script.env.WORKSPACE
+            projectFullPath = workspace + '/' + projectName
             artifactsBasePath = projectFullPath + '/binaries'
 
             try {

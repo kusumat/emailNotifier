@@ -83,9 +83,9 @@ class AndroidChannel extends Channel {
         script.node(nodeLabel) {
             /* Set environment-dependent variables */
             isUnixNode = script.isUnix()
-            workSpace = script.env.WORKSPACE
-            projectFullPath = (isUnixNode) ? workSpace + '/' + projectName :
-                    workSpace + '\\' + projectName
+            workspace = script.env.WORKSPACE
+            projectFullPath = (isUnixNode) ? workspace + '/' + projectName :
+                    workspace + '\\' + projectName
             artifactsBasePath = projectFullPath + ((isUnixNode) ? "/binaries" : "\\binaries")
 
             try {

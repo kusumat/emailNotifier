@@ -3,7 +3,7 @@ package com.kony.appfactory.visualizer.channels
 abstract class Channel implements Serializable {
     protected script
     protected boolean isUnixNode
-    protected String workSpace
+    protected String workspace
     protected String projectFullPath
     protected String channelName
     protected artifacts
@@ -34,15 +34,14 @@ abstract class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
-
-        channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
-        s3artifactPath = getS3AtrifactPath(channelName)
-        isSPA = channelName.contains('SPA')
-
         /* Workaround to build only specific channel */
+        channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
         this.script.env[channelName] = true
-
+        s3artifactPath = getS3AtrifactPath(channelName)
         setS3ArtifactURL()
+        /* Workaround to skip some(signing, etc) stages for SPA channels */
+        isSPA = channelName.contains('SPA')
+        /* Get build cause for e-mail notification */
         getBuildCause()
         this.script.env['TRIGGERED_BY'] = "${triggeredBy}"
     }
@@ -177,7 +176,7 @@ abstract class Channel implements Serializable {
 
     @NonCPS
     private final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + s3BucketRegion + '.amazonaws.com/' + s3artifactPath
+        String s3ArtifactURL = 'https://' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 
