@@ -13,8 +13,8 @@ class WindowsChannel extends Channel {
         script.node(nodeLabel) {
             /* Set environment-dependent variables */
             isUnixNode = script.isUnix()
-            workSpace = script.env.WORKSPACE
-            projectFullPath = workSpace + '\\' + projectName
+            workspace = script.env.WORKSPACE
+            projectFullPath = workspace + '\\' + projectName
             artifactsBasePath = projectFullPath + "\\binaries"
 
             try {

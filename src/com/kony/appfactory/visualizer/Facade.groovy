@@ -3,20 +3,57 @@ package com.kony.appfactory.visualizer
 class Facade implements Serializable {
     private script
     private environment
-    private String nodeLabel = 'master'
-    private channelsLogicToRun = [:]
+    private nodeLabel = 'master'
+    private runList = [:]
     private channelsToRun
+    private s3BucketName
+    private s3BucketRegion
+    private projectName
+    private triggeredBy
 
     Facade(script) {
         this.script = script
-        this.environment = this.script.params.ENVIRONMENT
+        projectName = this.script.env.PROJECT_NAME
+        environment = this.script.params.ENVIRONMENT
+        s3BucketRegion = this.script.env.S3_BUCKET_REGION
+        s3BucketName = this.script.env.S3_BUCKET_NAME
+        setS3ArtifactURL()
+        /* Get build cause for e-mail notification */
+        getBuildCause()
+        this.script.env['TRIGGERED_BY'] = "${triggeredBy}"
+    }
+
+    @NonCPS
+    private final void getBuildCause() {
+        def causes = []
+        def buildCauses = script.currentBuild.rawBuild.getCauses()
+
+        for (cause in buildCauses) {
+            if (cause instanceof hudson.model.Cause$UpstreamCause) {
+                causes.add('upstream')
+                triggeredBy = cause.getUpstreamRun().getCause(hudson.model.Cause.UserIdCause).getUserName()
+            } else if (cause instanceof hudson.model.Cause$RemoteCause) {
+                causes.add('remote')
+            } else if (cause instanceof hudson.model.Cause$UserIdCause) {
+                causes.add('user')
+                triggeredBy = cause.getUserName()
+            } else {
+                causes.add('unknown')
+            }
+        }
+    }
+
+    @NonCPS
+    private final void setS3ArtifactURL() {
+        String s3ArtifactURL = 'https://' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
+        script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 
     private static getSelectedChannels(buildParams) {
         def result = []
 
         for (param in buildParams) {
-            if (param.value instanceof Boolean && param.key != 'TEST_AUTOMATION_ENABLED' && param.value) {
+            if (param.value instanceof Boolean && param.key != 'TEST_AUTOMATION' && param.value) {
                 result.add(param.key)
             }
         }
@@ -51,7 +88,16 @@ class Facade implements Serializable {
             ]
         }
 
-        return parameters
+        parameters
+    }
+
+    private final getTestAutomationJobParameters() {
+        def parameters = [
+                script.stringParam(name: 'GIT_BRANCH', description: 'Project Git Branch', value: "${script.params.GIT_BRANCH}"),
+                [$class: 'CredentialsParameterValue', description: 'GitHub.com Credentials', name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"]
+        ]
+
+        parameters
     }
 
     @NonCPS
@@ -73,6 +119,11 @@ class Facade implements Serializable {
     private final void prepareRun() {
         channelsToRun = getSelectedChannels(script.params)
 
+        /* Check if at least one of the options been chosen */
+        if (!channelsToRun && !script.params.TEST_AUTOMATION) {
+            script.error 'Please choose options to build!'
+        }
+
         if (channelsToRun) {
             for (x in channelsToRun) {
                 /* Need to bind the channel variable before the closure - can't do 'for (channel in channelsToRun)' */
@@ -80,16 +131,23 @@ class Facade implements Serializable {
                 def jobParameters = getJobParameters(channel)
                 def channelPath = getChannelPath(channel)
                 script.env[channel] = true
-                channelsLogicToRun[channel] = {
+                runList[channel] = {
                     script.stage(channel) {
                         /* Trigger channel job */
                         script.build job: "${environment}/${channelPath}", parameters: jobParameters
                     }
                 }
             }
-        } else {
-            script.error 'Please choose channels to build!'
         }
+
+        if (script.params.TEST_AUTOMATION) {
+            runList['TEST_AUTOMATION'] = {
+                script.stage('TEST_AUTOMATION') {
+                    script.build job: "${environment}/Test_Automation", parameters: getTestAutomationJobParameters()
+                }
+            }
+        }
+
     }
 
     protected final void run() {
@@ -97,30 +155,15 @@ class Facade implements Serializable {
 
         script.node(nodeLabel) {
             try {
-                script.parallel channelsLogicToRun
+                script.parallel(runList)
             } catch (Exception e) {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                if (script.currentBuild.result != 'FAILURE') {
-                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'sshepe@softserveinc.com')
+                if (script.currentBuild.result != 'FAILURE' && channelsToRun) {
+                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'KonyAppFactoryTeam@softserveinc.com')
                 }
             }
         }
-
-//        if (script.params.TEST_AUTOMATION_ENABLED) {
-//            script.stage('Prepare properties for HeadlessBuild') {
-//                script.node('linux') {
-//                    script.step([$class: 'WsCleanup', deleteDirs: true])
-//                    script.git branch: "${script.env.GIT_BRANCH}", credentialsId: "${script.env.GIT_CREDENTIALS_ID}", url: "${script.env.GIT_TEST_URL}"
-//                    script.sh '/usr/local/maven-3.3.9/bin/mvn clean package -DskipTests=true'
-//                    script.sh "cp target/zip-with-dependencies.zip ${script.env.PROJECT_NAME}_TestApp.zip"
-//                    script.git branch: "${script.env.GIT_BRANCH}", credentialsId: "${script.env.GIT_CREDENTIALS_ID}", url: "${script.env.GIT_URL}"
-//                    script.sh "chmod +x ci_config/TestAutomationScripts/*"
-//                    script.sh "./ci_config/TestAutomationScripts/DeviceFarmCLIInit.sh ${script.env.WORKSPACE}/ci_config/DeviceFarmCLI.properties ${script.env.PROJECT_NAME} ${script.env.PROJECT_NAME}_${script.env.BUILD_NUMBER}.apk ${script.env.PROJECT_NAME}_${script.env.BUILD_NUMBER}.ipa s3://${script.env.S3_BUCKET_NAME}/TestApplication"
-//                    script.emailext attachLog: true, body: '${FILE,path="index.html"}', subject: '$JOB_NAME - # $BUILD_NUMBER', to: 'KonyAppFactoryTeam@softserveinc.com'
-//                }
-//            }
-//        }
     }
 }

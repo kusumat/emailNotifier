@@ -1,0 +1,239 @@
+<?jelly escape-by-default='true'?>
+<!DOCTYPE html [
+        <!ENTITY nbsp "&#38;#38;nbsp&#59;">
+]>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define">
+<head>
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+    <title>Kony OTA Installer</title>
+    <style>
+        body {
+            font-family: arial,sans-serif;
+            font-size: 14px;
+            color: #333;
+            background: #efefef;
+        }
+
+        table {
+            border-spacing: 0;
+        }
+
+        p {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .header__logo {
+            background: url("https://manage.kony.com/console/resources/images/svg_icons/logo.svg") left center no-repeat;
+            background-size:80%;
+            display: inline-block;
+            background-position: 10px;
+            min-height: 54px;
+            overflow: hidden;
+            position: relative;
+            white-space: nowrap;
+            width: 100%;
+            z-index: 2;
+            transition: all 1s;
+        }
+
+        .icon-stack .icon-glassdoor {
+            background-image: url("https://kap8.platform.kony.com/Jenkins/images/icon-glassdoor.png");
+            background-repeat: no-repeat;
+            background-position: 50% 50%;
+            height: 100%;
+        }
+
+        .footer {
+            background: #dddddd;
+            margin-top: 30px;
+            border-top: 1px solid #d3d5d6;
+            text-align: left;
+            padding: 20px;
+            width: 100%;
+            line-height: 20px;
+            font-size: 13px;
+            clear: both;
+            overflow: auto;
+        }
+
+        .table-border {
+            border-spacing: 0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .table-border th {
+            padding: 15px 10px;
+            display: table-cell;
+            vertical-align: middle;
+            line-height: normal;
+            font-weight: normal;
+            width: 247px;
+            text-align: left;
+            text-transform: uppercase;
+            outline: none;
+            background: #f8f9fb;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .table-border.cell-spacing td{
+            padding: 10px;
+            border: none;
+        }
+
+        .subheading {
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        .table-border td {
+            padding: 15px 10px;
+            display: table-cell;
+            vertical-align: middle;
+            color: #858484;
+            text-align: left;
+            border-bottom: 1px solid #e8e8e8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-all;
+            white-space: normal;
+        }
+
+        a {
+            color: #00a3d7;
+            text-decoration: none;
+        }
+
+        h4 {
+            margin:15px 0;
+            font-size: 16px;
+        }
+
+        h2 {
+            font-size: 18px;
+            border-top: 1px dashed #e8e8e8;
+            border-bottom: 1px dashed #e8e8e8;
+            padding: 10px;
+        }
+
+        .container {
+            width: 650px;
+            -moz-box-shadow: 0 0 5px #888;
+            -webkit-box-shadow: 0 0 5px #888;
+            box-shadow: 0 0 5px #888;
+            margin:0 auto;background:#ffffff;
+        }
+
+        .table-width {
+            width: 650px;
+            margin: 0 auto;
+        }
+
+        .footer-icon-color {
+            color: #999fa5;
+        }
+
+        .fa-inverse {
+            color: #37434f;
+        }
+
+        .copyright-info {
+            margin-top: 5px;
+        }
+
+        .copyright-info p {
+            font-size: 12px;
+        }
+
+        td.table-value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<j:set var="buildEnv" value="${build.getEnvironment(listener)}"/>
+<j:set var="buildCustomEnv" value="${it.getAction('org.jenkinsci.plugins.workflow.cps.EnvActionImpl').getOverriddenEnvironment()}"/>
+<j:set var="userName" value="${buildCustomEnv.get('TRIGGERED_BY')}"/>
+<j:set var="appName" value="${buildEnv.get('PROJECT_NAME')}"/>
+<table class="container" cellpadding='0'>
+    <tr>
+        <td align="center" style="padding:10px">
+            <table style="width:100%">
+                <tr style="background:#35414d">
+                    <td style="width:150px"><span href="#" class="header__logo"> </span></td>
+                    <td style="display: inline-block;margin-top: 15px;color:#fff">
+                        <div style="line-height:25px;margin-left:0px;border-left: 1px solid;text-indent:20px"> App Factory</div>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="padding:0 20px;">
+            <table style="width:100%">
+                <tr>
+                    <td style="text-align:center" class="text-color"><h2>Kony Test Automation build</h2></td>
+                </tr>
+                <tr>
+                    <td style="text-align:left" class="text-color"><h4 class="subheading">Build Details</h4></td>
+                </tr>
+                <tr>
+                    <td>
+                        <table style="width:100%; text-align:left" class="text-color table-border cell-spacing">
+                            <j:if test="${userName != null}">
+                                <tr>
+                                    <td style="width:100px;text-align:right">Triggered by:</td>
+                                    <td class="table-value">${userName}</td>
+                                </tr>
+                            </j:if>
+                            <tr>
+                                <td style="width:100px;text-align:right">Build URL:</td>
+                                <td><a href="${rooturl}${build.url}">${rooturl}${build.url}</a></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:right">Project:</td>
+                                <td class="table-value">${appName}</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:right">Build number:</td>
+                                <td class="table-value">${build.number}</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:right">Date of build:</td>
+                                <td class="table-value">${it.timestampString}</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:right">Build duration:</td>
+                                <td class="table-value">${build.durationString}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <j:if test="${build.result==SUCCESS}">
+                <tr>
+                    <td style="text-align:left" class="text-color">
+                        <h4 class="subheading">Build Information</h4>
+                        <p>Build of Test Automation scripts for ${appName} finished successfully.</p>
+                    </td>
+                </tr>
+                </j:if>
+            </table>
+        </td>
+    </tr>
+    <j:getStatic var="resultFailure" field="FAILURE" className="hudson.model.Result"/>
+    <j:if test="${build.result==resultFailure}">
+        <tr>
+            <td style="text-align:left;padding:15px 20px 0" class="text-color"><h4 style="margin-bottom:0">Console Output</h4>
+                <j:forEach var="line" items="${build.getLog(50)}"><p>${line}</p></j:forEach>
+            </td>
+        </tr>
+    </j:if>
+    <tr>
+        <td>&nbsp;
+
+        </td>
+    </tr>
+</table>
+</body>
+</j:jelly>
