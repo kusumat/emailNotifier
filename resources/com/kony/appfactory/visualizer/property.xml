@@ -13,7 +13,7 @@
         <condition property="viz.inner" value="${viz.root}Kony_Visualizer_Enterprise\" else="${viz.root}Kony_Visualizer_Enterprise/">
             <os family="windows"/>
         </condition>
-        <condition property="android.home" value="C:\asdk" else="/Jenkins/tools/asdk">
+        <condition property="android.home" value="C:\Jenkins\asdk" else="/Jenkins/tools/asdk">
             <os family="windows"/>
         </condition>
 
