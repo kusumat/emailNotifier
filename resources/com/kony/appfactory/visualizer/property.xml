@@ -58,7 +58,7 @@
             <isset property="env.WINDOWS_MOBILE_SPA" />
         </condition>
         <condition property="windowsTabletWindows81" value="${env.WINDOWS_TABLET_WINDOWS81}" else="false">
-            <isset property="env.WINDOWS_TABLET_windowsTabletWindows81" />
+            <isset property="env.WINDOWS_TABLET_WINDOWS81" />
         </condition>
         <condition property="windowsTabletWindows10" value="${env.WINDOWS_TABLET_WINDOWS10}" else="false">
             <isset property="env.WINDOWS_TABLET_WINDOWS10" />

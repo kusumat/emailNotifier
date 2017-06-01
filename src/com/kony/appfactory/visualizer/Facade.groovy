@@ -14,7 +14,7 @@ class Facade implements Serializable {
     Facade(script) {
         this.script = script
         projectName = this.script.env.PROJECT_NAME
-        environment = this.script.params.ENVIRONMENT
+        environment = this.script.env.ENVIRONMENT
         s3BucketRegion = this.script.env.S3_BUCKET_REGION
         s3BucketName = this.script.env.S3_BUCKET_NAME
         setS3ArtifactURL()
@@ -45,7 +45,7 @@ class Facade implements Serializable {
 
     @NonCPS
     private final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
+        String s3ArtifactURL = 'https://' + 's3-' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 
@@ -67,7 +67,7 @@ class Facade implements Serializable {
                 [$class: 'CredentialsParameterValue', description: 'GitHub.com Credentials', name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"],
                 script.stringParam(name: 'MAIN_BUILD_NUMBER', description: 'Build Number for artifact', value: "${script.params.MAIN_BUILD_NUMBER}"),
                 script.stringParam(name: 'BUILD_MODE', description: 'Build mode (debug or release)', value: "${script.params.BUILD_MODE}"),
-                script.stringParam(name: 'ENVIRONMENT', description: 'Define target environment', value: "${script.params.ENVIRONMENT}"),
+                script.stringParam(name: 'ENVIRONMENT', description: 'Define target environment', value: "${environment}"),
                 script.stringParam(name: 'VIS_VERSION', description: 'Kony Visualizer version', value: "${script.params.VIS_VERSION}"),
                 [$class: 'CredentialsParameterValue', name: 'CLOUD_CREDENTIALS_ID', description: 'Cloud Mode credentials (Applicable only for cloud)', value: "${script.params.CLOUD_CREDENTIALS_ID}"]
         ]
@@ -81,10 +81,7 @@ class Facade implements Serializable {
         } else if (channel.startsWith('APPLE')) {
             parameters = parameters + [
                     [$class: 'CredentialsParameterValue', name: 'APPLE_ID', description: 'Apple ID credentials',  value: "${script.params.APPLE_ID}"],
-                    [$class: 'CredentialsParameterValue', name: 'MATCH_PASSWORD', description: 'The Encryption password', value: "${script.params.MATCH_PASSWORD}"],
-                    [$class: 'CredentialsParameterValue', name: 'MATCH_GIT_TOKEN', description: 'GitHub access token', value: "${script.params.MATCH_GIT_TOKEN}"],
-                    script.stringParam(name: 'MATCH_GIT_URL', description: 'URL to the git repo containing all the certificates (On-premises only!)', value: "${script.params.MATCH_GIT_URL}"),
-                    script.stringParam(name: 'MATCH_TYPE', description: 'Define the signing profile type', value: "${script.params.MATCH_TYPE}")
+                    script.stringParam(name: 'APPLE_DEVELOPER_PROFILE_TYPE', description: 'Define the signing profile type', value: "${script.params.APPLE_DEVELOPER_PROFILE_TYPE}")
             ]
         }
 

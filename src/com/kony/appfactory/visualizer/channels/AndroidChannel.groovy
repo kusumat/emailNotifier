@@ -10,8 +10,6 @@ class AndroidChannel extends Channel {
 
     AndroidChannel(script) {
         super(script)
-        /* Set build artifact extension, if channel SPA artifact extension should be war */
-        artifactsExtension = (isSPA) ? 'war' : 'apk'
         nodeLabel = 'win || mac'
     }
 
@@ -101,12 +99,12 @@ class AndroidChannel extends Channel {
                     androidHome = script.readProperties(
                             file: projectFullPath + '/HeadlessBuild-Global.properties').'android.home'
                     /* Search for build artifacts */
-                    def foundArtifacts = getArtifacts(artifactsExtension)
+                    def foundArtifacts = getArtifacts(artifactExtension)
                     /* Rename artifacts for publishing */
                     artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
                 }
 
-                if (!isSPA) {
+                if (artifactExtension != 'war') {
                     script.stage("Sign artifact") {
                         for (artifact in artifacts) {
                             signArtifact(artifact.name, artifact.path)

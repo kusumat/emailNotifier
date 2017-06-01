@@ -295,7 +295,7 @@
                             <j:if test="${appleTabletSPA}">
                                 <tr>
                                     <td>Apple Tablet SPA</td>
-                                    <td><a href="${s3ArtifactURL}/Apple/Tablet/SPA/${appName}_${mainBuildNumber}.spa">${appName}_${mainBuildNumber}.spa</a></td>
+                                    <td><a href="${s3ArtifactURL}/Apple/Tablet/SPA/${appName}_${mainBuildNumber}.war">${appName}_${mainBuildNumber}.war</a></td>
                                 </tr>
                             </j:if>
                             <j:if test="${windowsMobileWindowsPhone8}">
@@ -337,21 +337,17 @@
                             <j:if test="${windowsTabletWindows81}">
                                 <tr>
                                     <td>Windows Tablet Windows 8.1</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows81/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Windows Tablet Windows 8.1 ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows81/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
+                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows81/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.appx</a></td>
                                 </tr>
                             </j:if>
                             <j:if test="${windowsTabletWindows10}">
                                 <tr>
                                     <td>Windows Tablet Windows 10</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows10/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
+                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows10/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.appx</a></td>
                                 </tr>
                                 <tr>
                                     <td>Windows Tablet Windows 10 ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows10/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
+                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows10/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.appx</a></td>
                                 </tr>
                             </j:if>
                             <j:if test="${windowsTabletSPA}">

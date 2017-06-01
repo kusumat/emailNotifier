@@ -3,19 +3,15 @@ package com.kony.appfactory.visualizer.channels
 class AppleChannel extends Channel {
     private bundleID
     private karFile = [:]
-    private String plistFileName
+    private plistFileName
 
     /* Build parameters */
-    private String matchType = script.params.MATCH_TYPE
+    private String matchType = script.params.APPLE_DEVELOPER_PROFILE_TYPE
     private String appleID = script.params.APPLE_ID
-    private String matchPassword = script.params.MATCH_PASSWORD
-    private String matchGitToken = script.params.MATCH_GIT_TOKEN
-    private String matchGitURL = script.params.MATCH_GIT_URL
+    private String matchGitURL = script.env.MATCH_GIT_URL
 
     AppleChannel(script) {
         super(script)
-        /* Set build artifact extension, if channel SPA artifact extension should be war */
-        artifactsExtension = (isSPA) ? 'war' : 'ipa'
         nodeLabel = 'mac'
         plistFileName = "${projectName}_${mainBuildNumber}.plist"
     }
@@ -53,7 +49,9 @@ class AppleChannel extends Channel {
             script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib") {
                 fastLaneEnvWrapper() {
                     script.dir('fastlane') {
-                        script.sh 'cp -f $HOME/fastlane/Fastfile .'
+                        def fastFileName = 'Fastfile'
+                        def fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
+                        script.writeFile file: fastFileName, text: fastFileContent
                     }
                     script.sh '$HOME/.fastlane/bin/fastlane wildcard_build_' + fastLaneBuildCommand
                 }
@@ -89,9 +87,7 @@ class AppleChannel extends Channel {
                 script.usernamePassword(credentialsId: "${appleID}",
                         passwordVariable: 'FASTLANE_PASSWORD',
                         usernameVariable: 'MATCH_USERNAME'
-                ),
-                script.string(credentialsId: "${matchPassword}", variable: 'MATCH_PASSWORD'),
-                script.string(credentialsId: "${matchGitToken}", variable: 'MATCH_GIT_TOKEN')
+                )
         ]) {
             script.withEnv([
                     "FASTLANE_DONT_STORE_PASSWORD=true",
@@ -101,7 +97,8 @@ class AppleChannel extends Channel {
                     "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                     "GYM_OUTPUT_NAME=${projectName}",
                     "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
-                    "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj"
+                    "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
+                    "MATCH_TYPE=${matchType}"
             ]) {
                 closure()
             }
@@ -131,9 +128,9 @@ class AppleChannel extends Channel {
 
                 script.stage('Build') {
                     build()
-                    if (isSPA) {
+                    if (artifactExtension == 'war') {
                         /* Search for build artifacts */
-                        def foundArtifacts = getArtifacts(artifactsExtension)
+                        def foundArtifacts = getArtifacts(artifactExtension)
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
                     } else {
@@ -145,11 +142,11 @@ class AppleChannel extends Channel {
                 }
 
                 /* Check to not sign artifacts if SPA chosen */
-                if (!isSPA) {
+                if (artifactExtension != 'war') {
                     script.stage('Generate IPA file') {
                         createIPA()
                         /* Search for build artifacts */
-                        def foundArtifacts = getArtifacts(artifactsExtension)
+                        def foundArtifacts = getArtifacts(artifactExtension)
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
                     }

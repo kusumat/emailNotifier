@@ -8,13 +8,12 @@ abstract class Channel implements Serializable {
     protected String channelName
     protected artifacts
     protected String artifactsBasePath
-    protected String artifactsExtension
+    protected String artifactExtension
     protected String s3artifactPath
     protected String s3BucketRegion = script.env.S3_BUCKET_REGION
     protected String s3BucketName = script.env.S3_BUCKET_NAME
     protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
-    protected isSPA
 
     /* Required for triggering emails */
     protected buildCause
@@ -25,7 +24,7 @@ abstract class Channel implements Serializable {
     protected String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
     protected String gitURL = script.env.PROJECT_GIT_URL
     protected String gitBranch = script.params.GIT_BRANCH
-    protected String environment = script.params.ENVIRONMENT
+    protected String environment = script.env.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected String visualizerVersion = script.params.VIS_VERSION
 
@@ -37,13 +36,40 @@ abstract class Channel implements Serializable {
         /* Workaround to build only specific channel */
         channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
         this.script.env[channelName] = true
+        artifactExtension = setArtifactExtension(channelName)
         s3artifactPath = getS3AtrifactPath(channelName)
         setS3ArtifactURL()
-        /* Workaround to skip some(signing, etc) stages for SPA channels */
-        isSPA = channelName.contains('SPA')
         /* Get build cause for e-mail notification */
         getBuildCause()
         this.script.env['TRIGGERED_BY'] = "${triggeredBy}"
+    }
+
+    @NonCPS
+    private final setArtifactExtension(channel) {
+        def result
+
+        switch (channel) {
+            case ~/^.*SPA.*$/:
+                result = 'war'
+                break
+            case ~/^.*WINDOWS_TABLET.*$/:
+                result = 'appx'
+                break
+            case ~/^.*WINDOWS.*$/:
+                result = 'xap'
+                break
+            case ~/^.*APPLE.*$/:
+                result = 'ipa'
+                break
+            case ~/^.*ANDROID.*$/:
+                result = 'apk'
+                break
+            default:
+                result = 'unknown'
+                break
+        }
+
+        result
     }
 
     @NonCPS
@@ -176,7 +202,7 @@ abstract class Channel implements Serializable {
 
     @NonCPS
     private final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
+        String s3ArtifactURL = 'https://' + 's3-' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 
@@ -200,7 +226,7 @@ abstract class Channel implements Serializable {
         String errorMessage = 'FAILED to rename artifacts'
         String shell = (isUnixNode) ? 'sh' : 'bat'
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
-        String artifactTargetName = projectName + '_' + mainBuildNumber + '.' + artifactsExtension
+        String artifactTargetName = projectName + '_' + mainBuildNumber + '.' + artifactExtension
 
         script.catchErrorCustom(successMessage, errorMessage) {
             for (int i=0; i < artifactsList.size(); ++i) {
