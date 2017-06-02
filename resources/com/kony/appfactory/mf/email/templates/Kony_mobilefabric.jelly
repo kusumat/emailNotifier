@@ -154,10 +154,13 @@
 <body>
 <j:set var="buildEnv" value="${build.getEnvironment(listener)}"/>
 <j:set var="buildCustomEnv" value="${it.getAction('org.jenkinsci.plugins.workflow.cps.EnvActionImpl').getOverriddenEnvironment()}"/>
-<j:set var="userID" value="${build.causes[0].userId}"/>
-<j:invokeStatic var="user" method="get" className="hudson.model.User">
-    <j:arg value="${userID}"/>
-</j:invokeStatic>
+<j:set var="cause" value="${build.causes[0]}"/>
+<j:if test="${cause.class!='class hudson.model.Cause$UpstreamCause'}">
+    <j:set var="userID" value="${cause.userId}"/>
+    <j:invokeStatic var="user" method="get" className="hudson.model.User">
+        <j:arg value="${userID}"/>
+    </j:invokeStatic>
+</j:if>
 <j:set var="userName" value="${user.getFullName()}"/>
 <j:set var="commandName" value="${buildCustomEnv.get('MOBILE_FABRIC_COMMAND')}"/>
 <j:set var="appName" value="${buildEnv.get('MOBILE_FABRIC_APP_ID')}"/>
@@ -211,10 +214,12 @@
                               </tr>
                             </thead>
                             <tbody>
+                              <j:if test="${userName!=null}">
                               <tr>
                                 <td>Triggered by</td>
                                 <td class="table-value">${userName}</td>
                               </tr>
+                              </j:if>
                               <j:if test="${gitURL!=null}">
                               <tr>
                                 <td>Repository URL</td>
