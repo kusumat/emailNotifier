@@ -509,7 +509,7 @@ class MobileFabric implements Serializable {
 
                 if (publishApp) {
                     script.stage('Trigger Publish Mobile Fabric application job') {
-                        script.build job: "${mfAppID.replaceAll(' ', '_')}_MobileFabric/${mfAppID.replaceAll(' ', '_')}_MobileFabric_Publish", parameters: [
+                        script.build job: "Publish", parameters: [
                                 script.string(name: 'MOBILE_FABRIC_ACCOUNT_ID', value: mfAccountID),
                                 script.string(name: 'MOBILE_FABRIC_APP_ID', value: mfAppID),
                                 script.string(name: 'MF_CREDENTIALS', value: mfCredentialsID),
