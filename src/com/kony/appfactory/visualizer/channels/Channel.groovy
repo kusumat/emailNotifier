@@ -27,7 +27,6 @@ abstract class Channel implements Serializable {
     protected String environment = script.env.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected String visualizerVersion = script.params.VIS_VERSION
-
     protected String mainBuildNumber = script.params.MAIN_BUILD_NUMBER
     protected String buildMode = script.params.BUILD_MODE
 
@@ -37,7 +36,7 @@ abstract class Channel implements Serializable {
         channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
         this.script.env[channelName] = true
         artifactExtension = setArtifactExtension(channelName)
-        s3artifactPath = getS3AtrifactPath(channelName)
+        s3artifactPath = getS3ArtifactPath(channelName)
         setS3ArtifactURL()
         /* Get build cause for e-mail notification */
         getBuildCause()
@@ -45,7 +44,7 @@ abstract class Channel implements Serializable {
     }
 
     @NonCPS
-    private final setArtifactExtension(channel) {
+    protected static final setArtifactExtension(channel) {
         def result
 
         switch (channel) {
@@ -73,7 +72,7 @@ abstract class Channel implements Serializable {
     }
 
     @NonCPS
-    private final getS3AtrifactPath(channel) {
+    protected final getS3ArtifactPath(channel) {
         def channelPath = channel.tokenize('_').collect() { item ->
             /* Workaround for windows phone jobs */
             if (item.contains('WINDOWSPHONE')) {
@@ -175,7 +174,7 @@ abstract class Channel implements Serializable {
     }
 
     @NonCPS
-    private final void getBuildCause() {
+    protected final void getBuildCause() {
         def causes = []
         def buildCauses = script.currentBuild.rawBuild.getCauses()
 
@@ -201,7 +200,7 @@ abstract class Channel implements Serializable {
     }
 
     @NonCPS
-    private final void setS3ArtifactURL() {
+    protected final void setS3ArtifactURL() {
         String s3ArtifactURL = 'https://' + 's3-' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
