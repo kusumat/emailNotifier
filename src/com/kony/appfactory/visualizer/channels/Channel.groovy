@@ -122,7 +122,7 @@ abstract class Channel implements Serializable {
                                       keepForever      : true,
                                       managedArtifacts : false,
                                       noUploadOnFailure: true,
-                                      selectedRegion   : 'eu-west-1',
+                                      selectedRegion   : "${s3BucketRegion}",
                                       sourceFile       : "${args.artifactName}"]
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
