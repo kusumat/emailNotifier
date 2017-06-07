@@ -8,12 +8,41 @@ class AppleChannel extends Channel {
     /* Build parameters */
     private String matchType = script.params.APPLE_DEVELOPER_PROFILE_TYPE
     private String appleID = script.params.APPLE_ID
-    private String matchGitURL = script.env.MATCH_GIT_URL
 
     AppleChannel(script) {
         super(script)
         nodeLabel = 'mac'
         plistFileName = "${projectName}_${mainBuildNumber}.plist"
+    }
+
+    protected final exposeFastlaneConfig() {
+        String successMessage = 'Fastlane configuration fetched successfully'
+        String errorMessage = 'FAILED to fetch fastlane configuration'
+
+        def fastlaneConfigFileName = '.env'
+        def fastlaneConfigBucketFilePath = 'configuration/fastlane' + '/' + fastlaneConfigFileName
+        def bucketRegion = 'eu-west-1'
+        def bucketName = 'konyappfactorydev-ci0001-storage1'
+
+        script.catchErrorCustom(successMessage, errorMessage) {
+            script.withAWS(region: bucketRegion) {
+                script.s3Download file: fastlaneConfigFileName, bucket: bucketName, path: fastlaneConfigBucketFilePath,
+                        force: true
+
+                /* Read fastlane configuration for file */
+                def config = script.readFile file: fastlaneConfigFileName
+
+                /* Convert to properties */
+                Properties fastlaneConfig = new Properties()
+                InputStream is = new ByteArrayInputStream(config.getBytes())
+                fastlaneConfig.load(is)
+
+                /* Expose values from config as env variables to use them during IPA file creation */
+                for (item in fastlaneConfig) {
+                    script.env[item.key] = item.value
+                }
+            }
+        }
     }
 
     private final void createIPA() {
@@ -92,7 +121,7 @@ class AppleChannel extends Channel {
             script.withEnv([
                     "FASTLANE_DONT_STORE_PASSWORD=true",
                     "MATCH_APP_IDENTIFIER=${bundleID}",
-                    "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${(matchGitURL - 'https://')}",
+                    "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${(script.env.MATCH_GIT_URL - 'https://')}",
                     "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                     "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                     "GYM_OUTPUT_NAME=${projectName}",
@@ -112,6 +141,11 @@ class AppleChannel extends Channel {
     }
 
     protected final void createWorkflow() {
+        /* Get configuration file for fastlane */
+        script.node('master') {
+            exposeFastlaneConfig()
+        }
+
         script.node(nodeLabel) {
             /* Set environment-dependent variables */
             isUnixNode = script.isUnix()
