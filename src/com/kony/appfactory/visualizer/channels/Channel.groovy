@@ -26,8 +26,8 @@ abstract class Channel implements Serializable {
     protected String gitBranch = script.params.GIT_BRANCH
     protected String environment = script.env.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected String visualizerVersion = script.params.VIS_VERSION
-    protected String mainBuildNumber = script.params.MAIN_BUILD_NUMBER
+    protected String visualizerVersion = script.env.VIS_VERSION
+    protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.params.BUILD_MODE
 
     Channel(script) {
@@ -225,7 +225,7 @@ abstract class Channel implements Serializable {
         String errorMessage = 'FAILED to rename artifacts'
         String shell = (isUnixNode) ? 'sh' : 'bat'
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
-        String artifactTargetName = projectName + '_' + mainBuildNumber + '.' + artifactExtension
+        String artifactTargetName = projectName + '_' + jobBuildNumber + '.' + artifactExtension
 
         script.catchErrorCustom(successMessage, errorMessage) {
             for (int i=0; i < artifactsList.size(); ++i) {
@@ -248,5 +248,21 @@ abstract class Channel implements Serializable {
         }
 
         renamedArtifacts
+    }
+
+    @NonCPS
+    protected final getChannelPath(channel) {
+        def channelPath = channel.tokenize('_').collect() { item ->
+            /* Workaround for windows phone jobs */
+            if (item.contains('WINDOWSPHONE')) {
+                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
+                /* Workaround for SPA jobs */
+            } else if (item.contains('SPA')) {
+                item
+            } else {
+                item.toLowerCase().capitalize()
+            }
+        }.join('/')
+        return channelPath
     }
 }

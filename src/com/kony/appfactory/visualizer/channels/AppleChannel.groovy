@@ -12,7 +12,7 @@ class AppleChannel extends Channel {
     AppleChannel(script) {
         super(script)
         nodeLabel = 'mac'
-        plistFileName = "${projectName}_${mainBuildNumber}.plist"
+        plistFileName = "${projectName}_${jobBuildNumber}.plist"
     }
 
     protected final exposeFastlaneConfig() {
@@ -144,6 +144,7 @@ class AppleChannel extends Channel {
         /* Get configuration file for fastlane */
         script.node('master') {
             exposeFastlaneConfig()
+            script.deleteDir()
         }
 
         script.node(nodeLabel) {
@@ -189,6 +190,16 @@ class AppleChannel extends Channel {
                         createPlist()
                         /* Get plist artifact */
                         artifacts.add([name: plistFileName, path: "${karFile.path}"])
+                        /* Create a list with artifact names */
+                        def channelArtifacts = ''
+                        def channelPath = getChannelPath(channelName)
+                        for (artifact in artifacts) {
+                            /* Exclude ipa from artifacts list */
+                            if (!artifact.name.contains('ipa')) {
+                                channelArtifacts += "${channelPath}:${artifact.name},"
+                            }
+                        }
+                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts
                     }
                 }
 

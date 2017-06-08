@@ -154,28 +154,11 @@
 <body>
 <j:set var="buildEnv" value="${build.getEnvironment(listener)}"/>
 <j:set var="buildCustomEnv" value="${it.getAction('org.jenkinsci.plugins.workflow.cps.EnvActionImpl').getOverriddenEnvironment()}"/>
+<j:set var="channelArtifacts" value="${buildCustomEnv.get('CHANNEL_ARTIFACTS')}"/>
+<j:set var="artifacts" value="${channelArtifacts.split(',')}"/>
 <j:set var="userName" value="${buildCustomEnv.get('TRIGGERED_BY')}"/>
 <j:set var="appName" value="${buildEnv.get('PROJECT_NAME')}"/>
 <j:set var="s3ArtifactURL" value="${buildCustomEnv.get('S3_ARTIFACT_URL')}"/>
-<j:set var="mainBuildNumber" value="${buildEnv.get('MAIN_BUILD_NUMBER')}"/>
-<j:set var="androidMobileNative" value="${buildCustomEnv.get('ANDROID_MOBILE_NATIVE')}"/>
-<j:set var="androidMobileSPA" value="${buildCustomEnv.get('ANDROID_MOBILE_SPA')}"/>
-<j:set var="androidTabletNative" value="${buildCustomEnv.get('ANDROID_TABLET_NATIVE')}"/>
-<j:set var="androidTabletSPA" value="${buildCustomEnv.get('ANDROID_TABLET_SPA')}"/>
-<j:set var="appleWatchNative" value="${buildCustomEnv.get('APPLE_WATCH_NATIVE')}"/>
-<j:set var="appleMobileNative" value="${buildCustomEnv.get('APPLE_MOBILE_NATIVE')}"/>
-<j:set var="appleMobileSPA" value="${buildCustomEnv.get('APPLE_MOBILE_SPA')}"/>
-<j:set var="appleTabletNative" value="${buildCustomEnv.get('APPLE_TABLET_NATIVE')}"/>
-<j:set var="appleTabletSPA" value="${buildCustomEnv.get('APPLE_TABLET_SPA')}"/>
-<j:set var="windowsMobileWindowsPhone8" value="${buildCustomEnv.get('WINDOWS_MOBILE_WINDOWSPHONE8')}"/>
-<j:set var="windowsMobileWindowsPhone81S" value="${buildCustomEnv.get('WINDOWS_MOBILE_WINDOWSPHONE81S')}"/>
-<j:set var="windowsMobileWindowsPhone10" value="${buildCustomEnv.get('WINDOWS_MOBILE_WINDOWSPHONE10')}"/>
-<j:set var="windowsMobileSPA" value="${buildCustomEnv.get('WINDOWS_MOBILE_SPA')}"/>
-<j:set var="windowsTabletWindows81" value="${buildCustomEnv.get('WINDOWS_TABLET_WINDOWS81')}"/>
-<j:set var="windowsTabletWindows10" value="${buildCustomEnv.get('WINDOWS_TABLET_WINDOWS10')}"/>
-<j:set var="windowsTabletSPA" value="${buildCustomEnv.get('WINDOWS_TABLET_SPA')}"/>
-<j:set var="windowsDesktopKiosk" value="${buildCustomEnv.get('WINDOWS_DESKTOP_KIOSK')}"/>
-<j:set var="windowsDesktopWeb" value="${buildCustomEnv.get('WINDOWS_DESKTOP_WEB')}"/>
     <table class="container" cellpadding='0'>
         <tr>
             <td align="center" style="padding:10px">
@@ -230,154 +213,34 @@
                         </table>
                       </td>
                     </tr>
-                    <j:if test="${build.result==SUCCESS}">
+                    <j:if test="${build.result!='FAILURE'}">
                     <tr>
                         <td style="text-align:left" class="text-color"><h4 class="subheading">Build Information</h4></td>
                     </tr>
                     <tr>
                         <td>
-                          <table style="width:100%; text-align:left" class="text-color table-border">
-                            <thead>
-                              <tr>
-                                <th>Installer</th>
-                                <th>URL</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                            <j:if test="${androidMobileNative}">
-                                <tr>
-                                    <td>Android Mobile Native</td>
-                                    <td><a href="${s3ArtifactURL}/Android/Mobile/Native/${appName}_${mainBuildNumber}.apk">${appName}_${mainBuildNumber}.apk</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${androidMobileSPA}">
-                                <tr>
-                                    <td>Android Mobile SPA</td>
-                                    <td><a href="${s3ArtifactURL}/Android/Mobile/SPA/${appName}_${mainBuildNumber}.war">${appName}_${mainBuildNumber}.war</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${androidTabletNative}">
-                                <tr>
-                                    <td>Android Tablet Native</td>
-                                    <td><a href="${s3ArtifactURL}/Android/Tablet/Native/${appName}_${mainBuildNumber}.apk">${appName}_${mainBuildNumber}.apk</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${androidTabletSPA}">
-                                <tr>
-                                    <td>Android Tablet SPA</td>
-                                    <td><a href="${s3ArtifactURL}/Android/Tablet/SPA/${appName}_${mainBuildNumber}.war">${appName}_${mainBuildNumber}.war</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${appleWatchNative}">
-                                <tr>
-                                    <td>Apple Watch</td>
-                                    <td><a href="${s3ArtifactURL}/Apple/Watch/Native/${appName}_${mainBuildNumber}.plist">${appName}_${mainBuildNumber}.plist</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${appleMobileNative}">
-                                <tr>
-                                    <td>Apple Mobile Native</td>
-                                    <td><a href="${s3ArtifactURL}/Apple/Mobile/Native/${appName}_${mainBuildNumber}.plist">${appName}_${mainBuildNumber}.plist</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${appleMobileSPA}">
-                                <tr>
-                                    <td>Apple Mobile SPA</td>
-                                    <td><a href="${s3ArtifactURL}/Apple/Mobile/SPA/${appName}_${mainBuildNumber}.war">${appName}_${mainBuildNumber}.war</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${appleTabletNative}">
-                                <tr>
-                                    <td>Apple Tablet Native</td>
-                                    <td><a href="${s3ArtifactURL}/Apple/Tablet/Native/${appName}_${mainBuildNumber}.plist">${appName}_${mainBuildNumber}.plist</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${appleTabletSPA}">
-                                <tr>
-                                    <td>Apple Tablet SPA</td>
-                                    <td><a href="${s3ArtifactURL}/Apple/Tablet/SPA/${appName}_${mainBuildNumber}.war">${appName}_${mainBuildNumber}.war</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsMobileWindowsPhone8}">
-                                <tr>
-                                    <td>Windows Mobile WindowsPhone 8</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Mobile/WindowsPhone8/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Windows Mobile WindowsPhone 8 ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Mobile/WindowsPhone8/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsMobileWindowsPhone81S}">
-                                <tr>
-                                    <td>Windows Mobile WindowsPhone 8.1</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Mobile/WindowsPhone81S/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Windows Mobile WindowsPhone 8.1 ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Mobile/WindowsPhone81S/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsMobileWindowsPhone10}">
-                                <tr>
-                                    <td>Windows Mobile WindowsPhone 10</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Mobile/WindowsPhone10/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Windows Mobile WindowsPhone 10 ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Mobile/WindowsPhone10/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsMobileSPA}">
-                                <tr>
-                                    <td>Windows Mobile SPA</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Mobile/SPA/${appName}_${mainBuildNumber}.war">${appName}_${mainBuildNumber}.war</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsTabletWindows81}">
-                                <tr>
-                                    <td>Windows Tablet Windows 8.1</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows81/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.appx</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsTabletWindows10}">
-                                <tr>
-                                    <td>Windows Tablet Windows 10</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows10/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.appx</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Windows Tablet Windows 10 ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/Windows10/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.appx</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsTabletSPA}">
-                                <tr>
-                                    <td>Windows Tablet SPA</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Tablet/SPA/${appName}_${mainBuildNumber}.war">${appName}_${mainBuildNumber}.war</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsDesktopKiosk}">
-                                <tr>
-                                    <td>Windows Desktop Kiosk</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Desktop/Kiosk/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Windows Desktop Kiosk ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Desktop/Kiosk/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                            </j:if>
-                            <j:if test="${windowsDesktopWeb}">
-                                <tr>
-                                    <td>Windows Desktop Web</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Desktop/Web/${appName}_${mainBuildNumber}.xap">${appName}_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Windows Desktop Web ARM</td>
-                                    <td><a href="${s3ArtifactURL}/Windows/Desktop/Web/${appName}_ARM_${mainBuildNumber}.xap">${appName}_ARM_${mainBuildNumber}.xap</a></td>
-                                </tr>
-                            </j:if>
-                            </tbody>
-                          </table>
+                            <table style="width:100%; text-align:left" class="text-color table-border">
+                                <thead>
+                                    <tr>
+                                        <th>Installer</th>
+                                        <th>URL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <j:forEach var="artifact" items="${artifacts}">
+                                    <tr>
+                                        <j:set var="channel" value="${artifact.split(':')}"/>
+                                        <td>${channel[0].replaceAll('/', ' ')}</td>
+                                        <j:if test="${channel[1]!='-'}">
+                                        <td><a href="${s3ArtifactURL}/${channel[0]}/${channel[1]}">${channel[1]}</a></td>
+                                        </j:if>
+                                        <j:if test="${channel[1]=='-'}">
+                                        <td>${channel[1]}</td>
+                                        </j:if>
+                                    </tr>
+                                </j:forEach>
+                                </tbody>
+                            </table>
                         </td>
                     </tr>
                     </j:if>

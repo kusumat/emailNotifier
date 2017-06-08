@@ -31,6 +31,13 @@ class WindowsChannel extends Channel {
                         def foundArtifacts = getArtifacts(artifactExtension)
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
+                        /* Create a list with artifact names */
+                        def channelArtifacts = ''
+                        def channelPath = getChannelPath(channelName)
+                        for (artifact in artifacts) {
+                            channelArtifacts += "${channelPath}:${artifact.name},"
+                        }
+                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts
                     }
 
                     script.stage("Publish artifacts to S3") {

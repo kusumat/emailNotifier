@@ -10,6 +10,8 @@ class Facade implements Serializable {
     private s3BucketRegion
     private projectName
     private triggeredBy
+    private artifacts = ''
+    private isChannelFailed = []
 
     Facade(script) {
         this.script = script
@@ -65,10 +67,8 @@ class Facade implements Serializable {
         def parameters = [
                 script.stringParam(name: 'GIT_BRANCH', description: 'Project Git Branch', value: "${script.params.GIT_BRANCH}"),
                 [$class: 'CredentialsParameterValue', description: 'GitHub.com Credentials', name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"],
-                script.stringParam(name: 'MAIN_BUILD_NUMBER', description: 'Build Number for artifact', value: "${script.params.MAIN_BUILD_NUMBER}"),
                 script.stringParam(name: 'BUILD_MODE', description: 'Build mode (debug or release)', value: "${script.params.BUILD_MODE}"),
                 script.stringParam(name: 'ENVIRONMENT', description: 'Define target environment', value: "${environment}"),
-                script.stringParam(name: 'VIS_VERSION', description: 'Kony Visualizer version', value: "${script.params.VIS_VERSION}"),
                 [$class: 'CredentialsParameterValue', name: 'CLOUD_CREDENTIALS_ID', description: 'Cloud Mode credentials (Applicable only for cloud)', value: "${script.params.CLOUD_CREDENTIALS_ID}"]
         ]
 
@@ -131,7 +131,15 @@ class Facade implements Serializable {
                 runList[channel] = {
                     script.stage(channel) {
                         /* Trigger channel job */
-                        script.build job: "${environment}/${channelPath}", parameters: jobParameters
+                        def channelJob = script.build job: "${environment}/${channelPath}", parameters: jobParameters, propagate: false
+                        /* Collect job statuses */
+                        isChannelFailed.add(channelJob.currentResult)
+                        if (channelJob.currentResult != 'SUCCESS') {
+                            artifacts += "${channelPath}:-,"
+                            script.echo "Status of the channel ${channel} build is: ${channelJob.currentResult}"
+                        } else {
+                            artifacts += channelJob.buildVariables.CHANNEL_ARTIFACTS
+                        }
                     }
                 }
             }
@@ -153,11 +161,17 @@ class Facade implements Serializable {
         script.node(nodeLabel) {
             try {
                 script.parallel(runList)
+                script.env['CHANNEL_ARTIFACTS'] = artifacts
+                if (isChannelFailed.contains('FAILURE') || isChannelFailed.contains('UNSTABLE')) {
+                    script.currentBuild.result = 'UNSTABLE'
+                } else {
+                    script.currentBuild.result = 'SUCCESS'
+                }
             } catch (Exception e) {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                if (script.currentBuild.result != 'FAILURE' && channelsToRun) {
+                if (channelsToRun) {
                     script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'KonyAppFactoryTeam@softserveinc.com')
                 }
             }
