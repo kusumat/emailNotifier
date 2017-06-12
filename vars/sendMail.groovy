@@ -7,10 +7,12 @@ def call(resourceBasePath, templateName, recipients) {
 
     /* Load email template */
     String emailTemplate = loadLibraryResource(resourceBasePath + emailTemplateFolder + emailTemplateName)
+    
+    catchError {
+        /* Store template to the current workspace */
+        writeFile file: emailTemplateName, text: emailTemplate
+        /* Sending email */
+        emailext body: emailBody, subject: emailSubject, to: emailRecipientsList
+    }
 
-    /* Store template to the current workspace */
-    writeFile file: emailTemplateName, text: emailTemplate
-
-    /* Sending email */
-    emailext body: emailBody, subject: emailSubject, to: emailRecipientsList
 }
