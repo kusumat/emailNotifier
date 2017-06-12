@@ -11,7 +11,7 @@ class Facade implements Serializable {
     private projectName
     private triggeredBy
     private artifacts = ''
-    private isChannelFailed = []
+    private isStageFailed = []
 
     Facade(script) {
         this.script = script
@@ -133,7 +133,7 @@ class Facade implements Serializable {
                         /* Trigger channel job */
                         def channelJob = script.build job: "${environment}/${channelPath}", parameters: jobParameters, propagate: false
                         /* Collect job statuses */
-                        isChannelFailed.add(channelJob.currentResult)
+                        isStageFailed.add(channelJob.currentResult)
                         if (channelJob.currentResult != 'SUCCESS') {
                             artifacts += "${channelPath}:-,"
                             script.echo "Status of the channel ${channel} build is: ${channelJob.currentResult}"
@@ -148,7 +148,9 @@ class Facade implements Serializable {
         if (script.params.TEST_AUTOMATION) {
             runList['TEST_AUTOMATION'] = {
                 script.stage('TEST_AUTOMATION') {
-                    script.build job: "${environment}/Test_Automation", parameters: getTestAutomationJobParameters()
+                    def testAutomationJob = script.build job: "${environment}/Test_Automation", parameters: getTestAutomationJobParameters(), propagate: false
+                    isStageFailed.add(testAutomationJob.currentResult)
+                    script.echo "Status of the channel TEST_AUTOMATION build is: ${testAutomationJob.currentResult}"
                 }
             }
         }
@@ -162,7 +164,7 @@ class Facade implements Serializable {
             try {
                 script.parallel(runList)
                 script.env['CHANNEL_ARTIFACTS'] = artifacts
-                if (isChannelFailed.contains('FAILURE') || isChannelFailed.contains('UNSTABLE')) {
+                if (isStageFailed.contains('FAILURE') || isStageFailed.contains('UNSTABLE')) {
                     script.currentBuild.result = 'UNSTABLE'
                 } else {
                     script.currentBuild.result = 'SUCCESS'
