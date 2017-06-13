@@ -190,20 +190,23 @@ class AppleChannel extends Channel {
                         createPlist()
                         /* Get plist artifact */
                         artifacts.add([name: plistFileName, path: "${karFile.path}"])
-                        /* Create a list with artifact names */
-                        def channelArtifacts = ''
-                        def channelPath = getChannelPath(channelName)
-                        for (artifact in artifacts) {
-                            /* Exclude ipa from artifacts list */
-                            if (!artifact.name.contains('ipa')) {
-                                channelArtifacts += "${channelPath}:${artifact.name},"
-                            }
-                        }
-                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts
                     }
                 }
 
                 script.stage("Publish artifact to S3") {
+                    /* Create a list with artifact names */
+                    def channelArtifacts = ''
+                    def channelPath = getChannelPath(channelName)
+
+                    for (artifact in artifacts) {
+                        /* Exclude ipa from artifacts list */
+                        if (!artifact.name.contains('ipa')) {
+                            channelArtifacts += "${channelPath}:${artifact.name},"
+                        }
+                    }
+
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts
+
                     for (artifact in artifacts) {
                         publishToS3 artifactName: artifact.name, artifactPath: artifact.path
                     }

@@ -11,7 +11,7 @@ class Facade implements Serializable {
     private projectName
     private triggeredBy
     private artifacts = ''
-    private isStageFailed = []
+    private jobResultList = []
 
     Facade(script) {
         this.script = script
@@ -132,8 +132,8 @@ class Facade implements Serializable {
                     script.stage(channel) {
                         /* Trigger channel job */
                         def channelJob = script.build job: "${environment}/${channelPath}", parameters: jobParameters, propagate: false
-                        /* Collect job statuses */
-                        isStageFailed.add(channelJob.currentResult)
+                        /* Collect job results */
+                        jobResultList.add(channelJob.currentResult)
                         if (channelJob.currentResult != 'SUCCESS') {
                             artifacts += "${channelPath}:-,"
                             script.echo "Status of the channel ${channel} build is: ${channelJob.currentResult}"
@@ -149,7 +149,7 @@ class Facade implements Serializable {
             runList['TEST_AUTOMATION'] = {
                 script.stage('TEST_AUTOMATION') {
                     def testAutomationJob = script.build job: "${environment}/Test_Automation", parameters: getTestAutomationJobParameters(), propagate: false
-                    isStageFailed.add(testAutomationJob.currentResult)
+                    jobResultList.add(testAutomationJob.currentResult)
                     script.echo "Status of the channel TEST_AUTOMATION build is: ${testAutomationJob.currentResult}"
                 }
             }
@@ -164,7 +164,7 @@ class Facade implements Serializable {
             try {
                 script.parallel(runList)
                 script.env['CHANNEL_ARTIFACTS'] = artifacts
-                if (isStageFailed.contains('FAILURE') || isStageFailed.contains('UNSTABLE')) {
+                if (jobResultList.contains('FAILURE') || jobResultList.contains('UNSTABLE')) {
                     script.currentBuild.result = 'UNSTABLE'
                 } else {
                     script.currentBuild.result = 'SUCCESS'
