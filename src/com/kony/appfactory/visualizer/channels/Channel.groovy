@@ -14,6 +14,7 @@ abstract class Channel implements Serializable {
     protected String s3BucketName = script.env.S3_BUCKET_NAME
     protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
+    protected String recipientList
 
     /* Required for triggering emails */
     protected buildCause
@@ -32,6 +33,7 @@ abstract class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
+        recipientList = this.script.env.RECIPIENT_LIST
         /* Workaround to build only specific channel */
         channelName = (this.script.env.JOB_NAME - 'Visualizer/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
         this.script.env[channelName] = true

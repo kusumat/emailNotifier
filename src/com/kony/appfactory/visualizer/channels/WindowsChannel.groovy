@@ -50,7 +50,7 @@ class WindowsChannel extends Channel {
                     script.currentBuild.result = 'FAILURE'
                 } finally {
                     if (buildCause == 'user' || script.currentBuild.result == 'FAILURE') {
-                        script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'KonyAppFactoryTeam@softserveinc.com')
+                        script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', recipientList)
                     }
                 }
             }

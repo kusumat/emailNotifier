@@ -10,6 +10,7 @@ class TestAutomation implements Serializable {
     private String gitURL = script.env.PROJECT_GIT_URL
     private String gitBranch = script.params.GIT_BRANCH
     private String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
+    private String recipientList = script.env.RECIPIENT_LIST
 
     TestAutomation(script) {
         this.script = script
@@ -86,7 +87,7 @@ class TestAutomation implements Serializable {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                script.sendMail('com/kony/appfactory/visualizer/', 'Kony_Test_Automation_Build.jelly', 'KonyAppFactoryTeam@softserveinc.com')
+                script.sendMail('com/kony/appfactory/visualizer/', 'Kony_Test_Automation_Build.jelly', recipientList)
             }
         }
     }

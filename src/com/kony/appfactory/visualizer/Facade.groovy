@@ -12,10 +12,12 @@ class Facade implements Serializable {
     private triggeredBy
     private artifacts = ''
     private jobResultList = []
+    private recipientList
 
     Facade(script) {
         this.script = script
         projectName = this.script.env.PROJECT_NAME
+        recipientList = this.script.env.RECIPIENT_LIST
         environment = this.script.env.ENVIRONMENT
         s3BucketRegion = this.script.env.S3_BUCKET_REGION
         s3BucketName = this.script.env.S3_BUCKET_NAME
@@ -174,7 +176,7 @@ class Facade implements Serializable {
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 if (channelsToRun) {
-                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', 'KonyAppFactoryTeam@softserveinc.com')
+                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', recipientList)
                 }
             }
         }
