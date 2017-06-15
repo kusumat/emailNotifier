@@ -118,18 +118,21 @@ class AppleChannel extends Channel {
                         usernameVariable: 'MATCH_USERNAME'
                 )
         ]) {
-            script.withEnv([
-                    "FASTLANE_DONT_STORE_PASSWORD=true",
-                    "MATCH_APP_IDENTIFIER=${bundleID}",
-                    "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${(script.env.MATCH_GIT_URL - 'https://')}",
-                    "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
-                    "GYM_OUTPUT_DIRECTORY=${karFile.path}",
-                    "GYM_OUTPUT_NAME=${projectName}",
-                    "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
-                    "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
-                    "MATCH_TYPE=${matchType}"
-            ]) {
-                closure()
+            /* Wrap step been used to mask MATCH_GIT_TOKEN variable in console output */
+            script.wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: "${script.env.MATCH_GIT_TOKEN}", var: 'MATCH_GIT_TOKEN']]]) {
+                script.withEnv([
+                        "FASTLANE_DONT_STORE_PASSWORD=true",
+                        "MATCH_APP_IDENTIFIER=${bundleID}",
+                        "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${script.env.MATCH_GIT_URL.minus('https://')}",
+                        "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
+                        "GYM_OUTPUT_DIRECTORY=${karFile.path}",
+                        "GYM_OUTPUT_NAME=${projectName}",
+                        "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
+                        "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
+                        "MATCH_TYPE=${matchType}"
+                ]) {
+                    closure()
+                }
             }
         }
     }
