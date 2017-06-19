@@ -18,7 +18,7 @@ class Facade implements Serializable {
         this.script = script
         projectName = this.script.env.PROJECT_NAME
         recipientList = this.script.env.RECIPIENT_LIST
-        environment = this.script.env.ENVIRONMENT
+        environment = this.script.params.ENVIRONMENT
         s3BucketRegion = this.script.env.S3_BUCKET_REGION
         s3BucketName = this.script.env.S3_BUCKET_NAME
         setS3ArtifactURL()
@@ -133,7 +133,7 @@ class Facade implements Serializable {
                 runList[channel] = {
                     script.stage(channel) {
                         /* Trigger channel job */
-                        def channelJob = script.build job: "${environment}/${channelPath}", parameters: jobParameters, propagate: false
+                        def channelJob = script.build job: "${channelPath}", parameters: jobParameters, propagate: false
                         /* Collect job results */
                         jobResultList.add(channelJob.currentResult)
                         if (channelJob.currentResult != 'SUCCESS') {
@@ -150,13 +150,20 @@ class Facade implements Serializable {
         if (script.params.TEST_AUTOMATION) {
             runList['TEST_AUTOMATION'] = {
                 script.stage('TEST_AUTOMATION') {
-                    def testAutomationJob = script.build job: "${environment}/Test_Automation", parameters: getTestAutomationJobParameters(), propagate: false
+                    def testAutomationJob = script.build job: "Test_Automation", parameters: getTestAutomationJobParameters(), propagate: false
                     jobResultList.add(testAutomationJob.currentResult)
                     script.echo "Status of the channel TEST_AUTOMATION build is: ${testAutomationJob.currentResult}"
                 }
             }
         }
 
+    }
+
+    protected setBuildDescription() {
+        script.currentBuild.description = """\
+            <p>Environment: ${environment}</p>
+            <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link"><img src="/static/b33030df/images/24x24/clock.png" style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;" class="icon-clock icon-md"></a></p>
+        """.stripIndent()
     }
 
     protected final void run() {
@@ -166,7 +173,8 @@ class Facade implements Serializable {
             try {
                 script.parallel(runList)
                 script.env['CHANNEL_ARTIFACTS'] = artifacts
-                if (jobResultList.contains('FAILURE') || jobResultList.contains('UNSTABLE')) {
+
+                if (jobResultList.contains('FAILURE') || jobResultList.contains('UNSTABLE') || jobResultList.contains('ABORTED')) {
                     script.currentBuild.result = 'UNSTABLE'
                 } else {
                     script.currentBuild.result = 'SUCCESS'
@@ -175,7 +183,8 @@ class Facade implements Serializable {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                if (channelsToRun) {
+                setBuildDescription()
+                if (channelsToRun && script.currentBuild.result != 'FAILURE') {
                     script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', recipientList)
                 }
             }
