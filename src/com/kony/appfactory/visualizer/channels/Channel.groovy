@@ -89,6 +89,47 @@ abstract class Channel implements Serializable {
         return "${s3BucketName}/${projectName}/${environment}/${channelPath}"
     }
 
+    protected final getSCMConfiguration() {
+        def scm
+        def projectInSubfolder = (script.env.PROJECT_IN_SUBFOLDER?.trim()) ?: 'false'
+        def checkoutSubfolder = (projectInSubfolder == 'true') ? '.' : projectName
+
+        switch (gitURL) {
+            case ~/^.*svn.*$/:
+                scm = [$class                : 'SubversionSCM',
+                       additionalCredentials : [],
+                       excludedCommitMessages: '',
+                       excludedRegions       : '',
+                       excludedRevprop       : '',
+                       excludedUsers         : '',
+                       filterChangelog       : false,
+                       ignoreDirPropChanges  : false,
+                       includedRegions       : '',
+                       locations             : [
+                               [credentialsId        : "${gitCredentialsID}",
+                                depthOption          : 'infinity',
+                                ignoreExternalsOption: true,
+                                local                : "${checkoutSubfolder}",
+                                remote               : "${gitURL}"]
+                       ],
+                       workspaceUpdater      : [$class: 'UpdateUpdater']]
+                break
+            default:
+                scm = [$class                           : 'GitSCM',
+                       branches                         : [[name: "*/${gitBranch}"]],
+                       doGenerateSubmoduleConfigurations: false,
+                       extensions                       : [[$class           : 'RelativeTargetDirectory',
+                                                            relativeTargetDir: "${checkoutSubfolder}"]],
+                       submoduleCfg                     : [],
+                       userRemoteConfigs                : [[credentialsId: "${gitCredentialsID}",
+                                                            url          : "${gitURL}"]]]
+                break
+
+        }
+
+        scm
+    }
+
     protected final void checkoutProject() {
         String successMessage = 'Project has been checkout successfully'
         String errorMessage = 'FAILED to checkout the project'
@@ -97,14 +138,7 @@ abstract class Channel implements Serializable {
             script.checkout(
                     changelog: false,
                     poll: false,
-                    scm: [$class                           : 'GitSCM',
-                          branches                         : [[name: "*/${gitBranch}"]],
-                          doGenerateSubmoduleConfigurations: false,
-                          extensions                       : [[$class           : 'RelativeTargetDirectory',
-                                                               relativeTargetDir: "${projectName}"]],
-                          submoduleCfg                     : [],
-                          userRemoteConfigs                : [[credentialsId: "${gitCredentialsID}",
-                                                               url          : "${gitURL}"]]]
+                    scm: getSCMConfiguration()
             )
         }
     }
