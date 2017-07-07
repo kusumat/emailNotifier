@@ -30,20 +30,20 @@
         <condition property="androidTabletSPA" value="${env.ANDROID_TABLET_SPA}" else="false">
             <isset property="env.ANDROID_TABLET_SPA" />
         </condition>
-        <condition property="appleWatchNative" value="${env.APPLE_WATCH_NATIVE}" else="false">
-            <isset property="env.APPLE_WATCH_NATIVE" />
+        <condition property="iosWatchNative" value="${env.IOS_WATCH_NATIVE}" else="false">
+            <isset property="env.IOS_WATCH_NATIVE" />
         </condition>
-        <condition property="appleMobileNative" value="${env.APPLE_MOBILE_NATIVE}" else="false">
-            <isset property="env.APPLE_MOBILE_NATIVE" />
+        <condition property="iosMobileNative" value="${env.IOS_MOBILE_NATIVE}" else="false">
+            <isset property="env.IOS_MOBILE_NATIVE" />
         </condition>
-        <condition property="appleMobileSPA" value="${env.APPLE_MOBILE_SPA}" else="false">
-            <isset property="env.APPLE_MOBILE_SPA" />
+        <condition property="iosMobileSPA" value="${env.IOS_MOBILE_SPA}" else="false">
+            <isset property="env.IOS_MOBILE_SPA" />
         </condition>
-        <condition property="appleTabletNative" value="${env.APPLE_TABLET_NATIVE}" else="false">
-            <isset property="env.APPLE_TABLET_NATIVE" />
+        <condition property="iosTabletNative" value="${env.IOS_TABLET_NATIVE}" else="false">
+            <isset property="env.IOS_TABLET_NATIVE" />
         </condition>
-        <condition property="appleTabletSPA" value="${env.APPLE_TABLET_SPA}" else="false">
-            <isset property="env.APPLE_TABLET_SPA" />
+        <condition property="iosTabletSPA" value="${env.IOS_TABLET_SPA}" else="false">
+            <isset property="env.IOS_TABLET_SPA" />
         </condition>
         <condition property="windowsMobileWindowsPhone8" value="${env.WINDOWS_MOBILE_WINDOWSPHONE8}" else="false">
             <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE8" />
@@ -112,26 +112,26 @@
             <entry key="environment.name" value="SoftServe-App Factory Dev"/>
             <entry key="account.id" value=""/>
             <entry key="mf.appname" value=""/>
-            <entry key="iphone" value="${appleMobileNative}"/>
+            <entry key="iphone" value="${iosMobileNative}"/>
             <entry key="android" value="${androidMobileNative}"/>
             <entry key="windowsphone8" value="${windowsMobileWindowsPhone8}"/>
             <entry key="windowsphone81s" value="${windowsMobileWindowsPhone81S}"/>
             <entry key="windowsphone10" value="${windowsMobileWindowsPhone10}"/>
-            <entry key="spa.iphone" value="${appleMobileSPA}"/>
+            <entry key="spa.iphone" value="${iosMobileSPA}"/>
             <entry key="spa.android" value="${androidMobileSPA}"/>
             <entry key="spa.blackberry" value="${blackberryMobileSPA}"/>
             <entry key="spa.winphone" value="${windowsMobileSPA}"/>
             <entry key="spa.hybrid.blackberry" value="${blackberryMobileHybridSPA}"/>
-            <entry key="ipad" value="${appleTabletNative}"/>
+            <entry key="ipad" value="${iosTabletNative}"/>
             <entry key="androidtablet" value="${androidTabletNative}"/>
             <entry key="windows8.1" value="${windowsTabletWindows81}"/>
             <entry key="windows10" value="${windowsTabletWindows10}"/>
-            <entry key="spa.ipad" value="${appleTabletSPA}"/>
+            <entry key="spa.ipad" value="${iosTabletSPA}"/>
             <entry key="spa.androidtablet" value="${androidTabletSPA}"/>
             <entry key="spa.windowstablet" value="${windowsTabletSPA}"/>
             <entry key="desktop_kiosk" value="${windowsDesktopKiosk}"/>
             <entry key="desktopweb" value="${windowsDesktopKiosk}"/>
-            <entry key="iphonewatch" value="${appleWatchNative}"/>
+            <entry key="iphonewatch" value="${iosWatchNative}"/>
             <entry key="mac.ipaddress" value=""/>
             <entry key="mac.username" value=""/>
             <entry key="mac.password" value=""/>

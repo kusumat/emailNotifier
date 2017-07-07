@@ -11,11 +11,11 @@ final class ChannelFactory implements Serializable {
         def result
 
         switch (channelName) {
-            case 'APPLE_MOBILE_NATIVE':
-            case 'APPLE_MOBILE_SPA':
-            case 'APPLE_TABLET_NATIVE':
-            case 'APPLE_TABLET_SPA':
-                result = new AppleChannel(script)
+            case 'IOS_MOBILE_NATIVE':
+            case 'IOS_MOBILE_SPA':
+            case 'IOS_TABLET_NATIVE':
+            case 'IOS_TABLET_SPA':
+                result = new IOSChannel(script)
                 break
             case 'ANDROID_MOBILE_NATIVE':
             case 'ANDROID_MOBILE_SPA':

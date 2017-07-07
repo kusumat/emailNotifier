@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
-class AppleChannel extends Channel {
+class IOSChannel extends Channel {
     private bundleID
     private karFile = [:]
     private plistFileName
@@ -9,7 +9,7 @@ class AppleChannel extends Channel {
     private String matchType = script.params.APPLE_DEVELOPER_PROFILE_TYPE
     private String appleID = script.params.APPLE_ID
 
-    AppleChannel(script) {
+    IOSChannel(script) {
         super(script)
         nodeLabel = 'mac'
         plistFileName = "${projectName}_${jobBuildNumber}.plist"

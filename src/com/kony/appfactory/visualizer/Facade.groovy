@@ -80,7 +80,7 @@ class Facade implements Serializable {
                     [$class: 'CredentialsParameterValue', name: 'KS_PASSWORD', description: 'The password for the KeyStore', value: "${script.params.KS_PASSWORD}"],
                     [$class: 'CredentialsParameterValue', name: 'PRIVATE_KEY_PASSWORD', description: 'The password for the private key', value: "${script.params.PRIVATE_KEY_PASSWORD}"]
             ]
-        } else if (channel.startsWith('APPLE')) {
+        } else if (channel.startsWith('IOS')) {
             parameters = parameters + [
                     [$class: 'CredentialsParameterValue', name: 'APPLE_ID', description: 'Apple ID credentials',  value: "${script.params.APPLE_ID}"],
                     script.stringParam(name: 'APPLE_DEVELOPER_PROFILE_TYPE', description: 'Define the signing profile type', value: "${script.params.APPLE_DEVELOPER_PROFILE_TYPE}")
@@ -108,6 +108,8 @@ class Facade implements Serializable {
             /* Workaround for SPA jobs */
             } else if (item.contains('SPA')) {
                 item
+            } else if (item.contains('IOS')) {
+                'iOS'
             } else {
                 item.toLowerCase().capitalize()
             }

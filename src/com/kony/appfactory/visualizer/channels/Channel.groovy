@@ -59,7 +59,7 @@ abstract class Channel implements Serializable {
             case ~/^.*WINDOWS.*$/:
                 result = 'xap'
                 break
-            case ~/^.*APPLE.*$/:
+            case ~/^.*IOS.*$/:
                 result = 'ipa'
                 break
             case ~/^.*ANDROID.*$/:
@@ -82,6 +82,8 @@ abstract class Channel implements Serializable {
                 /* Workaround for SPA jobs */
             } else if (item.contains('SPA')) {
                 item
+            } else if (item.contains('IOS')) {
+                    'iOS'
             } else {
                 item.toLowerCase().capitalize()
             }
@@ -124,7 +126,6 @@ abstract class Channel implements Serializable {
                        userRemoteConfigs                : [[credentialsId: "${gitCredentialsID}",
                                                             url          : "${gitURL}"]]]
                 break
-
         }
 
         scm
