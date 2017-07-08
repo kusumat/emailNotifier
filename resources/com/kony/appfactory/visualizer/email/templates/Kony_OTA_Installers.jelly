@@ -235,7 +235,7 @@
                                         <td><a href="${s3ArtifactURL}/${channel[0]}/${channel[1]}">${channel[1]}</a></td>
                                         </j:if>
                                         <j:if test="${channel[1]=='-'}">
-                                        <td>${channel[1]}</td>
+                                        <td>Build failed</td>
                                         </j:if>
                                     </tr>
                                 </j:forEach>

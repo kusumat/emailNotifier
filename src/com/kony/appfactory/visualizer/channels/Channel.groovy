@@ -296,6 +296,8 @@ abstract class Channel implements Serializable {
                 /* Workaround for SPA jobs */
             } else if (item.contains('SPA')) {
                 item
+            } else if (item.contains('IOS')) {
+                'iOS'
             } else {
                 item.toLowerCase().capitalize()
             }
