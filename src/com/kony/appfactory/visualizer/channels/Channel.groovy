@@ -18,7 +18,6 @@ abstract class Channel implements Serializable {
 
     /* Required for triggering emails */
     protected buildCause
-    protected triggeredBy = ''
 
     /* Common build parameters */
     protected String projectName = script.env.PROJECT_NAME
@@ -42,7 +41,6 @@ abstract class Channel implements Serializable {
         setS3ArtifactURL()
         /* Get build cause for e-mail notification */
         getBuildCause()
-        this.script.env['TRIGGERED_BY'] = "${triggeredBy}"
     }
 
     @NonCPS
@@ -214,16 +212,17 @@ abstract class Channel implements Serializable {
     protected final void getBuildCause() {
         def causes = []
         def buildCauses = script.currentBuild.rawBuild.getCauses()
+        def userIdCause = script.currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)
+        def triggeredBy = (userIdCause) ? userIdCause.getUserName() : ''
 
         for (cause in buildCauses) {
             if (cause instanceof hudson.model.Cause$UpstreamCause) {
                 causes.add('upstream')
-                triggeredBy = cause.getUpstreamRun().getCause(hudson.model.Cause.UserIdCause).getUserName()
             } else if (cause instanceof hudson.model.Cause$RemoteCause) {
                 causes.add('remote')
+                triggeredBy = 'SCM'
             } else if (cause instanceof hudson.model.Cause$UserIdCause) {
                 causes.add('user')
-                triggeredBy = cause.getUserName()
             } else {
                 causes.add('unknown')
             }
@@ -234,6 +233,8 @@ abstract class Channel implements Serializable {
         } else if (causes.contains('user')) {
             buildCause = 'user'
         }
+
+        script.env['TRIGGERED_BY'] = "${triggeredBy}"
     }
 
     @NonCPS
