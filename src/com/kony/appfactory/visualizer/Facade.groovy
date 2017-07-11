@@ -152,7 +152,7 @@ class Facade implements Serializable {
         if (script.params.TEST_AUTOMATION) {
             runList['TEST_AUTOMATION'] = {
                 script.stage('TEST_AUTOMATION') {
-                    def testAutomationJob = script.build job: "Test_Automation", parameters: getTestAutomationJobParameters(), propagate: false
+                    def testAutomationJob = script.build job: "TestAutomation", parameters: getTestAutomationJobParameters(), propagate: false
                     jobResultList.add(testAutomationJob.currentResult)
                     script.echo "Status of the channel TEST_AUTOMATION build is: ${testAutomationJob.currentResult}"
                 }
