@@ -9,7 +9,6 @@ class Facade implements Serializable {
     private s3BucketName
     private s3BucketRegion
     private projectName
-    private triggeredBy
     private artifacts = ''
     private jobResultList = []
     private recipientList
@@ -23,28 +22,49 @@ class Facade implements Serializable {
         s3BucketName = this.script.env.S3_BUCKET_NAME
         setS3ArtifactURL()
         /* Get build cause for e-mail notification */
-        getBuildCause()
-        this.script.env['TRIGGERED_BY'] = "${triggeredBy}"
+        this.script.env['TRIGGERED_BY'] = getBuildCause()
     }
 
     @NonCPS
-    private final void getBuildCause() {
-        def causes = []
-        def buildCauses = script.currentBuild.rawBuild.getCauses()
+    private final getRootCause(cause) {
+        def causedBy = null
 
-        for (cause in buildCauses) {
-            if (cause instanceof hudson.model.Cause$UpstreamCause) {
-                causes.add('upstream')
-                triggeredBy = cause.getUpstreamRun().getCause(hudson.model.Cause.UserIdCause).getUserName()
-            } else if (cause instanceof hudson.model.Cause$RemoteCause) {
-                causes.add('remote')
-            } else if (cause instanceof hudson.model.Cause$UserIdCause) {
-                causes.add('user')
-                triggeredBy = cause.getUserName()
-            } else {
-                causes.add('unknown')
+        if (cause.class.toString().contains('UpstreamCause')) {
+            for (upCause in cause.upstreamCauses) {
+                causedBy = getRootCause(upCause)
+            }
+        } else {
+            switch (cause.class.toString()) {
+                case ~/^.*UserIdCause.*$/:
+                    causedBy = cause.getUserName()
+                    break
+                case ~/^.*SCMTriggerCause.*$/:
+                    causedBy = 'SCM'
+                    break
+                case ~/^.*TimerTriggerCause.*$/:
+                    causedBy = 'CRON'
+                    break
+                case ~/^.*GitHubPushCause.*$/:
+                    causedBy = 'GitHub hook'
+                    break
+                default:
+                    break
             }
         }
+
+        causedBy
+    }
+
+    @NonCPS
+    private final getBuildCause() {
+        def buildCauses = script.currentBuild.rawBuild.getCauses()
+        def causedBy
+
+        for (cause in buildCauses) {
+            causedBy = getRootCause(cause)
+        }
+
+        causedBy
     }
 
     @NonCPS
