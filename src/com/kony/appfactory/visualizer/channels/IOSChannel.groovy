@@ -124,7 +124,7 @@ class IOSChannel extends Channel {
                         "FASTLANE_DONT_STORE_PASSWORD=true",
                         "MATCH_APP_IDENTIFIER=${bundleID}",
                         "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${script.env.MATCH_GIT_URL.minus('https://')}",
-                        "MATCH_GIT_BRANCH=${MATCH_USERNAME}",
+                        "MATCH_GIT_BRANCH=${script.env.MATCH_USERNAME}",
                         "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                         "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                         "GYM_OUTPUT_NAME=${projectName}",
