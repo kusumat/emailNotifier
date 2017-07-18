@@ -7,7 +7,7 @@
 # All lines starting with a # are ignored when running `fastlane`
 
 # If you want to automatically update fastlane if a new version is available:
-update_fastlane
+#update_fastlane
 
 skip_docs
 
@@ -35,13 +35,13 @@ platform :ios do
     ENV['GYM_XCARGS'] = "DEVELOPMENT_TEAM=#{ENV["sigh_#{ENV['MATCH_APP_IDENTIFIER']}_#{ENV['MATCH_TYPE']}_team-id"]} PROVISIONING_PROFILE_SPECIFIER=#{ENV["sigh_#{ENV['MATCH_APP_IDENTIFIER']}_#{ENV['MATCH_TYPE']}"]}"
   end
 
-  desc "Wildcard build and sign (Release)"
-  lane :wildcard_build_release do
+  desc "Build and sign (Release)"
+  lane :release do
     gym(scheme: 'KRelease', clean:true, disable_xcpretty: true)
   end
 
-  desc "Wildcard build and sign (Debug)"
-  lane :wildcard_build_debug do
+  desc "Build and sign (Debug)"
+  lane :debug do
     gym(scheme: 'KDebug', clean:true, disable_xcpretty: true)
   end
 
