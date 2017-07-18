@@ -82,7 +82,7 @@ class IOSChannel extends Channel {
                         def fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
                         script.writeFile file: fastFileName, text: fastFileContent
                     }
-                    script.sh '$HOME/.fastlane/bin/fastlane ' + fastLaneBuildCommand
+                    script.sh '$HOME/.fastlane/bin/fastlane kony_ios_' + fastLaneBuildCommand
                 }
             }
         }
@@ -124,7 +124,7 @@ class IOSChannel extends Channel {
                         "FASTLANE_DONT_STORE_PASSWORD=true",
                         "MATCH_APP_IDENTIFIER=${bundleID}",
                         "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${script.env.MATCH_GIT_URL.minus('https://')}",
-                        "MATCH_GIT_BRANCH=${appleID}",
+                        "MATCH_GIT_BRANCH=${MATCH_USERNAME}",
                         "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                         "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                         "GYM_OUTPUT_NAME=${projectName}",

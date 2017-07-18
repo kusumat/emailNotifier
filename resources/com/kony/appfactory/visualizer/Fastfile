@@ -36,12 +36,12 @@ platform :ios do
   end
 
   desc "Build and sign (Release)"
-  lane :release do
+  lane :kony_ios_release do
     gym(scheme: 'KRelease', clean:true, disable_xcpretty: true)
   end
 
   desc "Build and sign (Debug)"
-  lane :debug do
+  lane :kony_ios_debug do
     gym(scheme: 'KDebug', clean:true, disable_xcpretty: true)
   end
 
