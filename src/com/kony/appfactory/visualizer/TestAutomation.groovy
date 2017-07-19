@@ -23,7 +23,7 @@ class TestAutomation implements Serializable {
     private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
-    private deviceFarmTestRunResults = [jobs:[]]
+    private deviceFarmTestRunResults = [runs:[]]
     private awsRegion = 'us-west-2'
     private projectArtifacts = [
             Android_Mobile: [binaryName: getBinaryName(script.env.ANDROID_MOBILE_NATIVE_BINARY_URL),
@@ -275,15 +275,12 @@ class TestAutomation implements Serializable {
                                     }
                                     for (test in suite.tests) {
                                         tr {
-                                            th(class: "table-value", style: "padding:10px;text-transform:none", 'Test Name: ' + test.name)
-                                            th(style: "padding:10px") {
-                                                mkp.yieldUnescaped('&nbsp;')
-                                            }
+                                            th(colspan: "2", class: "table-value", style: "padding:10px;text-transform:none", 'Test Name: ' + test.name)
                                             th(class: "table-value", style: "padding:10px;text-transform:none", test.result)
                                         }
                                         for (artifact in test.artifacts) {
                                             tr {
-                                                td artifact.name
+                                                td artifact.name + '.' + artifact.extension
                                                 td {
                                                     a (href: artifact.url, 'Download File')
                                                 }
@@ -313,6 +310,33 @@ class TestAutomation implements Serializable {
         template.toString()
     }
 
+    protected final void publishToS3(args) {
+        String successMessage = 'Artifact published successfully'
+        String errorMessage = 'FAILED to publish artifact'
+        String fileName = args.name
+        String bucketPath = args.path
+        String bucketRegion = args.region
+        String artifactFolder = args.folder
+
+        script.catchErrorCustom(successMessage, errorMessage) {
+            script.dir(artifactFolder) {
+                script.step([$class                              : 'S3BucketPublisher',
+                             consoleLogLevel                     : 'INFO',
+                             dontWaitForConcurrentBuildCompletion: false,
+                             entries                             : [
+                                     [bucket           : bucketPath,
+                                      flatten          : true,
+                                      keepForever      : true,
+                                      managedArtifacts : false,
+                                      noUploadOnFailure: true,
+                                      selectedRegion   : bucketRegion,
+                                      sourceFile       : fileName]
+                             ],
+                             pluginFailureResultConstraint       : 'FAILURE'])
+            }
+        }
+    }
+
     protected final void createWorkflow() {
         script.node(nodeLabel) {
             validateBuildParameters(script.params)
@@ -336,12 +360,12 @@ class TestAutomation implements Serializable {
                         build()
                     }
 
-                    script.stage('Archive artifacts') {
+                    script.stage('Publish test automation scripts build result to S3') {
                         script.dir(testFolder) {
                             if (script.fileExists("target/${projectName}_TestApp.zip")) {
-                                script.archiveArtifacts artifacts: "target/${projectName}_TestApp.zip", fingerprint: true
+                                publishToS3 name: "target/${projectName}_TestApp.zip", path: [script.env.S3_BUCKET_NAME, projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'), region: script.env.S3_BUCKET_REGION, folder: script.pwd()
                             } else {
-                                script.error 'FAILED to find artifacts'
+                                script.error 'FAILED to find build result artifact!'
                             }
                         }
                     }
@@ -435,7 +459,7 @@ class TestAutomation implements Serializable {
 
                             script.stage('Get Test Results') {
                                 def stepsToRun = [:]
-
+                                
                                 def deviceFarmTestRunArnsKeys = deviceFarmTestRunArns.keySet().toArray()
                                 // Workaround to iterate over map keys in c++ style for loop
                                 for (int i=0; i<deviceFarmTestRunArnsKeys.size(); ++i) {
@@ -448,7 +472,7 @@ class TestAutomation implements Serializable {
                                             /* Query DeviceFarm for test artifacts (logs, videos, etc) */
                                             def testRunArtifacts = deviceFarm.getTestRunArtifacts(arn)[0]
                                             /* Store test run artifact object in list */
-                                            deviceFarmTestRunResults['jobs'].add(testRunArtifacts)
+                                            deviceFarmTestRunResults['runs'].add(testRunArtifacts)
                                             /* Else notify user that result value is empty */
                                         } else {
                                             script.println "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
@@ -461,14 +485,27 @@ class TestAutomation implements Serializable {
                                     script.parallel(stepsToRun)
                                 }
 
-                                def testRunArtifactsHTML = createEmailTemplate(deviceFarmTestRunResults.jobs)
+                                def testResultObject
+                                script.dir('artifacts') {
+                                    testResultObject = deviceFarm.moveArtifactsToCustomerS3Bucket(deviceFarmTestRunResults.runs,
+                                            script.env.S3_BUCKET_NAME,
+                                            script.env.S3_BUCKET_REGION,
+                                            [projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'),
+                                            script.pwd()
+                                    )
+                                }
+
+                                def testRunArtifactsHTML = createEmailTemplate(testResultObject)
                                 def htmlTemplate = script.loadLibraryResource('com/kony/appfactory/visualizer/email/templates/Kony_Test_Automation_DeviceFarm.template')
+
                                 testResultsHTML = fulfillTemplate(testRunArtifactsHTML, htmlTemplate)
                                 testResultsJSON = JsonOutput.toJson(deviceFarmTestRunResults)
-                                script.writeFile text: testResultsHTML, file: 'testResultsHTML.html'
-                                script.writeFile text: testResultsJSON, file: 'testResultsJSON.json'
-                                script.archiveArtifacts artifacts: "testResultsHTML.html", fingerprint: true
-                                script.archiveArtifacts artifacts: "testResultsJSON.json", fingerprint: true
+
+                                script.writeFile text: testResultsHTML, file: 'testResults.html'
+                                script.writeFile text: testResultsJSON, file: 'testResults.json'
+
+                                publishToS3 name: 'testResults.html', path: [script.env.S3_BUCKET_NAME, projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'), region: script.env.S3_BUCKET_REGION, folder: script.pwd()
+                                publishToS3 name: 'testResults.json', path: [script.env.S3_BUCKET_NAME, projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'), region: script.env.S3_BUCKET_REGION, folder: script.pwd()
                             }
                         }
                     }

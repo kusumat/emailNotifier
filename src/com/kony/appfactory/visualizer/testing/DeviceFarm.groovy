@@ -28,7 +28,7 @@ class DeviceFarm implements Serializable {
         def errorMessage = 'FAILED to fetch artifact ' + artifactName
 
         script.catchErrorCustom(successMessage, errorMessage) {
-            script.sh "curl -s -f -L -o ${artifactName} ${artifactURL}"
+            script.sh "curl -k -s -f -L -o \'${artifactName}\' \'${artifactURL}\'"
         }
     }
 
@@ -357,7 +357,7 @@ class DeviceFarm implements Serializable {
                 queryParameters = [
                         queryScript: "aws devicefarm list-artifacts --arn ${arn} --no-paginate --type FILE",
                         queryProperty: 'artifacts',
-                        resultStructure: ['name', 'url']
+                        resultStructure: ['name', 'url', 'extension']
                 ]
                 break
             default:
@@ -415,6 +415,77 @@ class DeviceFarm implements Serializable {
         }
 
         resultStructure
+    }
+
+    /**
+     * Move test run artifacts to customer S3 bucket
+     *
+     * @param runResultArtifacts the Map with run result artifacts
+     * @param bucketName the S3 bucket name
+     * @param bucketRegion the S3 bucket region
+     * @param s3BasePath the base path in S3 bucket
+     * @param artifactFolder the path to artifact in workspace
+     */
+    protected final moveArtifactsToCustomerS3Bucket(runResultArtifacts, bucketName, bucketRegion, s3BasePath, artifactFolder) {
+        def successMessage = "Artifacts moved successfully"
+        def errorMessage = "FAILED to move artifacts"
+
+        script.catchErrorCustom(successMessage, errorMessage) {
+            for (runArtifact in runResultArtifacts) {
+                for (suite in runArtifact.suites) {
+                    for(test in suite.tests) {
+                        def resultPath = [bucketName, s3BasePath]
+                        resultPath.add(runArtifact.device.formFactor)
+                        resultPath.add(runArtifact.device.name +'_' + runArtifact.device.platform + '_' +
+                                runArtifact.device.os)
+                        resultPath.add(suite.name)
+                        resultPath.add(test.name)
+                        for (artifact in test.artifacts) {
+                            def s3path = resultPath.join('/').replaceAll("\\s", '_')
+                            def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll("\\s", '_')
+
+                            fetchArtifact(artifactFullName, artifact.url)
+                            publishToS3 path: s3path, name: artifactFullName, region: bucketRegion,
+                                    folder: artifactFolder
+                            artifact.url = getS3ArtifactURL(bucketRegion, s3path + '/' + artifactFullName)
+                        }
+                    }
+                }
+            }
+        }
+
+        runResultArtifacts
+    }
+
+    protected final void publishToS3(args) {
+        String successMessage = 'Artifact published successfully'
+        String errorMessage = 'FAILED to publish artifact'
+        String fileName = args.name
+        String bucketPath = args.path
+        String bucketRegion = args.region
+        String artifactFolder = args.folder
+
+        script.catchErrorCustom(successMessage, errorMessage) {
+            script.dir(artifactFolder) {
+                script.step([$class                              : 'S3BucketPublisher',
+                             consoleLogLevel                     : 'INFO',
+                             dontWaitForConcurrentBuildCompletion: false,
+                             entries                             : [
+                                     [bucket           : bucketPath,
+                                      flatten          : true,
+                                      keepForever      : true,
+                                      managedArtifacts : false,
+                                      noUploadOnFailure: true,
+                                      selectedRegion   : bucketRegion,
+                                      sourceFile       : fileName]
+                             ],
+                             pluginFailureResultConstraint       : 'FAILURE'])
+            }
+        }
+    }
+
+    private final getS3ArtifactURL(bucketRegion, artifactPath) {
+        return 'https://' + 's3-' + bucketRegion + '.amazonaws.com/' + artifactPath
     }
 
     /**
