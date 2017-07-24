@@ -28,7 +28,7 @@ platform :ios do
       end
     rescue => ex
     end
-    create_keychain(name: ENV["MATCH_KEYCHAIN_NAME"], password: ENV["MATCH_KEYCHAIN_PASSWORD"], unlock: true)
+    create_keychain(name: ENV["MATCH_KEYCHAIN_NAME"], password: ENV["MATCH_KEYCHAIN_PASSWORD"], unlock: true, timeout: false)
     automatic_code_signing(path: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"])
     update_info_plist(xcodeproj: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"], plist_path: 'Info.plist')
     match
