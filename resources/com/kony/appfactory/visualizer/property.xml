@@ -157,7 +157,7 @@
         <replace file="ivy.xml"> 
             <replacetoken><![CDATA[<plugins>]]></replacetoken>
             <replacevalue><![CDATA[<ivy-module version="2.0">
-<info organisation="com.kony" module="PoC"/>
+<info organisation="com.kony" module="AppFactory"/>
 <dependencies>]]></replacevalue>
         </replace>
         <replace file="ivy.xml" token="pluginInfo" value="dependency" />
