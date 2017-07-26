@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 class IOSChannel extends Channel {
     private bundleID
+    private pluginVersion
     private karFile = [:]
     private plistFileName
 
@@ -53,19 +54,19 @@ class IOSChannel extends Channel {
                 visualizerVersion + '/Kony_Visualizer_Enterprise/dropins'
 
         script.catchErrorCustom(successMessage, errorMessage) {
-            /* Get bundle identifier */
+            /* Get bundle identifier and iOS plugin version*/
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
+                pluginVersion = iosPluginVersion(script.readFile('konyplugins.xml'))
             }
 
             script.dir("${workspace}/KonyiOSWorkspace") {
-                if (script.fileExists('iOS-plugin/iOS-GA-*.zip')) {
-                    script.sh 'unzip iOS-GA-plugin/iOS-GA-*.zip'
-                } else {
-                    script.sh "cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip"
-                    script.sh 'unzip iOS-plugin.zip -d iOS-plugin'
-                    script.sh 'unzip iOS-plugin/iOS-GA-*.zip'
+                if (!script.fileExists("iOS-plugin/iOS-GA-${pluginVersion}.txt")) {
+                    script.sh "cp ${visualizerDropinsPath}/com.kony.ios_${pluginVersion}.jar iOS-plugin.zip"
+                    script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 }
+                def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
+                script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
 
             script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
@@ -138,9 +139,13 @@ class IOSChannel extends Channel {
         }
     }
 
-    @NonCPS
     private final bundleIdentifier(text) {
         def matcher = text =~ '<attributes name="iphonebundleidentifierkey" value="(.+)"/>'
+        return matcher ? matcher[0][1] : null
+    }
+
+    private final iosPluginVersion(text) {
+        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
         return matcher ? matcher[0][1] : null
     }
 
