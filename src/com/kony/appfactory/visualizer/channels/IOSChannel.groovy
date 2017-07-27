@@ -52,14 +52,15 @@ class IOSChannel extends Channel {
         String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
         String visualizerDropinsPath = '/Jenkins/KonyVisualizerEnterprise' +
                 visualizerVersion + '/Kony_Visualizer_Enterprise/dropins'
+        String codeSignIdentity = (matchType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
 
         script.catchErrorCustom(successMessage, errorMessage) {
-            /* Get bundle identifier and iOS plugin version*/
+            /* Get bundle identifier and iOS plugin version */
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
                 pluginVersion = iosPluginVersion(script.readFile('konyplugins.xml'))
             }
-
+            /* Extract Viz iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace") {
                 if (!script.fileExists("iOS-plugin/iOS-GA-${pluginVersion}.txt")) {
                     script.sh "cp ${visualizerDropinsPath}/com.kony.ios_${pluginVersion}.jar iOS-plugin.zip"
@@ -68,22 +69,43 @@ class IOSChannel extends Channel {
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
-
+            /* Extract neccesary files from KAR file to Viz iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
                 script.sh """
                     cp ${karFile.path}/${karFile.name} .
                     perl extract.pl ${karFile.name} sqd
                 """
             }
-
+            /* Build project and export IPA using Fastlane */
             script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib") {
-                fastLaneEnvWrapper() {
-                    script.dir('fastlane') {
-                        def fastFileName = 'Fastfile'
-                        def fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
-                        script.writeFile file: fastFileName, text: fastFileContent
+                script.withCredentials([
+                    script.usernamePassword(
+                        credentialsId: "${appleID}",
+                        passwordVariable: 'FASTLANE_PASSWORD',
+                        usernameVariable: 'MATCH_USERNAME'
+                    )
+                ]) {
+                    script.withEnv([
+                            "FASTLANE_DONT_STORE_PASSWORD=true",
+                            "MATCH_APP_IDENTIFIER=${bundleID}",
+                            "MATCH_GIT_URL=${script.env.MATCH_GIT_URL}",
+                            "MATCH_GIT_BRANCH=${script.env.MATCH_USERNAME}",
+                            "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
+                            "GYM_OUTPUT_DIRECTORY=${karFile.path}",
+                            "GYM_OUTPUT_NAME=${projectName}",
+                            "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
+                            "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
+                            "MATCH_TYPE=${matchType}"
+                    ]) {
+                        script.dir('fastlane') {
+                            def fastFileName = 'Fastfile'
+                            def fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
+                            script.writeFile file: fastFileName, text: fastFileContent
+                        }
+                        script.sshagent (credentials: ['jenkins_github_ssh-certificates']) {
+                            script.sh '$HOME/.fastlane/bin/fastlane kony_ios_' + fastLaneBuildCommand
+                        }
                     }
-                    script.sh '$HOME/.fastlane/bin/fastlane kony_ios_' + fastLaneBuildCommand
                 }
             }
         }
@@ -106,35 +128,6 @@ class IOSChannel extends Channel {
 
                 /* Write updated property list file to current working directory */
                 script.writeFile file: plistFileName, text: plistUpdated
-            }
-        }
-    }
-
-    private final void fastLaneEnvWrapper(closure) {
-        String codeSignIdentity = (matchType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
-
-        script.withCredentials([
-                script.usernamePassword(credentialsId: "${appleID}",
-                        passwordVariable: 'FASTLANE_PASSWORD',
-                        usernameVariable: 'MATCH_USERNAME'
-                )
-        ]) {
-            /* Wrap step been used to mask MATCH_GIT_TOKEN variable in console output */
-            script.wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: "${script.env.MATCH_GIT_TOKEN}", var: 'MATCH_GIT_TOKEN']]]) {
-                script.withEnv([
-                        "FASTLANE_DONT_STORE_PASSWORD=true",
-                        "MATCH_APP_IDENTIFIER=${bundleID}",
-                        "MATCH_GIT_URL=https://${script.env.MATCH_GIT_TOKEN}@${script.env.MATCH_GIT_URL.minus('https://')}",
-                        "MATCH_GIT_BRANCH=${script.env.MATCH_USERNAME}",
-                        "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
-                        "GYM_OUTPUT_DIRECTORY=${karFile.path}",
-                        "GYM_OUTPUT_NAME=${projectName}",
-                        "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
-                        "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
-                        "MATCH_TYPE=${matchType}"
-                ]) {
-                    closure()
-                }
             }
         }
     }
