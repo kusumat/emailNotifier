@@ -9,6 +9,8 @@ class IOSChannel extends Channel {
     /* Build parameters */
     private String matchType = script.params.APPLE_DEVELOPER_PROFILE_TYPE
     private String appleID = script.params.APPLE_ID
+    /* For using temporary access keys (AssumeRole) */
+    private String awsIAMRole = script.env.AWS_IAM_ROLE
 
     IOSChannel(script) {
         super(script)
@@ -26,7 +28,7 @@ class IOSChannel extends Channel {
         def bucketName = 'konyappfactorydev-ci0001-storage1'
 
         script.catchErrorCustom(successMessage, errorMessage) {
-            script.withAWS(region: bucketRegion) {
+            script.withAWS(region: bucketRegion, role: awsIAMRole) {
                 script.s3Download file: fastlaneConfigFileName, bucket: bucketName, path: fastlaneConfigBucketFilePath,
                         force: true
 
@@ -143,13 +145,11 @@ class IOSChannel extends Channel {
     }
 
     protected final void createWorkflow() {
-        /* Get configuration file for fastlane */
-        script.node('master') {
+        script.node(nodeLabel) {
+            /* Get configuration file for fastlane */
             exposeFastlaneConfig()
             script.deleteDir()
-        }
 
-        script.node(nodeLabel) {
             /* Set environment-dependent variables */
             isUnixNode = script.isUnix()
             workspace = script.env.WORKSPACE
