@@ -52,6 +52,7 @@ abstract class Channel implements Serializable {
                 result = 'war'
                 break
             case ~/^.*WINDOWS_TABLET.*$/:
+            case ~/^.*WINDOWS_MOBILE.*$/:
                 result = 'appx'
                 break
             case ~/^.*WINDOWS.*$/:
@@ -249,6 +250,18 @@ abstract class Channel implements Serializable {
         String errorMessage = 'FAILED to search artifacts'
 
         script.catchErrorCustom(successMessage, errorMessage) {
+            /* Dirty workaroud for Windows 10 Phone artifacts >>START */
+            if (!isUnixNode) {
+                if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx")) {
+                script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM")
+                script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM\\${projectName}.appx")
+                }
+                if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx")) {
+                    script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86")
+                    script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86\\${projectName}.appx")
+                }
+            }
+            /* Dirty workaroud for Windows 10 Phone artifacts <<END */
             script.dir(artifactsBasePath) {
                 artifactsFiles = script.findFiles(glob: "**/*.${extension}")
             }
@@ -268,9 +281,9 @@ abstract class Channel implements Serializable {
         script.catchErrorCustom(successMessage, errorMessage) {
             for (int i=0; i < artifactsList.size(); ++i) {
                 String artifactName = artifactsList[i].name
-                String targetName = (artifactName.toLowerCase().contains('ARM'.toLowerCase())) ?
-                        artifactTargetName.replaceFirst('_', '_ARM_') :
-                        artifactTargetName
+                String artifactPath = artifactsList[i].path
+                String targetName = artifactTargetName.replaceFirst('_', getArtifactArchitecture(artifactPath))
+                
                 String targetArtifactFolder = artifactsBasePath +
                         ((isUnixNode) ? "/" : "\\") +
                         (artifactsList[i].path.minus(((isUnixNode) ? "/" : "\\") + "${artifactsList[i].name}"))
@@ -286,6 +299,27 @@ abstract class Channel implements Serializable {
         }
 
         renamedArtifacts
+    }
+
+    @NonCPS
+    protected static final getArtifactArchitecture(artifactPath) {
+        def architecture
+
+        switch (artifactPath) {
+            case ~/^.*ARM.*$/:
+                architecture = '_ARM_'
+                break
+            case ~/^.*x86.*$/:
+                architecture = '_X86_'
+                break
+            case ~/^.*x64.*$/:
+                architecture = '_X64_'
+                break
+            default:
+                break
+        }
+
+        architecture
     }
 
     @NonCPS
