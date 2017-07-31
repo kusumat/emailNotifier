@@ -5,6 +5,7 @@ abstract class Channel implements Serializable {
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
+    protected String visualizerVersion
     protected String channelName
     protected artifacts
     protected String artifactsBasePath
@@ -26,7 +27,6 @@ abstract class Channel implements Serializable {
     protected String gitBranch = script.params.GIT_BRANCH
     protected String environment = script.params.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected String visualizerVersion = script.env.VIS_VERSION
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.params.BUILD_MODE
 
@@ -167,6 +167,7 @@ abstract class Channel implements Serializable {
     }
     
     protected final void visualizerEnvWrapper(closure) {
+        visualizerVersion = vizVersion(script.readFile('konyplugins.xml'))
         String visualizerBasePath = (isUnixNode) ? "/Jenkins/KonyVisualizerEnterprise${visualizerVersion}/" :
                 "C:\\Jenkins\\KonyVisualizerEnterprise${visualizerVersion}\\"
         String antHome = visualizerBasePath + 'Ant'
@@ -182,12 +183,18 @@ abstract class Channel implements Serializable {
         }
     }
 
+    /* Determine which Vis version a project requires according to the version of the keditor plugin */
+    protected final vizVersion(text) {
+        def matcher = text =~ '<pluginInfo version-no="(\\d+\\.\\d+\\.\\d+)\\.\\w*" plugin-id="com.pat.tool.keditor"'
+        return matcher ? matcher[0][1] : null
+    }
+
     protected final void build() {
         String successMessage = 'Project has been built successfully'
         String errorMessage = 'FAILED to build the project'
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        //script.catchErrorCustom(successMessage, errorMessage) {
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i<requiredResources.size(); i++) {
@@ -206,7 +213,7 @@ abstract class Channel implements Serializable {
                     }
                 }
             }
-        }
+        //}
     }
 
     @NonCPS
