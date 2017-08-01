@@ -7,6 +7,7 @@ abstract class Channel implements Serializable {
     protected String projectFullPath
     protected String visualizerVersion
     protected String channelName
+    protected String iosPluginVersion
     protected artifacts
     protected String artifactsBasePath
     protected String artifactExtension
@@ -183,9 +184,15 @@ abstract class Channel implements Serializable {
         }
     }
 
-    /* Determine which Vis version a project requires according to the version of the keditor plugin */
+    /* Determine which Viz version a project requires according to the version of the keditor plugin */
     protected final vizVersion(text) {
         def matcher = text =~ '<pluginInfo version-no="(\\d+\\.\\d+\\.\\d+)\\.\\w*" plugin-id="com.pat.tool.keditor"'
+        return matcher ? matcher[0][1] : null
+    }
+
+    /* Determine version version of the iOS plugin */
+    protected final pluginVersion(text) {
+        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
         return matcher ? matcher[0][1] : null
     }
 
@@ -194,7 +201,7 @@ abstract class Channel implements Serializable {
         String errorMessage = 'FAILED to build the project'
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
-        //script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(successMessage, errorMessage) {
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i<requiredResources.size(); i++) {
@@ -205,6 +212,7 @@ abstract class Channel implements Serializable {
                 /* This wrapper responsible for adding ANT_HOME, JAVA_HOME and Kony Cloud credentials */
                 visualizerEnvWrapper() {
                     if (isUnixNode) {
+                        iosPluginVersion = pluginVersion(script.readFile('konyplugins.xml'))
                         script.sh '$ANT_HOME/bin/ant -buildfile property.xml'
                         script.sh '$ANT_HOME/bin/ant'
                     } else {
@@ -213,7 +221,7 @@ abstract class Channel implements Serializable {
                     }
                 }
             }
-        //}
+        }
     }
 
     @NonCPS
@@ -256,7 +264,7 @@ abstract class Channel implements Serializable {
         String successMessage = 'Search finished successfully'
         String errorMessage = 'FAILED to search artifacts'
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        //script.catchErrorCustom(successMessage, errorMessage) {
             /* Dirty workaroud for Windows 10 Phone artifacts >>START */
             if (!isUnixNode) {
                 if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx")) {
@@ -272,7 +280,7 @@ abstract class Channel implements Serializable {
             script.dir(artifactsBasePath) {
                 artifactsFiles = script.findFiles(glob: "**/*.${extension}")
             }
-        }
+        //}
 
         artifactsFiles
     }
@@ -285,11 +293,12 @@ abstract class Channel implements Serializable {
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
         String artifactTargetName = projectName + '_' + jobBuildNumber + '.' + artifactExtension
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        //script.catchErrorCustom(successMessage, errorMessage) {
             for (int i=0; i < artifactsList.size(); ++i) {
                 String artifactName = artifactsList[i].name
                 String artifactPath = artifactsList[i].path
-                String targetName = artifactTargetName.replaceFirst('_', getArtifactArchitecture(artifactPath))
+                String arc = (getArtifactArchitecture(artifactPath)) ?: ''
+                String targetName = (!arc) ?: artifactTargetName.replaceFirst('_', arc)
                 
                 String targetArtifactFolder = artifactsBasePath +
                         ((isUnixNode) ? "/" : "\\") +
@@ -303,7 +312,7 @@ abstract class Channel implements Serializable {
 
                 renamedArtifacts.add([name: targetName, path: targetArtifactFolder])
             }
-        }
+        //}
 
         renamedArtifacts
     }
