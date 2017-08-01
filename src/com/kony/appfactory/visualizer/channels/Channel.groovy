@@ -264,7 +264,7 @@ abstract class Channel implements Serializable {
         String successMessage = 'Search finished successfully'
         String errorMessage = 'FAILED to search artifacts'
 
-        //script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(successMessage, errorMessage) {
             /* Dirty workaroud for Windows 10 Phone artifacts >>START */
             if (!isUnixNode) {
                 if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx")) {
@@ -280,7 +280,7 @@ abstract class Channel implements Serializable {
             script.dir(artifactsBasePath) {
                 artifactsFiles = script.findFiles(glob: "**/*.${extension}")
             }
-        //}
+        }
 
         artifactsFiles
     }
@@ -293,12 +293,12 @@ abstract class Channel implements Serializable {
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
         String artifactTargetName = projectName + '_' + jobBuildNumber + '.' + artifactExtension
 
-        //script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(successMessage, errorMessage) {
             for (int i=0; i < artifactsList.size(); ++i) {
                 String artifactName = artifactsList[i].name
                 String artifactPath = artifactsList[i].path
-                String arc = (getArtifactArchitecture(artifactPath)) ?: ''
-                String targetName = (!arc) ?: artifactTargetName.replaceFirst('_', arc)
+                String architecturePrefix = getArtifactArchitecture(artifactPath)
+                String targetName = (architecturePrefix) ? artifactTargetName.replaceFirst('_', architecturePrefix) : artifactTargetName
                 
                 String targetArtifactFolder = artifactsBasePath +
                         ((isUnixNode) ? "/" : "\\") +
@@ -312,7 +312,7 @@ abstract class Channel implements Serializable {
 
                 renamedArtifacts.add([name: targetName, path: targetArtifactFolder])
             }
-        //}
+        }
 
         renamedArtifacts
     }
@@ -332,6 +332,7 @@ abstract class Channel implements Serializable {
                 architecture = '_X64_'
                 break
             default:
+                architecture = ''
                 break
         }
 
