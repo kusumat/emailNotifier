@@ -5,7 +5,9 @@ abstract class Channel implements Serializable {
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
+    protected String visualizerVersion
     protected String channelName
+    protected String iosPluginVersion
     protected artifacts
     protected String artifactsBasePath
     protected String artifactExtension
@@ -26,7 +28,6 @@ abstract class Channel implements Serializable {
     protected String gitBranch = script.params.GIT_BRANCH
     protected String environment = script.params.ENVIRONMENT
     protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected String visualizerVersion = script.env.VIS_VERSION
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.params.BUILD_MODE
 
@@ -167,6 +168,7 @@ abstract class Channel implements Serializable {
     }
     
     protected final void visualizerEnvWrapper(closure) {
+        visualizerVersion = vizVersion(script.readFile('konyplugins.xml'))
         String visualizerBasePath = (isUnixNode) ? "/Jenkins/KonyVisualizerEnterprise${visualizerVersion}/" :
                 "C:\\Jenkins\\KonyVisualizerEnterprise${visualizerVersion}\\"
         String antHome = visualizerBasePath + 'Ant'
@@ -180,6 +182,18 @@ abstract class Channel implements Serializable {
                 closure()
             }
         }
+    }
+
+    /* Determine which Viz version a project requires according to the version of the keditor plugin */
+    protected final vizVersion(text) {
+        def matcher = text =~ '<pluginInfo version-no="(\\d+\\.\\d+\\.\\d+)\\.\\w*" plugin-id="com.pat.tool.keditor"'
+        return matcher ? matcher[0][1] : null
+    }
+
+    /* Determine version version of the iOS plugin */
+    protected final pluginVersion(text) {
+        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
+        return matcher ? matcher[0][1] : null
     }
 
     protected final void build() {
@@ -198,6 +212,7 @@ abstract class Channel implements Serializable {
                 /* This wrapper responsible for adding ANT_HOME, JAVA_HOME and Kony Cloud credentials */
                 visualizerEnvWrapper() {
                     if (isUnixNode) {
+                        iosPluginVersion = pluginVersion(script.readFile('konyplugins.xml'))
                         script.sh '$ANT_HOME/bin/ant -buildfile property.xml'
                         script.sh '$ANT_HOME/bin/ant'
                     } else {
@@ -282,7 +297,8 @@ abstract class Channel implements Serializable {
             for (int i=0; i < artifactsList.size(); ++i) {
                 String artifactName = artifactsList[i].name
                 String artifactPath = artifactsList[i].path
-                String targetName = artifactTargetName.replaceFirst('_', getArtifactArchitecture(artifactPath))
+                String architecturePrefix = getArtifactArchitecture(artifactPath)
+                String targetName = (architecturePrefix) ? artifactTargetName.replaceFirst('_', architecturePrefix) : artifactTargetName
                 
                 String targetArtifactFolder = artifactsBasePath +
                         ((isUnixNode) ? "/" : "\\") +
@@ -316,6 +332,7 @@ abstract class Channel implements Serializable {
                 architecture = '_X64_'
                 break
             default:
+                architecture = ''
                 break
         }
 

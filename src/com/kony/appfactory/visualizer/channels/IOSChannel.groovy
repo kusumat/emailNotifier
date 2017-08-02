@@ -2,7 +2,6 @@ package com.kony.appfactory.visualizer.channels
 
 class IOSChannel extends Channel {
     private bundleID
-    private pluginVersion
     private karFile = [:]
     private plistFileName
 
@@ -60,12 +59,11 @@ class IOSChannel extends Channel {
             /* Get bundle identifier and iOS plugin version */
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
-                pluginVersion = iosPluginVersion(script.readFile('konyplugins.xml'))
             }
             /* Extract Viz iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace") {
-                if (!script.fileExists("iOS-plugin/iOS-GA-${pluginVersion}.txt")) {
-                    script.sh "cp ${visualizerDropinsPath}/com.kony.ios_${pluginVersion}.jar iOS-plugin.zip"
+                if (!script.fileExists("iOS-plugin/iOS-GA-${iosPluginVersion}.txt")) {
+                    script.sh "cp ${visualizerDropinsPath}/com.kony.ios_${iosPluginVersion}.jar iOS-plugin.zip"
                     script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 }
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
@@ -136,11 +134,6 @@ class IOSChannel extends Channel {
 
     private final bundleIdentifier(text) {
         def matcher = text =~ '<attributes name="iphonebundleidentifierkey" value="(.+)"/>'
-        return matcher ? matcher[0][1] : null
-    }
-
-    private final iosPluginVersion(text) {
-        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
         return matcher ? matcher[0][1] : null
     }
 
