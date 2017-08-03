@@ -168,7 +168,10 @@ abstract class Channel implements Serializable {
     }
     
     protected final void visualizerEnvWrapper(closure) {
-        visualizerVersion = vizVersion(script.readFile('konyplugins.xml'))
+        /* Get Visualizer version */
+        visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
+        /* Expose Visualizer version as environment variable */
+        script.env['VIS_VERSION'] = visualizerVersion
         String visualizerBasePath = (isUnixNode) ? "/Jenkins/KonyVisualizerEnterprise${visualizerVersion}/" :
                 "C:\\Jenkins\\KonyVisualizerEnterprise${visualizerVersion}\\"
         String antHome = visualizerBasePath + 'Ant'
@@ -184,8 +187,8 @@ abstract class Channel implements Serializable {
         }
     }
 
-    /* Determine which Viz version a project requires according to the version of the keditor plugin */
-    protected final vizVersion(text) {
+    /* Determine which Visualizer version a project requires according to the version of the keditor plugin */
+    protected final getVisualizerVersion(text) {
         def matcher = text =~ '<pluginInfo version-no="(\\d+\\.\\d+\\.\\d+)\\.\\w*" plugin-id="com.pat.tool.keditor"'
         return matcher ? matcher[0][1] : null
     }

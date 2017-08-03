@@ -60,7 +60,7 @@ class IOSChannel extends Channel {
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
             }
-            /* Extract Viz iOS Dummy Project */
+            /* Extract Visualizer iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace") {
                 if (!script.fileExists("iOS-plugin/iOS-GA-${iosPluginVersion}.txt")) {
                     script.sh "cp ${visualizerDropinsPath}/com.kony.ios_${iosPluginVersion}.jar iOS-plugin.zip"
@@ -69,7 +69,7 @@ class IOSChannel extends Channel {
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
-            /* Extract neccesary files from KAR file to Viz iOS Dummy Project */
+            /* Extract neccesary files from KAR file to Visualizer iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
                 script.sh """
                     cp ${karFile.path}/${karFile.name} .
