@@ -7,10 +7,10 @@
         <property environment="env"/>
 
         <!--Condition property depends of agent's platform-->
-        <condition property="viz.root" value="C:\Jenkins\KonyVisualizerEnterprise${env.VIS_VERSION}\" else="/Jenkins/KonyVisualizerEnterprise${env.VIS_VERSION}/">
+        <condition property="vis.root" value="C:\Jenkins\KonyVisualizerEnterprise${env.VIS_VERSION}\" else="/Jenkins/KonyVisualizerEnterprise${env.VIS_VERSION}/">
             <os family="windows"/>
         </condition>
-        <condition property="viz.inner" value="${viz.root}Kony_Visualizer_Enterprise\" else="${viz.root}Kony_Visualizer_Enterprise/">
+        <condition property="vis.inner" value="${vis.root}Kony_Visualizer_Enterprise\" else="${vis.root}Kony_Visualizer_Enterprise/">
             <os family="windows"/>
         </condition>
         <condition property="android.home" value="C:\Jenkins\asdk" else="/Jenkins/tools/asdk">
@@ -80,11 +80,11 @@
         </condition>
 
         <propertyfile file="HeadlessBuild-Global.properties" comment="Generated file">
-            <entry key="imagemagic.home" value="${viz.root}ImageMagick"/>
+            <entry key="imagemagic.home" value="${vis.root}ImageMagick"/>
             <entry key="workspace.location" value="${env.WORKSPACE}"/>
             <entry key="bb10.vmware.home" value=""/>
             <entry key="bb10.emulator.password" value=""/>
-            <entry key="eclipse.equinox.path" value="${viz.inner}plugins/org.eclipse.equinox.launcher_1.3.0.v20130327-1440.jar"/>
+            <entry key="eclipse.equinox.path" value="${vis.inner}plugins/org.eclipse.equinox.launcher_1.3.0.v20130327-1440.jar"/>
             <entry key="bb10.signing.keys.home" value=""/>
             <entry key="android.home" value="${android.home}"/>
             <entry key="bb10.ndk.home" value=""/>
@@ -174,19 +174,19 @@
 	</target>
 
     <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
-        <ivy:retrieve pattern="${viz.inner}dropins/[artifact]_[revision].[ext]"/>
+        <ivy:retrieve pattern="${vis.inner}dropins/[artifact]_[revision].[ext]"/>
     </target>
 
     <target name="wipe" depends="retrieve,plugins" description="-> wipe duplacates in plugins directory">
         <delete>
-            <fileset dir="${viz.inner}plugins" includes="**/*">
-                <present targetdir="${viz.inner}dropins" />
+            <fileset dir="${vis.inner}plugins" includes="**/*">
+                <present targetdir="${vis.inner}dropins" />
             </fileset>
         </delete>
     </target>
 
     <target name="clean" description="-> clean dropins directory">
-        <delete dir="${viz.inner}dropins"/>
+        <delete dir="${vis.inner}dropins"/>
     </target>
 
     <target name="clean-all" depends="clean" description="-> clean dropins directory and ivy cache">
