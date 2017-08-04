@@ -13,6 +13,9 @@
         <condition property="vis.inner" value="${vis.root}Kony_Visualizer_Enterprise\" else="${vis.root}Kony_Visualizer_Enterprise/">
             <os family="windows"/>
         </condition>
+        <condition property="viz.bundles" value="${viz.inner}\configuration\org.eclipse.osgi\bundles" else="${viz.inner}/configuration/org.eclipse.osgi/bundles">
+            <os family="windows"/>
+        </condition>
         <condition property="android.home" value="C:\Jenkins\asdk" else="/Jenkins/tools/asdk">
             <os family="windows"/>
         </condition>
@@ -177,7 +180,7 @@
         <ivy:retrieve pattern="${vis.inner}dropins/[artifact]_[revision].[ext]"/>
     </target>
 
-    <target name="wipe" depends="retrieve,plugins" description="-> wipe duplacates in plugins directory">
+    <target name="wipe" depends="clean,retrieve,plugins" description="-> wipe duplacates in plugins directory">
         <delete>
             <fileset dir="${vis.inner}plugins" includes="**/*">
                 <present targetdir="${vis.inner}dropins" />
@@ -187,6 +190,7 @@
 
     <target name="clean" description="-> clean dropins directory">
         <delete dir="${vis.inner}dropins"/>
+        <delete dir="${viz.bundles}"/>
     </target>
 
     <target name="clean-all" depends="clean" description="-> clean dropins directory and ivy cache">
