@@ -77,7 +77,7 @@ class Facade implements Serializable {
         def result = []
 
         for (param in buildParams) {
-            if (param.value instanceof Boolean && param.key != 'TEST_AUTOMATION' && param.value) {
+            if (param.value instanceof Boolean && param.value) {
                 result.add(param.key)
             }
         }
@@ -110,10 +110,34 @@ class Facade implements Serializable {
         parameters
     }
 
+    private final getBinariesURL() {
+        def binaries = []
+        def artifactNamesMap = script.env.CHANNEL_ARTIFACTS.split(',')
+
+        for (channel in channelsToRun) {
+            if (channel.contains('ANDROID') || channel.contains('IOS')) {
+                def channelPath = getChannelPath(channel)
+                for (item in artifactNamesMap) {
+                    def artifactList = item.split(':')
+                    if (channelPath in artifactList) {
+                        if (artifactList[1] != '-') {
+                            def artifactName = (artifactList[1].contains('.plist')) ? artifactList[1].replaceAll('.plist', '.ipa') : artifactList[1]
+                            binaries.add(script.stringParam(name: "${channel}_BINARY_URL", value: "${script.env.S3_ARTIFACT_URL}/${channelPath}/${artifactName}"))
+                        }
+                    }
+                }
+            }
+        }
+
+        binaries
+    }
+
     private final getTestAutomationJobParameters() {
         def parameters = [
-                script.stringParam(name: 'GIT_BRANCH', description: 'Project Git Branch', value: "${script.params.GIT_BRANCH}"),
-                [$class: 'CredentialsParameterValue', description: 'GitHub.com Credentials', name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"]
+                script.stringParam(name: 'GIT_BRANCH', value: "${script.params.GIT_BRANCH}"),
+                [$class: 'CredentialsParameterValue', description: 'GitHub.com Credentials', name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"],
+                script.stringParam(name: 'TESTS_BINARY_URL', value: ''),
+                script.stringParam(name: 'AVAILABLE_TEST_POOLS', value: "${script.params.AVAILABLE_TEST_POOLS}")
         ]
 
         parameters
@@ -141,7 +165,7 @@ class Facade implements Serializable {
         channelsToRun = getSelectedChannels(script.params)
 
         /* Check if at least one of the options been chosen */
-        if (!channelsToRun && !script.params.TEST_AUTOMATION) {
+        if (!channelsToRun) {
             script.error 'Please choose options to build!'
         }
 
@@ -168,17 +192,6 @@ class Facade implements Serializable {
                 }
             }
         }
-
-        if (script.params.TEST_AUTOMATION) {
-            runList['TEST_AUTOMATION'] = {
-                script.stage('TEST_AUTOMATION') {
-                    def testAutomationJob = script.build job: "TestAutomation", parameters: getTestAutomationJobParameters(), propagate: false
-                    jobResultList.add(testAutomationJob.currentResult)
-                    script.echo "Status of the channel TEST_AUTOMATION build is: ${testAutomationJob.currentResult}"
-                }
-            }
-        }
-
     }
 
     protected setBuildDescription() {
@@ -195,6 +208,18 @@ class Facade implements Serializable {
             try {
                 script.parallel(runList)
                 script.env['CHANNEL_ARTIFACTS'] = artifacts
+
+                if (script.params.AVAILABLE_TEST_POOLS) {
+                    def binaries = (getBinariesURL()) ?: script.error("Artifacts binaries were not found!")
+
+                    script.stage('TESTS') {
+                        def testAutomationJob = script.build job: "Tests/runTests",
+                                parameters: getTestAutomationJobParameters() + binaries,
+                                propagate: false
+                        jobResultList.add(testAutomationJob.currentResult)
+                        script.echo "Status of the runTests job: ${testAutomationJob.currentResult}"
+                    }
+                }
 
                 if (jobResultList.contains('FAILURE') || jobResultList.contains('UNSTABLE') || jobResultList.contains('ABORTED')) {
                     script.currentBuild.result = 'UNSTABLE'
