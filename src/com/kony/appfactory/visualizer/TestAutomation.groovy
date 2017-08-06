@@ -1,8 +1,7 @@
 package com.kony.appfactory.visualizer
 
-import groovy.xml.*
+import com.kony.appfactory.helper.EmailHelper
 import com.kony.appfactory.visualizer.testing.DeviceFarm
-import groovy.json.JsonOutput
 
 class TestAutomation implements Serializable {
     private script
@@ -10,12 +9,10 @@ class TestAutomation implements Serializable {
     private String workspace
     private String projectFullPath
     private String testFolder
-    private String testResultsHTML, testResultsJSON
     private String projectName = script.env.PROJECT_NAME
     private String gitURL = script.env.PROJECT_GIT_URL
     private String gitBranch = script.params.GIT_BRANCH
     private String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
-    private String recipientList = script.env.RECIPIENT_LIST
 
     /* Device Farm properties */
     private runTests = false
@@ -49,7 +46,6 @@ class TestAutomation implements Serializable {
                                        url       : (script.env.TEST_BINARIES_URL ?: 'jobWorkspace')]
     ]
     private deviceFarmWorkingDirectory
-    private notificationHeader = "${script.env.BUILD_TAG} - ${script.currentBuild.currentResult}"
 
     TestAutomation(script) {
         this.script = script
@@ -218,98 +214,6 @@ class TestAutomation implements Serializable {
         binaryName
     }
 
-    @NonCPS
-    protected final createEmailTemplate(testResults) {
-        Writer writer = new StringWriter()
-        MarkupBuilder htmlBuilder = new MarkupBuilder(writer)
-
-        htmlBuilder.tr {
-            td(style: "text-align:center", class: "text-color") {
-                h2 notificationHeader
-            }
-        }
-
-        htmlBuilder.tr {
-            td(style: "text-align:left", class: "text-color") {
-                h4 "Project Name: ${projectName}"
-                p { strong "Selected Device Pools: ${devicePoolName}" }
-                p { strong "Devices Not Available in Devicefarm: None" }
-            }
-        }
-
-        for (testResult in testResults) {
-            for (prop in testResult) {
-                if (prop.key == 'device') {
-                    def projectArtifactKey = ((prop.value.platform.toLowerCase() + '_' +
-                            prop.value.formFactor.toLowerCase()).contains('phone')) ?
-                            (prop.value.platform.toLowerCase() + '_' +
-                                    prop.value.formFactor.toLowerCase()).replaceAll('phone', 'mobile') :
-                            prop.value.platform.toLowerCase() + '_' + prop.value.formFactor.toLowerCase()
-                    def binaryName = projectArtifacts.find {
-                        it.key.toLowerCase() == projectArtifactKey
-                    }.value.binaryName
-                    htmlBuilder.tr {
-                        td {
-                            p(style: "margin:30px 0 10px;font-weight:bold", 'Device: ' + prop.value.name +
-                                    ', FormFactor: ' + prop.value.formFactor +
-                                    ', Platform: ' + prop.value.platform +
-                                    ', OS Version: ' + prop.value.os +
-                                    ', Binary Name: ' + binaryName)
-                        }
-                    }
-                }
-
-                if (prop.key == 'suites') {
-                    htmlBuilder.tr {
-                        td {
-                            table(style: "width:100%;text-align:left", class: "text-color table-border") {
-                                tr {
-                                    th('Name')
-                                    th('URL')
-                                    th(style: "width:25%", 'Status')
-                                }
-                                for (suite in prop.value) {
-                                    tr {
-                                        th(colspan: "2", class: "table-value", style: "padding:10px;text-transform:none", 'Suite Name: ' + suite.name)
-                                        th(class: "table-value", style: "padding:10px;text-transform:none", 'Total tests: ' + suite.totalTests)
-                                    }
-                                    for (test in suite.tests) {
-                                        tr {
-                                            th(colspan: "2", class: "table-value", style: "padding:10px;text-transform:none", 'Test Name: ' + test.name)
-                                            th(class: "table-value", style: "padding:10px;text-transform:none", test.result)
-                                        }
-                                        for (artifact in test.artifacts) {
-                                            tr {
-                                                td artifact.name + '.' + artifact.extension
-                                                td {
-                                                    a (href: artifact.url, 'Download File')
-                                                }
-                                                td(style: "padding:10px") {
-                                                    mkp.yieldUnescaped('&nbsp;')
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        writer.toString()
-    }
-
-    @NonCPS
-    protected final fulfillTemplate(values, htmlTemplate) {
-        def bindings = [tableRows: values]
-        def engine = new groovy.text.SimpleTemplateEngine()
-        def template = engine.createTemplate(htmlTemplate).make(bindings)
-
-        template.toString()
-    }
-
     protected final void publishToS3(args) {
         String successMessage = 'Artifact published successfully'
         String errorMessage = 'FAILED to publish artifact'
@@ -335,6 +239,16 @@ class TestAutomation implements Serializable {
                              pluginFailureResultConstraint       : 'FAILURE'])
             }
         }
+    }
+
+    private final getBinaryNameForEmail(artifacts) {
+        def result = [:]
+
+        for (artifact in artifacts) {
+            result[artifact.key] = artifact.value.get('binaryName')
+        }
+
+        result
     }
 
     protected final void createWorkflow() {
@@ -363,7 +277,15 @@ class TestAutomation implements Serializable {
                     script.stage('Publish test automation scripts build result to S3') {
                         script.dir(testFolder) {
                             if (script.fileExists("target/${projectName}_TestApp.zip")) {
-                                publishToS3 name: "target/${projectName}_TestApp.zip", path: [script.env.S3_BUCKET_NAME, projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'), region: script.env.S3_BUCKET_REGION, folder: script.pwd()
+                                publishToS3 name: "target/${projectName}_TestApp.zip",
+                                        path: [
+                                                script.env.S3_BUCKET_NAME,
+                                                projectName,
+                                                'Tests',
+                                                script.env.JOB_BASE_NAME,
+                                                script.env.BUILD_NUMBER].join('/'),
+                                        region: script.env.S3_BUCKET_REGION,
+                                        folder: script.pwd()
                             } else {
                                 script.error 'FAILED to find build result artifact!'
                             }
@@ -485,27 +407,14 @@ class TestAutomation implements Serializable {
                                     script.parallel(stepsToRun)
                                 }
 
-                                def testResultObject
                                 script.dir('artifacts') {
-                                    testResultObject = deviceFarm.moveArtifactsToCustomerS3Bucket(deviceFarmTestRunResults.runs,
+                                    deviceFarm.moveArtifactsToCustomerS3Bucket(deviceFarmTestRunResults.runs,
                                             script.env.S3_BUCKET_NAME,
                                             script.env.S3_BUCKET_REGION,
                                             [projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'),
                                             script.pwd()
                                     )
                                 }
-
-                                def testRunArtifactsHTML = createEmailTemplate(testResultObject)
-                                def htmlTemplate = script.loadLibraryResource('com/kony/appfactory/visualizer/email/templates/Kony_Test_Automation_DeviceFarm.template')
-
-                                testResultsHTML = fulfillTemplate(testRunArtifactsHTML, htmlTemplate)
-                                testResultsJSON = JsonOutput.toJson(deviceFarmTestRunResults)
-
-                                script.writeFile text: testResultsHTML, file: 'testResults.html'
-                                script.writeFile text: testResultsJSON, file: 'testResults.json'
-
-                                publishToS3 name: 'testResults.html', path: [script.env.S3_BUCKET_NAME, projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'), region: script.env.S3_BUCKET_REGION, folder: script.pwd()
-                                publishToS3 name: 'testResults.json', path: [script.env.S3_BUCKET_NAME, projectName, 'Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'), region: script.env.S3_BUCKET_REGION, folder: script.pwd()
                             }
                         }
                     }
@@ -515,9 +424,11 @@ class TestAutomation implements Serializable {
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 cleanup(deviceFarmUploadArns, devicePoolArns)
-                script.sendMail('com/kony/appfactory/visualizer/', 'Kony_Test_Automation_Build.jelly', recipientList)
+                EmailHelper.sendEmail(script, 'buildTests')
                 if (runTests) {
-                    script.emailext body: testResultsHTML, subject: notificationHeader, to: recipientList
+                    EmailHelper.sendEmail(script, 'runTests', deviceFarmTestRunResults +
+                            [devicePoolName: devicePoolName,
+                             binaryName: getBinaryNameForEmail(projectArtifacts)], true)
                 }
             }
         }

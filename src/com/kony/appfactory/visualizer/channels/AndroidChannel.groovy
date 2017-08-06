@@ -1,5 +1,7 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.helper.EmailHelper
+
 class AndroidChannel extends Channel {
     private androidHome
 
@@ -101,7 +103,8 @@ class AndroidChannel extends Channel {
                     /* Search for build artifacts */
                     def foundArtifacts = getArtifacts(artifactExtension)
                     /* Rename artifacts for publishing */
-                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
+                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
+                            script.error('FAILED build artifacts are missing!')
                     /* Create a list with artifact names */
                     def channelArtifacts = ''
                     def channelPath = getChannelPath(channelName)
@@ -129,7 +132,7 @@ class AndroidChannel extends Channel {
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 if (buildCause == 'user' || script.currentBuild.result == 'FAILURE') {
-                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', recipientList)
+                    EmailHelper.sendEmail(script, 'buildVisualizerApp')
                 }
             }
         }

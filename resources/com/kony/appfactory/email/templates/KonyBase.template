@@ -1,11 +1,8 @@
-<?jelly escape-by-default='true'?>
-<!DOCTYPE html [
-        <!ENTITY nbsp "&#38;#38;nbsp&#59;">
-]>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define">
+<html>
 <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
-    <title>Kony OTA Installer</title>
+    <title>$title</title>
     <style>
         body {
             font-family: arial,sans-serif;
@@ -152,14 +149,10 @@
     </style>
 </head>
 <body>
-<j:set var="buildEnv" value="${build.getEnvironment(listener)}"/>
-<j:set var="buildCustomEnv" value="${it.getAction('org.jenkinsci.plugins.workflow.cps.EnvActionImpl').getOverriddenEnvironment()}"/>
-<j:set var="userName" value="${buildCustomEnv.get('TRIGGERED_BY')}"/>
-<j:set var="appName" value="${buildEnv.get('PROJECT_NAME')}"/>
 <table class="container" cellpadding='0'>
     <tr>
         <td align="center" style="padding:10px">
-            <table style="width:100%">
+            <table style="width:100%; margin-bottom:20px">
                 <tr style="background:#35414d">
                     <td style="width:150px"><span href="#" class="header__logo"> </span></td>
                     <td style="display: inline-block;margin-top: 15px;color:#fff">
@@ -171,64 +164,8 @@
     </tr>
     <tr>
         <td align="center" style="padding:0 20px;">
-            <table style="width:100%">
-                <tr>
-                    <td style="text-align:center" class="text-color"><h2>Kony Test Automation build</h2></td>
-                </tr>
-                <tr>
-                    <td style="text-align:left" class="text-color"><h4 class="subheading">Build Details</h4></td>
-                </tr>
-                <tr>
-                    <td>
-                        <table style="width:100%; text-align:left" class="text-color table-border cell-spacing">
-                            <j:if test="${userName != null}">
-                                <tr>
-                                    <td style="width:100px;text-align:right">Triggered by:</td>
-                                    <td class="table-value">${userName}</td>
-                                </tr>
-                            </j:if>
-                            <tr>
-                                <td style="width:100px;text-align:right">Build URL:</td>
-                                <td><a href="${rooturl}${build.url}">${rooturl}${build.url}</a></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:right">Project:</td>
-                                <td class="table-value">${appName}</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:right">Build number:</td>
-                                <td class="table-value">${build.number}</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:right">Date of build:</td>
-                                <td class="table-value">${it.timestampString}</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:right">Build duration:</td>
-                                <td class="table-value">${build.durationString}</td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-                <j:if test="${build.result==SUCCESS}">
-                <tr>
-                    <td style="text-align:left" class="text-color">
-                        <h4 class="subheading">Build Information</h4>
-                        <p>Build of Test Automation scripts for ${appName} finished successfully.</p>
-                    </td>
-                </tr>
-                </j:if>
-            </table>
+            $contentTable
         </td>
-    </tr>
-    <j:getStatic var="resultFailure" field="FAILURE" className="hudson.model.Result"/>
-    <j:if test="${build.result==resultFailure}">
-        <tr>
-            <td style="text-align:left;padding:15px 20px 0" class="text-color"><h4 style="margin-bottom:0">Console Output</h4>
-                <j:forEach var="line" items="${build.getLog(50)}"><p>${line}</p></j:forEach>
-            </td>
-        </tr>
-    </j:if>
     <tr>
         <td>&nbsp;
 
@@ -236,4 +173,4 @@
     </tr>
 </table>
 </body>
-</j:jelly>
+</html>

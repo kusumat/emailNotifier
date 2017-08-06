@@ -1,5 +1,7 @@
 package com.kony.appfactory.visualizer
 
+import com.kony.appfactory.helper.EmailHelper
+
 class Facade implements Serializable {
     private script
     private environment
@@ -201,6 +203,25 @@ class Facade implements Serializable {
         """.stripIndent()
     }
 
+    protected final getChannelsForEmail(channels) {
+        def result = [
+                channels: []
+        ]
+
+        for (channel in channels.split(',')) {
+            def artifact = channel.split(':')
+            result.channels.add([
+                    name: artifact[0].replaceAll('/', ' '),
+                    artifact: [
+                        'url':  [script.env.S3_ARTIFACT_URL, artifact[0], artifact[1]].join('/'),
+                        'name': artifact[1]
+                    ]
+            ])
+        }
+
+        result
+    }
+
     protected final void run() {
         prepareRun()
 
@@ -232,7 +253,7 @@ class Facade implements Serializable {
             } finally {
                 setBuildDescription()
                 if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', recipientList)
+                    EmailHelper.sendEmail(script, 'buildVisualizerApp', getChannelsForEmail(artifacts), true)
                 }
             }
         }

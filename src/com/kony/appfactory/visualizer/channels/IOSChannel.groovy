@@ -1,5 +1,7 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.helper.EmailHelper
+
 class IOSChannel extends Channel {
     private bundleID
     private karFile = [:]
@@ -163,12 +165,15 @@ class IOSChannel extends Channel {
                         /* Search for build artifacts */
                         def foundArtifacts = getArtifacts(artifactExtension)
                         /* Rename artifacts for publishing */
-                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
+                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
+                                script.error('FAILED build artifacts are missing!')
                     } else {
                         /* Get KAR file name and path */
                         def transitArtifacts = getArtifacts('KAR')
                         karFile.name = transitArtifacts[0].name
-                        karFile.path = artifactsBasePath + '/' + transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
+                        karFile.path = artifactsBasePath +
+                                '/' +
+                                transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
                     }
                 }
 
@@ -179,7 +184,8 @@ class IOSChannel extends Channel {
                         /* Search for build artifacts */
                         def foundArtifacts = getArtifacts(artifactExtension)
                         /* Rename artifacts for publishing */
-                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) : script.error('FAILED build artifacts are missing!')
+                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
+                                script.error('FAILED build artifacts are missing!')
                     }
 
                     script.stage("Generate property list file") {
@@ -212,7 +218,7 @@ class IOSChannel extends Channel {
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 if (buildCause == 'user' || script.currentBuild.result == 'FAILURE') {
-                    script.sendMail('com/kony/appfactory/visualizer/', 'Kony_OTA_Installers.jelly', recipientList)
+                    EmailHelper.sendEmail(script, 'buildVisualizerApp')
                 }
             }
         }
