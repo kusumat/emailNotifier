@@ -69,7 +69,7 @@ class Facade implements Serializable {
 
     @NonCPS
     private final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + 's3-' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
+        String s3ArtifactURL = 'https://' + 's3-' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/Builds/${environment}"
         script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
     }
 
@@ -213,7 +213,7 @@ class Facade implements Serializable {
                     def binaries = (getBinariesURL()) ?: script.error("Artifacts binaries were not found!")
 
                     script.stage('TESTS') {
-                        def testAutomationJob = script.build job: "Tests/runTests",
+                        def testAutomationJob = script.build job: "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests",
                                 parameters: getTestAutomationJobParameters() + binaries,
                                 propagate: false
                         jobResultList.add(testAutomationJob.currentResult)
