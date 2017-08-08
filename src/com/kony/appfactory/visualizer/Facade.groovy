@@ -1,6 +1,7 @@
 package com.kony.appfactory.visualizer
 
-import com.kony.appfactory.helper.EmailHelper
+import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.NotificationsHelper
 
 class Facade implements Serializable {
     private script
@@ -8,71 +9,18 @@ class Facade implements Serializable {
     private nodeLabel = 'master'
     private runList = [:]
     private channelsToRun
-    private s3BucketName
-    private s3BucketRegion
     private projectName
-    private artifacts = ''
+    private artifacts = []
     private jobResultList = []
     private recipientList
+    private s3BaseURL
 
     Facade(script) {
         this.script = script
         projectName = this.script.env.PROJECT_NAME
         recipientList = this.script.env.RECIPIENT_LIST
         environment = this.script.params.ENVIRONMENT
-        s3BucketRegion = this.script.env.S3_BUCKET_REGION
-        s3BucketName = this.script.env.S3_BUCKET_NAME
-        setS3ArtifactURL()
-        /* Get build cause for e-mail notification */
-        this.script.env['TRIGGERED_BY'] = getBuildCause()
-    }
-
-    @NonCPS
-    private final getRootCause(cause) {
-        def causedBy = null
-
-        if (cause.class.toString().contains('UpstreamCause')) {
-            for (upCause in cause.upstreamCauses) {
-                causedBy = getRootCause(upCause)
-            }
-        } else {
-            switch (cause.class.toString()) {
-                case ~/^.*UserIdCause.*$/:
-                    causedBy = cause.getUserName()
-                    break
-                case ~/^.*SCMTriggerCause.*$/:
-                    causedBy = 'SCM'
-                    break
-                case ~/^.*TimerTriggerCause.*$/:
-                    causedBy = 'CRON'
-                    break
-                case ~/^.*GitHubPushCause.*$/:
-                    causedBy = 'GitHub hook'
-                    break
-                default:
-                    break
-            }
-        }
-
-        causedBy
-    }
-
-    @NonCPS
-    private final getBuildCause() {
-        def buildCauses = script.currentBuild.rawBuild.getCauses()
-        def causedBy
-
-        for (cause in buildCauses) {
-            causedBy = getRootCause(cause)
-        }
-
-        causedBy
-    }
-
-    @NonCPS
-    private final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + 's3-' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/Builds/${environment}"
-        script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
+        s3BaseURL = AWSHelper.getS3ArtifactURL(this.script, ['Builds', environment].join('/'))
     }
 
     private static getSelectedChannels(buildParams) {
@@ -112,28 +60,6 @@ class Facade implements Serializable {
         parameters
     }
 
-    private final getBinariesURL() {
-        def binaries = []
-        def artifactNamesMap = script.env.CHANNEL_ARTIFACTS.split(',')
-
-        for (channel in channelsToRun) {
-            if (channel.contains('ANDROID') || channel.contains('IOS')) {
-                def channelPath = getChannelPath(channel)
-                for (item in artifactNamesMap) {
-                    def artifactList = item.split(':')
-                    if (channelPath in artifactList) {
-                        if (artifactList[1] != '-') {
-                            def artifactName = (artifactList[1].contains('.plist')) ? artifactList[1].replaceAll('.plist', '.ipa') : artifactList[1]
-                            binaries.add(script.stringParam(name: "${channel}_BINARY_URL", value: "${script.env.S3_ARTIFACT_URL}/${channelPath}/${artifactName}"))
-                        }
-                    }
-                }
-            }
-        }
-
-        binaries
-    }
-
     private final getTestAutomationJobParameters() {
         def parameters = [
                 script.stringParam(name: 'GIT_BRANCH', value: "${script.params.GIT_BRANCH}"),
@@ -145,22 +71,34 @@ class Facade implements Serializable {
         parameters
     }
 
-    @NonCPS
-    private final getChannelPath(channel) {
-        def channelPath = channel.tokenize('_').collect() { item ->
-            /* Workaround for windows phone jobs */
-            if (item.contains('WINDOWSPHONE')) {
-                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
-            /* Workaround for SPA jobs */
-            } else if (item.contains('SPA')) {
-                item
-            } else if (item.contains('IOS')) {
-                'iOS'
-            } else {
-                item.toLowerCase().capitalize()
+    protected final getArtifactObjectList(channelPath, artifactNames = '') {
+        def result = []
+
+        for (artifactName in artifactNames.split(',')) {
+            def artifactURL = (!artifactName) ?: [s3BaseURL, channelPath, artifactName].join('/')
+            result.add([
+                    name: artifactName,
+                    url:  artifactURL,
+                    channelPath: channelPath
+            ])
+        }
+
+        result
+    }
+
+    private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
+        def binaryParameters = []
+
+        for (buildJobArtifact in buildJobArtifacts) {
+            def artifactName = (!buildJobArtifact['name'].contains('.plist')) ?: buildJobArtifact['name'].replaceAll('.plist', '.ipa')
+            def artifactURL = buildJobArtifact.url
+            def channelName = buildJobArtifact.channelPath.toUpperCase().replaceAll('/', '_')
+            if (artifactName != '-') {
+                binaryParameters.add(script.stringParam(name: "${channelName}_BINARY_URL", value: artifactURL))
             }
-        }.join('/')
-        return channelPath
+        }
+
+        binaryParameters
     }
 
     private final void prepareRun() {
@@ -177,7 +115,7 @@ class Facade implements Serializable {
                 def channel = x
                 def jobParameters = getJobParameters(channel)
                 def channelPath = getChannelPath(channel)
-                script.env[channel] = true
+
                 runList[channel] = {
                     script.stage(channel) {
                         /* Trigger channel job */
@@ -185,15 +123,34 @@ class Facade implements Serializable {
                         /* Collect job results */
                         jobResultList.add(channelJob.currentResult)
                         if (channelJob.currentResult != 'SUCCESS') {
-                            artifacts += "${channelPath}:-,"
+                            artifacts += getArtifactObjectList(channelPath)
                             script.echo "Status of the channel ${channel} build is: ${channelJob.currentResult}"
                         } else {
-                            artifacts += channelJob.buildVariables.CHANNEL_ARTIFACTS
+                            artifacts += getArtifactObjectList(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS)
                         }
                     }
                 }
             }
         }
+    }
+
+    @NonCPS
+    protected static getChannelPath(channel) {
+        def channelPath = channel.tokenize('_').collect() { item ->
+            /* Workaround for windows phone jobs */
+            if (item.contains('WINDOWSPHONE')) {
+                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
+                /* Workaround for SPA jobs */
+            } else if (item.contains('SPA')) {
+                item
+            } else if (item.contains('IOS')) {
+                'iOS'
+            } else {
+                item.toLowerCase().capitalize()
+            }
+        }.join('/')
+
+        return channelPath
     }
 
     protected setBuildDescription() {
@@ -203,42 +160,28 @@ class Facade implements Serializable {
         """.stripIndent()
     }
 
-    protected final getChannelsForEmail(channels) {
-        def result = [
-                channels: []
-        ]
-
-        for (channel in channels.split(',')) {
-            def artifact = channel.split(':')
-            result.channels.add([
-                    name: artifact[0].replaceAll('/', ' '),
-                    artifact: [
-                        'url':  [script.env.S3_ARTIFACT_URL, artifact[0], artifact[1]].join('/'),
-                        'name': artifact[1]
-                    ]
-            ])
-        }
-
-        result
-    }
-
     protected final void run() {
         prepareRun()
 
         script.node(nodeLabel) {
             try {
                 script.parallel(runList)
-                script.env['CHANNEL_ARTIFACTS'] = artifacts
 
                 if (script.params.AVAILABLE_TEST_POOLS) {
-                    def binaries = (getBinariesURL()) ?: script.error("Artifacts binaries were not found!")
+                    def testAutomationJobParameters = getTestAutomationJobParameters() ?: script.error("runTests job parameters are missing!")
+                    def testAutomationJobBinaryParameters = (getTestAutomationJobBinaryParameters(artifacts)) ?: script.error("runTests job binary URL parameters are missing!")
 
                     script.stage('TESTS') {
                         def testAutomationJob = script.build job: "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests",
-                                parameters: getTestAutomationJobParameters() + binaries,
+                                parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
                                 propagate: false
-                        jobResultList.add(testAutomationJob.currentResult)
-                        script.echo "Status of the runTests job: ${testAutomationJob.currentResult}"
+                        def testAutomationJobResult = testAutomationJob.currentResult
+
+                        jobResultList.add(testAutomationJobResult)
+
+                        if (testAutomationJobResult != 'SUCCESS') {
+                            script.echo "Status of the runTests job: ${testAutomationJobResult}"
+                        }
                     }
                 }
 
@@ -248,12 +191,12 @@ class Facade implements Serializable {
                     script.currentBuild.result = 'SUCCESS'
                 }
             } catch (Exception e) {
-                script.echo e.getMessage()
+                script.echo e.getLocalizedMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 setBuildDescription()
                 if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                    EmailHelper.sendEmail(script, 'buildVisualizerApp', getChannelsForEmail(artifacts), true)
+                    NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
                 }
             }
         }

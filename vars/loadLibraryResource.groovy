@@ -1,9 +1,7 @@
-def call(resourcePath) {
-    def resource = ''
-    String successMessage = 'Resource loading finished successfully'
-    String errorMessage = 'FAILED to load resource'
+def call(String resourcePath) {
+    def resource
 
-    catchErrorCustom(successMessage, errorMessage) {
+    catchErrorCustom('FAILED to load resource') {
         resource = libraryResource resourcePath
     }
 

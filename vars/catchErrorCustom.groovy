@@ -1,8 +1,12 @@
-def call(successMsg, errorMsg, closure) {
+def call(String errorMsg, String successMsg = '', Closure closure) {
     try {
         closure()
-        echo successMsg
+        if (successMsg) {
+            echo "$successMsg"
+        }
     } catch(Exception e) {
-        error errorMsg
+        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+        error(exceptionMessage)
+        echo "$errorMsg"
     }
 }

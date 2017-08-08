@@ -1,6 +1,7 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.EmailHelper
+import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.BuildHelper
 
 class AndroidChannel extends Channel {
     private androidHome
@@ -31,22 +32,17 @@ class AndroidChannel extends Channel {
         String apksigner = androidHome + ((isUnixNode) ? '/build-tools/25.0.0/apksigner' :
                 '\\build-tools\\25.0.0\\apksigner.bat')
         String debugSingCommand = "${apksigner} sign --ks debug.keystore --ks-pass pass:android ${artifactName}"
+        String keyGenCommand = 'keytool -genkey -noprompt' +
+             ' -alias androiddebugkey' +
+             ' -dname "CN=Android Debug,O=Android,C=US"' +
+             ' -keystore debug.keystore' +
+             ' -storepass android' +
+             ' -keypass android' +
+             ' -keyalg RSA' +
+             ' -keysize 2048' +
+             ' -validity 10000'
 
-        String keyGenCommandUnix = """\
-            keytool -genkey -noprompt \
-             -alias androiddebugkey \
-             -dname "CN=Android Debug,O=Android,C=US" \
-             -keystore debug.keystore \
-             -storepass android \
-             -keypass android \
-             -keyalg RSA \
-             -keysize 2048 \
-             -validity 10000
-        """
-
-        String keyGenCommandWindows = keyGenCommandUnix.replaceAll('\\\\', '^')
-
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactPath) {
                 if (isUnixNode) {
                     if (buildMode == 'release') {
@@ -56,7 +52,7 @@ class AndroidChannel extends Channel {
                                     artifactName
                         }
                     } else {
-                        script.sh keyGenCommandUnix
+                        script.sh keyGenCommand
                         script.sh debugSingCommand
                     }
 
@@ -69,7 +65,7 @@ class AndroidChannel extends Channel {
                                     artifactName
                         }
                     } else {
-                        script.bat keyGenCommandWindows
+                        script.bat keyGenCommand
                         script.bat debugSingCommand
                     }
 
@@ -81,18 +77,15 @@ class AndroidChannel extends Channel {
 
     protected final void createWorkflow() {
         script.node(nodeLabel) {
-            /* Set environment-dependent variables */
-            isUnixNode = script.isUnix()
-            workspace = script.env.WORKSPACE
-            projectFullPath = (isUnixNode) ? workspace + '/' + projectName :
-                    workspace + '\\' + projectName
-            artifactsBasePath = projectFullPath + ((isUnixNode) ? "/binaries" : "\\binaries")
-
-            try {
+            pipelineWrapper {
                 script.deleteDir()
 
                 script.stage('Checkout') {
-                    checkoutProject()
+                    BuildHelper.checkoutProject script: script,
+                            projectName: projectName,
+                            gitBranch: gitBranch,
+                            gitCredentialsID: gitCredentialsID,
+                            gitURL: gitURL
                 }
 
                 script.stage('Build') {
@@ -105,13 +98,7 @@ class AndroidChannel extends Channel {
                     /* Rename artifacts for publishing */
                     artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
                             script.error('FAILED build artifacts are missing!')
-                    /* Create a list with artifact names */
-                    def channelArtifacts = ''
-                    def channelPath = getChannelPath(channelName)
-                    for (artifact in artifacts) {
-                        channelArtifacts += "${channelPath}:${artifact.name},"
-                    }
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts
+
                 }
 
                 if (artifactExtension != 'war') {
@@ -123,16 +110,17 @@ class AndroidChannel extends Channel {
                 }
 
                 script.stage("Publish artifacts to S3") {
+                    /* Create a list with artifact names and upload them */
+                    def channelArtifacts = []
+
                     for (artifact in artifacts) {
-                        publishToS3 artifactName: artifact.name, artifactPath: artifact.path
+                        channelArtifacts.add(artifact.name)
+
+                        AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
+                                sourceFileName: artifact.name, sourceFilePath: artifact.path
                     }
-                }
-            } catch(Exception e) {
-                script.echo e.getMessage()
-                script.currentBuild.result = 'FAILURE'
-            } finally {
-                if (buildCause == 'user' || script.currentBuild.result == 'FAILURE') {
-                    EmailHelper.sendEmail(script, 'buildVisualizerApp')
+
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.join(',')
                 }
             }
         }

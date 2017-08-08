@@ -1,6 +1,7 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.EmailHelper
+import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.BuildHelper
 
 class WindowsChannel extends Channel {
     def shortenedWorkspace = 'C:\\J\\' + projectName + '\\' + script.env.JOB_BASE_NAME
@@ -12,19 +13,16 @@ class WindowsChannel extends Channel {
 
     protected final void createWorkflow() {
         script.node(nodeLabel) {
-            /* Workaround to fix path limitaion on windows slaves */
-            script.ws(shortenedWorkspace) {
-                /* Set environment-dependent variables */
-                isUnixNode = script.isUnix()
-                workspace = script.env.WORKSPACE
-                projectFullPath = workspace + '\\' + projectName
-                artifactsBasePath = projectFullPath + "\\binaries"
-
-                try {
+            script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
+                pipelineWrapper {
                     script.deleteDir()
 
                     script.stage('Checkout') {
-                        checkoutProject()
+                        BuildHelper.checkoutProject script: script,
+                                projectName: projectName,
+                                gitBranch: gitBranch,
+                                gitCredentialsID: gitCredentialsID,
+                                gitURL: gitURL
                     }
 
                     script.stage('Build') {
@@ -34,26 +32,20 @@ class WindowsChannel extends Channel {
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
                                 script.error('FAILED build artifacts are missing!')
-                        /* Create a list with artifact names */
-                        def channelArtifacts = ''
-                        def channelPath = getChannelPath(channelName)
-                        for (artifact in artifacts) {
-                            channelArtifacts += "${channelPath}:${artifact.name},"
-                        }
-                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts
                     }
 
                     script.stage("Publish artifacts to S3") {
+                        /* Create a list with artifact names and upload them */
+                        def channelArtifacts = []
+
                         for (artifact in artifacts) {
-                            publishToS3 artifactName: artifact.name, artifactPath: artifact.path
+                            channelArtifacts.add(artifact.name)
+
+                            AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
+                                    sourceFileName: artifact.name, sourceFilePath: artifact.path
                         }
-                    }
-                } catch(Exception e) {
-                    script.echo e.getMessage()
-                    script.currentBuild.result = 'FAILURE'
-                } finally {
-                    if (buildCause == 'user' || script.currentBuild.result == 'FAILURE') {
-                        EmailHelper.sendEmail(script, 'buildVisualizerApp')
+
+                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.join(',')
                     }
                 }
             }

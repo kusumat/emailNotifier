@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer.testing
 
+import com.kony.appfactory.helper.AWSHelper
 import groovy.json.JsonOutput
 
 /**
@@ -27,8 +28,8 @@ class DeviceFarm implements Serializable {
         def successMessage = 'Artifact ' + artifactName + ' fetched successfully'
         def errorMessage = 'FAILED to fetch artifact ' + artifactName
 
-        script.catchErrorCustom(successMessage, errorMessage) {
-            script.sh "curl -k -s -f -L -o \'${artifactName}\' \'${artifactURL}\'"
+        script.catchErrorCustom(errorMessage, successMessage) {
+            script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactURL}\'")
         }
     }
 
@@ -41,13 +42,14 @@ class DeviceFarm implements Serializable {
      */
     protected final getProject(name) {
         def projectArn
-        def successMessage = 'Project ' + name + ' search finished successfully'
-        def errorMessage = 'FAILED to search ' + name + ' project'
+        def successMessage = 'Project ' + name + ' already exists!'
+        def errorMessage = 'FAILED to create project ' + name
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             def getProjectScript = "aws devicefarm list-projects --no-paginate --query \'projects[?name==" +
                     "`" + name + "`" + "]\'"
-            def getProjectScriptOutput = script.sh(script: getProjectScript, returnStdout: true).trim()
+//            def getProjectScriptOutput = script.sh(script: getProjectScript, returnStdout: true).trim()
+            def getProjectScriptOutput = script.shellCustom(getProjectScript, true, [returnStdout: true]).trim()
             def getProjectScriptOutputJSON = script.readJSON(text: getProjectScriptOutput)
 
             projectArn = (getProjectScriptOutputJSON.isEmpty()) ? null : getProjectScriptOutputJSON[0].arn
@@ -68,9 +70,10 @@ class DeviceFarm implements Serializable {
         def successMessage = 'Project ' + name + ' created successfully'
         def errorMessage = 'FAILED to create project ' + name
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             def createProjectScript = "aws devicefarm create-project --name \'" + name + "\'" + " --query project.arn"
-            def createProjectOutput = script.sh(script: createProjectScript, returnStdout: true).trim()
+//            def createProjectOutput = script.sh(script: createProjectScript, returnStdout: true).trim()
+            def createProjectOutput = script.shellCustom(createProjectScript, true, [returnStdout: true]).trim()
 
             projectArn = (createProjectOutput) ?: null
         }
@@ -87,10 +90,8 @@ class DeviceFarm implements Serializable {
      */
     private parseDevicesList(devicesList) {
         def devices = []
-        def successMessage = 'Device list parsed successfully'
-        def errorMessage = 'FAILED to parse device list'
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom('FAILED to parse device list') {
             for (item in devicesList.tokenize(',')) {
                 def deviceProperties = item.tokenize('*')
                 devices.add([
@@ -119,10 +120,11 @@ class DeviceFarm implements Serializable {
         def successMessage = "Pool $configID found successfully"
         def errorMessage = "FAILED to find $configID pool"
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             script.configFileProvider([script.configFile(fileId: "$configID", variable: 'DEVICES')]) {
-                def getDevicesInPoolOutput = script.sh(script: 'cat $DEVICES', returnStdout: true).trim()
-                devices = (parseDevicesList(getDevicesInPoolOutput)) ?: ''
+//                def getDevicesInPoolOutput = script.sh(script: 'cat $DEVICES', returnStdout: true).trim()
+                def getDevicesInPoolOutput = script.shellCustom('cat $DEVICES', true, [returnStdout: true]).trim()
+                devices = parseDevicesList(getDevicesInPoolOutput)
             }
         }
 
@@ -139,21 +141,25 @@ class DeviceFarm implements Serializable {
      */
     protected final getDeviceArns(selectedDevices) {
         def deviceArns = [:]
-        def successMessage = 'Device ARNs found successfully'
         def errorMessage = 'FAILED to find device ARNs'
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage) {
             def getDeviceArnsScript = "aws devicefarm list-devices"
-            def getDeviceArnsScriptOutput = script.sh(script: getDeviceArnsScript, returnStdout: true).trim()
+//            def getDeviceArnsScriptOutput = script.sh(script: getDeviceArnsScript, returnStdout: true).trim()
+            def getDeviceArnsScriptOutput = script.shellCustom(getDeviceArnsScript, true, [returnStdout: true]).trim()
             def existingDevices = script.readJSON(text: getDeviceArnsScriptOutput).devices
             def phonesList = []
             def tabletsList = []
+            def missingDevicesList = []
 
             for(selectedDevice in selectedDevices) {
+                def deviceExists = false
+
                 for(existingDevice in existingDevices) {
                     def truncatedExistingDevice = existingDevice.subMap(selectedDevice.keySet() as List)
 
                     if (truncatedExistingDevice == selectedDevice) {
+                        deviceExists = true
                         if (existingDevice.formFactor == 'PHONE') {
                             phonesList.add(existingDevice.arn)
                         } else {
@@ -161,10 +167,16 @@ class DeviceFarm implements Serializable {
                         }
                     }
                 }
+
+                if (!deviceExists) {
+                    missingDevicesList.add("$selectedDevice.manufacturer $selectedDevice.model")
+                }
             }
 
             deviceArns.phones = phonesList
             deviceArns.tablets = tabletsList
+
+            script.env['MISSING_DEVICES'] = missingDevicesList.join(', ') // Exposing missing devices as env variable
         }
 
         deviceArns
@@ -187,9 +199,10 @@ class DeviceFarm implements Serializable {
         def deviceNames = (getDevicesInPool(devicePoolName)) ?: script.error("Device list is empty!")
         def deviceArns = (getDeviceArns(deviceNames)) ?: script.error("Device ARNs list is empty!")
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             def generateSkeletonScript = "aws devicefarm create-device-pool --generate-cli-skeleton"
-            def generateSkeletonScriptResult = script.sh(script: generateSkeletonScript, returnStdout: true).trim()
+//            def generateSkeletonScriptResult = script.sh(script: generateSkeletonScript, returnStdout: true).trim()
+            def generateSkeletonScriptResult = script.shellCustom(generateSkeletonScript, true, [returnStdout: true]).trim()
             def devicePool = script.readJSON text: generateSkeletonScriptResult
 
             for (item in deviceArns) {
@@ -208,7 +221,8 @@ class DeviceFarm implements Serializable {
             for (int i = 0; i < poolNames.size(); ++i) {
                 def createDevicePoolScript = "aws devicefarm create-device-pool --cli-input-json" +
                         " '${devicePoolJsons.get(poolNames[i])}' --query devicePool.arn"
-                def createDevicePoolScriptOutput = script.sh(script: createDevicePoolScript, returnStdout: true).trim()
+//                def createDevicePoolScriptOutput = script.sh(script: createDevicePoolScript, returnStdout: true).trim()
+                def createDevicePoolScriptOutput = script.shellCustom(createDevicePoolScript, true, [returnStdout: true]).trim()
 
                 devicePoolArns.put(poolNames[i], createDevicePoolScriptOutput)
             }
@@ -231,20 +245,23 @@ class DeviceFarm implements Serializable {
         def successMessage = "Artifact ${uploadFileName} uploaded successfully"
         def errorMessage = "FAILED to upload ${uploadFileName} artifact"
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             def createUploadScript = "aws devicefarm create-upload --project-arn ${projectArn}" +
                     " --name ${uploadFileName}" + " --type ${uploadType}"
-            def createUploadOutput = script.sh(script: createUploadScript, returnStdout: true).trim()
+//            def createUploadOutput = script.sh(script: createUploadScript, returnStdout: true).trim()
+            def createUploadOutput = script.shellCustom(createUploadScript, true, [returnStdout: true]).trim()
             def createUploadJSON = script.readJSON text: createUploadOutput
             uploadArn = createUploadJSON.upload.arn
             def uploadUrl = createUploadJSON.upload.url
-            def uploadScript = "curl -f -T ${uploadFileName} '${uploadUrl}'"
+            def uploadScript = "curl -k -s -S -f -T ${uploadFileName} '${uploadUrl}'"
 
-            script.sh script: uploadScript
+//            script.sh script: uploadScript
+            script.shellCustom(uploadScript)
 
             script.waitUntil {
                 def getUploadScript = "aws devicefarm get-upload --arn ${uploadArn}"
-                def getUploadOutput = script.sh script: getUploadScript, returnStdout: true
+//                def getUploadOutput = script.sh script: getUploadScript, returnStdout: true
+                def getUploadOutput = script.shellCustom(getUploadScript, true, [returnStdout: true]).trim()
                 def getUploadJSON = script.readJSON text: getUploadOutput
                 def uploadStatus = getUploadJSON.upload.status
                 def uploadMetadata = getUploadJSON.upload.metadata
@@ -276,7 +293,7 @@ class DeviceFarm implements Serializable {
         def successMessage = "Run scheduled successfully"
         def errorMessage = "FAILED to schedule run"
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             def runScript = "aws devicefarm schedule-run" +
                     " --project-arn ${projectArn}" +
                     " --app-arn ${uploadArtifactArn}" +
@@ -284,7 +301,8 @@ class DeviceFarm implements Serializable {
                     " --test type=${runType},testPackageArn=${testPackageArn}" +
                     " --query run.arn"
 
-            runArn = script.sh(script: runScript, returnStdout: true).trim()
+//            runArn = script.sh(script: runScript, returnStdout: true).trim()
+            runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim()
         }
 
         runArn
@@ -302,10 +320,11 @@ class DeviceFarm implements Serializable {
         def successMessage = "Test run results fetched successfully"
         def errorMessage = "FAILED to fetch test run results"
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             script.waitUntil {
                 def runResultScript = "aws devicefarm get-run --arn ${testRunArn}"
-                def runResultOutput = script.sh(script: runResultScript, returnStdout: true).trim()
+//                def runResultOutput = script.sh(script: runResultScript, returnStdout: true).trim()
+                def runResultOutput = script.shellCustom(runResultScript, true, [returnStdout: true]).trim()
                 def runResultJSON = script.readJSON text: runResultOutput
                 testRunStatus = runResultJSON.run.status
                 testRunResult = runResultJSON.run.result
@@ -365,7 +384,7 @@ class DeviceFarm implements Serializable {
         }
 
         if (queryParameters) {
-            def queryOutput = script.readJSON text: script.sh(script: queryParameters.queryScript, returnStdout: true).trim()
+            def queryOutput = script.readJSON text: script.shellCustom(queryParameters.queryScript, true, [returnStdout: true]).trim()
 
             if (queryOutput) {
                 def queryProperty = queryParameters.queryProperty
@@ -426,15 +445,15 @@ class DeviceFarm implements Serializable {
      * @param s3BasePath the base path in S3 bucket
      * @param artifactFolder the path to artifact in workspace
      */
-    protected final moveArtifactsToCustomerS3Bucket(runResultArtifacts, bucketName, bucketRegion, s3BasePath, artifactFolder) {
+    protected final moveArtifactsToCustomerS3Bucket(runResultArtifacts, s3BasePath) {
         def successMessage = "Artifacts moved successfully"
         def errorMessage = "FAILED to move artifacts"
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             for (runArtifact in runResultArtifacts) {
                 for (suite in runArtifact.suites) {
                     for(test in suite.tests) {
-                        def resultPath = [bucketName, s3BasePath]
+                        def resultPath = [s3BasePath]
                         resultPath.add(runArtifact.device.formFactor)
                         resultPath.add(runArtifact.device.name +'_' + runArtifact.device.platform + '_' +
                                 runArtifact.device.os)
@@ -445,9 +464,9 @@ class DeviceFarm implements Serializable {
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll("\\s", '_')
 
                             fetchArtifact(artifactFullName, artifact.url)
-                            publishToS3 path: s3path, name: artifactFullName, region: bucketRegion,
-                                    folder: artifactFolder
-                            artifact.url = getS3ArtifactURL(bucketRegion, s3path + '/' + artifactFullName)
+                            AWSHelper.publishToS3 script: script, bucketPath: s3path, sourceFileName: artifactFullName,
+                                    sourceFilePath: script.pwd()
+                            artifact.url = AWSHelper.getS3ArtifactURL(script, [s3path, artifactFullName].join('/'))
                         }
                     }
                 }
@@ -457,48 +476,15 @@ class DeviceFarm implements Serializable {
         runResultArtifacts
     }
 
-    protected final void publishToS3(args) {
-        String successMessage = 'Artifact published successfully'
-        String errorMessage = 'FAILED to publish artifact'
-        String fileName = args.name
-        String bucketPath = args.path
-        String bucketRegion = args.region
-        String artifactFolder = args.folder
-
-        script.catchErrorCustom(successMessage, errorMessage) {
-            script.dir(artifactFolder) {
-                script.step([$class                              : 'S3BucketPublisher',
-                             consoleLogLevel                     : 'INFO',
-                             dontWaitForConcurrentBuildCompletion: false,
-                             entries                             : [
-                                     [bucket           : bucketPath,
-                                      flatten          : true,
-                                      keepForever      : true,
-                                      managedArtifacts : false,
-                                      noUploadOnFailure: true,
-                                      selectedRegion   : bucketRegion,
-                                      sourceFile       : fileName]
-                             ],
-                             pluginFailureResultConstraint       : 'FAILURE'])
-            }
-        }
-    }
-
-    private final getS3ArtifactURL(bucketRegion, artifactPath) {
-        return 'https://' + 's3-' + bucketRegion + '.amazonaws.com/' + artifactPath
-    }
-
     /**
      * Delete uploaded artifact by ARN
      *
      * @param artifactArn the artifact ARN
      */
     protected final void deleteUploadedArtifact(artifactArn) {
-        def successMessage = "Artifact deleted successfully"
-        def errorMessage = "FAILED to delete artifact"
-
-        script.catchErrorCustom(successMessage, errorMessage) {
-            script.sh "aws devicefarm delete-upload --arn ${artifactArn}"
+        script.catchErrorCustom('FAILED to delete artifact') {
+//            script.sh "aws devicefarm delete-upload --arn ${artifactArn}"
+            script.shellCustom("aws devicefarm delete-upload --arn ${artifactArn}")
         }
     }
 
@@ -508,11 +494,9 @@ class DeviceFarm implements Serializable {
      * @param devicePoolArn the device pool ARN
      */
     protected final void deleteDevicePool(devicePoolArn) {
-        def successMessage = "Device pool deleted successfully"
-        def errorMessage = "FAILED to delete device pool"
-
-        script.catchErrorCustom(successMessage, errorMessage) {
-            script.sh "aws devicefarm delete-device-pool --arn ${devicePoolArn}"
+        script.catchErrorCustom('FAILED to delete device pool') {
+//            script.sh "aws devicefarm delete-device-pool --arn ${devicePoolArn}"
+            script.shellCustom("aws devicefarm delete-device-pool --arn ${devicePoolArn}")
         }
     }
 }

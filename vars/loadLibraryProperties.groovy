@@ -1,9 +1,7 @@
-def call(propertyFileName) {
+def call(String propertyFileName) {
     def libraryProperties
-    String successMessage = 'Properties loading finished successfully'
-    String errorMessage = 'FAILED to load properties'
 
-    catchErrorCustom(successMessage, errorMessage) {
+    catchErrorCustom('FAILED to load properties') {
         libraryProperties = readProperties text: loadLibraryResource(propertyFileName)
     }
 

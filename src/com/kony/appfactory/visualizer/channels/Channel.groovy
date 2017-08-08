@@ -1,172 +1,62 @@
 package com.kony.appfactory.visualizer.channels
 
-abstract class Channel implements Serializable {
+import com.kony.appfactory.helper.NotificationsHelper
+
+class Channel implements Serializable {
     protected script
+    protected artifacts
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
     protected String visualizerVersion
+    protected String channelPath
     protected String channelName
-    protected String iosPluginVersion
-    protected artifacts
     protected String artifactsBasePath
     protected String artifactExtension
-    protected String s3artifactPath
-    protected String s3BucketRegion = script.env.S3_BUCKET_REGION
-    protected String s3BucketName = script.env.S3_BUCKET_NAME
+    protected String s3ArtifactPath
     protected String nodeLabel
     protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
-    protected String recipientList
-
-    /* Required for triggering emails */
-    protected buildCause
 
     /* Common build parameters */
     protected String projectName = script.env.PROJECT_NAME
-    protected String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
+    protected String gitCredentialsID = script.env.GIT_CREDENTIALS_ID
     protected String gitURL = script.env.PROJECT_GIT_URL
-    protected String gitBranch = script.params.GIT_BRANCH
-    protected String environment = script.params.ENVIRONMENT
-    protected String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
+    protected String gitBranch = script.env.GIT_BRANCH
+    protected String environment = script.env.ENVIRONMENT
+    protected String cloudCredentialsID = script.env.CLOUD_CREDENTIALS_ID
     protected String jobBuildNumber = script.env.BUILD_NUMBER
-    protected String buildMode = script.params.BUILD_MODE
+    protected String buildMode = script.env.BUILD_MODE
 
     Channel(script) {
         this.script = script
-        recipientList = this.script.env.RECIPIENT_LIST
-        /* Workaround to build only specific channel */
-        channelName = (this.script.env.JOB_NAME - 'Visualizer/Builds/' - "${projectName}/" - "${environment}/").toUpperCase().replaceAll('/','_')
-        this.script.env[channelName] = true
-        artifactExtension = setArtifactExtension(channelName)
-        s3artifactPath = getS3ArtifactPath(channelName)
-        setS3ArtifactURL()
-        /* Get build cause for e-mail notification */
-        getBuildCause()
+        channelPath = (this.script.env.JOB_NAME - 'Visualizer/Builds/' - "${projectName}/" - "${environment}/")
+        channelName = channelPath.toUpperCase().replaceAll('/','_')
+        this.script.env[channelName] = true // Exposing environment variable with channel to build
+        artifactExtension = getArtifactExtension(channelName)
+        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
     }
 
-    @NonCPS
-    protected static final setArtifactExtension(channel) {
-        def result
+    protected final void pipelineWrapper(closure) {
+        /* Set environment-dependent variables */
+        isUnixNode = script.isUnix()
+        workspace = script.env.WORKSPACE
+        projectFullPath = (isUnixNode) ? workspace + '/' + projectName :
+                workspace + '\\' + projectName
+        artifactsBasePath = projectFullPath + ((isUnixNode) ? "/binaries" : "\\binaries")
 
-        switch (channel) {
-            case ~/^.*SPA.*$/:
-                result = 'war'
-                break
-            case ~/^.*WINDOWS_TABLET.*$/:
-            case ~/^.*WINDOWS_MOBILE.*$/:
-                result = 'appx'
-                break
-            case ~/^.*WINDOWS.*$/:
-                result = 'xap'
-                break
-            case ~/^.*IOS.*$/:
-                result = 'ipa'
-                break
-            case ~/^.*ANDROID.*$/:
-                result = 'apk'
-                break
-            default:
-                result = 'unknown'
-                break
-        }
-
-        result
-    }
-
-    @NonCPS
-    protected final getS3ArtifactPath(channel) {
-        def channelPath = channel.tokenize('_').collect() { item ->
-            /* Workaround for windows phone jobs */
-            if (item.contains('WINDOWSPHONE')) {
-                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
-                /* Workaround for SPA jobs */
-            } else if (item.contains('SPA')) {
-                item
-            } else if (item.contains('IOS')) {
-                    'iOS'
-            } else {
-                item.toLowerCase().capitalize()
-            }
-        }.join('/')
-        return "${s3BucketName}/${projectName}/Builds/${environment}/${channelPath}"
-    }
-
-    protected final getSCMConfiguration() {
-        def scm
-        def projectInSubfolder = (script.env.PROJECT_IN_SUBFOLDER?.trim()) ?: 'false'
-        def checkoutSubfolder = (projectInSubfolder == 'true') ? '.' : projectName
-
-        switch (gitURL) {
-            case ~/^.*svn.*$/:
-                scm = [$class                : 'SubversionSCM',
-                       additionalCredentials : [],
-                       excludedCommitMessages: '',
-                       excludedRegions       : '',
-                       excludedRevprop       : '',
-                       excludedUsers         : '',
-                       filterChangelog       : false,
-                       ignoreDirPropChanges  : false,
-                       includedRegions       : '',
-                       locations             : [
-                               [credentialsId        : "${gitCredentialsID}",
-                                depthOption          : 'infinity',
-                                ignoreExternalsOption: true,
-                                local                : "${checkoutSubfolder}",
-                                remote               : "${gitURL}"]
-                       ],
-                       workspaceUpdater      : [$class: 'UpdateUpdater']]
-                break
-            default:
-                scm = [$class                           : 'GitSCM',
-                       branches                         : [[name: "*/${gitBranch}"]],
-                       doGenerateSubmoduleConfigurations: false,
-                       extensions                       : [[$class           : 'RelativeTargetDirectory',
-                                                            relativeTargetDir: "${checkoutSubfolder}"]],
-                       submoduleCfg                     : [],
-                       userRemoteConfigs                : [[credentialsId: "${gitCredentialsID}",
-                                                            url          : "${gitURL}"]]]
-                break
-        }
-
-        scm
-    }
-
-    protected final void checkoutProject() {
-        String successMessage = 'Project has been checkout successfully'
-        String errorMessage = 'FAILED to checkout the project'
-
-        script.catchErrorCustom(successMessage, errorMessage) {
-            script.checkout(
-                    changelog: false,
-                    poll: false,
-                    scm: getSCMConfiguration()
-            )
-        }
-    }
-
-    protected final void publishToS3(args) {
-        String successMessage = 'Artifact published successfully'
-        String errorMessage = 'FAILED to publish artifact'
-
-        script.catchErrorCustom(successMessage, errorMessage) {
-            script.dir(args.artifactPath) {
-                script.step([$class                              : 'S3BucketPublisher',
-                             consoleLogLevel                     : 'INFO',
-                             dontWaitForConcurrentBuildCompletion: false,
-                             entries                             : [
-                                     [bucket           : "${s3artifactPath}",
-                                      flatten          : true,
-                                      keepForever      : true,
-                                      managedArtifacts : false,
-                                      noUploadOnFailure: true,
-                                      selectedRegion   : "${s3BucketRegion}",
-                                      sourceFile       : "${args.artifactName}"]
-                             ],
-                             pluginFailureResultConstraint       : 'FAILURE'])
+        try {
+            closure()
+        } catch (Exception e) {
+            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+            script.echo "ERROR: $exceptionMessage"
+            script.currentBuild.result = 'FAILURE'
+        } finally {
+            if (script.currentBuild.result == 'FAILURE') {
+                NotificationsHelper.sendEmail(script, 'buildVisualizerApp')
             }
         }
     }
-    
+
     protected final void visualizerEnvWrapper(closure) {
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
@@ -187,27 +77,13 @@ abstract class Channel implements Serializable {
         }
     }
 
-    /* Determine which Visualizer version a project requires according to the version of the keditor plugin */
-    protected final getVisualizerVersion(text) {
-        def matcher = text =~ '<pluginInfo version-no="(\\d+\\.\\d+\\.\\d+)\\.\\w*" plugin-id="com.pat.tool.keditor"'
-        return matcher ? matcher[0][1] : null
-    }
-
-    /* Determine version version of the iOS plugin */
-    protected final pluginVersion(text) {
-        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
-        return matcher ? matcher[0][1] : null
-    }
-
     protected final void build() {
-        String successMessage = 'Project has been built successfully'
-        String errorMessage = 'FAILED to build the project'
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom('FAILED to build the project') {
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
-                for (int i=0; i<requiredResources.size(); i++) {
+                for (int i=0; i < requiredResources.size(); i++) {
                     String resource = script.loadLibraryResource(resourceBasePath + requiredResources[i])
                     script.writeFile file: requiredResources[i], text: resource
                 }
@@ -215,71 +91,41 @@ abstract class Channel implements Serializable {
                 /* This wrapper responsible for adding ANT_HOME, JAVA_HOME and Kony Cloud credentials */
                 visualizerEnvWrapper() {
                     if (isUnixNode) {
-                        iosPluginVersion = pluginVersion(script.readFile('konyplugins.xml'))
-                        script.sh '$ANT_HOME/bin/ant -buildfile property.xml'
-                        script.sh '$ANT_HOME/bin/ant'
+                        script.shellCustom('$ANT_HOME/bin/ant -buildfile property.xml')
+                        script.shellCustom('$ANT_HOME/bin/ant')
                     } else {
-                        script.bat "%ANT_HOME%\\bin\\ant -buildfile property.xml"
-                        script.bat "%ANT_HOME%\\bin\\ant"
+                        script.shellCustom('%ANT_HOME%\\bin\\ant -buildfile property.xml', isUnixNode)
+                        script.shellCustom('%ANT_HOME%\\bin\\ant', isUnixNode)
                     }
                 }
             }
         }
     }
 
-    @NonCPS
-    protected final void getBuildCause() {
-        def causes = []
-        def buildCauses = script.currentBuild.rawBuild.getCauses()
-        def userIdCause = script.currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)
-        def triggeredBy = (userIdCause) ? userIdCause.getUserName() : ''
-
-        for (cause in buildCauses) {
-            if (cause instanceof hudson.model.Cause$UpstreamCause) {
-                causes.add('upstream')
-            } else if (cause instanceof hudson.model.Cause$RemoteCause) {
-                causes.add('remote')
-                triggeredBy = 'SCM'
-            } else if (cause instanceof hudson.model.Cause$UserIdCause) {
-                causes.add('user')
-            } else {
-                causes.add('unknown')
-            }
-        }
-
-        if (causes.contains('upstream')) {
-            buildCause = 'upstream'
-        } else if (causes.contains('user')) {
-            buildCause = 'user'
-        }
-
-        script.env['TRIGGERED_BY'] = "${triggeredBy}"
-    }
-
-    @NonCPS
-    protected final void setS3ArtifactURL() {
-        String s3ArtifactURL = 'https://' + 's3-' + s3BucketRegion + '.amazonaws.com/' + "${s3BucketName}/${projectName}/${environment}"
-        script.env['S3_ARTIFACT_URL'] = s3ArtifactURL
+    /* Determine which Visualizer version project requires, according to the version of the keditor plugin */
+    protected final getVisualizerVersion(text) {
+        def matcher = text =~ '<pluginInfo version-no="(\\d+\\.\\d+\\.\\d+)\\.\\w*" plugin-id="com.pat.tool.keditor"'
+        return matcher ? matcher[0][1] : null
     }
 
     protected final getArtifacts(extension) {
         def artifactsFiles
-        String successMessage = 'Search finished successfully'
-        String errorMessage = 'FAILED to search artifacts'
 
-        script.catchErrorCustom(successMessage, errorMessage) {
-            /* Dirty workaroud for Windows 10 Phone artifacts >>START */
+        script.catchErrorCustom('FAILED to search artifacts') {
+            /* Dirty workaround for Windows 10 Phone artifacts >>START */
             if (!isUnixNode) {
                 if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx")) {
                 script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM")
                 script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM\\${projectName}.appx")
                 }
+
                 if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx")) {
                     script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86")
                     script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86\\${projectName}.appx")
                 }
             }
-            /* Dirty workaroud for Windows 10 Phone artifacts <<END */
+            /* Dirty workaround for Windows 10 Phone artifacts <<END */
+
             script.dir(artifactsBasePath) {
                 artifactsFiles = script.findFiles(glob: "**/*.${extension}")
             }
@@ -290,73 +136,93 @@ abstract class Channel implements Serializable {
 
     protected final renameArtifacts(artifactsList) {
         def renamedArtifacts = []
-        String successMessage = 'Artifacts renamed successfully'
-        String errorMessage = 'FAILED to rename artifacts'
-        String shell = (isUnixNode) ? 'sh' : 'bat'
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
-        String artifactTargetName = projectName + '_' + jobBuildNumber + '.' + artifactExtension
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom('FAILED to rename artifacts') {
             for (int i=0; i < artifactsList.size(); ++i) {
                 String artifactName = artifactsList[i].name
                 String artifactPath = artifactsList[i].path
-                String architecturePrefix = getArtifactArchitecture(artifactPath)
-                String targetName = (architecturePrefix) ? artifactTargetName.replaceFirst('_', architecturePrefix) : artifactTargetName
-                
+                String artifactTargetName = projectName + '_' + getArtifactArchitecture(artifactPath) +
+                        jobBuildNumber + '.' + artifactExtension
                 String targetArtifactFolder = artifactsBasePath +
                         ((isUnixNode) ? "/" : "\\") +
                         (artifactsList[i].path.minus(((isUnixNode) ? "/" : "\\") + "${artifactsList[i].name}"))
-                String command = "${shellCommand} ${artifactName} ${targetName}"
+                String command = "${shellCommand} ${artifactName} ${artifactTargetName}"
 
                 /* Rename artifact */
                 script.dir(targetArtifactFolder) {
-                    script."${shell}" script: command
+                    script.shellCustom(command, isUnixNode)
                 }
 
-                renamedArtifacts.add([name: targetName, path: targetArtifactFolder])
+                renamedArtifacts.add([name: artifactTargetName, path: targetArtifactFolder])
             }
         }
 
         renamedArtifacts
     }
 
+    /**
+     * Returns an artifact file extension depending on channel name.
+     * Method's result is used as an input parameter for build artifacts search.
+     *
+     * @param channelName channel name string
+     * @return            the artifact extension string
+     */
     @NonCPS
-    protected static final getArtifactArchitecture(artifactPath) {
-        def architecture
+    protected final getArtifactExtension(channelName) {
+        def artifactExtension
 
-        switch (artifactPath) {
-            case ~/^.*ARM.*$/:
-                architecture = '_ARM_'
+        switch (channelName) {
+            case ~/^.*SPA.*$/:
+                artifactExtension = 'war'
                 break
-            case ~/^.*x86.*$/:
-                architecture = '_X86_'
+            case ~/^.*WINDOWS_TABLET.*$/:
+            case ~/^.*WINDOWS_MOBILE.*$/:
+                artifactExtension = 'appx'
                 break
-            case ~/^.*x64.*$/:
-                architecture = '_X64_'
+            case ~/^.*WINDOWS.*$/:
+                artifactExtension = 'xap'
+                break
+            case ~/^.*IOS.*$/:
+                artifactExtension = 'ipa'
+                break
+            case ~/^.*ANDROID.*$/:
+                artifactExtension = 'apk'
                 break
             default:
-                architecture = ''
+                artifactExtension = ''
                 break
         }
 
-        architecture
+        artifactExtension
     }
 
+    /**
+     * Returns an artifact architecture depending on location of the artifact after the build.
+     * Method's result is substituted to the artifact name.
+     *
+     * @param artifactPath location of the artifact after the build
+     * @return             the artifact architecture string
+     */
     @NonCPS
-    protected final getChannelPath(channel) {
-        def channelPath = channel.tokenize('_').collect() { item ->
-            /* Workaround for windows phone jobs */
-            if (item.contains('WINDOWSPHONE')) {
-                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
-                /* Workaround for SPA jobs */
-            } else if (item.contains('SPA')) {
-                item
-            } else if (item.contains('IOS')) {
-                'iOS'
-            } else {
-                item.toLowerCase().capitalize()
-            }
-        }.join('/')
-        return channelPath
+    protected final getArtifactArchitecture(artifactPath) {
+        def artifactArchitecture
+
+        switch (artifactPath) {
+            case ~/^.*ARM.*$/:
+                artifactArchitecture = 'ARM_'
+                break
+            case ~/^.*x86.*$/:
+                artifactArchitecture = 'X86_'
+                break
+            case ~/^.*x64.*$/:
+                artifactArchitecture = 'X64_'
+                break
+            default:
+                artifactArchitecture = ''
+                break
+        }
+
+        artifactArchitecture
     }
 }

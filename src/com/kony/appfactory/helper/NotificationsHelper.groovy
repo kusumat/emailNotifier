@@ -6,31 +6,27 @@ import groovy.xml.MarkupBuilder
 /**
  * Implements logic required for sending emails.
  */
-class EmailHelper implements Serializable {
+class NotificationsHelper implements Serializable {
     protected static final sendEmail(script, templateType, templateData = [:], storeBody = false) {
         def data = getData(script, templateType, templateData)
-
-        script.catchError {
-            /* Sending email */
-            script.emailext body: data.body, subject: data.subject, to: data.recipients
-        }
 
         if (storeBody) {
             def fileList = getFileNameList(templateType, data.body, templateData)
             for (fileName in fileList) {
                 script.writeFile text: fileName.data, file: fileName.name
                 def subFolder = (fileName.name.contains('build')) ? 'Builds' : 'Tests'
-                publishToS3 script: script,
-                        name: fileName.name,
-                        path: [
-                                script.env.S3_BUCKET_NAME,
+                AWSHelper.publishToS3 script: script, sourceFileName: fileName.name,
+                        bucketPath: [
                                 script.env.PROJECT_NAME, subFolder,
                                 script.env.JOB_BASE_NAME,
                                 script.env.BUILD_NUMBER
                         ].join('/'),
-                        region: script.env.S3_BUCKET_REGION,
-                        folder: script.pwd()
+                        sourceFilePath: script.pwd()
             }
+        }
+
+        script.catchErrorCustom('FAILED to send email') {
+            script.emailext body: data.body, subject: data.subject, to: data.recipients
         }
     }
 
@@ -51,34 +47,6 @@ class EmailHelper implements Serializable {
         data.recipients = recipients
 
         data
-    }
-
-    protected static void publishToS3(args) {
-        def script = args.script
-        String successMessage = 'Artifact published successfully'
-        String errorMessage = 'FAILED to publish artifact'
-        String fileName = args.name
-        String bucketPath = args.path
-        String bucketRegion = args.region
-        String artifactFolder = args.folder
-
-        script.catchErrorCustom(successMessage, errorMessage) {
-            script.dir(artifactFolder) {
-                script.step([$class                              : 'S3BucketPublisher',
-                             consoleLogLevel                     : 'INFO',
-                             dontWaitForConcurrentBuildCompletion: false,
-                             entries                             : [
-                                     [bucket           : bucketPath,
-                                      flatten          : true,
-                                      keepForever      : true,
-                                      managedArtifacts : false,
-                                      noUploadOnFailure: true,
-                                      selectedRegion   : bucketRegion,
-                                      sourceFile       : fileName]
-                             ],
-                             pluginFailureResultConstraint       : 'FAILURE'])
-            }
-        }
     }
 
     private static getFileNameList(templateType, body, templateData) {
@@ -106,6 +74,7 @@ class EmailHelper implements Serializable {
                 ])
                 break
             default:
+                fileNameList
                 break
         }
 
@@ -116,7 +85,7 @@ class EmailHelper implements Serializable {
         def emailContent
         def commonBinding = [
                 notificationHeader: "${script.env.BUILD_TAG} - ${script.currentBuild.currentResult}",
-                triggeredBy: script.env.TRIGGERED_BY,
+                triggeredBy: BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
                 projectName: script.env.PROJECT_NAME,
                 build: [duration: script.currentBuild.rawBuild.getTimestampString(),
                         number  : script.currentBuild.number,
@@ -138,6 +107,7 @@ class EmailHelper implements Serializable {
                 emailContent = createRunTestContent(commonBinding)
                 break
             default:
+                emailContent
                 break
         }
 
@@ -225,12 +195,12 @@ class EmailHelper implements Serializable {
                                 }
                             }
                             tbody {
-                                for (channel in binding.channels) {
+                                for (artifact in binding.artifacts) {
                                     tr {
-                                        td(channel.name)
+                                        td(artifact.channelPath.replaceAll('/', ' '))
                                         td {
-                                            if (channel.artifact.name != '-') {
-                                                a(href: channel.artifact.url, channel.artifact.name)
+                                            if (artifact.name) {
+                                                a(href: artifact.url, artifact.name)
                                             } else {
                                                 mkp.yield 'Build failed'
                                             }
@@ -348,7 +318,7 @@ class EmailHelper implements Serializable {
                 td(style: "text-align:left", class: "text-color") {
                     h4 "Project Name: ${binding.projectName}"
                     p { strong "Selected Device Pools: ${binding.devicePoolName}" }
-                    p { strong "Devices not available in pool: None" }
+                    p { strong "Devices not available in pool: ${(binding.missingDevices) ?: 'None'}" }
                 }
             }
 

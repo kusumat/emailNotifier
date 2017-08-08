@@ -1,15 +1,17 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.EmailHelper
+import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.BuildHelper
 
 class IOSChannel extends Channel {
     private bundleID
+    private iosPluginVersion
     private karFile = [:]
     private plistFileName
 
     /* Build parameters */
-    private String matchType = script.params.APPLE_DEVELOPER_PROFILE_TYPE
-    private String appleID = script.params.APPLE_ID
+    private String matchType = script.env.APPLE_DEVELOPER_PROFILE_TYPE
+    private String appleID = script.env.APPLE_ID
 
     IOSChannel(script) {
         super(script)
@@ -18,9 +20,6 @@ class IOSChannel extends Channel {
     }
 
     protected final exposeFastlaneConfig() {
-        String successMessage = 'Fastlane configuration fetched successfully'
-        String errorMessage = 'FAILED to fetch fastlane configuration'
-
         def libraryProperties = script.loadLibraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
         def fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
         def fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
@@ -29,7 +28,7 @@ class IOSChannel extends Channel {
         def configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
         def configBucketName = script.env.S3_CONFIG_BUCKET
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom('FAILED to fetch fastlane configuration') {
             script.withAWS(region: configBucketRegion, role: awsIAMRole) {
                 script.s3Download file: fastlaneEnvFileName,
                         bucket: configBucketName,
@@ -58,10 +57,11 @@ class IOSChannel extends Channel {
                 visualizerVersion + '/Kony_Visualizer_Enterprise/dropins'
         String codeSignIdentity = (matchType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             /* Get bundle identifier and iOS plugin version */
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
+                iosPluginVersion = pluginVersion(script.readFile('konyplugins.xml'))
             }
             /* Extract Visualizer iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace") {
@@ -118,9 +118,9 @@ class IOSChannel extends Channel {
         String successMessage = 'PLIST file created successfully'
         String errorMessage = 'FAILED to create PLIST file'
         String plistResourcesFileName = 'apple_orig.plist'
-        String plistPathTagValue = script.env.S3_ARTIFACT_URL
+        String plistPathTagValue = AWSHelper.getS3ArtifactURL(script, ['Builds', environment].join('/'))
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifacts[0].path) {
                 /* Load property list file template */
                 String plist = script.loadLibraryResource(resourceBasePath + plistResourcesFileName)
@@ -140,23 +140,25 @@ class IOSChannel extends Channel {
         return matcher ? matcher[0][1] : null
     }
 
+    /* Determine version of the iOS plugin */
+    private final pluginVersion(text) {
+        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
+        return matcher ? matcher[0][1] : null
+    }
+
     protected final void createWorkflow() {
         script.node(nodeLabel) {
-            /* Get configuration file for fastlane */
-            exposeFastlaneConfig()
-            script.deleteDir()
+            exposeFastlaneConfig() // Get configuration file for fastlane
 
-            /* Set environment-dependent variables */
-            isUnixNode = script.isUnix()
-            workspace = script.env.WORKSPACE
-            projectFullPath = workspace + '/' + projectName
-            artifactsBasePath = projectFullPath + '/binaries'
-
-            try {
+            pipelineWrapper {
                 script.deleteDir()
 
                 script.stage('Checkout') {
-                    checkoutProject()
+                    BuildHelper.checkoutProject script: script,
+                            projectName: projectName,
+                            gitBranch: gitBranch,
+                            gitCredentialsID: gitCredentialsID,
+                            gitURL: gitURL
                 }
 
                 script.stage('Build') {
@@ -195,30 +197,21 @@ class IOSChannel extends Channel {
                     }
                 }
 
-                script.stage("Publish artifact to S3") {
-                    /* Create a list with artifact names */
-                    def channelArtifacts = ''
-                    def channelPath = getChannelPath(channelName)
+                script.stage("Publish artifacts to S3") {
+                    /* Create a list with artifact names and upload them */
+                    def channelArtifacts = []
 
                     for (artifact in artifacts) {
                         /* Exclude ipa from artifacts list */
                         if (!artifact.name.contains('ipa')) {
-                            channelArtifacts += "${channelPath}:${artifact.name},"
+                            channelArtifacts.add(artifact.name)
                         }
+
+                        AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
+                                sourceFileName: artifact.name, sourceFilePath: artifact.path
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts
-
-                    for (artifact in artifacts) {
-                        publishToS3 artifactName: artifact.name, artifactPath: artifact.path
-                    }
-                }
-            } catch(Exception e) {
-                script.echo e.getMessage()
-                script.currentBuild.result = 'FAILURE'
-            } finally {
-                if (buildCause == 'user' || script.currentBuild.result == 'FAILURE') {
-                    EmailHelper.sendEmail(script, 'buildVisualizerApp')
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.join(',')
                 }
             }
         }
