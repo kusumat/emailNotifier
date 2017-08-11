@@ -8,8 +8,6 @@ class IOSChannel extends Channel {
     /* Build parameters */
     private String matchType = script.params.APPLE_DEVELOPER_PROFILE_TYPE
     private String appleID = script.params.APPLE_ID
-    /* For using temporary access keys (AssumeRole) */
-    private String awsIAMRole = script.env.AWS_IAM_ROLE
 
     IOSChannel(script) {
         super(script)
@@ -21,23 +19,26 @@ class IOSChannel extends Channel {
         String successMessage = 'Fastlane configuration fetched successfully'
         String errorMessage = 'FAILED to fetch fastlane configuration'
 
-        def fastlaneConfigFileName = '.env'
-        def fastlaneConfigBucketFilePath = 'configuration/fastlane' + '/' + fastlaneConfigFileName
-        def bucketRegion = 'eu-west-1'
-        def bucketName = 'konyappfactorydev-ci0001-storage1'
+        def libraryProperties = script.loadLibraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
+        def fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
+        def fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
+        /* For using temporary access keys (AssumeRole) */
+        def awsIAMRole = script.env.AWS_IAM_ROLE
+        def configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
+        def configBucketName = script.env.S3_CONFIG_BUCKET
 
         script.catchErrorCustom(successMessage, errorMessage) {
-            script.withAWS(region: bucketRegion, role: awsIAMRole) {
-                script.s3Download file: fastlaneConfigFileName, bucket: bucketName, path: fastlaneConfigBucketFilePath,
+            script.withAWS(region: configBucketRegion, role: awsIAMRole) {
+                script.s3Download file: fastlaneEnvFileName,
+                        bucket: configBucketName,
+                        path: fastlaneEnvFileConfigBucketPath,
                         force: true
 
                 /* Read fastlane configuration for file */
-                def config = script.readFile file: fastlaneConfigFileName
+                def config = script.readFile file: fastlaneEnvFileName
 
                 /* Convert to properties */
-                Properties fastlaneConfig = new Properties()
-                InputStream is = new ByteArrayInputStream(config.getBytes())
-                fastlaneConfig.load(is)
+                def fastlaneConfig = script.readProperties text: config
 
                 /* Expose values from config as env variables to use them during IPA file creation */
                 for (item in fastlaneConfig) {
