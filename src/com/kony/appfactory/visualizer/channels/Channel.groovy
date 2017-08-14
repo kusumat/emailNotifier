@@ -1,10 +1,13 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
 class Channel implements Serializable {
     protected script
     protected artifacts
+    protected separator
+    protected visualizerDependencies
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
@@ -40,10 +43,10 @@ class Channel implements Serializable {
     protected final void pipelineWrapper(closure) {
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
+        separator = (isUnixNode) ? '/' : '\\'
         workspace = script.env.WORKSPACE
-        projectFullPath = (isUnixNode) ? workspace + '/' + projectName :
-                workspace + '\\' + projectName
-        artifactsBasePath = projectFullPath + ((isUnixNode) ? "/binaries" : "\\binaries")
+        projectFullPath = [workspace, projectName].join(separator)
+        artifactsBasePath = [projectFullPath, 'binaries'].join(separator)
 
         try {
             closure()
@@ -61,16 +64,20 @@ class Channel implements Serializable {
     protected final void visualizerEnvWrapper(closure) {
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
-        /* Expose Visualizer version as environment variable */
-        script.env['VIS_VERSION'] = visualizerVersion
-        String visualizerBasePath = (isUnixNode) ? "/Jenkins/KonyVisualizerEnterprise${visualizerVersion}/" :
-                "C:\\Jenkins\\KonyVisualizerEnterprise${visualizerVersion}\\"
-        String antHome = visualizerBasePath + 'Ant'
-        String javaHome = visualizerBasePath + ((isUnixNode) ? 'jdk1.8.0_112.jdk/Contents/Home' :
-                'Java\\jdk1.8.0_112\\bin\\java')
-        String javaHomeEnvVarName = (isUnixNode) ? 'JAVA_HOME' : 'JAVACMD'
+        /* Get Visualizer dependencies */
+        visualizerDependencies = (
+                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerVersion)
+        ) ?: script.error('Missing Visualizer dependencies!')
+        def pathSeparator = ((isUnixNode) ? ':' : ';')
+        def exposeToolPath = { variableName, homePath ->
+            script.env[variableName] = homePath
+        }
+        def toolBinPath = visualizerDependencies.collect {
+            exposeToolPath(it.variableName, it.homePath)
+            it.binPath
+        }.join(pathSeparator)
 
-        script.withEnv(["ANT_HOME=${antHome}", "${javaHomeEnvVarName}=${javaHome}"]) {
+        script.withEnv(["PATH+TOOLS=${toolBinPath}"]) {
             script.withCredentials([script.usernamePassword(credentialsId: "${cloudCredentialsID}",
                     passwordVariable: 'CLOUD_PASS', usernameVariable: 'CLOUD_NAME')]) {
                 closure()
@@ -94,13 +101,8 @@ class Channel implements Serializable {
 
                 /* This wrapper responsible for adding ANT_HOME, JAVA_HOME and Kony Cloud credentials */
                 visualizerEnvWrapper() {
-                    if (isUnixNode) {
-                        script.shellCustom('$ANT_HOME/bin/ant -buildfile property.xml')
-                        script.shellCustom('$ANT_HOME/bin/ant')
-                    } else {
-                        script.shellCustom('%ANT_HOME%\\bin\\ant -buildfile property.xml', isUnixNode)
-                        script.shellCustom('%ANT_HOME%\\bin\\ant', isUnixNode)
-                    }
+                    script.shellCustom('ant -buildfile property.xml', isUnixNode)
+                    script.shellCustom('ant', isUnixNode)
                 }
             }
         }
@@ -118,14 +120,33 @@ class Channel implements Serializable {
         script.catchErrorCustom('FAILED to search artifacts') {
             /* Dirty workaround for Windows 10 Phone artifacts >>START */
             if (!isUnixNode) {
-                if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx")) {
-                script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM")
-                script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM\\${projectName}.appx")
-                }
+                def platforms = ['x86', 'ARM']
+                def targetFolderBasePath = [
+                        workspace,
+                        projectName,
+                        'binaries',
+                        'windows',
+                        'windowsphone10'
+                ].join(separator)
+                def tempFolderBasePath = [
+                        workspace,
+                        'temp',
+                        projectName,
+                        'build',
+                        'windows10',
+                        'Windows10Mobile',
+                        'KonyApp',
+                        'AppPackages'
+                ].join(separator)
 
-                if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx")) {
-                    script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86")
-                    script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86\\${projectName}.appx")
+                for (platform in platforms) {
+                    def filePath = [tempFolderBasePath, platform, "${projectName}.appx"].join(separator)
+                    def targetFolder = [targetFolderBasePath, platform].join(separator)
+
+                    if (script.fileExists(filePath)) {
+                        script.bat(['mkdir', targetFolder].join(' '))
+                        script.bat(['move', filePath, targetFolder].join(' '))
+                    }
                 }
             }
             /* Dirty workaround for Windows 10 Phone artifacts <<END */
@@ -149,8 +170,8 @@ class Channel implements Serializable {
                 String artifactTargetName = projectName + '_' + getArtifactArchitecture(artifactPath) +
                         jobBuildNumber + '.' + artifactExtension
                 String targetArtifactFolder = artifactsBasePath +
-                        ((isUnixNode) ? "/" : "\\") +
-                        (artifactsList[i].path.minus(((isUnixNode) ? "/" : "\\") + "${artifactsList[i].name}"))
+                        separator +
+                        (artifactsList[i].path.minus(separator + "${artifactsList[i].name}"))
                 String command = "${shellCommand} ${artifactName} ${artifactTargetName}"
 
                 /* Rename artifact */
@@ -166,7 +187,7 @@ class Channel implements Serializable {
     }
 
     protected final populateMobileFabricAppConfig(configFileName) {
-        String successMessage = 'MobileFabric app key, secret and service URL were populated successfully'
+        String successMessage = 'Fabric app key, secret and service URL were populated successfully'
         String errorMessage = 'FAILED to populate MobileFabric app key, secret and service URL'
 
         if (mobileFabricAppConfig) {
@@ -186,7 +207,8 @@ class Channel implements Serializable {
                                         serviceUrlVariable: 'SERVICE_URL'
                                 )
                         ]) {
-                            updatedConfig = config.replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
+                            updatedConfig = config.
+                                    replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
                                     replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
                                     replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
                         }
@@ -196,7 +218,8 @@ class Channel implements Serializable {
                 }
             }
         } else {
-            script.println "Skipping population of MobileFabric app key, secret and service URL, credentials parameter was not provided!"
+            script.println "Skipping population of Fabric app key, secret and service URL, " +
+                    "credentials parameter was not provided!"
         }
     }
 
@@ -252,10 +275,10 @@ class Channel implements Serializable {
                 artifactArchitecture = 'ARM_'
                 break
             case ~/^.*x86.*$/:
-                artifactArchitecture = 'X86_'
+                artifactArchitecture = 'x86_'
                 break
             case ~/^.*x64.*$/:
-                artifactArchitecture = 'X64_'
+                artifactArchitecture = 'x64_'
                 break
             default:
                 artifactArchitecture = ''
