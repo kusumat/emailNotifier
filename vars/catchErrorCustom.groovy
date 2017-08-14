@@ -6,7 +6,7 @@ def call(String errorMsg, String successMsg = '', Closure closure) {
         }
     } catch(Exception e) {
         String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-        error(exceptionMessage)
         echo "$errorMsg"
+        error(exceptionMessage)
     }
 }
