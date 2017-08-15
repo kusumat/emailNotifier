@@ -7,9 +7,9 @@ class AWSHelper implements Serializable {
     @NonCPS
     protected static getS3ArtifactURL(script, artifactPath) {
         def bucketName = script.env.S3_BUCKET_NAME
-        def bucketRegion = script.env.S3_BUCKET_REGION
+        def bucketRegion = (script.env.S3_BUCKET_REGION == 'us-east-1') ? '' : "-${script.env.S3_BUCKET_REGION}"
         def projectName = script.env.PROJECT_NAME
-        def s3URL = "https://s3-${bucketRegion}.amazonaws.com"
+        def s3URL = "https://s3${bucketRegion}.amazonaws.com"
 
         return [s3URL, bucketName, projectName, artifactPath].join('/')
     }
