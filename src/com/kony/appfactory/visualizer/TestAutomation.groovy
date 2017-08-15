@@ -45,7 +45,7 @@ class TestAutomation implements Serializable {
     private testPackage = [
             "${projectName}_TestApp": [extension : 'zip',
                                        uploadType: 'APPIUM_JAVA_TESTNG_TEST_PACKAGE',
-                                       url       : (script.env.TEST_BINARIES_URL ?: 'jobWorkspace')]
+                                       url       : (script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
     ]
     private deviceFarmWorkingDirectory
 
@@ -56,10 +56,10 @@ class TestAutomation implements Serializable {
 
     protected final void validateBuildParameters(buildParameters) {
         def appBinaryURLParameters = buildParameters.findAll {
-            it.key.contains('URL') && it.key != 'TEST_BINARIES_URL' && it.value
+            it.key.contains('URL') && it.key != 'TESTS_BINARY_URL' && it.value
         }
         def gitParameters = buildParameters.findAll { it.key.contains('GIT') && it.value }
-        def testBinaryURLParameter = buildParameters.findAll { it.key == 'TEST_BINARIES_URL' && it.value }
+        def testBinaryURLParameter = buildParameters.findAll { it.key == 'TESTS_BINARY_URL' && it.value }
         def deviceListParameter = buildParameters.findAll { it.key.contains('AVAILABLE_TEST_POOLS') && it.value }
         def URLParameters = testBinaryURLParameter + appBinaryURLParameters
 
