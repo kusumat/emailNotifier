@@ -17,7 +17,7 @@ class NotificationsHelper implements Serializable {
                 def subFolder = (fileName.name.contains('build')) ? 'Builds' : 'Tests'
                 AWSHelper.publishToS3 script: script, sourceFileName: fileName.name,
                         bucketPath: [
-                                script.env.PROJECT_NAME, subFolder,
+                                subFolder,
                                 script.env.JOB_BASE_NAME,
                                 script.env.BUILD_NUMBER
                         ].join('/'),
