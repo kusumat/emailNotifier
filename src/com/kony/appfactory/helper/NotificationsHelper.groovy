@@ -34,7 +34,7 @@ class NotificationsHelper implements Serializable {
         def data = [:]
         def templatesFolder = 'com/kony/appfactory/email/templates'
         def baseTemplateName = 'KonyBase.template'
-        def recipients = (script.env.RECIPIENTS_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS'
+        def recipients = (script.env.RECIPIENT_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS'
         def subject = "${script.env.BUILD_TAG} - ${script.currentBuild.currentResult}"
         /* Load base email template from library resources */
         def baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
