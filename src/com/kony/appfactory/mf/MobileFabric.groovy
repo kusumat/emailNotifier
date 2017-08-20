@@ -1,5 +1,6 @@
 package com.kony.appfactory.mf
 
+import com.kony.appfactory.helper.NotificationsHelper
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
@@ -316,7 +317,7 @@ class MobileFabric implements Serializable {
 
     protected final void exportApp() {
         mfCommand = 'export'
-        script.env['MOBILE_FABRIC_COMMAND'] = mfCommand.capitalize()
+
         final boolean appChanged
         final String exportDir = 'export'
 
@@ -381,7 +382,7 @@ class MobileFabric implements Serializable {
                                 script.dir(gitProject) {
                                     customShell(
                                             "git config --local push.default simple" + ' && ' +
-                                            "git config --local user.name '${commitAuthor}'"
+                                                    "git config --local user.name '${commitAuthor}'"
                                     )
 
                                     if (commitAuthor == 'Jenkins') {
@@ -447,20 +448,23 @@ class MobileFabric implements Serializable {
                              deleteDirs: true,
                              patterns  : [[pattern: "**/${gitProject}_PREV.zip", type: 'EXCLUDE']]])
 
-                String buildDetails = String.valueOf(mfCommand.capitalize()) +
-                        ' of Mobile Fabric app ' + String.valueOf(mfAppID) +
-                        ' is: ' + String.valueOf(script.currentBuild.currentResult)
+                def emailData = [
+                        projectName: mfAppID,
+                        gitURL: gitURL,
+                        gitBranch: gitBranch,
+                        commitAuthor: commitAuthor,
+                        commitMessage: commitMessage,
+                        authorEmail: authorEmail,
+                        commandName: mfCommand.capitalize()
+                ]
 
-                script.env['DETAILS'] = buildDetails
-
-                script.sendMail('com/kony/appfactory/mf/', 'Kony_mobilefabric.jelly', recipientList)
+                NotificationsHelper.sendEmail(script, mfCommand.capitalize(), emailData)
             }
         }
     }
 
     protected final void importApp() {
         mfCommand = 'import'
-        script.env['MOBILE_FABRIC_COMMAND'] = mfCommand.capitalize()
 
         /* Import build parameters */
         final String gitTagID = script.params.TAG_ID
@@ -522,14 +526,24 @@ class MobileFabric implements Serializable {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                script.sendMail('com/kony/appfactory/mf/', 'Kony_mobilefabric.jelly', recipientList)
+                def emailData = [
+                        projectName: mfAppID,
+                        gitURL: gitURL,
+                        gitBranch: gitBranch,
+                        gitTagID: gitTagID,
+                        overwriteExisting: overwriteExisting,
+                        publishApp: publishApp,
+                        commandName: mfCommand.capitalize(),
+                        mfEnv: mfEnv
+                ]
+
+                NotificationsHelper.sendEmail(script, mfCommand.capitalize(), emailData)
             }
         }
     }
 
     protected final void publishApp() {
         mfCommand = 'publish'
-        script.env['MOBILE_FABRIC_COMMAND'] = mfCommand.capitalize()
 
         if (!(mfAccountID &&
                 mfCredentialsID &&
@@ -558,7 +572,13 @@ class MobileFabric implements Serializable {
                 script.echo e.getMessage()
                 script.currentBuild.result = 'FAILURE'
             } finally {
-                script.sendMail('com/kony/appfactory/mf/', 'Kony_mobilefabric.jelly', recipientList)
+                def emailData = [
+                        projectName: mfAppID,
+                        mfEnv: mfEnv,
+                        commandName: mfCommand.capitalize()
+                ]
+
+                NotificationsHelper.sendEmail(script, mfCommand.capitalize(), emailData)
             }
         }
     }

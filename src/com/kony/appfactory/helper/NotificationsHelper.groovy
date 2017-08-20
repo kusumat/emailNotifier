@@ -106,6 +106,11 @@ class NotificationsHelper implements Serializable {
             case 'runTests':
                 emailContent = createRunTestContent(commonBinding)
                 break
+            case 'Export':
+            case 'Import':
+            case 'Publish':
+                emailContent = mobileFabricContent(commonBinding)
+                break
             default:
                 emailContent
                 break
@@ -386,5 +391,116 @@ class NotificationsHelper implements Serializable {
 
         writer.toString()
     }
-}
 
+    @NonCPS
+    private static mobileFabricContent(binding) {
+        Writer writer = new StringWriter()
+        MarkupBuilder htmlBuilder = new MarkupBuilder(writer)
+
+        htmlBuilder.table(style: "width:100%") {
+            tr {
+                td(style: "text-align:center", class: "text-color") {
+                    h2 binding.notificationHeader
+                }
+            }
+
+            tr {
+                td(style: "text-align:left", class: "text-color") {
+                    h4 "AppID: ${binding.projectName}"
+                }
+            }
+
+            tr {
+                td {
+                    table(style: "width:100%;text-align:left", class: "text-color table-border") {
+                        thead {
+                            tr {
+                                th 'Input Params'
+                                th 'Value'
+                            }
+                        }
+                        tbody {
+                            if (binding.triggeredBy) {
+                                tr {
+                                    td 'Triggered by'
+                                    td(class: "table-value", binding.triggeredBy)
+                                }
+                            }
+                            if (binding.gitURL) {
+                                tr {
+                                    td 'Repository URL'
+                                    td {
+                                        a(href: binding.gitURL, "${binding.gitURL}")
+                                    }
+                                }
+                            }
+                            if (binding.gitBranch) {
+                                tr {
+                                    td 'Repository Branch'
+                                    td(class: "table-value", binding.gitBranch)
+                                }
+                            }
+                            if (binding.commitAuthor) {
+                                tr {
+                                    td 'Author'
+                                    td(class: "table-value", binding.commitAuthor)
+                                }
+                            }
+                            if (binding.authorEmail) {
+                                tr {
+                                    td 'Author Email'
+                                    td {
+                                        a(href: "mailto:${binding.authorEmail}", "${binding.authorEmail}")
+                                    }
+                                }
+                            }
+                            if (binding.commitMessage) {
+                                tr {
+                                    td 'Message'
+                                    td(class: "table-value", binding.commitMessage)
+                                }
+                            }
+                            if (binding.gitTagID) {
+                                tr {
+                                    td 'Repository tag'
+                                    td(class: "table-value", binding.gitTagID)
+                                }
+                            }
+                            if (binding.overwriteExisting) {
+                                tr {
+                                    td 'Overwrite Existing'
+                                    td(class: "table-value", binding.overwriteExisting)
+                                }
+                            }
+                            if (binding.publishApp) {
+                                tr {
+                                    td 'Enable Publish'
+                                    td(class: "table-value", binding.publishApp)
+                                }
+                            }
+                            if (binding.mfEnv) {
+                                tr {
+                                    td 'Environment'
+                                    td(class: "table-value", binding.mfEnv)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            tr {
+                td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                    h4(style: "margin-bottom:0", "${binding.commandName} Details")
+                    p {
+                        mkp.yield "${binding.commandName} of Mobile Fabric app ${binding.projectName} is: "
+                        strong binding.build.result
+                        mkp.yield '.'
+                    }
+                }
+            }
+        }
+
+        writer.toString()
+    }
+}
