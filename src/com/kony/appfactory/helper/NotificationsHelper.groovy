@@ -11,22 +11,26 @@ class NotificationsHelper implements Serializable {
         def data = getData(script, templateType, templateData)
 
         if (storeBody) {
-            def fileList = getFileNameList(templateType, data.body, templateData)
-            for (fileName in fileList) {
-                script.writeFile text: fileName.data, file: fileName.name
-                def subFolder = (fileName.name.contains('build')) ? 'Builds' : 'Tests'
-                AWSHelper.publishToS3 script: script, sourceFileName: fileName.name,
-                        bucketPath: [
-                                subFolder,
-                                script.env.JOB_BASE_NAME,
-                                script.env.BUILD_NUMBER
-                        ].join('/'),
-                        sourceFilePath: script.pwd()
-            }
+            storeEmailBody(script, templateType, data.body, templateData)
         }
 
         script.catchErrorCustom('FAILED to send email') {
             script.emailext body: data.body, subject: data.subject, to: data.recipients
+        }
+    }
+
+    private static storeEmailBody(script, templateType, body, templateData) {
+        def fileList = getFileNameList(templateType, body, templateData)
+        for (fileName in fileList) {
+            script.writeFile text: fileName.data, file: fileName.name
+            def subFolder = (fileName.name.contains('build')) ? 'Builds' : 'Tests'
+            AWSHelper.publishToS3 script: script, sourceFileName: fileName.name,
+                    bucketPath: [
+                            subFolder,
+                            script.env.JOB_BASE_NAME,
+                            script.env.BUILD_NUMBER
+                    ].join('/'),
+                    sourceFilePath: script.pwd()
         }
     }
 
