@@ -41,7 +41,8 @@ class Facade implements Serializable {
                 [$class: 'CredentialsParameterValue', description: 'GitHub.com Credentials', name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"],
                 script.stringParam(name: 'BUILD_MODE', description: 'Build mode (debug or release)', value: "${script.params.BUILD_MODE}"),
                 script.stringParam(name: 'ENVIRONMENT', description: 'Define target environment', value: "${environment}"),
-                [$class: 'CredentialsParameterValue', name: 'CLOUD_CREDENTIALS_ID', description: 'Cloud Mode credentials (Applicable only for cloud)', value: "${script.params.CLOUD_CREDENTIALS_ID}"]
+                [$class: 'CredentialsParameterValue', name: 'CLOUD_CREDENTIALS_ID', description: 'Cloud Mode credentials (Applicable only for cloud)', value: "${script.params.CLOUD_CREDENTIALS_ID}"],
+                script.credentials(name: 'MOBILE_FABRIC_APP_CONFIG', value: "${script.params.MOBILE_FABRIC_APP_CONFIG}")
         ]
 
         if (channel.startsWith('ANDROID')) {
