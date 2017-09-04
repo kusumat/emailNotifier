@@ -195,17 +195,16 @@ class TestAutomation implements Serializable {
                     }
 
                     script.stage('Publish test automation scripts build result to S3') {
-                        script.dir(testFolder) {
-                            if (script.fileExists("target/${projectName}_TestApp.zip")) {
-                                AWSHelper.publishToS3 script: script, sourceFileName: "target/${projectName}_TestApp.zip",
-                                        bucketPath: [
-                                                'Tests',
-                                                script.env.JOB_BASE_NAME,
-                                                script.env.BUILD_NUMBER].join('/'),
-                                        sourceFilePath: script.pwd(), exposeURL: true
-                            } else {
-                                script.error 'FAILED to find build result artifact!'
-                            }
+                        if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
+                            AWSHelper.publishToS3 script: script, sourceFileName: "${projectName}_TestApp.zip",
+                                    bucketPath: [
+                                            'Tests',
+                                            script.env.JOB_BASE_NAME,
+                                            script.env.BUILD_NUMBER
+                                    ].join('/'),
+                                    sourceFilePath: "${testFolder}/target", exposeURL: true
+                        } else {
+                            script.error 'FAILED to find build result artifact!'
                         }
                     }
                 }
