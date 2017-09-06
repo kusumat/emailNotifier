@@ -166,6 +166,9 @@ class Channel implements Serializable {
     }
 
     protected final populateMobileFabricAppConfig(configFileName) {
+        String successMessage = 'MobileFabric app key, secret and service URL were populated successfully'
+        String errorMessage = 'FAILED to populate MobileFabric app key, secret and service URL'
+
         if (mobileFabricAppConfig) {
             script.dir(projectFullPath) {
                 script.dir('modules') {
@@ -174,24 +177,26 @@ class Channel implements Serializable {
                             script.readFile(configFileName) :
                             script.error("FAILED ${configFileName} not found!")
 
-                    script.withCredentials([
-                            script.fabricAppTriplet(
-                                    credentialsId: mobileFabricAppConfig,
-                                    applicationKeyVariable: 'APP_KEY',
-                                    applicationSecretVariable: 'APP_SECRET',
-                                    serviceUrlVariable: 'SERVICE_URL'
-                            )
-                    ]) {
-                        updatedConfig = config.replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
-                                replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
-                                replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
-                    }
+                    script.catchErrorCustom(errorMessage, successMessage) {
+                        script.withCredentials([
+                                script.fabricAppTriplet(
+                                        credentialsId: mobileFabricAppConfig,
+                                        applicationKeyVariable: 'APP_KEY',
+                                        applicationSecretVariable: 'APP_SECRET',
+                                        serviceUrlVariable: 'SERVICE_URL'
+                                )
+                        ]) {
+                            updatedConfig = config.replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
+                                    replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
+                                    replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
+                        }
 
-                    script.writeFile file: configFileName, text: updatedConfig
+                        script.writeFile file: configFileName, text: updatedConfig
+                    }
                 }
             }
         } else {
-            script.println "Skipping MobileFabric credentials population, credentials were not provided!"
+            script.println "Skipping population of MobileFabric app key, secret and service URL, credentials parameter was not provided!"
         }
     }
 
