@@ -26,6 +26,7 @@ class Channel implements Serializable {
     protected String cloudCredentialsID = script.env.CLOUD_CREDENTIALS_ID
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.env.BUILD_MODE
+    protected String mobileFabricAppConfig = script.env.MOBILE_FABRIC_APP_CONFIG
 
     Channel(script) {
         this.script = script
@@ -81,6 +82,9 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
         script.catchErrorCustom('FAILED to build the project') {
+            // Populate MobileFabric configuration to appfactory.js file
+            populateMobileFabricAppConfig('appfactory.js')
+
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i < requiredResources.size(); i++) {
@@ -159,6 +163,36 @@ class Channel implements Serializable {
         }
 
         renamedArtifacts
+    }
+
+    protected final populateMobileFabricAppConfig(configFileName) {
+        if (mobileFabricAppConfig) {
+            script.dir(projectFullPath) {
+                script.dir('modules') {
+                    def updatedConfig = ''
+                    def config = (script.fileExists(configFileName)) ?
+                            script.readFile(configFileName) :
+                            script.error("FAILED ${configFileName} not found!")
+
+                    script.withCredentials([
+                            script.fabricAppTriplet(
+                                    credentialsId: mobileFabricAppConfig,
+                                    applicationKeyVariable: 'APP_KEY',
+                                    applicationSecretVariable: 'APP_SECRET',
+                                    serviceUrlVariable: 'SERVICE_URL'
+                            )
+                    ]) {
+                        updatedConfig = config.replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
+                                replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
+                                replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
+                    }
+
+                    script.writeFile file: configFileName, text: updatedConfig
+                }
+            }
+        } else {
+            script.println "Skipping MobileFabric credentials population, credentials were not provided!"
+        }
     }
 
     /**
