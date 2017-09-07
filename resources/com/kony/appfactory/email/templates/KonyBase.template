@@ -19,21 +19,6 @@
             margin: 10px 0;
             font-size: 14px;
         }
-
-        .header__logo {
-            background: url("https://manage.kony.com/console/resources/images/svg_icons/logo.svg") left center no-repeat;
-            background-size:80%;
-            display: inline-block;
-            background-position: 10px;
-            min-height: 54px;
-            overflow: hidden;
-            position: relative;
-            white-space: nowrap;
-            width: 100%;
-            z-index: 2;
-            transition: all 1s;
-        }
-
         .icon-stack .icon-glassdoor {
             background-image: url("https://kap8.platform.kony.com/Jenkins/images/icon-glassdoor.png");
             background-repeat: no-repeat;
@@ -149,29 +134,30 @@
     </style>
 </head>
 <body>
-<table class="container" cellpadding='0'>
-    <tr>
-        <td align="center" style="padding:10px">
-            <table style="width:100%; margin-bottom:20px">
-                <tr style="background:#35414d">
-                    <td style="width:150px"><span href="#" class="header__logo"> </span></td>
-                    <td style="display: inline-block;margin-top: 15px;color:#fff">
-                        <div style="line-height:25px;margin-left:0px;border-left: 1px solid;text-indent:20px"> App Factory</div>
-                    </td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-    <tr>
-        <td align="center" style="padding:0 20px;">
-            $contentTable
-        </td>
-    </tr>
-    <tr>
-        <td>&nbsp;
+    <table class="container" cellpadding='0'>
+        <tr>
+            <td align="center" style="padding:10px">
+                <table style="width:100%; margin-bottom:20px;height:55px;">
+                    <tr style="background:#35414d">
+                        <td style="width:150px">
+                            <img src="http://forms.kony.com/rs/konysolutions/images/logo.png" style="width:80%;margin:0 10px;"/>
+                        </td>
+                        <td style="color:#fff">
+                            <div style="line-height:25px;margin-left:0px;border-left: 1px solid;text-indent:20px"> App Factory</div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" style="padding:0 20px;">
+                $contentTable
+            </td>
+        <tr>
+            <td>&nbsp;
 
-        </td>
-    </tr>
-</table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
