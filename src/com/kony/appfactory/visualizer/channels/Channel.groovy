@@ -7,7 +7,9 @@ class Channel implements Serializable {
     protected script
     protected artifacts
     protected separator
+    protected pathSeparator
     protected visualizerDependencies
+    protected buildArtifacts
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
@@ -44,9 +46,10 @@ class Channel implements Serializable {
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
         separator = (isUnixNode) ? '/' : '\\'
+        pathSeparator = ((isUnixNode) ? ':' : ';')
         workspace = script.env.WORKSPACE
         projectFullPath = [workspace, projectName].join(separator)
-        artifactsBasePath = [projectFullPath, 'binaries'].join(separator)
+        artifactsBasePath = (getArtifactTempPath()) ?: script.error('Artifacts path is missing!')
 
         try {
             closure()
@@ -68,7 +71,6 @@ class Channel implements Serializable {
         visualizerDependencies = (
                 BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerVersion)
         ) ?: script.error('Missing Visualizer dependencies!')
-        def pathSeparator = ((isUnixNode) ? ':' : ';')
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath
         }
@@ -114,72 +116,54 @@ class Channel implements Serializable {
         return matcher ? matcher[0][1] : null
     }
 
-    protected final getArtifacts(extension) {
-        def artifactsFiles
+    protected final getArtifactLocations(artifactExtension) {
+        (artifactExtension) ?: script.error("artifactExtension argument can't be null")
 
-        script.catchErrorCustom('FAILED to search artifacts') {
-            /* Dirty workaround for Windows 10 Phone artifacts >>START */
-            if (!isUnixNode) {
-                def platforms = ['x86', 'ARM']
-                def targetFolderBasePath = [
-                        workspace,
-                        projectName,
-                        'binaries',
-                        'windows',
-                        'windowsphone10'
-                ].join(separator)
-                def tempFolderBasePath = [
-                        workspace,
-                        'temp',
-                        projectName,
-                        'build',
-                        'windows10',
-                        'Windows10Mobile',
-                        'KonyApp',
-                        'AppPackages'
-                ].join(separator)
+        def files = null
+        def artifactLocations = []
 
-                for (platform in platforms) {
-                    def filePath = [tempFolderBasePath, platform, "${projectName}.appx"].join(separator)
-                    def targetFolder = [targetFolderBasePath, platform].join(separator)
-
-                    if (script.fileExists(filePath)) {
-                        script.bat(['mkdir', targetFolder].join(' '))
-                        script.bat(['move', filePath, targetFolder].join(' '))
-                    }
-                }
-            }
-            /* Dirty workaround for Windows 10 Phone artifacts <<END */
-
+        script.catchErrorCustom('FAILED to search build artifacts!') {
             script.dir(artifactsBasePath) {
-                artifactsFiles = script.findFiles(glob: "**/*.${extension}")
+                files = script.findFiles glob: getSearchGlob(artifactExtension)
             }
         }
 
-        artifactsFiles
+        for (file in files) {
+            def filePath = (file.path == file.name) ? artifactsBasePath :
+                    [artifactsBasePath, file.path.minus(separator + file.name)].join(separator)
+
+            artifactLocations.add([name: file.name, path: filePath, extension: artifactExtension])
+        }
+
+        artifactLocations
     }
 
-    protected final renameArtifacts(artifactsList) {
+    protected final renameArtifacts(buildArtifacts) {
         def renamedArtifacts = []
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
 
         script.catchErrorCustom('FAILED to rename artifacts') {
-            for (int i=0; i < artifactsList.size(); ++i) {
-                String artifactName = artifactsList[i].name
-                String artifactPath = artifactsList[i].path
-                String artifactTargetName = projectName + '_' + getArtifactArchitecture(artifactPath) +
+            for (int i = 0; i < buildArtifacts.size(); ++i) {
+                def artifact = buildArtifacts[i]
+                String artifactName = artifact.name
+                String artifactPath = artifact.path
+                String artifactExtension = artifact.extension
+                String artifactTargetName = projectName + '_' +
+                        getArtifactArchitecture([artifactPath, artifactName].join(separator)) +
                         jobBuildNumber + '.' + artifactExtension
-                String targetArtifactFolder = artifactsBasePath +
-                        separator +
-                        (artifactsList[i].path.minus(separator + "${artifactsList[i].name}"))
-                String command = "${shellCommand} ${artifactName} ${artifactTargetName}"
+                String command = [shellCommand, artifactName, artifactTargetName].join(' ')
+
+                // Workaround for Android binaries
+                if (channelName.contains('ANDROID') && !artifactName.contains('war') && !artifactName.contains(buildMode)) {
+                    continue
+                }
 
                 /* Rename artifact */
-                script.dir(targetArtifactFolder) {
+                script.dir(artifactPath) {
                     script.shellCustom(command, isUnixNode)
                 }
 
-                renamedArtifacts.add([name: artifactTargetName, path: targetArtifactFolder])
+                renamedArtifacts.add([name: artifactTargetName, path: artifactPath])
             }
         }
 
@@ -187,7 +171,7 @@ class Channel implements Serializable {
     }
 
     protected final populateMobileFabricAppConfig(configFileName) {
-        String successMessage = 'Fabric app key, secret and service URL were populated successfully'
+        String successMessage = 'MobileFabric app key, secret and service URL were populated successfully'
         String errorMessage = 'FAILED to populate MobileFabric app key, secret and service URL'
 
         if (mobileFabricAppConfig) {
@@ -218,9 +202,92 @@ class Channel implements Serializable {
                 }
             }
         } else {
-            script.println "Skipping population of Fabric app key, secret and service URL, " +
+            script.println "Skipping population of MobileFabric app key, secret and service URL, " +
                     "credentials parameter was not provided!"
         }
+    }
+
+    protected final getSearchGlob(artifactExtension) {
+        def searchGlob
+
+        switch (channelName) {
+            case 'ANDROID_MOBILE_NATIVE':
+            case 'ANDROID_TABLET_NATIVE':
+                searchGlob = '**/' + projectName + '-' + buildMode + '*.' + artifactExtension
+                break
+            case 'IOS_MOBILE_NATIVE':
+            case 'IOS_TABLET_NATIVE':
+                searchGlob = '**/*.' + artifactExtension
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
+            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+                searchGlob = '**/WindowsPhone*.' + artifactExtension
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE10':
+            case 'WINDOWS_TABLET_WINDOWS10':
+            case 'WINDOWS_TABLET_WINDOWS81':
+            case 'ANDROID_MOBILE_SPA':
+            case 'ANDROID_TABLET_SPA':
+            case 'IOS_MOBILE_SPA':
+            case 'IOS_TABLET_SPA':
+            case 'WINDOWS_MOBILE_SPA':
+            case 'WINDOWS_TABLET_SPA':
+                searchGlob = '**/' + projectName + '.' + artifactExtension
+                break
+            default:
+                searchGlob = '**/*.' + artifactExtension
+                break
+        }
+
+        searchGlob
+    }
+
+    protected final getArtifactTempPath() {
+        def artifactsTempPath
+
+        def getPath = {
+            def tempBasePath = [workspace, 'temp', projectName]
+            (tempBasePath + it).join(separator)
+        }
+
+        switch (channelName) {
+            case 'ANDROID_MOBILE_NATIVE':
+                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                break
+            case 'ANDROID_TABLET_NATIVE':
+                artifactsTempPath = getPath(['build', 'luatabrcandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                break
+            case 'IOS_MOBILE_NATIVE':
+                artifactsTempPath = getPath(['build', 'server', 'iphonekbf'])
+                break
+            case 'IOS_TABLET_NATIVE':
+                artifactsTempPath = getPath(['build', 'server', 'ipadkbf'])
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
+            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+                artifactsTempPath = getPath(['build', 'winphone8'])
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE10':
+            case 'WINDOWS_TABLET_WINDOWS10':
+                artifactsTempPath = getPath(['build', 'windows10'])
+                break
+            case 'WINDOWS_TABLET_WINDOWS81':
+                artifactsTempPath = getPath(['build', 'windows8'])
+                break
+            case 'ANDROID_MOBILE_SPA':
+            case 'ANDROID_TABLET_SPA':
+            case 'IOS_MOBILE_SPA':
+            case 'IOS_TABLET_SPA':
+            case 'WINDOWS_MOBILE_SPA':
+            case 'WINDOWS_TABLET_SPA':
+                artifactsTempPath = getPath(['middleware_mobileweb'])
+                break
+            default:
+                artifactsTempPath = ''
+                break
+        }
+
+        artifactsTempPath
     }
 
     /**
@@ -238,15 +305,15 @@ class Channel implements Serializable {
             case ~/^.*SPA.*$/:
                 artifactExtension = 'war'
                 break
+            case ~/^.*WINDOWSPHONE8.*$/:
+                artifactExtension = 'xap'
+                break
             case ~/^.*WINDOWS_TABLET.*$/:
             case ~/^.*WINDOWS_MOBILE.*$/:
                 artifactExtension = 'appx'
                 break
-            case ~/^.*WINDOWS.*$/:
-                artifactExtension = 'xap'
-                break
             case ~/^.*IOS.*$/:
-                artifactExtension = 'ipa'
+                artifactExtension = 'KAR'
                 break
             case ~/^.*ANDROID.*$/:
                 artifactExtension = 'apk'

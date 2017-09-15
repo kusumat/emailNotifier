@@ -197,6 +197,9 @@ class BuildHelper implements Serializable {
                     switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('JAVA_HOME', installationPath))
                     break
+                case 'android build tools':
+                    def installationPath = [script.env.ANDROID_HOME, 'build-tools', dependency.version].join(separator)
+                    dependencies.add(createDependencyObject('ANDROID_BUILD_TOOLS', installationPath))
                 default:
                     break
             }

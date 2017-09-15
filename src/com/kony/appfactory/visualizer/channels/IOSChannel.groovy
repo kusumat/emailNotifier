@@ -6,7 +6,7 @@ import com.kony.appfactory.helper.BuildHelper
 class IOSChannel extends Channel {
     private bundleID
     private iosPluginVersion
-    private karFile = [:]
+    private karFile
     private plistFileName
 
     /* Build parameters */
@@ -165,17 +165,13 @@ class IOSChannel extends Channel {
                     build()
                     if (artifactExtension == 'war') {
                         /* Search for build artifacts */
-                        def foundArtifacts = getArtifacts(artifactExtension)
+                        def foundArtifacts = getArtifactLocations(artifactExtension)
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
                                 script.error('FAILED build artifacts are missing!')
                     } else {
                         /* Get KAR file name and path */
-                        def transitArtifacts = getArtifacts('KAR')
-                        karFile.name = transitArtifacts[0].name
-                        karFile.path = artifactsBasePath +
-                                '/' +
-                                transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
+                        karFile = getArtifactLocations(artifactExtension)[0]
                     }
                 }
 
@@ -184,7 +180,7 @@ class IOSChannel extends Channel {
                     script.stage('Generate IPA file') {
                         createIPA()
                         /* Search for build artifacts */
-                        def foundArtifacts = getArtifacts(artifactExtension)
+                        def foundArtifacts = getArtifactLocations('ipa')
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
                                 script.error('FAILED build artifacts are missing!')
