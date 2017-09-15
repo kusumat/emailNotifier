@@ -33,43 +33,47 @@ class AndroidChannel extends Channel {
                 '\\build-tools\\25.0.0\\apksigner.bat')
         String debugSingCommand = "${apksigner} sign --ks debug.keystore --ks-pass pass:android ${artifactName}"
         String keyGenCommand = 'keytool -genkey -noprompt' +
-             ' -alias androiddebugkey' +
-             ' -dname "CN=Android Debug,O=Android,C=US"' +
-             ' -keystore debug.keystore' +
-             ' -storepass android' +
-             ' -keypass android' +
-             ' -keyalg RSA' +
-             ' -keysize 2048' +
-             ' -validity 10000'
+                ' -alias androiddebugkey' +
+                ' -dname "CN=Android Debug,O=Android,C=US"' +
+                ' -keystore debug.keystore' +
+                ' -storepass android' +
+                ' -keypass android' +
+                ' -keyalg RSA' +
+                ' -keysize 2048' +
+                ' -validity 10000'
+        String javaBin = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
+                script.error('Java binaries path is missing!')
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactPath) {
-                if (isUnixNode) {
-                    if (buildMode == 'release') {
-                        withKeyStore() {
-                            script.sh apksigner +
-                                    ' sign --ks $KSFILE --ks-pass pass:$KSPASS --key-pass pass:$KEYPASS ' +
-                                    artifactName
+                script.withEnv(["PATH+TOOLS=${javaBin}"]) {
+                    if (isUnixNode) {
+                        if (buildMode == 'release') {
+                            withKeyStore() {
+                                script.sh apksigner +
+                                        ' sign --ks $KSFILE --ks-pass pass:$KSPASS --key-pass pass:$KEYPASS ' +
+                                        artifactName
+                            }
+                        } else {
+                            script.sh keyGenCommand
+                            script.sh debugSingCommand
                         }
-                    } else {
-                        script.sh keyGenCommand
-                        script.sh debugSingCommand
-                    }
 
-                    script.sh "${apksigner} verify --verbose ${artifactName}"
-                } else {
-                    if (buildMode == 'release') {
-                        withKeyStore() {
-                            script.bat apksigner +
-                                    ' sign --ks %KSFILE% --ks-pass pass:%KSPASS% --key-pass pass:%KEYPASS% ' +
-                                    artifactName
+                        script.sh "${apksigner} verify --verbose ${artifactName}"
+                    } else {
+                        if (buildMode == 'release') {
+                            withKeyStore() {
+                                script.bat apksigner +
+                                        ' sign --ks %KSFILE% --ks-pass pass:%KSPASS% --key-pass pass:%KEYPASS% ' +
+                                        artifactName
+                            }
+                        } else {
+                            script.bat keyGenCommand
+                            script.bat debugSingCommand
                         }
-                    } else {
-                        script.bat keyGenCommand
-                        script.bat debugSingCommand
-                    }
 
-                    script.bat "${apksigner} verify --verbose ${artifactName}"
+                        script.bat "${apksigner} verify --verbose ${artifactName}"
+                    }
                 }
             }
         }
