@@ -15,7 +15,10 @@ class Channel implements Serializable {
     protected String projectFullPath
     protected String visualizerVersion
     protected String channelPath
-    protected String channelName
+    protected String channelVariableName
+    protected String channelOs
+    protected String channelFormFactor
+    protected String channelType
     protected String artifactsBasePath
     protected String artifactExtension
     protected String s3ArtifactPath
@@ -35,11 +38,23 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
-        channelPath = (this.script.env.JOB_NAME - 'Visualizer/Builds/' - "${projectName}/" - "${environment}/")
-        channelName = channelPath.toUpperCase().replaceAll('/','_')
-        this.script.env[channelName] = true // Exposing environment variable with channel to build
-        artifactExtension = getArtifactExtension(channelName)
-        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        channelOs = (script.env.CHANNEL_OS) ?: script.env.JOB_BASE_NAME - 'build'
+        channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
+        script.println channelType
+        if (channelType != 'SPA') {
+            channelFormFactor = script.env.CHANNEL_FORMFACTOR
+            channelPath = [channelOs, channelFormFactor, channelType].join('/')
+            channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
+            script.println channelVariableName
+            script.env[channelVariableName] = true // Exposing environment variable with channel to build
+            artifactExtension = getArtifactExtension(channelVariableName)
+            script.println artifactExtension
+            s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        } else {
+            artifactExtension = 'war'
+            s3ArtifactPath = ['Builds', environment, channelType].join('/')
+        }
+        script.println s3ArtifactPath
     }
 
     protected final void pipelineWrapper(closure) {
@@ -49,7 +64,12 @@ class Channel implements Serializable {
         pathSeparator = ((isUnixNode) ? ':' : ';')
         workspace = script.env.WORKSPACE
         projectFullPath = [workspace, projectName].join(separator)
-        artifactsBasePath = (getArtifactTempPath()) ?: script.error('Artifacts path is missing!')
+        artifactsBasePath = (
+                (channelType == 'SPA') ?
+                        getArtifactTempPath(workspace, projectName, separator, channelType):
+                        getArtifactTempPath(workspace, projectName, separator, channelVariableName)
+        ) ?: script.error('Artifacts path is missing!')
+        script.println artifactsBasePath
 
         try {
             closure()
@@ -154,7 +174,7 @@ class Channel implements Serializable {
                 String command = [shellCommand, artifactName, artifactTargetName].join(' ')
 
                 // Workaround for Android binaries
-                if (channelName.contains('ANDROID') && !artifactName.contains('war') && !artifactName.contains(buildMode)) {
+                if (channelVariableName?.contains('ANDROID') && !artifactName.contains(buildMode)) {
                     continue
                 }
 
@@ -210,28 +230,18 @@ class Channel implements Serializable {
     protected final getSearchGlob(artifactExtension) {
         def searchGlob
 
-        switch (channelName) {
-            case 'ANDROID_MOBILE_NATIVE':
-            case 'ANDROID_TABLET_NATIVE':
+        switch (artifactExtension) {
+            case ~/^.*apk.*$/:
                 searchGlob = '**/' + projectName + '-' + buildMode + '*.' + artifactExtension
                 break
-            case 'IOS_MOBILE_NATIVE':
-            case 'IOS_TABLET_NATIVE':
+            case ~/^.*KAR.*$/:
                 searchGlob = '**/*.' + artifactExtension
                 break
-            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
-            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+            case ~/^.*xap.*$/:
                 searchGlob = '**/WindowsPhone*.' + artifactExtension
                 break
-            case 'WINDOWS_MOBILE_WINDOWSPHONE10':
-            case 'WINDOWS_TABLET_WINDOWS10':
-            case 'WINDOWS_TABLET_WINDOWS81':
-            case 'ANDROID_MOBILE_SPA':
-            case 'ANDROID_TABLET_SPA':
-            case 'IOS_MOBILE_SPA':
-            case 'IOS_TABLET_SPA':
-            case 'WINDOWS_MOBILE_SPA':
-            case 'WINDOWS_TABLET_SPA':
+            case ~/^.*appx.*$/:
+            case ~/^.*war.*$/:
                 searchGlob = '**/' + projectName + '.' + artifactExtension
                 break
             default:
@@ -242,7 +252,7 @@ class Channel implements Serializable {
         searchGlob
     }
 
-    protected final getArtifactTempPath() {
+    protected final getArtifactTempPath(workspace, projectName, separator, channelVariableName) {
         def artifactsTempPath
 
         def getPath = {
@@ -250,7 +260,7 @@ class Channel implements Serializable {
             (tempBasePath + it).join(separator)
         }
 
-        switch (channelName) {
+        switch (channelVariableName) {
             case 'ANDROID_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
                 break
@@ -274,12 +284,7 @@ class Channel implements Serializable {
             case 'WINDOWS_TABLET_WINDOWS81':
                 artifactsTempPath = getPath(['build', 'windows8'])
                 break
-            case 'ANDROID_MOBILE_SPA':
-            case 'ANDROID_TABLET_SPA':
-            case 'IOS_MOBILE_SPA':
-            case 'IOS_TABLET_SPA':
-            case 'WINDOWS_MOBILE_SPA':
-            case 'WINDOWS_TABLET_SPA':
+            case ~/^.*SPA.*$/:
                 artifactsTempPath = getPath(['middleware_mobileweb'])
                 break
             default:
@@ -298,25 +303,24 @@ class Channel implements Serializable {
      * @return            the artifact extension string
      */
     @NonCPS
-    protected final getArtifactExtension(channelName) {
+    protected final getArtifactExtension(channelVariableName) {
         def artifactExtension
 
-        switch (channelName) {
+        switch (channelVariableName) {
             case ~/^.*SPA.*$/:
                 artifactExtension = 'war'
                 break
-            case ~/^.*WINDOWSPHONE8.*$/:
-                artifactExtension = 'xap'
-                break
-            case ~/^.*WINDOWS_TABLET.*$/:
-            case ~/^.*WINDOWS_MOBILE.*$/:
-                artifactExtension = 'appx'
+            case ~/^.*ANDROID.*$/:
+                artifactExtension = 'apk'
                 break
             case ~/^.*IOS.*$/:
                 artifactExtension = 'KAR'
                 break
-            case ~/^.*ANDROID.*$/:
-                artifactExtension = 'apk'
+            case ~/^.*WINDOWS8_MOBILE.*$/:
+                artifactExtension = 'xap'
+                break
+            case ~/^.*WINDOWS.*$/:
+                artifactExtension = 'appx'
                 break
             default:
                 artifactExtension = ''

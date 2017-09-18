@@ -106,11 +106,6 @@ class Facade implements Serializable {
     private final void prepareRun() {
         channelsToRun = getSelectedChannels(script.params)
 
-        /* Check if at least one of the options been chosen */
-        if (!channelsToRun) {
-            script.error 'Please choose options to build!'
-        }
-
         if (channelsToRun) {
             for (x in channelsToRun) {
                 /* Need to bind the channel variable before the closure - can't do 'for (channel in channelsToRun)' */
@@ -133,26 +128,34 @@ class Facade implements Serializable {
                     }
                 }
             }
+        } else {
+            script.error 'Please choose at least one channel to build!'
         }
     }
 
     @NonCPS
     protected static getChannelPath(channel) {
-        def channelPath = channel.tokenize('_').collect() { item ->
-            /* Workaround for windows phone jobs */
-            if (item.contains('WINDOWSPHONE')) {
-                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
-                /* Workaround for SPA jobs */
-            } else if (item.contains('SPA')) {
-                item
-            } else if (item.contains('IOS')) {
-                'iOS'
-            } else {
-                item.toLowerCase().capitalize()
-            }
-        }.join('/')
+        def channelPath
 
-        return channelPath
+        switch (channel) {
+            case ~/^.*ANDROID.*$/:
+                channelPath = 'buildAndroid'
+                break
+            case ~/^.*IOS.*$/:
+                channelPath = 'buildIos'
+                break
+            case ~/^.*SPA.*$/:
+                channelPath = 'buildSpa'
+                break
+            case ~/^.*WINDOWS.*$/:
+                channelPath = 'buildWindows'
+                break
+            default:
+                channelPath = ''
+                break
+        }
+
+        channelPath
     }
 
     protected setBuildDescription() {
