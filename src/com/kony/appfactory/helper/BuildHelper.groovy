@@ -139,7 +139,7 @@ class BuildHelper implements Serializable {
 
         def dependenciesArchive = null
         def dependenciesFileName = 'externaldependencies.json'
-        def dependenciesBaseURL = "http://download.qa-kony.com/visualizer_enterprise/citools"
+        def dependenciesBaseURL = "http://download.kony.com/visualizer_enterprise/citools"
         def dependenciesArchiveFileName = 'visualizer-ci-tool-' + visualizerVersion + '.' + 'zip'
         def dependenciesURL = [
                 dependenciesBaseURL, visualizerVersion, dependenciesArchiveFileName
