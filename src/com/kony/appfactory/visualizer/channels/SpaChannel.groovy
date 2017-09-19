@@ -4,10 +4,13 @@ import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
 
 class SpaChannel extends Channel {
+    /* Build parameters */
+    String publishFabricApp
 
     SpaChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
+        publishFabricApp = this.script.env.PUBLISH_FABRIC_APP
     }
 
     protected final void createPipeline() {
@@ -31,7 +34,11 @@ class SpaChannel extends Channel {
                 }
 
                 script.stage('Publish to Fabric') {
-                    script.echo 'In progress...'
+                    if (publishFabricApp) {
+                        script.echo 'In progress...'
+                    } else {
+                        script.echo 'Ignoring!'
+                    }
                 }
 
                 script.stage("Publish artifacts to S3") {

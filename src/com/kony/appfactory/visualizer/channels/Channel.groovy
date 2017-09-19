@@ -34,7 +34,7 @@ class Channel implements Serializable {
     protected String cloudCredentialsID = script.env.CLOUD_CREDENTIALS_ID
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.env.BUILD_MODE
-    protected String mobileFabricAppConfig = script.env.MOBILE_FABRIC_APP_CONFIG
+    protected String mobileFabricAppConfig = script.env.FABRIC_APP_CONFIG
 
     Channel(script) {
         this.script = script
