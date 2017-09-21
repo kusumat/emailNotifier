@@ -30,7 +30,7 @@ class Channel implements Serializable {
     protected String gitCredentialsID = script.env.GIT_CREDENTIALS_ID
     protected String gitURL = script.env.PROJECT_GIT_URL
     protected String gitBranch = script.env.GIT_BRANCH
-    protected String environment = script.env.ENVIRONMENT
+    protected String environment = script.env.FABRIC_ENVIRONMENT_NAME
     protected String cloudCredentialsID = script.env.CLOUD_CREDENTIALS_ID
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.env.BUILD_MODE
@@ -42,19 +42,16 @@ class Channel implements Serializable {
         channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
         script.println channelType
         if (channelType != 'SPA') {
-            channelFormFactor = script.env.CHANNEL_FORMFACTOR
+            channelFormFactor = script.env.FORM_FACTOR?.toLowerCase().capitalize()
             channelPath = [channelOs, channelFormFactor, channelType].join('/')
             channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-            script.println channelVariableName
             script.env[channelVariableName] = true // Exposing environment variable with channel to build
-            artifactExtension = getArtifactExtension(channelVariableName)
-            script.println artifactExtension
-            s3ArtifactPath = ['Builds', environment, channelPath].join('/')
         } else {
-            artifactExtension = 'war'
-            s3ArtifactPath = ['Builds', environment, channelType].join('/')
+            channelVariableName = channelType
+            channelPath = channelType
         }
-        script.println s3ArtifactPath
+        artifactExtension = getArtifactExtension(channelVariableName)
+        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
     }
 
     protected final void pipelineWrapper(closure) {
@@ -64,12 +61,8 @@ class Channel implements Serializable {
         pathSeparator = ((isUnixNode) ? ':' : ';')
         workspace = script.env.WORKSPACE
         projectFullPath = [workspace, projectName].join(separator)
-        artifactsBasePath = (
-                (channelType == 'SPA') ?
-                        getArtifactTempPath(workspace, projectName, separator, channelType):
-                        getArtifactTempPath(workspace, projectName, separator, channelVariableName)
-        ) ?: script.error('Artifacts path is missing!')
-        script.println artifactsBasePath
+        artifactsBasePath = (getArtifactTempPath(workspace, projectName, separator, channelVariableName)) ?:
+                script.error('Artifacts path is missing!')
 
         try {
             closure()

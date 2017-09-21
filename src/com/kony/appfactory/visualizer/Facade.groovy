@@ -17,7 +17,7 @@ class Facade implements Serializable {
     Facade(script) {
         this.script = script
         projectName = this.script.env.PROJECT_NAME
-        environment = this.script.params.ENVIRONMENT
+        environment = this.script.params.FABRIC_ENVIRONMENT_NAME
         s3BaseURL = AWSHelper.getS3ArtifactURL(this.script, ['Builds', environment].join('/'))
     }
 
@@ -90,13 +90,12 @@ class Facade implements Serializable {
                 script.string(name: 'GIT_BRANCH', value: "${script.params.GIT_BRANCH}"),
                 script.credentials(name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"),
                 script.string(name: 'BUILD_MODE', value: "${script.params.BUILD_MODE}"),
-                script.string(name: 'ENVIRONMENT', value: "${environment}"),
                 script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${script.params.CLOUD_CREDENTIALS_ID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${script.params.FABRIC_APP_CONFIG}"),
                 script.string(name: 'FABRIC_URL', value: "${script.params.FABRIC_URL}"),
                 script.string(name: 'FABRIC_APP_NAME', value: "${script.params.FABRIC_APP_NAME}"),
                 script.string(name: 'FABRIC_ACCOUNT_ID', value: "${script.params.FABRIC_ACCOUNT_ID}"),
-                script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${script.params.FABRIC_ENVIRONMENT_NAME}"),
+                script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${environment}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: script.params.PUBLISH_FABRIC_APP),
                 script.string(name: 'RECIPIENTS_LIST', value: "${script.params.RECIPIENTS_LIST}")
         ]
@@ -130,9 +129,9 @@ class Facade implements Serializable {
                 break
         }
 
-        channelJobParameters.addAll([
-                script.credentials(name: 'CHANNEL_FORM_FACTOR', value: channelFormFactor)
-        ])
+        channelJobParameters + [
+                script.string(name: 'FORM_FACTOR', value: channelFormFactor)
+        ]
     }
 
     private final getTestAutomationJobParameters() {
