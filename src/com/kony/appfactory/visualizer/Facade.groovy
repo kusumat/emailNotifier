@@ -112,7 +112,7 @@ class Facade implements Serializable {
         switch (channelName) {
             case ~/^.*ANDROID.*$/:
                 channelJobParameters = commonParameters + [
-                        script.credentials(name: 'KS_FILE', value: "${script.params.KS_FILE}"),
+                        script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${script.params.ANDROID_KEYSTORE_FILE}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${script.params.ANDROID_KEYSTORE_PASSWORD}"),
                         script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${script.params.ANDROID_KEY_PASSWORD}")
                 ]
