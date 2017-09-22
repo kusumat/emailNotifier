@@ -6,7 +6,7 @@ import com.kony.appfactory.helper.BuildHelper
 class AndroidChannel extends Channel {
     /* Build parameters */
     private String keystoreFileID = script.env.KS_FILE
-    private String keystorePasswordID = script.env.KS_PASSWORD
+    private String keystorePasswordID = script.env.ANDROID_KEYSTORE_PASSWORD
     private String privateKeyPassword = script.env.ANDROID_KEY_PASSWORD
     private String keystoreAlias = script.env.ANDROID_KEYSTORE_ALIAS
 
