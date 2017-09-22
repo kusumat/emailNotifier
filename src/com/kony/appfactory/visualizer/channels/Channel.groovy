@@ -27,7 +27,7 @@ class Channel implements Serializable {
 
     /* Common build parameters */
     protected String projectName = script.env.PROJECT_NAME
-    protected String gitCredentialsID = script.env.GIT_CREDENTIALS_ID
+    protected String gitCredentialsID = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected String gitURL = script.env.PROJECT_GIT_URL
     protected String gitBranch = script.env.PROJECT_SOURCE_CODE_BRANCH
     protected String environment = script.env.FABRIC_ENVIRONMENT_NAME
