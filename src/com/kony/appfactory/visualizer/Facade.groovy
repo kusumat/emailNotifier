@@ -114,7 +114,7 @@ class Facade implements Serializable {
                 channelJobParameters = commonParameters + [
                         script.credentials(name: 'KS_FILE', value: "${script.params.KS_FILE}"),
                         script.credentials(name: 'KS_PASSWORD', value: "${script.params.KS_PASSWORD}"),
-                        script.credentials(name: 'PRIVATE_KEY_PASSWORD', value: "${script.params.PRIVATE_KEY_PASSWORD}")
+                        script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${script.params.ANDROID_KEY_PASSWORD}")
                 ]
                 break
             case ~/^.*IOS.*$/:
