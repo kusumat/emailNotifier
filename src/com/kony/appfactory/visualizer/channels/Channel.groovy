@@ -31,7 +31,7 @@ class Channel implements Serializable {
     protected String gitURL = script.env.PROJECT_GIT_URL
     protected String gitBranch = script.env.PROJECT_SOURCE_CODE_BRANCH
     protected String environment = script.env.FABRIC_ENVIRONMENT_NAME
-    protected String cloudCredentialsID = script.env.CLOUD_CREDENTIALS_ID
+    protected String cloudCredentialsID = script.env.FABRIC_CREDENTIALS_ID
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.env.BUILD_MODE
     protected String mobileFabricAppConfig = script.env.FABRIC_APP_CONFIG
