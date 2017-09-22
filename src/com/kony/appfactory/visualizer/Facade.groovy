@@ -87,7 +87,7 @@ class Facade implements Serializable {
 
     private final getCommonJobBuildParameters() {
         [
-                script.string(name: 'GIT_BRANCH', value: "${script.params.GIT_BRANCH}"),
+                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
                 script.credentials(name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"),
                 script.string(name: 'BUILD_MODE', value: "${script.params.BUILD_MODE}"),
                 script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${script.params.CLOUD_CREDENTIALS_ID}"),
@@ -136,7 +136,7 @@ class Facade implements Serializable {
 
     private final getTestAutomationJobParameters() {
         def parameters = [
-                script.string(name: 'GIT_BRANCH', value: "${script.params.GIT_BRANCH}"),
+                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
                 script.credentials(name: 'GIT_CREDENTIALS_ID', value: "${script.params.GIT_CREDENTIALS_ID}"),
                 script.string(name: 'TESTS_BINARY_URL', value: ''),
                 script.string(name: 'AVAILABLE_TEST_POOLS', value: "${script.params.AVAILABLE_TEST_POOLS}")

@@ -13,7 +13,7 @@ class TestAutomation implements Serializable {
     private String testFolder
     private String projectName = script.env.PROJECT_NAME
     private String gitURL = script.env.PROJECT_GIT_URL
-    private String gitBranch = script.params.GIT_BRANCH
+    private String gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     private String gitCredentialsID = script.params.GIT_CREDENTIALS_ID
 
     /* Device Farm properties */
