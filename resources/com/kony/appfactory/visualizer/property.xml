@@ -123,12 +123,12 @@
             <entry key="mode" value="0"/>
             <entry key="build.mode" value="${env.BUILD_MODE}"/>
             <entry key="appid" value="${env.PROJECT_NAME}"/>
-            <entry key="version" value="1.0.0"/>
+            <entry key="version" value=""/>
             <entry key="map_google_key" value=""/>
             <entry key="default_locale" value=""/>
             <entry key="android.packagename" value=""/>
-            <entry key="android.versioncode" value="1"/>
-            <entry key="ios.bundleversion" value="1.0"/>
+            <entry key="android.versioncode" value=""/>
+            <entry key="ios.bundleversion" value=""/>
             <entry key="cloud.username" value="${env.CLOUD_NAME}"/>
             <entry key="cloud.password" value="${env.CLOUD_PASS}"/>
             <entry key="mobilefabric.url" value="${env.FABRIC_URL}"/>
