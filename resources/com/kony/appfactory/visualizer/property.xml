@@ -24,7 +24,8 @@
 
     <target name="property" description="-> prepare property files">
         <property environment="env"/>
-
+        <!-- Made these two properties (fabricAccountId, fabricAppName) conditional because of failing build even though
+        that they we not provided -->
         <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="">
             <isset property="env.FABRIC_ACCOUNT_ID"/>
         </condition>
