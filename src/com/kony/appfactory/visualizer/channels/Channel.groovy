@@ -266,7 +266,7 @@ class Channel implements Serializable {
             case 'IOS_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'server', 'ipadkbf'])
                 break
-            case 'WINDOWS81S_MOBILE_NATIVE':
+            case 'WINDOWS81_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'winphone8'])
                 break
             case 'WINDOWS10_MOBILE_NATIVE':
@@ -308,7 +308,7 @@ class Channel implements Serializable {
             case ~/^.*IOS.*$/:
                 artifactExtension = 'KAR'
                 break
-            case ~/^.*WINDOWS8_MOBILE.*$/:
+            case ~/^.*WINDOWS81_MOBILE.*$/:
                 artifactExtension = 'xap'
                 break
             case ~/^.*WINDOWS.*$/:
