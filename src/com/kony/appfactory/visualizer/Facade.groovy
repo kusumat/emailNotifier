@@ -43,6 +43,10 @@ class Facade implements Serializable {
         channelName.tokenize('_')[1]
     }
 
+    private final getChannelOs(channelName) {
+        channelName.tokenize('_')[0].capitalize()
+    }
+
     private final getChannelJobName(channelName) {
         String channelsBaseFolder = 'Channels'
         String channelType = ''
@@ -105,8 +109,8 @@ class Facade implements Serializable {
         getCommonJobBuildParameters() + spaChannelsToBuildJobParameters
     }
 
-    private final getNativeChannelJobBuildParameters(channelName, channelFormFactor) {
-        def channelJobParameters
+    private final getNativeChannelJobBuildParameters(channelName, channelOs = '', channelFormFactor) {
+        def channelJobParameters = []
         def commonParameters = getCommonJobBuildParameters()
 
         switch (channelName) {
@@ -124,8 +128,12 @@ class Facade implements Serializable {
                         script.string(name: 'APPLE_DEVELOPER_PROFILE_TYPE', value: "${script.params.APPLE_DEVELOPER_PROFILE_TYPE}")
                 ]
                 break
+            case ~/^.*WINDOWS.*$/:
+                channelJobParameters = commonParameters + [
+                        script.string(name: 'OS', value: channelOs)
+                ]
+                break
             default:
-                channelJobParameters = commonParameters
                 break
         }
 
@@ -190,9 +198,10 @@ class Facade implements Serializable {
             def channelName = item
             def channelJobName = (getChannelJobName(channelName)) ?:
                     script.error("Channel job name can't be null")
+            def channelOs = getChannelOs(channelName)
             def channelFormFactor = (getChannelFormFactor(channelName)) ?:
                     script.error("Channel form factor can't be null")
-            def channelJobBuildParameters = (getNativeChannelJobBuildParameters(channelName, channelFormFactor)) ?:
+            def channelJobBuildParameters = (getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)) ?:
                     script.error("Channel job build parameters list can't be null")
             def channelPath = getChannelPath(channelName)
 
