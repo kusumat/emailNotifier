@@ -40,7 +40,7 @@ class AWSHelper implements Serializable {
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
                 if (args.exposeURL) {
-                    script.echo "Artifact($fileName) URL: $artifactURL"
+                    script.echo "Artifact($fileName) URL: ${artifactURL?.toURL()}"
                 }
             }
         }

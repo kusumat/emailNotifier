@@ -37,13 +37,12 @@ class Channel implements Serializable {
     Channel(script) {
         this.script = script
         String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
+        String channelFormFactor = script.env.FORM_FACTOR
         channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
-        String channelFormFactor = script.env.FORM_FACTOR?.toLowerCase().capitalize()
-        channelPath = [channelOs, channelFormFactor, channelType].join('/')
+        channelPath = [(channelOs.contains('Ios')) ? 'iOS' : channelOs, channelFormFactor, channelType].join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-        this.script.env[channelVariableName] = true // Exposing environment variable with channel to build
-        artifactExtension = getArtifactExtension(channelVariableName)
-        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        /* Exposing environment variable with channel to build */
+        this.script.env[channelVariableName] = true
     }
 
     protected final void pipelineWrapper(closure) {
@@ -55,6 +54,8 @@ class Channel implements Serializable {
         projectFullPath = [workspace, projectName].join(separator)
         artifactsBasePath = (getArtifactTempPath(workspace, projectName, separator, channelVariableName)) ?:
                 script.error('Artifacts path is missing!')
+        artifactExtension = getArtifactExtension(channelVariableName)
+        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
 
         try {
             closure()
@@ -286,7 +287,6 @@ class Channel implements Serializable {
      * @param channelName channel name string
      * @return            the artifact extension string
      */
-    @NonCPS
     protected final getArtifactExtension(channelVariableName) {
         def artifactExtension
 

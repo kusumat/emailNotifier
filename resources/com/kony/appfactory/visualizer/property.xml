@@ -25,6 +25,12 @@
     <target name="property" description="-> prepare property files">
         <property environment="env"/>
 
+        <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="">
+            <isset property="env.FABRIC_ACCOUNT_ID"/>
+        </condition>
+        <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
+            <isset property="env.FABRIC_APP_NAME"/>
+        </condition>
         <!-- Set of properties that depend on chosen target platform -->
         <condition property="separator" value="\" else="/">
             <os family="windows"/>
@@ -120,15 +126,15 @@
             <entry key="version" value="1.0.0"/>
             <entry key="map_google_key" value=""/>
             <entry key="default_locale" value=""/>
-            <entry key="android.packagename" value="com.orgname.${env.PROJECT_NAME}"/>
+            <entry key="android.packagename" value=""/>
             <entry key="android.versioncode" value="1"/>
             <entry key="ios.bundleversion" value="1.0"/>
             <entry key="cloud.username" value="${env.CLOUD_NAME}"/>
             <entry key="cloud.password" value="${env.CLOUD_PASS}"/>
             <entry key="mobilefabric.url" value="${env.FABRIC_URL}"/>
             <entry key="environment.name" value="${env.FABRIC_ENVIRONMENT_NAME}"/>
-            <entry key="account.id" value="${env.FABRIC_ACCOUNT_ID}"/>
-            <entry key="mf.appname" value="${env.FABRIC_APP_NAME}"/>
+            <entry key="account.id" value="${fabricAccountId}"/>
+            <entry key="mf.appname" value="${fabricAppName}"/>
             <entry key="iphone" value="${iosMobileNative}"/>
             <entry key="android" value="${androidMobileNative}"/>
             <entry key="windowsphone8" value="${windowsMobileWindowsPhone8}"/>

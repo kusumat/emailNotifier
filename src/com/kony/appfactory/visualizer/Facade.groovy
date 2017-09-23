@@ -40,11 +40,11 @@ class Facade implements Serializable {
     }
 
     private final getChannelFormFactor(channelName) {
-        channelName.tokenize('_')[1]
+        channelName.tokenize('_')[1].toLowerCase().capitalize()
     }
 
     private final getChannelOs(channelName) {
-        channelName.tokenize('_')[0].capitalize()
+        channelName.tokenize('_')[0].toLowerCase().capitalize()
     }
 
     private final getChannelJobName(channelName) {
@@ -162,7 +162,7 @@ class Facade implements Serializable {
             def names = artifactNames.tokenize(',')
 
             for (name in names) {
-                String artifactURL = [s3BaseURL, channelPath, name].join('/')
+                String artifactURL = [s3BaseURL, channelPath, name].join('/')?.toURL()
                 artifactObjectsList.add([name: name, url: artifactURL, channelPath: channelPath])
             }
         }
