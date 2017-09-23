@@ -273,7 +273,7 @@ class Channel implements Serializable {
             case 'WINDOWS_TABLET_WINDOWS10':
                 artifactsTempPath = getPath(['build', 'windows10'])
                 break
-            case 'WINDOWS_TABLET_WINDOWS81':
+            case 'WINDOWS81_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'windows8'])
                 break
             case ~/^.*SPA.*$/:
