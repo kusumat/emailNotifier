@@ -11,6 +11,7 @@ class SpaChannel extends Channel {
         super(script)
         nodeLabel = 'win || mac'
         publishFabricApp = this.script.env.PUBLISH_FABRIC_APP
+        channelVariableName = channelPath = 'SPA'
     }
 
     protected final void createPipeline() {

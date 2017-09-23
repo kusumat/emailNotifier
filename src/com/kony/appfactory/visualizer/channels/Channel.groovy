@@ -16,8 +16,6 @@ class Channel implements Serializable {
     protected String visualizerVersion
     protected String channelPath
     protected String channelVariableName
-    protected String channelOs
-    protected String channelFormFactor
     protected String channelType
     protected String artifactsBasePath
     protected String artifactExtension
@@ -38,18 +36,12 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
-        channelOs = (script.env.CHANNEL_OS) ?: script.env.JOB_BASE_NAME - 'build'
+        String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
         channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
-        script.println channelType
-        if (channelType != 'SPA') {
-            channelFormFactor = script.env.FORM_FACTOR?.toLowerCase().capitalize()
-            channelPath = [channelOs, channelFormFactor, channelType].join('/')
-            channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-            script.env[channelVariableName] = true // Exposing environment variable with channel to build
-        } else {
-            channelVariableName = channelType
-            channelPath = channelType
-        }
+        String channelFormFactor = script.env.FORM_FACTOR?.toLowerCase().capitalize()
+        channelPath = [channelOs, channelFormFactor, channelType].join('/')
+        channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
+        this.script.env[channelVariableName] = true // Exposing environment variable with channel to build
         artifactExtension = getArtifactExtension(channelVariableName)
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
     }
