@@ -68,8 +68,8 @@
         <condition property="windowsTabletWindows81" value="${env.WINDOWS81_TABLET_NATIVE}" else="false">
             <isset property="env.WINDOWS81_TABLET_NATIVE"/>
         </condition>
-        <condition property="windowsTabletWindows10" value="${env.WINDOWS_TABLET_WINDOWS10}" else="false">
-            <isset property="env.WINDOWS_TABLET_WINDOWS10"/>
+        <condition property="windowsTabletWindows10" value="${env.WINDOWS10_TABLET_NATIVE}" else="false">
+            <isset property="env.WINDOWS10_TABLET_NATIVE"/>
         </condition>
         <condition property="windowsTabletSPA" value="${env.WINDOWS_TABLET_SPA}" else="false">
             <isset property="env.WINDOWS_TABLET_SPA"/>
