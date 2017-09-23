@@ -56,11 +56,8 @@
         <condition property="iosTabletSPA" value="${env.IOS_TABLET_SPA}" else="false">
             <isset property="env.IOS_TABLET_SPA"/>
         </condition>
-        <condition property="windowsMobileWindowsPhone8" value="${env.WINDOWS_MOBILE_WINDOWSPHONE8}" else="false">
-            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE8"/>
-        </condition>
-        <condition property="windowsMobileWindowsPhone81S" value="${env.WINDOWS_MOBILE_WINDOWSPHONE81S}" else="false">
-            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE81S"/>
+        <condition property="windowsMobileWindowsPhone81S" value="${env.WINDOWS81S_MOBILE_NATIVE}" else="false">
+            <isset property="env.WINDOWS81S_MOBILE_NATIVE"/>
         </condition>
         <condition property="windowsMobileWindowsPhone10" value="${env.WINDOWS_MOBILE_WINDOWSPHONE10}" else="false">
             <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE10"/>
@@ -130,7 +127,7 @@
             <entry key="mf.appname" value="${env.FABRIC_APP_NAME}"/>
             <entry key="iphone" value="${iosMobileNative}"/>
             <entry key="android" value="${androidMobileNative}"/>
-            <entry key="windowsphone8" value="${windowsMobileWindowsPhone8}"/>
+            <entry key="windowsphone8" value="false"/>
             <entry key="windowsphone81s" value="${windowsMobileWindowsPhone81S}"/>
             <entry key="windowsphone10" value="${windowsMobileWindowsPhone10}"/>
             <entry key="spa.iphone" value="${iosMobileSPA}"/>

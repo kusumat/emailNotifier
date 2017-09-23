@@ -266,8 +266,7 @@ class Channel implements Serializable {
             case 'IOS_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'server', 'ipadkbf'])
                 break
-            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
-            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+            case 'WINDOWS81S_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'winphone8'])
                 break
             case 'WINDOWS_MOBILE_WINDOWSPHONE10':
