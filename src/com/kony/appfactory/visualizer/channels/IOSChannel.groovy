@@ -163,34 +163,23 @@ class IOSChannel extends Channel {
 
                 script.stage('Build') {
                     build()
-                    if (artifactExtension == 'war') {
-                        /* Search for build artifacts */
-                        def foundArtifacts = getArtifactLocations(artifactExtension)
-                        /* Rename artifacts for publishing */
-                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
-                                script.error('FAILED build artifacts are missing!')
-                    } else {
-                        /* Get KAR file name and path */
-                        karFile = getArtifactLocations(artifactExtension)[0]
-                    }
+                    /* Get KAR file name and path */
+                    karFile = getArtifactLocations(artifactExtension)[0]
                 }
 
-                /* Check to not sign artifacts if SPA chosen */
-                if (artifactExtension != 'war') {
-                    script.stage('Generate IPA file') {
-                        createIPA()
-                        /* Search for build artifacts */
-                        def foundArtifacts = getArtifactLocations('ipa')
-                        /* Rename artifacts for publishing */
-                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
-                                script.error('FAILED build artifacts are missing!')
-                    }
+                script.stage('Generate IPA file') {
+                    createIPA()
+                    /* Search for build artifacts */
+                    def foundArtifacts = getArtifactLocations('ipa')
+                    /* Rename artifacts for publishing */
+                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
+                            script.error('FAILED build artifacts are missing!')
+                }
 
-                    script.stage("Generate property list file") {
-                        createPlist()
-                        /* Get plist artifact */
-                        artifacts.add([name: plistFileName, path: "${karFile.path}"])
-                    }
+                script.stage("Generate property list file") {
+                    createPlist()
+                    /* Get plist artifact */
+                    artifacts.add([name: plistFileName, path: "${karFile.path}"])
                 }
 
                 script.stage("Publish artifacts to S3") {
