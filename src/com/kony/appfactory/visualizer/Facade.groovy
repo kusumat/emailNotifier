@@ -12,13 +12,11 @@ class Facade implements Serializable {
     private projectName
     private artifacts = []
     private jobResultList = []
-    private s3BaseURL
 
     Facade(script) {
         this.script = script
         projectName = this.script.env.PROJECT_NAME
         environment = this.script.params.FABRIC_ENVIRONMENT_NAME
-        s3BaseURL = AWSHelper.getS3ArtifactURL(this.script, ['Builds', environment].join('/'))
     }
 
     private static getSelectedChannels(buildParameters) {
@@ -162,7 +160,8 @@ class Facade implements Serializable {
             def names = artifactNames.tokenize(',')
 
             for (name in names) {
-                String artifactURL = [s3BaseURL, channelPath, name].join('/')?.toURL()
+                String artifactURL = AWSHelper.getS3ArtifactURL(script,
+                        ['Builds', environment, channelPath, name].join('/'))
                 artifactObjectsList.add([name: name, url: artifactURL, channelPath: channelPath])
             }
         }
