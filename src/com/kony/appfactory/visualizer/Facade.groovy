@@ -71,11 +71,8 @@ class Facade implements Serializable {
 
     private final getChannelPath(channel) {
         def channelPath = channel.tokenize('_').collect() { item ->
-            /* Workaround for windows phone jobs */
-            if (item.contains('WINDOWSPHONE')) {
-                item.replaceAll('WINDOWSPHONE', 'WindowsPhone')
-                /* Workaround for SPA jobs */
-            } else if (item.contains('SPA')) {
+            /* Workaround for SPA jobs */
+            if (item.contains('SPA')) {
                 item
             } else if (item.contains('IOS')) {
                 'iOS'
