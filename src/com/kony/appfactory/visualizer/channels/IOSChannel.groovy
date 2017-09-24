@@ -6,7 +6,7 @@ import com.kony.appfactory.helper.BuildHelper
 class IOSChannel extends Channel {
     private bundleID
     private iosPluginVersion
-    private karFile = [:]
+    private karFile
     private plistFileName
 
     /* Build parameters */
@@ -92,7 +92,7 @@ class IOSChannel extends Channel {
                             "FASTLANE_DONT_STORE_PASSWORD=true",
                             "MATCH_APP_IDENTIFIER=${bundleID}",
                             "MATCH_GIT_URL=${script.env.MATCH_GIT_URL}",
-                            "MATCH_GIT_BRANCH=${script.env.MATCH_USERNAME}",
+                            "MATCH_GIT_BRANCH=${(script.env.APPLE_DEVELOPER_TEAM_ID) ?: script.env.MATCH_USERNAME}",
                             "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                             "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                             "GYM_OUTPUT_NAME=${projectName}",
@@ -165,17 +165,13 @@ class IOSChannel extends Channel {
                     build()
                     if (artifactExtension == 'war') {
                         /* Search for build artifacts */
-                        def foundArtifacts = getArtifacts(artifactExtension)
+                        def foundArtifacts = getArtifactLocations(artifactExtension)
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
                                 script.error('FAILED build artifacts are missing!')
                     } else {
                         /* Get KAR file name and path */
-                        def transitArtifacts = getArtifacts('KAR')
-                        karFile.name = transitArtifacts[0].name
-                        karFile.path = artifactsBasePath +
-                                '/' +
-                                transitArtifacts[0].path.minus('/' + transitArtifacts[0].name)
+                        karFile = getArtifactLocations(artifactExtension)[0]
                     }
                 }
 
@@ -184,7 +180,7 @@ class IOSChannel extends Channel {
                     script.stage('Generate IPA file') {
                         createIPA()
                         /* Search for build artifacts */
-                        def foundArtifacts = getArtifacts(artifactExtension)
+                        def foundArtifacts = getArtifactLocations('ipa')
                         /* Rename artifacts for publishing */
                         artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
                                 script.error('FAILED build artifacts are missing!')

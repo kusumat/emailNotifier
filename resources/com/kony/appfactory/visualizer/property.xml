@@ -1,104 +1,116 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <project name="kony" basedir="." default="main" xmlns:ivy="antlib:org.apache.ivy.ant">
-	
-    <target name="main" depends="property,wipe" description="-> generate properties, generate ivy.xlm, retrieve artifacts, delete duplicates">
+    <property name="ivy.install.version" value="2.4.0"/>
+    <property name="ivy.home" value="${ant.library.dir}"/>
+    <property name="ivy.jar.file" value="${ivy.home}/ivy.jar"/>
+
+    <target name="main"
+            depends="init-ivy,property,wipe"
+            description="-> generate properties, generate ivy.xlm, retrieve artifacts, delete duplicates"/>
+
+    <target name="download-ivy" unless="offline">
+        <get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+             dest="${ivy.jar.file}"
+             usetimestamp="true"/>
     </target>
+
+    <target name="init-ivy" depends="download-ivy">
+        <path id="ivy.lib.path">
+            <fileset dir="${ivy.home}" includes="*.jar"/>
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml"
+                 uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+    </target>
+
     <target name="property" description="-> prepare property files">
         <property environment="env"/>
 
-        <!--Condition property depends of agent's platform-->
-        <condition property="vis.root" value="C:\Jenkins\KonyVisualizerEnterprise${env.VIS_VERSION}\" else="/Jenkins/KonyVisualizerEnterprise${env.VIS_VERSION}/">
+        <!-- Set of properties that depend on chosen target platform -->
+        <condition property="separator" value="\" else="/">
             <os family="windows"/>
         </condition>
-        <condition property="vis.inner" value="${vis.root}Kony_Visualizer_Enterprise\" else="${vis.root}Kony_Visualizer_Enterprise/">
-            <os family="windows"/>
-        </condition>
-        <condition property="viz.bundles" value="${viz.inner}\configuration\org.eclipse.osgi\bundles" else="${viz.inner}/configuration/org.eclipse.osgi/bundles">
-            <os family="windows"/>
-        </condition>
-        <condition property="android.home" value="C:\Jenkins\asdk" else="/Jenkins/tools/asdk">
-            <os family="windows"/>
-        </condition>
-
-        <!--Set of condition properties depending of choosed target platrofms-->
         <condition property="androidMobileNative" value="${env.ANDROID_MOBILE_NATIVE}" else="false">
             <isset property="env.ANDROID_MOBILE_NATIVE"/>
         </condition>
         <condition property="androidMobileSPA" value="${env.ANDROID_MOBILE_SPA}" else="false">
-            <isset property="env.ANDROID_MOBILE_SPA" />
+            <isset property="env.ANDROID_MOBILE_SPA"/>
         </condition>
         <condition property="androidTabletNative" value="${env.ANDROID_TABLET_NATIVE}" else="false">
-            <isset property="env.ANDROID_TABLET_NATIVE" />
+            <isset property="env.ANDROID_TABLET_NATIVE"/>
         </condition>
         <condition property="androidTabletSPA" value="${env.ANDROID_TABLET_SPA}" else="false">
-            <isset property="env.ANDROID_TABLET_SPA" />
+            <isset property="env.ANDROID_TABLET_SPA"/>
         </condition>
         <condition property="iosWatchNative" value="${env.IOS_WATCH_NATIVE}" else="false">
-            <isset property="env.IOS_WATCH_NATIVE" />
+            <isset property="env.IOS_WATCH_NATIVE"/>
         </condition>
         <condition property="iosMobileNative" value="${env.IOS_MOBILE_NATIVE}" else="false">
-            <isset property="env.IOS_MOBILE_NATIVE" />
+            <isset property="env.IOS_MOBILE_NATIVE"/>
         </condition>
         <condition property="iosMobileSPA" value="${env.IOS_MOBILE_SPA}" else="false">
-            <isset property="env.IOS_MOBILE_SPA" />
+            <isset property="env.IOS_MOBILE_SPA"/>
         </condition>
         <condition property="iosTabletNative" value="${env.IOS_TABLET_NATIVE}" else="false">
-            <isset property="env.IOS_TABLET_NATIVE" />
+            <isset property="env.IOS_TABLET_NATIVE"/>
         </condition>
         <condition property="iosTabletSPA" value="${env.IOS_TABLET_SPA}" else="false">
-            <isset property="env.IOS_TABLET_SPA" />
+            <isset property="env.IOS_TABLET_SPA"/>
         </condition>
         <condition property="windowsMobileWindowsPhone8" value="${env.WINDOWS_MOBILE_WINDOWSPHONE8}" else="false">
-            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE8" />
+            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE8"/>
         </condition>
         <condition property="windowsMobileWindowsPhone81S" value="${env.WINDOWS_MOBILE_WINDOWSPHONE81S}" else="false">
-            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE81S" />
+            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE81S"/>
         </condition>
         <condition property="windowsMobileWindowsPhone10" value="${env.WINDOWS_MOBILE_WINDOWSPHONE10}" else="false">
-            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE10" />
+            <isset property="env.WINDOWS_MOBILE_WINDOWSPHONE10"/>
         </condition>
         <condition property="windowsMobileSPA" value="${env.WINDOWS_MOBILE_SPA}" else="false">
-            <isset property="env.WINDOWS_MOBILE_SPA" />
+            <isset property="env.WINDOWS_MOBILE_SPA"/>
         </condition>
         <condition property="windowsTabletWindows81" value="${env.WINDOWS_TABLET_WINDOWS81}" else="false">
-            <isset property="env.WINDOWS_TABLET_WINDOWS81" />
+            <isset property="env.WINDOWS_TABLET_WINDOWS81"/>
         </condition>
         <condition property="windowsTabletWindows10" value="${env.WINDOWS_TABLET_WINDOWS10}" else="false">
-            <isset property="env.WINDOWS_TABLET_WINDOWS10" />
+            <isset property="env.WINDOWS_TABLET_WINDOWS10"/>
         </condition>
         <condition property="windowsTabletSPA" value="${env.WINDOWS_TABLET_SPA}" else="false">
-            <isset property="env.WINDOWS_TABLET_SPA" />
+            <isset property="env.WINDOWS_TABLET_SPA"/>
         </condition>
         <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_KIOSK}" else="false">
-            <isset property="env.WINDOWS_DESKTOP_KIOSK" />
+            <isset property="env.WINDOWS_DESKTOP_KIOSK"/>
         </condition>
         <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_WEB}" else="false">
-            <isset property="env.WINDOWS_DESKTOP_WEB" />
+            <isset property="env.WINDOWS_DESKTOP_WEB"/>
         </condition>
         <condition property="blackberryMobileSPA" value="${env.BLACKBERRY_MOBILE_SPA}" else="false">
-            <isset property="env.BLACKBERRY_MOBILE_SPA" />
+            <isset property="env.BLACKBERRY_MOBILE_SPA"/>
         </condition>
         <condition property="blackberryMobileHybridSPA" value="${env.BLACKBERRY_MOBILE_HYBRID_SPA}" else="false">
-            <isset property="env.BLACKBERRY_MOBILE_HYBRID_SPA" />
+            <isset property="env.BLACKBERRY_MOBILE_HYBRID_SPA"/>
         </condition>
 
-        <propertyfile file="HeadlessBuild-Global.properties" comment="Generated file">
-            <entry key="imagemagic.home" value="${vis.root}ImageMagick"/>
-            <entry key="workspace.location" value="${env.WORKSPACE}"/>
-            <entry key="bb10.vmware.home" value=""/>
-            <entry key="bb10.emulator.password" value=""/>
-            <entry key="eclipse.equinox.path" value="${vis.inner}plugins/org.eclipse.equinox.launcher_1.3.0.v20130327-1440.jar"/>
-            <entry key="bb10.signing.keys.home" value=""/>
+        <!-- Set of common properties -->
+        <property name="android.home" value="${env.ANDROID_HOME}"/>
+        <property name="workspace.location" value="${env.WORKSPACE}"/>
+        <property name="vis.root" value="${env.VISUALIZER_HOME}"/>
+        <property name="vis.inner" value="${vis.root}${separator}Kony_Visualizer_Enterprise"/>
+        <property name="vis.bundles"
+                  value="${vis.inner}${separator}configuration${separator}org.eclipse.osgi${separator}bundles"/>
+        <property name="imagemagic.home" value="${vis.root}${separator}ImageMagick"/>
+        <property name="eclipse.equinox.file.name" value="org.eclipse.equinox.launcher_1.3.0.v20130327-1440.jar"/>
+        <property name="eclipse.equinox.path"
+                  value="${vis.inner}${separator}plugins${separator}${eclipse.equinox.file.name}"/>
+
+        <propertyfile file="HeadlessBuild-Global.properties" comment="Autogenerated file">
             <entry key="android.home" value="${android.home}"/>
-            <entry key="bb10.ndk.home" value=""/>
-            <entry key="bb10.emulator.ip" value=""/>
+            <entry key="workspace.location" value="${workspace.location}"/>
+            <entry key="imagemagic.home" value="${imagemagic.home}"/>
+            <entry key="eclipse.equinox.path" value="${eclipse.equinox.path}"/>
         </propertyfile>
 
-        <!--
-        <replace file="HeadlessBuild-Global.properties" token="\" value="\\"/>  
-        -->
         <property environment="env"/>
-        <propertyfile file="HeadlessBuild.properties" comment="Generated file">
+        <propertyfile file="HeadlessBuild.properties" comment="Autogenerated file">
             <entry key="project.name" value="${env.PROJECT_NAME}"/>
             <entry key="mode" value="0"/>
             <entry key="build.mode" value="${env.BUILD_MODE}"/>
@@ -156,45 +168,43 @@
         <condition property="plugin.os.ver" value="mac64" else="win64">
             <os family="mac"/>
         </condition>
-        <copy file="konyplugins.xml" tofile="ivy.xml" overwrite="true" />
-        <replace file="ivy.xml"> 
+        <copy file="konyplugins.xml" tofile="ivy.xml" overwrite="true"/>
+        <replace file="ivy.xml">
             <replacetoken><![CDATA[<plugins>]]></replacetoken>
-            <replacevalue><![CDATA[<ivy-module version="2.0">
-<info organisation="com.kony" module="AppFactory"/>
-<dependencies>]]></replacevalue>
+            <replacevalue><![CDATA[<ivy-module version="2.4">
+    <info organisation="com.kony" module="AppFactory"/>
+    <dependencies>]]></replacevalue>
         </replace>
-        <replace file="ivy.xml" token="pluginInfo" value="dependency" />
-        <replace file="ivy.xml" token="plugin-id" value="name" />
-        <replace file="ivy.xml" token="version-no" value="rev" />
+        <replace file="ivy.xml" token="pluginInfo" value="dependency"/>
+        <replace file="ivy.xml" token="plugin-id" value="name"/>
+        <replace file="ivy.xml" token="version-no" value="rev"/>
         <replaceregexp file="ivy.xml" match="plugin-name.*$" replace="/>" flags="gm"/>
         <replace file="ivy.xml"> 
             <replacetoken><![CDATA[</plugins>]]></replacetoken>
-            <replacevalue><![CDATA[</dependencies>
-</ivy-module>]]>
-            </replacevalue>
+            <replacevalue><![CDATA[    </dependencies>
+</ivy-module>]]></replacevalue>
         </replace>
         <replace file="ivy.xml" token="win64" value="${plugin.os.ver}"/>
 	</target>
 
     <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
-        <ivy:retrieve pattern="${vis.inner}dropins/[artifact]_[revision].[ext]"/>
+        <ivy:retrieve pattern="${vis.inner}/dropins/[artifact]_[revision].[ext]"/>
     </target>
 
     <target name="wipe" depends="clean,retrieve,plugins" description="-> wipe duplacates in plugins directory">
         <delete>
-            <fileset dir="${vis.inner}plugins" includes="**/*">
-                <present targetdir="${vis.inner}dropins" />
+            <fileset dir="${vis.inner}/plugins" includes="**/*">
+                <present targetdir="${vis.inner}/dropins" />
             </fileset>
         </delete>
     </target>
 
-    <target name="clean" description="-> clean dropins directory">
-        <delete dir="${vis.inner}dropins"/>
-        <delete dir="${viz.bundles}"/>
+    <target name="clean" description="-> clean dropins and bundles directory">
+        <delete dir="${vis.inner}/dropins"/>
+        <delete dir="${vis.bundles}"/>
     </target>
 
     <target name="clean-all" depends="clean" description="-> clean dropins directory and ivy cache">
-        <ivy:cleancache />
+        <ivy:cleancache/>
     </target>
-
 </project>

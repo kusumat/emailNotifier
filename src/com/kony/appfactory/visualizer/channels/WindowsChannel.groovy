@@ -28,9 +28,9 @@ class WindowsChannel extends Channel {
                     script.stage('Build') {
                         build()
                         /* Search for build artifacts */
-                        def foundArtifacts = getArtifacts(artifactExtension)
+                        buildArtifacts = getArtifactLocations(artifactExtension)
                         /* Rename artifacts for publishing */
-                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
+                        artifacts = (buildArtifacts) ? renameArtifacts(buildArtifacts) :
                                 script.error('FAILED build artifacts are missing!')
                     }
 

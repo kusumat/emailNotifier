@@ -4,72 +4,66 @@ import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
 
 class AndroidChannel extends Channel {
-    private androidHome
-
     /* Build parameters */
-    private String keystoreFileID = script.params.KS_FILE
-    private String keystorePasswordID = script.params.KS_PASSWORD
-    private String privateKeyPassword = script.params.PRIVATE_KEY_PASSWORD
+    private String keystoreFileID = script.env.KS_FILE
+    private String keystorePasswordID = script.env.KS_PASSWORD
+    private String privateKeyPassword = script.env.PRIVATE_KEY_PASSWORD
+    private String keystoreAlias = script.env.ANDROID_KEYSTORE_ALIAS
 
     AndroidChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
     }
 
-    private final void withKeyStore(closure) {
-        script.withCredentials([
-                script.file(credentialsId: "${keystoreFileID}", variable: 'KSFILE'),
-                script.string(credentialsId: "${keystorePasswordID}", variable: 'KSPASS'),
-                script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
-        ]) {
-            closure()
-        }
-    }
-
-    private final void signArtifact(artifactName, artifactPath) {
+    private final void signArtifacts(buildArtifacts) {
         String successMessage = 'Artifact signed successfully'
         String errorMessage = 'FAILED to sign artifact'
-        String apksigner = androidHome + ((isUnixNode) ? '/build-tools/25.0.0/apksigner' :
-                '\\build-tools\\25.0.0\\apksigner.bat')
-        String debugSingCommand = "${apksigner} sign --ks debug.keystore --ks-pass pass:android ${artifactName}"
-        String keyGenCommand = 'keytool -genkey -noprompt' +
-             ' -alias androiddebugkey' +
-             ' -dname "CN=Android Debug,O=Android,C=US"' +
-             ' -keystore debug.keystore' +
-             ' -storepass android' +
-             ' -keypass android' +
-             ' -keyalg RSA' +
-             ' -keysize 2048' +
-             ' -validity 10000'
+        String signer = 'jarsigner'
+        String androidBuildToolsPath = (visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath) ?:
+                script.error('Android build tools path is missing!')
+        String javaBinPath = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
+                script.error('Java binaries path is missing!')
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.dir(artifactPath) {
-                if (isUnixNode) {
-                    if (buildMode == 'release') {
-                        withKeyStore() {
-                            script.sh apksigner +
-                                    ' sign --ks $KSFILE --ks-pass pass:$KSPASS --key-pass pass:$KEYPASS ' +
-                                    artifactName
-                        }
-                    } else {
-                        script.sh keyGenCommand
-                        script.sh debugSingCommand
-                    }
+            for (artifact in buildArtifacts) {
+                script.dir(artifact.path) {
+                    script.withEnv(["PATH+TOOLS=${javaBinPath}${pathSeparator}${androidBuildToolsPath}"]) {
+                        if (buildMode == 'release') {
+                            def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
+                            script.withCredentials([
+                                    script.file(credentialsId: "${keystoreFileID}", variable: 'KSFILE'),
+                                    script.string(credentialsId: "${keystorePasswordID}", variable: 'KSPASS'),
+                                    script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
+                            ]) {
+                                script.shellCustom(
+                                        [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
+                                         '-keystore', "${script.env.KSFILE}",
+                                         '-storepass', "${script.env.KSPASS}",
+                                         '-keypass', "${script.env.KEYPASS}", artifact.name, (keystoreAlias) ?: ''].join(' '),
+                                        isUnixNode
+                                )
 
-                    script.sh "${apksigner} verify --verbose ${artifactName}"
-                } else {
-                    if (buildMode == 'release') {
-                        withKeyStore() {
-                            script.bat apksigner +
-                                    ' sign --ks %KSFILE% --ks-pass pass:%KSPASS% --key-pass pass:%KEYPASS% ' +
-                                    artifactName
-                        }
-                    } else {
-                        script.bat keyGenCommand
-                        script.bat debugSingCommand
-                    }
+                                script.shellCustom(
+                                        [signer, '-verify', '-certs', artifact.name, (keystoreAlias) ?: ''].join(' '),
+                                        isUnixNode
+                                )
 
-                    script.bat "${apksigner} verify --verbose ${artifactName}"
+                                script.shellCustom(
+                                        ['zipalign', '-v', '4', artifact.name, finalArtifactName].join(' '),
+                                        isUnixNode
+                                )
+
+                                script.shellCustom(
+                                        ['zipalign', '-c', '-v', '4', finalArtifactName].join(' '),
+                                        isUnixNode
+                                )
+
+                                artifact.name = finalArtifactName
+                            }
+                        } else {
+                            script.println "Build mode is $buildMode, skipping signing!"
+                        }
+                    }
                 }
             }
         }
@@ -90,26 +84,21 @@ class AndroidChannel extends Channel {
 
                 script.stage('Build') {
                     build()
-                    /* Setting android home variable */
-                    androidHome = script.readProperties(
-                            file: projectFullPath + '/HeadlessBuild-Global.properties').'android.home'
                     /* Search for build artifacts */
-                    def foundArtifacts = getArtifacts(artifactExtension)
-                    /* Rename artifacts for publishing */
-                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
-                            script.error('FAILED build artifacts are missing!')
-
+                    buildArtifacts = (getArtifactLocations(artifactExtension)) ?:
+                            script.error('Build artifacts were not found!')
                 }
 
                 if (artifactExtension != 'war') {
-                    script.stage("Sign artifact") {
-                        for (artifact in artifacts) {
-                            signArtifact(artifact.name, artifact.path)
-                        }
+                    script.stage("Sign artifacts") {
+                        signArtifacts(buildArtifacts)
                     }
                 }
 
                 script.stage("Publish artifacts to S3") {
+                    /* Rename artifacts for publishing */
+                    artifacts = renameArtifacts(buildArtifacts)
+
                     /* Create a list with artifact names and upload them */
                     def channelArtifacts = []
 

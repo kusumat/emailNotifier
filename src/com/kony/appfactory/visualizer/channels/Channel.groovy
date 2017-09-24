@@ -1,10 +1,15 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
 class Channel implements Serializable {
     protected script
     protected artifacts
+    protected separator
+    protected pathSeparator
+    protected visualizerDependencies
+    protected buildArtifacts
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
@@ -26,6 +31,7 @@ class Channel implements Serializable {
     protected String cloudCredentialsID = script.env.CLOUD_CREDENTIALS_ID
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.env.BUILD_MODE
+    protected String mobileFabricAppConfig = script.env.MOBILE_FABRIC_APP_CONFIG
 
     Channel(script) {
         this.script = script
@@ -39,10 +45,11 @@ class Channel implements Serializable {
     protected final void pipelineWrapper(closure) {
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
+        separator = (isUnixNode) ? '/' : '\\'
+        pathSeparator = ((isUnixNode) ? ':' : ';')
         workspace = script.env.WORKSPACE
-        projectFullPath = (isUnixNode) ? workspace + '/' + projectName :
-                workspace + '\\' + projectName
-        artifactsBasePath = projectFullPath + ((isUnixNode) ? "/binaries" : "\\binaries")
+        projectFullPath = [workspace, projectName].join(separator)
+        artifactsBasePath = (getArtifactTempPath()) ?: script.error('Artifacts path is missing!')
 
         try {
             closure()
@@ -60,16 +67,19 @@ class Channel implements Serializable {
     protected final void visualizerEnvWrapper(closure) {
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
-        /* Expose Visualizer version as environment variable */
-        script.env['VIS_VERSION'] = visualizerVersion
-        String visualizerBasePath = (isUnixNode) ? "/Jenkins/KonyVisualizerEnterprise${visualizerVersion}/" :
-                "C:\\Jenkins\\KonyVisualizerEnterprise${visualizerVersion}\\"
-        String antHome = visualizerBasePath + 'Ant'
-        String javaHome = visualizerBasePath + ((isUnixNode) ? 'jdk1.8.0_112.jdk/Contents/Home' :
-                'Java\\jdk1.8.0_112\\bin\\java')
-        String javaHomeEnvVarName = (isUnixNode) ? 'JAVA_HOME' : 'JAVACMD'
+        /* Get Visualizer dependencies */
+        visualizerDependencies = (
+                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerVersion)
+        ) ?: script.error('Missing Visualizer dependencies!')
+        def exposeToolPath = { variableName, homePath ->
+            script.env[variableName] = homePath
+        }
+        def toolBinPath = visualizerDependencies.collect {
+            exposeToolPath(it.variableName, it.homePath)
+            it.binPath
+        }.join(pathSeparator)
 
-        script.withEnv(["ANT_HOME=${antHome}", "${javaHomeEnvVarName}=${javaHome}"]) {
+        script.withEnv(["PATH+TOOLS=${toolBinPath}"]) {
             script.withCredentials([script.usernamePassword(credentialsId: "${cloudCredentialsID}",
                     passwordVariable: 'CLOUD_PASS', usernameVariable: 'CLOUD_NAME')]) {
                 closure()
@@ -81,6 +91,9 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
         script.catchErrorCustom('FAILED to build the project') {
+            // Populate MobileFabric configuration to appfactory.js file
+            populateMobileFabricAppConfig('appfactory.js')
+
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i < requiredResources.size(); i++) {
@@ -90,13 +103,8 @@ class Channel implements Serializable {
 
                 /* This wrapper responsible for adding ANT_HOME, JAVA_HOME and Kony Cloud credentials */
                 visualizerEnvWrapper() {
-                    if (isUnixNode) {
-                        script.shellCustom('$ANT_HOME/bin/ant -buildfile property.xml')
-                        script.shellCustom('$ANT_HOME/bin/ant')
-                    } else {
-                        script.shellCustom('%ANT_HOME%\\bin\\ant -buildfile property.xml', isUnixNode)
-                        script.shellCustom('%ANT_HOME%\\bin\\ant', isUnixNode)
-                    }
+                    script.shellCustom('ant -buildfile property.xml', isUnixNode)
+                    script.shellCustom('ant', isUnixNode)
                 }
             }
         }
@@ -108,57 +116,178 @@ class Channel implements Serializable {
         return matcher ? matcher[0][1] : null
     }
 
-    protected final getArtifacts(extension) {
-        def artifactsFiles
+    protected final getArtifactLocations(artifactExtension) {
+        (artifactExtension) ?: script.error("artifactExtension argument can't be null")
 
-        script.catchErrorCustom('FAILED to search artifacts') {
-            /* Dirty workaround for Windows 10 Phone artifacts >>START */
-            if (!isUnixNode) {
-                if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx")) {
-                script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM")
-                script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\ARM\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\ARM\\${projectName}.appx")
-                }
+        def files = null
+        def artifactLocations = []
 
-                if (script.fileExists("${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx")) {
-                    script.bat("mkdir ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86")
-                    script.bat("move ${workspace}\\temp\\${projectName}\\build\\windows10\\Windows10Mobile\\KonyApp\\AppPackages\\x86\\${projectName}.appx ${workspace}\\${projectName}\\binaries\\windows\\windowsphone10\\x86\\${projectName}.appx")
-                }
-            }
-            /* Dirty workaround for Windows 10 Phone artifacts <<END */
-
+        script.catchErrorCustom('FAILED to search build artifacts!') {
             script.dir(artifactsBasePath) {
-                artifactsFiles = script.findFiles(glob: "**/*.${extension}")
+                files = script.findFiles glob: getSearchGlob(artifactExtension)
             }
         }
 
-        artifactsFiles
+        for (file in files) {
+            def filePath = (file.path == file.name) ? artifactsBasePath :
+                    [artifactsBasePath, file.path.minus(separator + file.name)].join(separator)
+
+            artifactLocations.add([name: file.name, path: filePath, extension: artifactExtension])
+        }
+
+        artifactLocations
     }
 
-    protected final renameArtifacts(artifactsList) {
+    protected final renameArtifacts(buildArtifacts) {
         def renamedArtifacts = []
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
 
         script.catchErrorCustom('FAILED to rename artifacts') {
-            for (int i=0; i < artifactsList.size(); ++i) {
-                String artifactName = artifactsList[i].name
-                String artifactPath = artifactsList[i].path
-                String artifactTargetName = projectName + '_' + getArtifactArchitecture(artifactPath) +
+            for (int i = 0; i < buildArtifacts.size(); ++i) {
+                def artifact = buildArtifacts[i]
+                String artifactName = artifact.name
+                String artifactPath = artifact.path
+                String artifactExtension = artifact.extension
+                String artifactTargetName = projectName + '_' +
+                        getArtifactArchitecture([artifactPath, artifactName].join(separator)) +
                         jobBuildNumber + '.' + artifactExtension
-                String targetArtifactFolder = artifactsBasePath +
-                        ((isUnixNode) ? "/" : "\\") +
-                        (artifactsList[i].path.minus(((isUnixNode) ? "/" : "\\") + "${artifactsList[i].name}"))
-                String command = "${shellCommand} ${artifactName} ${artifactTargetName}"
+                String command = [shellCommand, artifactName, artifactTargetName].join(' ')
+
+                // Workaround for Android binaries
+                if (channelName.contains('ANDROID') && !artifactName.contains('war') && !artifactName.contains(buildMode)) {
+                    continue
+                }
 
                 /* Rename artifact */
-                script.dir(targetArtifactFolder) {
+                script.dir(artifactPath) {
                     script.shellCustom(command, isUnixNode)
                 }
 
-                renamedArtifacts.add([name: artifactTargetName, path: targetArtifactFolder])
+                renamedArtifacts.add([name: artifactTargetName, path: artifactPath])
             }
         }
 
         renamedArtifacts
+    }
+
+    protected final populateMobileFabricAppConfig(configFileName) {
+        String successMessage = 'MobileFabric app key, secret and service URL were populated successfully'
+        String errorMessage = 'FAILED to populate MobileFabric app key, secret and service URL'
+
+        if (mobileFabricAppConfig) {
+            script.dir(projectFullPath) {
+                script.dir('modules') {
+                    def updatedConfig = ''
+                    def config = (script.fileExists(configFileName)) ?
+                            script.readFile(configFileName) :
+                            script.error("FAILED ${configFileName} not found!")
+
+                    script.catchErrorCustom(errorMessage, successMessage) {
+                        script.withCredentials([
+                                script.fabricAppTriplet(
+                                        credentialsId: mobileFabricAppConfig,
+                                        applicationKeyVariable: 'APP_KEY',
+                                        applicationSecretVariable: 'APP_SECRET',
+                                        serviceUrlVariable: 'SERVICE_URL'
+                                )
+                        ]) {
+                            updatedConfig = config.
+                                    replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
+                                    replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
+                                    replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
+                        }
+
+                        script.writeFile file: configFileName, text: updatedConfig
+                    }
+                }
+            }
+        } else {
+            script.println "Skipping population of MobileFabric app key, secret and service URL, " +
+                    "credentials parameter was not provided!"
+        }
+    }
+
+    protected final getSearchGlob(artifactExtension) {
+        def searchGlob
+
+        switch (channelName) {
+            case 'ANDROID_MOBILE_NATIVE':
+            case 'ANDROID_TABLET_NATIVE':
+                searchGlob = '**/' + projectName + '-' + buildMode + '*.' + artifactExtension
+                break
+            case 'IOS_MOBILE_NATIVE':
+            case 'IOS_TABLET_NATIVE':
+                searchGlob = '**/*.' + artifactExtension
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
+            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+                searchGlob = '**/WindowsPhone*.' + artifactExtension
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE10':
+            case 'WINDOWS_TABLET_WINDOWS10':
+            case 'WINDOWS_TABLET_WINDOWS81':
+            case 'ANDROID_MOBILE_SPA':
+            case 'ANDROID_TABLET_SPA':
+            case 'IOS_MOBILE_SPA':
+            case 'IOS_TABLET_SPA':
+            case 'WINDOWS_MOBILE_SPA':
+            case 'WINDOWS_TABLET_SPA':
+                searchGlob = '**/' + projectName + '.' + artifactExtension
+                break
+            default:
+                searchGlob = '**/*.' + artifactExtension
+                break
+        }
+
+        searchGlob
+    }
+
+    protected final getArtifactTempPath() {
+        def artifactsTempPath
+
+        def getPath = {
+            def tempBasePath = [workspace, 'temp', projectName]
+            (tempBasePath + it).join(separator)
+        }
+
+        switch (channelName) {
+            case 'ANDROID_MOBILE_NATIVE':
+                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                break
+            case 'ANDROID_TABLET_NATIVE':
+                artifactsTempPath = getPath(['build', 'luatabrcandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                break
+            case 'IOS_MOBILE_NATIVE':
+                artifactsTempPath = getPath(['build', 'server', 'iphonekbf'])
+                break
+            case 'IOS_TABLET_NATIVE':
+                artifactsTempPath = getPath(['build', 'server', 'ipadkbf'])
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
+            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+                artifactsTempPath = getPath(['build', 'winphone8'])
+                break
+            case 'WINDOWS_MOBILE_WINDOWSPHONE10':
+            case 'WINDOWS_TABLET_WINDOWS10':
+                artifactsTempPath = getPath(['build', 'windows10'])
+                break
+            case 'WINDOWS_TABLET_WINDOWS81':
+                artifactsTempPath = getPath(['build', 'windows8'])
+                break
+            case 'ANDROID_MOBILE_SPA':
+            case 'ANDROID_TABLET_SPA':
+            case 'IOS_MOBILE_SPA':
+            case 'IOS_TABLET_SPA':
+            case 'WINDOWS_MOBILE_SPA':
+            case 'WINDOWS_TABLET_SPA':
+                artifactsTempPath = getPath(['middleware_mobileweb'])
+                break
+            default:
+                artifactsTempPath = ''
+                break
+        }
+
+        artifactsTempPath
     }
 
     /**
@@ -176,15 +305,15 @@ class Channel implements Serializable {
             case ~/^.*SPA.*$/:
                 artifactExtension = 'war'
                 break
+            case ~/^.*WINDOWSPHONE8.*$/:
+                artifactExtension = 'xap'
+                break
             case ~/^.*WINDOWS_TABLET.*$/:
             case ~/^.*WINDOWS_MOBILE.*$/:
                 artifactExtension = 'appx'
                 break
-            case ~/^.*WINDOWS.*$/:
-                artifactExtension = 'xap'
-                break
             case ~/^.*IOS.*$/:
-                artifactExtension = 'ipa'
+                artifactExtension = 'KAR'
                 break
             case ~/^.*ANDROID.*$/:
                 artifactExtension = 'apk'
@@ -213,10 +342,10 @@ class Channel implements Serializable {
                 artifactArchitecture = 'ARM_'
                 break
             case ~/^.*x86.*$/:
-                artifactArchitecture = 'X86_'
+                artifactArchitecture = 'x86_'
                 break
             case ~/^.*x64.*$/:
-                artifactArchitecture = 'X64_'
+                artifactArchitecture = 'x64_'
                 break
             default:
                 artifactArchitecture = ''
