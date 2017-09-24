@@ -89,10 +89,8 @@ class AndroidChannel extends Channel {
                             script.error('Build artifacts were not found!')
                 }
 
-                if (artifactExtension != 'war') {
-                    script.stage("Sign artifacts") {
-                        signArtifacts(buildArtifacts)
-                    }
+                script.stage("Sign artifacts") {
+                    signArtifacts(buildArtifacts)
                 }
 
                 script.stage("Publish artifacts to S3") {
