@@ -28,10 +28,9 @@ class Fabric implements Serializable {
         (fabricCommand) ?: script.error('fabricCommand argument cann\'t be null')
         (fabricCredentialsId) ?: script.error('fabricCredentialsId argument cann\'t be null')
 
-        String successMessage = [fabricCommand.capitalize(), 'finished successfully'].join(' ')
         String errorMessage = ['FAILED to run', fabricCommand, 'command'].join(' ')
 
-        script.catchErrorCustom(successMessage, errorMessage) {
+        script.catchErrorCustom(errorMessage) {
             script.withCredentials([
                     [$class          : 'UsernamePasswordMultiBinding',
                      credentialsId   : fabricCredentialsId,
