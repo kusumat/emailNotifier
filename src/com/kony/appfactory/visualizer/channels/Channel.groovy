@@ -152,7 +152,7 @@ class Channel implements Serializable {
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
 
         script.catchErrorCustom('FAILED to rename artifacts') {
-            for (int i = 0; i < buildArtifacts.size(); ++i) {
+            for (int i = 0; i < buildArtifacts?.size(); ++i) {
                 def artifact = buildArtifacts[i]
                 String artifactName = artifact.name
                 String artifactPath = artifact.path
