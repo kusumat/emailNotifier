@@ -128,7 +128,7 @@ class BuildHelper implements Serializable {
             )
         } else {
             script.shellCustom(
-                    ['rmdir', '/s', '/q', installationPath, '&&', 'mklink', '/D', installationPath, dependencyPath].join(' '),
+                    ['rmdir', '/s', '/q', installationPath, '&&', 'mklink', '/J', installationPath, dependencyPath].join(' '),
                     isUnixNode
             )
         }
