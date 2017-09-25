@@ -121,7 +121,7 @@ class Facade implements Serializable {
                 channelJobParameters = commonParameters + [
                         script.credentials(name: 'APPLE_ID', value: "${script.params.APPLE_ID}"),
                         script.string(name: 'APPLE_DEVELOPER_TEAM_ID', value: "${script.params.APPLE_DEVELOPER_TEAM_ID}"),
-                        script.string(name: 'APPLE_DEVELOPER_PROFILE_TYPE', value: "${script.params.APPLE_DEVELOPER_PROFILE_TYPE}")
+                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${script.params.IOS_DISTRIBUTION_TYPE}")
                 ]
                 break
             case ~/^.*WINDOWS.*$/:

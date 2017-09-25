@@ -10,7 +10,7 @@ class IOSChannel extends Channel {
     private plistFileName
 
     /* Build parameters */
-    private String matchType = script.env.APPLE_DEVELOPER_PROFILE_TYPE
+    private String matchType = script.env.IOS_DISTRIBUTION_TYPE
     private String appleID = script.env.APPLE_ID
 
     IOSChannel(script) {
