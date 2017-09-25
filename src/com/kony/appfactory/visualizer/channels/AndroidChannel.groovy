@@ -8,7 +8,7 @@ class AndroidChannel extends Channel {
     private String keystoreFileID = script.env.ANDROID_KEYSTORE_FILE
     private String keystorePasswordID = script.env.ANDROID_KEYSTORE_PASSWORD
     private String privateKeyPassword = script.env.ANDROID_KEY_PASSWORD
-    private String keystoreAlias = script.env.ANDROID_KEYSTORE_ALIAS
+    private String keystoreAlias = script.env.ANDROID_KEY_ALIAS
 
     AndroidChannel(script) {
         super(script)
@@ -39,22 +39,22 @@ class AndroidChannel extends Channel {
                                         [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
                                          '-keystore', "${script.env.KSFILE}",
                                          '-storepass', "${script.env.KSPASS}",
-                                         '-keypass', "${script.env.KEYPASS}", artifact.name, (keystoreAlias) ?: ''].join(' '),
+                                         '-keypass', "${script.env.KEYPASS}", artifact.name, keystoreAlias].join(' '),
                                         isUnixNode
                                 )
 
                                 script.shellCustom(
-                                        [signer, '-verify', '-certs', artifact.name, (keystoreAlias) ?: ''].join(' '),
+                                        [signer, '-verify -certs', artifact.name, keystoreAlias].join(' '),
                                         isUnixNode
                                 )
 
                                 script.shellCustom(
-                                        ['zipalign', '-v', '4', artifact.name, finalArtifactName].join(' '),
+                                        ['zipalign', '-v 4', artifact.name, finalArtifactName].join(' '),
                                         isUnixNode
                                 )
 
                                 script.shellCustom(
-                                        ['zipalign', '-c', '-v', '4', finalArtifactName].join(' '),
+                                        ['zipalign', '-c -v 4', finalArtifactName].join(' '),
                                         isUnixNode
                                 )
 
