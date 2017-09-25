@@ -45,7 +45,6 @@ class Channel implements Serializable {
         channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
         /* Exposing environment variable with channel to build */
         this.script.env[channelVariableName] = true
-        fabric = new Fabric(this.script, isUnixNode)
     }
 
     protected final void pipelineWrapper(closure) {
@@ -59,6 +58,7 @@ class Channel implements Serializable {
                 script.error('Artifacts path is missing!')
         artifactExtension = getArtifactExtension(channelVariableName)
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        fabric = new Fabric(this.script, isUnixNode)
 
         try {
             closure()
