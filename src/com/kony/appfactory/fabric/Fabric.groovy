@@ -13,7 +13,8 @@ class Fabric implements Serializable {
 
     protected fetchFabricCli(String fabricCliVersion = 'latest') {
         String fabricCliUrl = [
-                "http://download.kony.com/onpremise/mobilefabric/mobilefabricCLI",
+//                "http://download.kony.com/onpremise/mobilefabric/mobilefabricCLI",
+                'https://s3-eu-west-1.amazonaws.com/konyappfactorydev-ci0001-storage1/configuration/mobilefabricCLI',
                 fabricCliVersion,
                 fabricCliFileName
         ].join('/')

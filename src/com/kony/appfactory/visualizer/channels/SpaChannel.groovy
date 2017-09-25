@@ -40,7 +40,7 @@ class SpaChannel extends Channel {
 
                 script.stage('Publish to Fabric') {
                     if (publishFabricApp) {
-                        fabric.fetchFabricCli()
+                        fabric.fetchFabricCli('7.3.0.43')
                         fabric.fabricCli('publish', cloudCredentialsID, [
                                 '-t': fabricAccountId, '-a': fabricAppName, '-e': environment
                         ])
