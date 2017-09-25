@@ -211,7 +211,7 @@ class Channel implements Serializable {
                 }
             }
         } else {
-            script.println "Skipping population of MobileFabric app key, secret and service URL, " +
+            script.println "Skipping population of Fabric app key, secret and service URL, " +
                     "credentials parameter was not provided!"
         }
     }
