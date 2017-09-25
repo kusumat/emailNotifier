@@ -40,9 +40,12 @@ class SpaChannel extends Channel {
 
                 script.stage('Publish to Fabric') {
                     if (publishFabricApp) {
-                        script.echo 'In progress...'
+                        fabric.fetchFabricCli()
+                        fabric.fabricCli('publish', cloudCredentialsID, [
+                                '-t': fabricAccountId, '-a': fabricAppName, '-e': environment
+                        ])
                     } else {
-                        script.echo 'Ignoring...'
+                        script.echo 'PUBLISH_FABRIC_APP flag set to false, skipping Fabric application publishing...'
                     }
                 }
 

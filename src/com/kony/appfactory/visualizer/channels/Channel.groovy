@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.fabric.Fabric
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
@@ -10,6 +11,7 @@ class Channel implements Serializable {
     protected pathSeparator
     protected visualizerDependencies
     protected buildArtifacts
+    protected fabric
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
@@ -43,6 +45,7 @@ class Channel implements Serializable {
         channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
         /* Exposing environment variable with channel to build */
         this.script.env[channelVariableName] = true
+        fabric = new Fabric(this.script, isUnixNode)
     }
 
     protected final void pipelineWrapper(closure) {
