@@ -67,6 +67,8 @@ class Channel implements Serializable {
             script.echo "ERROR: $exceptionMessage"
             script.currentBuild.result = 'FAILURE'
         } finally {
+            script.currentBuild.description = "Channel: $channelVariableName"
+
             if (script.currentBuild.result == 'FAILURE') {
                 NotificationsHelper.sendEmail(script, 'buildVisualizerApp')
             }
