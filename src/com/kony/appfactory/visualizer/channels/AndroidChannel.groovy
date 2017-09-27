@@ -27,40 +27,36 @@ class AndroidChannel extends Channel {
             for (artifact in buildArtifacts) {
                 script.dir(artifact.path) {
                     script.withEnv(["PATH+TOOLS=${javaBinPath}${pathSeparator}${androidBuildToolsPath}"]) {
-                        if (buildMode == 'release') {
-                            def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
-                            script.withCredentials([
-                                    script.file(credentialsId: "${keystoreFileID}", variable: 'KSFILE'),
-                                    script.string(credentialsId: "${keystorePasswordID}", variable: 'KSPASS'),
-                                    script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
-                            ]) {
-                                script.shellCustom(
-                                        [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
-                                         '-keystore', "${script.env.KSFILE}",
-                                         '-storepass', "${script.env.KSPASS}",
-                                         '-keypass', "${script.env.KEYPASS}", artifact.name, keystoreAlias].join(' '),
-                                        isUnixNode
-                                )
+                        def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
+                        script.withCredentials([
+                                script.file(credentialsId: "${keystoreFileID}", variable: 'KSFILE'),
+                                script.string(credentialsId: "${keystorePasswordID}", variable: 'KSPASS'),
+                                script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
+                        ]) {
+                            script.shellCustom(
+                                    [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
+                                     '-keystore', "${script.env.KSFILE}",
+                                     '-storepass', "${script.env.KSPASS}",
+                                     '-keypass', "${script.env.KEYPASS}", artifact.name, keystoreAlias].join(' '),
+                                    isUnixNode
+                            )
 
-                                script.shellCustom(
-                                        [signer, '-verify -certs', artifact.name, keystoreAlias].join(' '),
-                                        isUnixNode
-                                )
+                            script.shellCustom(
+                                    [signer, '-verify -certs', artifact.name, keystoreAlias].join(' '),
+                                    isUnixNode
+                            )
 
-                                script.shellCustom(
-                                        ['zipalign', '-v 4', artifact.name, finalArtifactName].join(' '),
-                                        isUnixNode
-                                )
+                            script.shellCustom(
+                                    ['zipalign', '-v 4', artifact.name, finalArtifactName].join(' '),
+                                    isUnixNode
+                            )
 
-                                script.shellCustom(
-                                        ['zipalign', '-c -v 4', finalArtifactName].join(' '),
-                                        isUnixNode
-                                )
+                            script.shellCustom(
+                                    ['zipalign', '-c -v 4', finalArtifactName].join(' '),
+                                    isUnixNode
+                            )
 
-                                artifact.name = finalArtifactName
-                            }
-                        } else {
-                            script.println "Build mode is $buildMode, skipping signing!"
+                            artifact.name = finalArtifactName
                         }
                     }
                 }
@@ -89,7 +85,11 @@ class AndroidChannel extends Channel {
                 }
 
                 script.stage("Sign artifacts") {
-                    signArtifacts(buildArtifacts)
+                    if (buildMode == 'release') {
+                        signArtifacts(buildArtifacts)
+                    } else {
+                        script.println "Build mode is $buildMode, skipping signing!"
+                    }
                 }
 
                 script.stage("Publish artifacts to S3") {
