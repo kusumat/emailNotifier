@@ -5,7 +5,6 @@ import com.kony.appfactory.helper.BuildHelper
 
 class IosChannel extends Channel {
     private bundleID
-    private iosPluginVersion
     private karFile
     private plistFileName
 
@@ -60,18 +59,15 @@ class IosChannel extends Channel {
             /* Get bundle identifier and iOS plugin version */
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
-                iosPluginVersion = pluginVersion(script.readFile('konyplugins.xml'))
             }
             /* Extract Visualizer iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace") {
-                if (!script.fileExists("iOS-plugin/iOS-GA-${iosPluginVersion}.txt")) {
-                    script.sh "cp ${visualizerDropinsPath}/com.kony.ios_${iosPluginVersion}.jar iOS-plugin.zip"
-                    script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
-                }
+                script.sh "cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip"
+                script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
-            /* Extract neccesary files from KAR file to Visualizer iOS Dummy Project */
+            /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
                 script.sh """
                     cp ${karFile.path}/${karFile.name} .
@@ -136,12 +132,6 @@ class IosChannel extends Channel {
 
     private final bundleIdentifier(text) {
         def matcher = text =~ '<attributes name="iphonebundleidentifierkey" value="(.+)"/>'
-        return matcher ? matcher[0][1] : null
-    }
-
-    /* Determine version of the iOS plugin */
-    private final pluginVersion(text) {
-        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
         return matcher ? matcher[0][1] : null
     }
 
