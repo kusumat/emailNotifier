@@ -3,7 +3,7 @@ package com.kony.appfactory.visualizer.channels
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
 
-class IOSChannel extends Channel {
+class IosChannel extends Channel {
     private bundleID
     private iosPluginVersion
     private karFile
@@ -13,7 +13,7 @@ class IOSChannel extends Channel {
     private String matchType = script.env.IOS_DISTRIBUTION_TYPE
     private String appleID = script.env.APPLE_ID
 
-    IOSChannel(script) {
+    IosChannel(script) {
         super(script)
         nodeLabel = 'mac'
         plistFileName = "${projectName}_${jobBuildNumber}.plist"
