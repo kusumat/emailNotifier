@@ -88,7 +88,7 @@ class NotificationsHelper implements Serializable {
     private static getTemplateContent(script, templateType, templateData = [:]) {
         def emailContent
         def commonBinding = [
-                notificationHeader: "${script.env.BUILD_TAG} - ${script.currentBuild.currentResult}",
+                notificationHeader: "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}",
                 triggeredBy: BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
                 projectName: script.env.PROJECT_NAME,
                 build: [duration: script.currentBuild.rawBuild.getTimestampString(),
