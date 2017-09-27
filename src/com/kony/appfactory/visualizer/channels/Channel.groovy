@@ -39,8 +39,6 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
-        visualizerHome = (this.script.env.VISUALIZER_HOME) ?:
-                this.script.error("VISUALIZER_HOME environment variable is missing!")
         String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
         String channelFormFactor = script.env.FORM_FACTOR
         channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
@@ -61,7 +59,9 @@ class Channel implements Serializable {
                 script.error('Artifacts path is missing!')
         artifactExtension = getArtifactExtension(channelVariableName)
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
-        fabric = new Fabric(this.script, isUnixNode)
+        fabric = new Fabric(script, isUnixNode)
+        visualizerHome = (script.env.VISUALIZER_HOME) ?:
+                script.error("VISUALIZER_HOME environment variable is missing!")
 
         try {
             closure()
