@@ -15,6 +15,7 @@ class Channel implements Serializable {
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
+    protected String visualizerHome
     protected String visualizerVersion
     protected String channelPath
     protected String channelVariableName
@@ -38,6 +39,8 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
+        visualizerHome = (this.script.env.VISUALIZER_HOME) ?:
+                this.script.error("VISUALIZER_HOME environment variable is missing!")
         String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
         String channelFormFactor = script.env.FORM_FACTOR
         channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
