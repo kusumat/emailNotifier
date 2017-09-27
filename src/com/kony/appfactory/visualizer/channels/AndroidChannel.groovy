@@ -16,7 +16,6 @@ class AndroidChannel extends Channel {
     }
 
     private final void signArtifacts(buildArtifacts) {
-        String successMessage = 'Artifact signed successfully'
         String errorMessage = 'FAILED to sign artifact'
         String signer = 'jarsigner'
         String androidBuildToolsPath = (visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath) ?:
@@ -24,7 +23,7 @@ class AndroidChannel extends Channel {
         String javaBinPath = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
                 script.error('Java binaries path is missing!')
 
-        script.catchErrorCustom(errorMessage, successMessage) {
+        script.catchErrorCustom(errorMessage) {
             for (artifact in buildArtifacts) {
                 script.dir(artifact.path) {
                     script.withEnv(["PATH+TOOLS=${javaBinPath}${pathSeparator}${androidBuildToolsPath}"]) {
