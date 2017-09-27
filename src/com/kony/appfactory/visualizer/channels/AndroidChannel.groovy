@@ -69,7 +69,7 @@ class AndroidChannel extends Channel {
         }
     }
 
-    protected final void createWorkflow() {
+    protected final void createPipeline() {
         script.node(nodeLabel) {
             pipelineWrapper {
                 script.deleteDir()

@@ -167,7 +167,7 @@ class TestAutomation implements Serializable {
         result
     }
 
-    protected final void createWorkflow() {
+    protected final void createPipeline() {
         script.node(nodeLabel) {
             validateBuildParameters(script.params)
 

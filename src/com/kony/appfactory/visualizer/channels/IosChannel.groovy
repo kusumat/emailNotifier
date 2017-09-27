@@ -146,7 +146,7 @@ class IosChannel extends Channel {
         return matcher ? matcher[0][1] : null
     }
 
-    protected final void createWorkflow() {
+    protected final void createPipeline() {
         script.node(nodeLabel) {
             exposeFastlaneConfig() // Get configuration file for fastlane
 
