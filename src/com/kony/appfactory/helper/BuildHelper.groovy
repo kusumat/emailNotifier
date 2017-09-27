@@ -123,7 +123,7 @@ class BuildHelper implements Serializable {
 
         if (isUnixNode) {
             script.shellCustom(
-                    ['rm', '-r', installationPath, '&&', 'ln', '-s', dependencyPath, installationPath].join(' '),
+                    ['rm', '-rf', installationPath, '&&', 'ln', '-s', dependencyPath, installationPath].join(' '),
                     isUnixNode
             )
         } else {
@@ -191,9 +191,17 @@ class BuildHelper implements Serializable {
                     dependencies.add(createDependencyObject('ANT_HOME', installationPath))
                     break
                 case 'java':
-                    def installationPath = (isUnixNode) ?
-                            getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home']) :
-                            getInstallationPath(['Java', "jdk${dependency.version}"])
+                    def installationPath
+
+                    if(isUnixNode) {
+                        script.shellCustom(['mkdir -p', getInstallationPath(["jdk${dependency.version}.jdk", 'Contents'])].join(' '), isUnixNode)
+                        installationPath = getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home'])
+                    } else {
+                        installationPath = getInstallationPath(['Java', "jdk${dependency.version}"])
+                    }
+//                    def installationPath = (isUnixNode) ?
+//                            getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home']) :
+//                            getInstallationPath(['Java', "jdk${dependency.version}"])
                     switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('JAVA_HOME', installationPath))
                     break
