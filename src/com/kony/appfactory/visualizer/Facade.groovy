@@ -245,11 +245,13 @@ class Facade implements Serializable {
 
     private final void setBuildDescription() {
         script.currentBuild.description = """\
-            <p>Environment: ${environment}</p>
-            <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
-            <img src="/static/b33030df/images/24x24/clock.png"
-            style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
-            class="icon-clock icon-md"></a></p>
+            <div id="build-description">
+                <p>Environment: $environment</p>
+                <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
+                <img src="/static/b33030df/images/24x24/clock.png"
+                style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
+                class="icon-clock icon-md"></a></p>
+            </div>\
             """.stripIndent()
     }
 

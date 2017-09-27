@@ -67,8 +67,7 @@ class Channel implements Serializable {
             script.echo "ERROR: $exceptionMessage"
             script.currentBuild.result = 'FAILURE'
         } finally {
-            script.currentBuild.description = "<p>Environment: ${environment}</p>" +
-                    "<p>Channel: $channelVariableName</p>"
+            setBuildDescription()
 
             if (script.currentBuild.result == 'FAILURE') {
                 NotificationsHelper.sendEmail(script, 'buildVisualizerApp')
@@ -347,5 +346,14 @@ class Channel implements Serializable {
         }
 
         artifactArchitecture
+    }
+
+    protected final void setBuildDescription() {
+        script.currentBuild.description = """\
+        <div id="build-description">
+            <p>Environment: $environment</p>
+            <p>Channel: $channelVariableName</p>
+        </div>\
+        """.stripIndent()
     }
 }
