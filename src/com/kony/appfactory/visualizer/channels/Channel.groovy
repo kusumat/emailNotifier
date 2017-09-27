@@ -83,7 +83,7 @@ class Channel implements Serializable {
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
         /* Get Visualizer dependencies */
         visualizerDependencies = (
-                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerVersion)
+                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion)
         ) ?: script.error('Missing Visualizer dependencies!')
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath

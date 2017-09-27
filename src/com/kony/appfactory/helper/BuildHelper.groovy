@@ -157,18 +157,18 @@ class BuildHelper implements Serializable {
         dependenciesArchive?."$dependenciesFileName"
     }
 
-    protected final static getVisualizerDependencies(script, isUnixNode, separator, visualizerVersion) {
-        (script) ?: script.error("Script object can't be null")
-        (separator) ?: script.error("Separator string can't be null")
-        (separator) ?: script.error("Visualizer version can't be null")
+    protected final static getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion) {
+        (script) ?: script.error("script argument can't be null!")
+        (isUnixNode) ?: script.error("isUnixNode argument can't be null!")
+        (separator) ?: script.error("separator argument can't be null!")
+        (visualizerHome) ?: script.error("visualizerHome argument can't be null!")
+        (visualizerVersion) ?: script.error("visualizerVersion argument can't be null!")
 
         def dependencies = []
         def dependenciesFileContent = fetchRequiredDependencies(script, visualizerVersion)
         def visualizerDependencies = (parseDependenciesFileContent(script, dependenciesFileContent)) ?:
                 script.error("Visualizer dependencies object can't be null!")
         def getInstallationPath = { toolPath ->
-            def visualizerHome = (script.env.VISUALIZER_HOME) ?:
-                    script.error("VISUALIZER_HOME environment variable is missing!")
             ([visualizerHome] + toolPath).join(separator)
         }
         def createDependencyObject = { variableName, homePath ->
