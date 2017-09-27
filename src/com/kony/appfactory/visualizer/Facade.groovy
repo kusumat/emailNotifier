@@ -255,7 +255,7 @@ class Facade implements Serializable {
             """.stripIndent()
     }
 
-    protected final void run() {
+    protected final void createPipeline() {
         script.node(nodeLabel) {
             prepareRun()
 
