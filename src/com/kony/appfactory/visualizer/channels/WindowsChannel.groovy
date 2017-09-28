@@ -11,7 +11,7 @@ class WindowsChannel extends Channel {
         nodeLabel = 'win'
     }
 
-    protected final void createWorkflow() {
+    protected final void createPipeline() {
         script.node(nodeLabel) {
             script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
                 pipelineWrapper {

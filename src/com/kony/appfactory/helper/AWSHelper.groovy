@@ -9,9 +9,10 @@ class AWSHelper implements Serializable {
         def bucketName = script.env.S3_BUCKET_NAME
         def bucketRegion = (script.env.S3_BUCKET_REGION == 'us-east-1') ? '' : "-${script.env.S3_BUCKET_REGION}"
         def projectName = script.env.PROJECT_NAME
-        def s3URL = "https://s3${bucketRegion}.amazonaws.com"
+        def s3Path = [bucketName, projectName, artifactPath].join('/')
+        URI s3URI = new URI('https', "s3${bucketRegion}.amazonaws.com", "/${s3Path}", null)
 
-        return [s3URL, bucketName, projectName, artifactPath].join('/')
+        s3URI.toString()
     }
 
     protected static void publishToS3(args) {
@@ -40,7 +41,7 @@ class AWSHelper implements Serializable {
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
                 if (args.exposeURL) {
-                    script.echo "Artifact($fileName) URL: $artifactURL"
+                    script.echo "Artifact($fileName) URL: ${artifactURL}"
                 }
             }
         }
