@@ -5,10 +5,10 @@ import com.kony.appfactory.helper.BuildHelper
 
 class AndroidChannel extends Channel {
     /* Build parameters */
-    private String keystoreFileID = script.env.KS_FILE
-    private String keystorePasswordID = script.env.KS_PASSWORD
-    private String privateKeyPassword = script.env.PRIVATE_KEY_PASSWORD
-    private String keystoreAlias = script.env.ANDROID_KEYSTORE_ALIAS
+    private String keystoreFileID = script.env.ANDROID_KEYSTORE_FILE
+    private String keystorePasswordID = script.env.ANDROID_KEYSTORE_PASSWORD
+    private String privateKeyPassword = script.env.ANDROID_KEY_PASSWORD
+    private String keystoreAlias = script.env.ANDROID_KEY_ALIAS
 
     AndroidChannel(script) {
         super(script)
@@ -16,7 +16,6 @@ class AndroidChannel extends Channel {
     }
 
     private final void signArtifacts(buildArtifacts) {
-        String successMessage = 'Artifact signed successfully'
         String errorMessage = 'FAILED to sign artifact'
         String signer = 'jarsigner'
         String androidBuildToolsPath = (visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath) ?:
@@ -24,44 +23,40 @@ class AndroidChannel extends Channel {
         String javaBinPath = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
                 script.error('Java binaries path is missing!')
 
-        script.catchErrorCustom(errorMessage, successMessage) {
+        script.catchErrorCustom(errorMessage) {
             for (artifact in buildArtifacts) {
                 script.dir(artifact.path) {
                     script.withEnv(["PATH+TOOLS=${javaBinPath}${pathSeparator}${androidBuildToolsPath}"]) {
-                        if (buildMode == 'release') {
-                            def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
-                            script.withCredentials([
-                                    script.file(credentialsId: "${keystoreFileID}", variable: 'KSFILE'),
-                                    script.string(credentialsId: "${keystorePasswordID}", variable: 'KSPASS'),
-                                    script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
-                            ]) {
-                                script.shellCustom(
-                                        [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
-                                         '-keystore', "${script.env.KSFILE}",
-                                         '-storepass', "${script.env.KSPASS}",
-                                         '-keypass', "${script.env.KEYPASS}", artifact.name, (keystoreAlias) ?: ''].join(' '),
-                                        isUnixNode
-                                )
+                        def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
+                        script.withCredentials([
+                                script.file(credentialsId: "${keystoreFileID}", variable: 'KSFILE'),
+                                script.string(credentialsId: "${keystorePasswordID}", variable: 'KSPASS'),
+                                script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
+                        ]) {
+                            script.shellCustom(
+                                    [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
+                                     '-keystore', "${script.env.KSFILE}",
+                                     '-storepass', "${script.env.KSPASS}",
+                                     '-keypass', "${script.env.KEYPASS}", artifact.name, keystoreAlias].join(' '),
+                                    isUnixNode
+                            )
 
-                                script.shellCustom(
-                                        [signer, '-verify', '-certs', artifact.name, (keystoreAlias) ?: ''].join(' '),
-                                        isUnixNode
-                                )
+                            script.shellCustom(
+                                    [signer, '-verify -certs', artifact.name, keystoreAlias].join(' '),
+                                    isUnixNode
+                            )
 
-                                script.shellCustom(
-                                        ['zipalign', '-v', '4', artifact.name, finalArtifactName].join(' '),
-                                        isUnixNode
-                                )
+                            script.shellCustom(
+                                    ['zipalign', '-v 4', artifact.name, finalArtifactName].join(' '),
+                                    isUnixNode
+                            )
 
-                                script.shellCustom(
-                                        ['zipalign', '-c', '-v', '4', finalArtifactName].join(' '),
-                                        isUnixNode
-                                )
+                            script.shellCustom(
+                                    ['zipalign', '-c -v 4', finalArtifactName].join(' '),
+                                    isUnixNode
+                            )
 
-                                artifact.name = finalArtifactName
-                            }
-                        } else {
-                            script.println "Build mode is $buildMode, skipping signing!"
+                            artifact.name = finalArtifactName
                         }
                     }
                 }
@@ -69,7 +64,7 @@ class AndroidChannel extends Channel {
         }
     }
 
-    protected final void createWorkflow() {
+    protected final void createPipeline() {
         script.node(nodeLabel) {
             pipelineWrapper {
                 script.deleteDir()
@@ -89,9 +84,11 @@ class AndroidChannel extends Channel {
                             script.error('Build artifacts were not found!')
                 }
 
-                if (artifactExtension != 'war') {
-                    script.stage("Sign artifacts") {
+                script.stage("Sign artifacts") {
+                    if (buildMode == 'release') {
                         signArtifacts(buildArtifacts)
+                    } else {
+                        script.println "Build mode is $buildMode, skipping signing!"
                     }
                 }
 

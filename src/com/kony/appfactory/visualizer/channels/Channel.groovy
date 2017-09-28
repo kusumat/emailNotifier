@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.fabric.Fabric
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
@@ -10,12 +11,15 @@ class Channel implements Serializable {
     protected pathSeparator
     protected visualizerDependencies
     protected buildArtifacts
+    protected fabric
     protected boolean isUnixNode
     protected String workspace
     protected String projectFullPath
+    protected String visualizerHome
     protected String visualizerVersion
     protected String channelPath
-    protected String channelName
+    protected String channelVariableName
+    protected String channelType
     protected String artifactsBasePath
     protected String artifactExtension
     protected String s3ArtifactPath
@@ -24,22 +28,24 @@ class Channel implements Serializable {
 
     /* Common build parameters */
     protected String projectName = script.env.PROJECT_NAME
-    protected String gitCredentialsID = script.env.GIT_CREDENTIALS_ID
+    protected String gitCredentialsID = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected String gitURL = script.env.PROJECT_GIT_URL
-    protected String gitBranch = script.env.GIT_BRANCH
-    protected String environment = script.env.ENVIRONMENT
-    protected String cloudCredentialsID = script.env.CLOUD_CREDENTIALS_ID
+    protected String gitBranch = script.env.PROJECT_SOURCE_CODE_BRANCH
+    protected String environment = script.env.FABRIC_ENVIRONMENT_NAME
+    protected String cloudCredentialsID = script.env.FABRIC_CREDENTIALS_ID
     protected String jobBuildNumber = script.env.BUILD_NUMBER
     protected String buildMode = script.env.BUILD_MODE
-    protected String mobileFabricAppConfig = script.env.MOBILE_FABRIC_APP_CONFIG
+    protected String mobileFabricAppConfig = script.env.FABRIC_APP_CONFIG
 
     Channel(script) {
         this.script = script
-        channelPath = (this.script.env.JOB_NAME - 'Visualizer/Builds/' - "${projectName}/" - "${environment}/")
-        channelName = channelPath.toUpperCase().replaceAll('/','_')
-        this.script.env[channelName] = true // Exposing environment variable with channel to build
-        artifactExtension = getArtifactExtension(channelName)
-        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
+        String channelFormFactor = script.env.FORM_FACTOR
+        channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
+        channelPath = [(channelOs.contains('Ios')) ? 'iOS' : channelOs, channelFormFactor, channelType].join('/')
+        channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
+        /* Exposing environment variable with channel to build */
+        this.script.env[channelVariableName] = true
     }
 
     protected final void pipelineWrapper(closure) {
@@ -49,7 +55,13 @@ class Channel implements Serializable {
         pathSeparator = ((isUnixNode) ? ':' : ';')
         workspace = script.env.WORKSPACE
         projectFullPath = [workspace, projectName].join(separator)
-        artifactsBasePath = (getArtifactTempPath()) ?: script.error('Artifacts path is missing!')
+        artifactsBasePath = (getArtifactTempPath(workspace, projectName, separator, channelVariableName)) ?:
+                script.error('Artifacts path is missing!')
+        artifactExtension = getArtifactExtension(channelVariableName)
+        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        fabric = new Fabric(script, isUnixNode)
+        visualizerHome = (script.env.VISUALIZER_HOME) ?:
+                script.error("VISUALIZER_HOME environment variable is missing!")
 
         try {
             closure()
@@ -58,6 +70,8 @@ class Channel implements Serializable {
             script.echo "ERROR: $exceptionMessage"
             script.currentBuild.result = 'FAILURE'
         } finally {
+            setBuildDescription()
+
             if (script.currentBuild.result == 'FAILURE') {
                 NotificationsHelper.sendEmail(script, 'buildVisualizerApp')
             }
@@ -69,7 +83,7 @@ class Channel implements Serializable {
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
         /* Get Visualizer dependencies */
         visualizerDependencies = (
-                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerVersion)
+                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion)
         ) ?: script.error('Missing Visualizer dependencies!')
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath
@@ -143,7 +157,7 @@ class Channel implements Serializable {
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
 
         script.catchErrorCustom('FAILED to rename artifacts') {
-            for (int i = 0; i < buildArtifacts.size(); ++i) {
+            for (int i = 0; i < buildArtifacts?.size(); ++i) {
                 def artifact = buildArtifacts[i]
                 String artifactName = artifact.name
                 String artifactPath = artifact.path
@@ -154,7 +168,7 @@ class Channel implements Serializable {
                 String command = [shellCommand, artifactName, artifactTargetName].join(' ')
 
                 // Workaround for Android binaries
-                if (channelName.contains('ANDROID') && !artifactName.contains('war') && !artifactName.contains(buildMode)) {
+                if (channelVariableName?.contains('ANDROID') && !artifactName.contains(buildMode)) {
                     continue
                 }
 
@@ -202,7 +216,7 @@ class Channel implements Serializable {
                 }
             }
         } else {
-            script.println "Skipping population of MobileFabric app key, secret and service URL, " +
+            script.println "Skipping population of Fabric app key, secret and service URL, " +
                     "credentials parameter was not provided!"
         }
     }
@@ -210,28 +224,18 @@ class Channel implements Serializable {
     protected final getSearchGlob(artifactExtension) {
         def searchGlob
 
-        switch (channelName) {
-            case 'ANDROID_MOBILE_NATIVE':
-            case 'ANDROID_TABLET_NATIVE':
+        switch (artifactExtension) {
+            case ~/^.*apk.*$/:
                 searchGlob = '**/' + projectName + '-' + buildMode + '*.' + artifactExtension
                 break
-            case 'IOS_MOBILE_NATIVE':
-            case 'IOS_TABLET_NATIVE':
+            case ~/^.*KAR.*$/:
                 searchGlob = '**/*.' + artifactExtension
                 break
-            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
-            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+            case ~/^.*xap.*$/:
                 searchGlob = '**/WindowsPhone*.' + artifactExtension
                 break
-            case 'WINDOWS_MOBILE_WINDOWSPHONE10':
-            case 'WINDOWS_TABLET_WINDOWS10':
-            case 'WINDOWS_TABLET_WINDOWS81':
-            case 'ANDROID_MOBILE_SPA':
-            case 'ANDROID_TABLET_SPA':
-            case 'IOS_MOBILE_SPA':
-            case 'IOS_TABLET_SPA':
-            case 'WINDOWS_MOBILE_SPA':
-            case 'WINDOWS_TABLET_SPA':
+            case ~/^.*appx.*$/:
+            case ~/^.*war.*$/:
                 searchGlob = '**/' + projectName + '.' + artifactExtension
                 break
             default:
@@ -242,7 +246,7 @@ class Channel implements Serializable {
         searchGlob
     }
 
-    protected final getArtifactTempPath() {
+    protected final getArtifactTempPath(workspace, projectName, separator, channelVariableName) {
         def artifactsTempPath
 
         def getPath = {
@@ -250,7 +254,7 @@ class Channel implements Serializable {
             (tempBasePath + it).join(separator)
         }
 
-        switch (channelName) {
+        switch (channelVariableName) {
             case 'ANDROID_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
                 break
@@ -263,23 +267,17 @@ class Channel implements Serializable {
             case 'IOS_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'server', 'ipadkbf'])
                 break
-            case 'WINDOWS_MOBILE_WINDOWSPHONE8':
-            case 'WINDOWS_MOBILE_WINDOWSPHONE81S':
+            case 'WINDOWS81_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'winphone8'])
                 break
-            case 'WINDOWS_MOBILE_WINDOWSPHONE10':
-            case 'WINDOWS_TABLET_WINDOWS10':
+            case 'WINDOWS10_MOBILE_NATIVE':
+            case 'WINDOWS10_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'windows10'])
                 break
-            case 'WINDOWS_TABLET_WINDOWS81':
+            case 'WINDOWS81_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'windows8'])
                 break
-            case 'ANDROID_MOBILE_SPA':
-            case 'ANDROID_TABLET_SPA':
-            case 'IOS_MOBILE_SPA':
-            case 'IOS_TABLET_SPA':
-            case 'WINDOWS_MOBILE_SPA':
-            case 'WINDOWS_TABLET_SPA':
+            case ~/^.*SPA.*$/:
                 artifactsTempPath = getPath(['middleware_mobileweb'])
                 break
             default:
@@ -297,26 +295,24 @@ class Channel implements Serializable {
      * @param channelName channel name string
      * @return            the artifact extension string
      */
-    @NonCPS
-    protected final getArtifactExtension(channelName) {
+    protected final getArtifactExtension(channelVariableName) {
         def artifactExtension
 
-        switch (channelName) {
+        switch (channelVariableName) {
             case ~/^.*SPA.*$/:
                 artifactExtension = 'war'
                 break
-            case ~/^.*WINDOWSPHONE8.*$/:
-                artifactExtension = 'xap'
-                break
-            case ~/^.*WINDOWS_TABLET.*$/:
-            case ~/^.*WINDOWS_MOBILE.*$/:
-                artifactExtension = 'appx'
+            case ~/^.*ANDROID.*$/:
+                artifactExtension = 'apk'
                 break
             case ~/^.*IOS.*$/:
                 artifactExtension = 'KAR'
                 break
-            case ~/^.*ANDROID.*$/:
-                artifactExtension = 'apk'
+            case ~/^.*WINDOWS81_MOBILE.*$/:
+                artifactExtension = 'xap'
+                break
+            case ~/^.*WINDOWS.*$/:
+                artifactExtension = 'appx'
                 break
             default:
                 artifactExtension = ''
@@ -353,5 +349,14 @@ class Channel implements Serializable {
         }
 
         artifactArchitecture
+    }
+
+    protected final void setBuildDescription() {
+        script.currentBuild.description = """\
+        <div id="build-description">
+            <p>Environment: $environment</p>
+            <p>Channel: $channelVariableName</p>
+        </div>\
+        """.stripIndent()
     }
 }

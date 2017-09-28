@@ -3,17 +3,16 @@ package com.kony.appfactory.visualizer.channels
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
 
-class IOSChannel extends Channel {
+class IosChannel extends Channel {
     private bundleID
-    private iosPluginVersion
     private karFile
     private plistFileName
 
     /* Build parameters */
-    private String matchType = script.env.APPLE_DEVELOPER_PROFILE_TYPE
+    private String matchType = script.env.IOS_DISTRIBUTION_TYPE
     private String appleID = script.env.APPLE_ID
 
-    IOSChannel(script) {
+    IosChannel(script) {
         super(script)
         nodeLabel = 'mac'
         plistFileName = "${projectName}_${jobBuildNumber}.plist"
@@ -53,26 +52,22 @@ class IOSChannel extends Channel {
         String successMessage = 'IPA file created successfully'
         String errorMessage = 'FAILED to create IPA file'
         String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
-        String visualizerDropinsPath = '/Jenkins/KonyVisualizerEnterprise' +
-                visualizerVersion + '/Kony_Visualizer_Enterprise/dropins'
+        String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join('/')
         String codeSignIdentity = (matchType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             /* Get bundle identifier and iOS plugin version */
             script.dir(projectFullPath) {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
-                iosPluginVersion = pluginVersion(script.readFile('konyplugins.xml'))
             }
             /* Extract Visualizer iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace") {
-                if (!script.fileExists("iOS-plugin/iOS-GA-${iosPluginVersion}.txt")) {
-                    script.sh "cp ${visualizerDropinsPath}/com.kony.ios_${iosPluginVersion}.jar iOS-plugin.zip"
-                    script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
-                }
+                script.sh "cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip"
+                script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
-            /* Extract neccesary files from KAR file to Visualizer iOS Dummy Project */
+            /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
             script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
                 script.sh """
                     cp ${karFile.path}/${karFile.name} .
@@ -140,13 +135,7 @@ class IOSChannel extends Channel {
         return matcher ? matcher[0][1] : null
     }
 
-    /* Determine version of the iOS plugin */
-    private final pluginVersion(text) {
-        def matcher = text =~ '<pluginInfo version-no="(.+)" plugin-id="com.kony.ios"'
-        return matcher ? matcher[0][1] : null
-    }
-
-    protected final void createWorkflow() {
+    protected final void createPipeline() {
         script.node(nodeLabel) {
             exposeFastlaneConfig() // Get configuration file for fastlane
 
@@ -163,34 +152,23 @@ class IOSChannel extends Channel {
 
                 script.stage('Build') {
                     build()
-                    if (artifactExtension == 'war') {
-                        /* Search for build artifacts */
-                        def foundArtifacts = getArtifactLocations(artifactExtension)
-                        /* Rename artifacts for publishing */
-                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
-                                script.error('FAILED build artifacts are missing!')
-                    } else {
-                        /* Get KAR file name and path */
-                        karFile = getArtifactLocations(artifactExtension)[0]
-                    }
+                    /* Get KAR file name and path */
+                    karFile = getArtifactLocations(artifactExtension)[0]
                 }
 
-                /* Check to not sign artifacts if SPA chosen */
-                if (artifactExtension != 'war') {
-                    script.stage('Generate IPA file') {
-                        createIPA()
-                        /* Search for build artifacts */
-                        def foundArtifacts = getArtifactLocations('ipa')
-                        /* Rename artifacts for publishing */
-                        artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
-                                script.error('FAILED build artifacts are missing!')
-                    }
+                script.stage('Generate IPA file') {
+                    createIPA()
+                    /* Search for build artifacts */
+                    def foundArtifacts = getArtifactLocations('ipa')
+                    /* Rename artifacts for publishing */
+                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
+                            script.error('FAILED build artifacts are missing!')
+                }
 
-                    script.stage("Generate property list file") {
-                        createPlist()
-                        /* Get plist artifact */
-                        artifacts.add([name: plistFileName, path: "${karFile.path}"])
-                    }
+                script.stage("Generate property list file") {
+                    createPlist()
+                    /* Get plist artifact */
+                    artifacts.add([name: plistFileName, path: "${karFile.path}"])
                 }
 
                 script.stage("Publish artifacts to S3") {

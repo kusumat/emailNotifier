@@ -39,7 +39,7 @@ class NotificationsHelper implements Serializable {
         def templatesFolder = 'com/kony/appfactory/email/templates'
         def baseTemplateName = 'KonyBase.template'
         def recipients = (script.env.RECIPIENTS_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS'
-        def subject = "${script.env.BUILD_TAG} - ${script.currentBuild.currentResult}"
+        def subject = "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}"
         /* Load base email template from library resources */
         def baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
         def templateContent = getTemplateContent(script, templateType, templateData)
@@ -88,7 +88,7 @@ class NotificationsHelper implements Serializable {
     private static getTemplateContent(script, templateType, templateData = [:]) {
         def emailContent
         def commonBinding = [
-                notificationHeader: "${script.env.BUILD_TAG} - ${script.currentBuild.currentResult}",
+                notificationHeader: "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}",
                 triggeredBy: BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
                 projectName: script.env.PROJECT_NAME,
                 build: [duration: script.currentBuild.rawBuild.getTimestampString(),

@@ -123,12 +123,12 @@ class BuildHelper implements Serializable {
 
         if (isUnixNode) {
             script.shellCustom(
-                    ['rm', '-r', installationPath, '&&', 'ln', '-s', dependencyPath, installationPath].join(' '),
+                    ['rm', '-rf', installationPath, '&&', 'ln', '-s', dependencyPath, installationPath].join(' '),
                     isUnixNode
             )
         } else {
             script.shellCustom(
-                    ['rmdir', '/s', '/q', installationPath, '&&', 'mklink', '/D', installationPath, dependencyPath].join(' '),
+                    ['rmdir', '/s', '/q', installationPath, '&&', 'mklink', '/J', installationPath, dependencyPath].join(' '),
                     isUnixNode
             )
         }
@@ -157,18 +157,17 @@ class BuildHelper implements Serializable {
         dependenciesArchive?."$dependenciesFileName"
     }
 
-    protected final static getVisualizerDependencies(script, isUnixNode, separator, visualizerVersion) {
-        (script) ?: script.error("Script object can't be null")
-        (separator) ?: script.error("Separator string can't be null")
-        (separator) ?: script.error("Visualizer version can't be null")
+    protected final static getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion) {
+        (script) ?: script.error("script argument can't be null!")
+        (separator) ?: script.error("separator argument can't be null!")
+        (visualizerHome) ?: script.error("visualizerHome argument can't be null!")
+        (visualizerVersion) ?: script.error("visualizerVersion argument can't be null!")
 
         def dependencies = []
         def dependenciesFileContent = fetchRequiredDependencies(script, visualizerVersion)
         def visualizerDependencies = (parseDependenciesFileContent(script, dependenciesFileContent)) ?:
                 script.error("Visualizer dependencies object can't be null!")
         def getInstallationPath = { toolPath ->
-            def visualizerHome = (script.env.VISUALIZER_HOME) ?:
-                    script.error("VISUALIZER_HOME environment variable is missing!")
             ([visualizerHome] + toolPath).join(separator)
         }
         def createDependencyObject = { variableName, homePath ->
@@ -191,9 +190,17 @@ class BuildHelper implements Serializable {
                     dependencies.add(createDependencyObject('ANT_HOME', installationPath))
                     break
                 case 'java':
-                    def installationPath = (isUnixNode) ?
-                            getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home']) :
-                            getInstallationPath(['Java', "jdk${dependency.version}"])
+                    def installationPath
+
+                    if(isUnixNode) {
+                        script.shellCustom(['mkdir -p', getInstallationPath(["jdk${dependency.version}.jdk", 'Contents'])].join(' '), isUnixNode)
+                        installationPath = getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home'])
+                    } else {
+                        installationPath = getInstallationPath(['Java', "jdk${dependency.version}"])
+                    }
+//                    def installationPath = (isUnixNode) ?
+//                            getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home']) :
+//                            getInstallationPath(['Java', "jdk${dependency.version}"])
                     switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('JAVA_HOME', installationPath))
                     break
