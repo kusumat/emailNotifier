@@ -101,7 +101,7 @@ class IosChannel extends Channel {
                             script.writeFile file: fastFileName, text: fastFileContent
                         }
                         script.sshagent (credentials: ['jenkins_github_ssh-certificates']) {
-                            script.sh '$HOME/.fastlane/bin/fastlane kony_ios_' + fastLaneBuildCommand
+                            script.sh '$FASTLANE_DIR/fastlane kony_ios_' + fastLaneBuildCommand
                         }
                     }
                 }
