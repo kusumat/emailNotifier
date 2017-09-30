@@ -28,24 +28,27 @@ class WindowsChannel extends Channel {
                     script.stage('Build') {
                         build()
                         /* Search for build artifacts */
-                        buildArtifacts = getArtifactLocations(artifactExtension)
-                        /* Rename artifacts for publishing */
-                        artifacts = (buildArtifacts) ? renameArtifacts(buildArtifacts) :
-                                script.error('FAILED build artifacts are missing!')
+                        buildArtifacts = getArtifactLocations(artifactExtension) ?:
+                                script.error('Build artifacts were not found!')
                     }
 
                     script.stage("Publish artifacts to S3") {
-                        /* Create a list with artifact names and upload them */
+                        /* Rename artifacts for publishing */
+                        artifacts = renameArtifacts(buildArtifacts)
+
+                        /* Create a list with artifact objects for e-mail template */
                         def channelArtifacts = []
 
-                        for (artifact in artifacts) {
-                            channelArtifacts.add(artifact.name)
-
-                            AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
+                        artifacts.each { artifact ->
+                            String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
                                     sourceFileName: artifact.name, sourceFilePath: artifact.path
+
+                            channelArtifacts.add([channelPath: channelPath,
+                                                  name       : artifact.name,
+                                                  url        : artifactUrl])
                         }
 
-                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.join(',')
+                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
                     }
                 }
             }

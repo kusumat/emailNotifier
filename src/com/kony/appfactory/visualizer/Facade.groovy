@@ -1,6 +1,5 @@
 package com.kony.appfactory.visualizer
 
-import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
 class Facade implements Serializable {
@@ -149,22 +148,8 @@ class Facade implements Serializable {
         parameters
     }
 
-    private final getArtifactObjects(channelPath, artifactNames) {
-        def artifactObjectsList = []
-
-        if (!artifactNames) {
-            artifactObjectsList.add([name: '', url: '', channelPath: channelPath])
-        } else {
-            def names = artifactNames.tokenize(',')
-
-            for (name in names) {
-                String artifactURL = AWSHelper.getS3ArtifactURL(script,
-                        ['Builds', environment, channelPath, name].join('/'))
-                artifactObjectsList.add([name: name, url: artifactURL, channelPath: channelPath])
-            }
-        }
-
-        artifactObjectsList
+    private final getArtifactObjects(channelPath, artifacts) {
+        return (artifacts) ? Eval.me(artifacts) : [[name: '', url: '', channelPath: channelPath]]
     }
 
     private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
@@ -209,7 +194,10 @@ class Facade implements Serializable {
                             propagate: false
                     /* Collect job results */
                     jobResultList.add(channelJob.currentResult)
+
+                    /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
+
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echo("Status of the channel ${channelName} build is: ${channelJob.currentResult}")
                     }
@@ -234,7 +222,10 @@ class Facade implements Serializable {
                             propagate: false
                     /* Collect job results */
                     jobResultList.add(channelJob.currentResult)
+
+                    /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
+
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echo("Status of the channel ${channelName} build is: ${channelJob.currentResult}")
                     }

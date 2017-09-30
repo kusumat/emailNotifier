@@ -15,13 +15,13 @@ class AWSHelper implements Serializable {
         s3URI.toString()
     }
 
-    protected static void publishToS3(args) {
+    protected static publishToS3(args) {
         def script = args.script
         String fileName = args.sourceFileName
         String bucketPath = [script.env.S3_BUCKET_NAME, script.env.PROJECT_NAME, args.bucketPath].join('/')
         String bucketRegion = script.env.S3_BUCKET_REGION
         String artifactFolder = args.sourceFilePath
-        String artifactURL = getS3ArtifactURL(script, [args.bucketPath, fileName].join('/'))
+        String artifactUrl = getS3ArtifactURL(script, [args.bucketPath, fileName].join('/'))
         String successMessage = 'Artifact published successfully'
         String errorMessage = 'FAILED to publish artifact'
 
@@ -41,9 +41,11 @@ class AWSHelper implements Serializable {
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
                 if (args.exposeURL) {
-                    script.echo "Artifact($fileName) URL: ${artifactURL}"
+                    script.echo "Artifact($fileName) URL: ${artifactUrl}"
                 }
             }
         }
+
+        artifactUrl
     }
 }

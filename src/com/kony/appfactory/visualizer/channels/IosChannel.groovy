@@ -152,17 +152,17 @@ class IosChannel extends Channel {
 
                 script.stage('Build') {
                     build()
-                    /* Get KAR file name and path */
-                    karFile = getArtifactLocations(artifactExtension)[0]
+                    /* Search for build artifacts */
+                    karFile = getArtifactLocations(artifactExtension)[0] ?:
+                            script.error('Build artifacts were not found!')
                 }
 
                 script.stage('Generate IPA file') {
                     createIPA()
-                    /* Search for build artifacts */
+                    /* Get ipa file name and path */
                     def foundArtifacts = getArtifactLocations('ipa')
                     /* Rename artifacts for publishing */
-                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
-                            script.error('FAILED build artifacts are missing!')
+                    artifacts = renameArtifacts(foundArtifacts)
                 }
 
                 script.stage("Generate property list file") {
@@ -172,20 +172,21 @@ class IosChannel extends Channel {
                 }
 
                 script.stage("Publish artifacts to S3") {
-                    /* Create a list with artifact names and upload them */
+                    /* Create a list with artifact objects for e-mail template */
                     def channelArtifacts = []
 
-                    for (artifact in artifacts) {
-                        /* Exclude ipa from artifacts list */
-                        if (!artifact.name.contains('ipa')) {
-                            channelArtifacts.add(artifact.name)
-                        }
-
-                        AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
+                    artifacts.each { artifact ->
+                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
                                 sourceFileName: artifact.name, sourceFilePath: artifact.path
+
+                        if (!artifact.name.contains('ipa')) { // Exclude ipa from artifacts list
+                            channelArtifacts.add([channelPath: channelPath,
+                                                  name       : artifact.name,
+                                                  url        : artifactUrl])
+                        }
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.join(',')
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
                 }
             }
         }
