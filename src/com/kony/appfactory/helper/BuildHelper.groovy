@@ -15,15 +15,13 @@ class BuildHelper implements Serializable {
             script.checkout(
                     changelog: false,
                     poll: false,
-                    scm: getSCMConfiguration(script, projectName, gitCredentialsID, gitURL, gitBranch)
+                    scm: getSCMConfiguration(projectName, gitCredentialsID, gitURL, gitBranch)
             )
         }
     }
 
-    private static getSCMConfiguration(script, projectName, gitCredentialsID, gitURL, gitBranch) {
+    private static getSCMConfiguration(projectName, gitCredentialsID, gitURL, gitBranch) {
         def scm
-        def projectInSubfolder = (script.env.PROJECT_IN_SUBFOLDER?.trim()) ? true : false
-        def checkoutSubfolder = (projectInSubfolder) ? '.' : projectName
 
         switch (gitURL) {
             case ~/^.*svn.*$/:
@@ -40,7 +38,7 @@ class BuildHelper implements Serializable {
                                [credentialsId        : "${gitCredentialsID}",
                                 depthOption          : 'infinity',
                                 ignoreExternalsOption: true,
-                                local                : "${checkoutSubfolder}",
+                                local                : "${projectName}",
                                 remote               : "${gitURL}"]
                        ],
                        workspaceUpdater      : [$class: 'UpdateUpdater']]
@@ -50,7 +48,7 @@ class BuildHelper implements Serializable {
                        branches                         : [[name: "*/${gitBranch}"]],
                        doGenerateSubmoduleConfigurations: false,
                        extensions                       : [[$class           : 'RelativeTargetDirectory',
-                                                            relativeTargetDir: "${checkoutSubfolder}"],
+                                                            relativeTargetDir: "${projectName}"],
                                                            [$class: 'WipeWorkspace']],
                        submoduleCfg                     : [],
                        userRemoteConfigs                : [[credentialsId: "${gitCredentialsID}",
