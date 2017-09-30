@@ -24,7 +24,8 @@ class Channel implements Serializable {
     protected String artifactExtension
     protected String s3ArtifactPath
     protected String nodeLabel
-    protected final String resourceBasePath = 'com/kony/appfactory/visualizer/'
+    final String resourceBasePath = 'com/kony/appfactory/visualizer/'
+    final String projectRoot
 
     /* Common build parameters */
     protected String projectName = script.env.PROJECT_NAME
@@ -39,6 +40,7 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
+        projectRoot = this.script.env.PROJECT_ROOT_FOLDER_NAME
         String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
         String channelFormFactor = script.env.FORM_FACTOR
         channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
@@ -54,7 +56,7 @@ class Channel implements Serializable {
         separator = (isUnixNode) ? '/' : '\\'
         pathSeparator = ((isUnixNode) ? ':' : ';')
         workspace = script.env.WORKSPACE
-        projectFullPath = [workspace, projectName].join(separator)
+        projectFullPath = [workspace, projectName, projectRoot].findAll().join(separator)
         artifactsBasePath = (getArtifactTempPath(workspace, projectName, separator, channelVariableName)) ?:
                 script.error('Artifacts path is missing!')
         artifactExtension = getArtifactExtension(channelVariableName)
