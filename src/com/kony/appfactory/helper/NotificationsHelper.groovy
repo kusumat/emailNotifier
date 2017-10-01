@@ -20,7 +20,8 @@ class NotificationsHelper implements Serializable {
     }
 
     private static storeEmailBody(script, templateType, body, templateData) {
-        def fileList = getFileNameList(templateType, body, templateData)
+        def buildResult = script.currentBuild.currentResult
+        def fileList = getFileNameList(templateType, body, templateData, buildResult)
         for (fileName in fileList) {
             script.writeFile text: fileName.data, file: fileName.name
             def subFolder = (fileName.name.contains('build')) ? 'Builds' : 'Tests'
@@ -32,6 +33,27 @@ class NotificationsHelper implements Serializable {
                     ].join('/'),
                     sourceFilePath: script.pwd()
         }
+    }
+
+    private static getBuildResultForTestConsole(buildResult) {
+        def buildResultForTestConsole
+
+        switch(buildResult) {
+            case 'SUCCESS':
+                buildResultForTestConsole = '-PASS'
+                break
+            case 'FAILURE':
+                buildResultForTestConsole = '-FAIL'
+                break
+            case 'UNSTABLE':
+                buildResultForTestConsole = '-UNSTABLE'
+                break
+            default:
+                buildResultForTestConsole = ''
+                break
+        }
+
+        buildResultForTestConsole
     }
 
     private static getData(script, templateType, templateData = [:]) {
@@ -53,13 +75,14 @@ class NotificationsHelper implements Serializable {
         data
     }
 
-    private static getFileNameList(templateType, body, templateData) {
+    private static getFileNameList(templateType, body, templateData, buildResult) {
         def fileNameList = []
+        String buildResultForTestConsole = getBuildResultForTestConsole(buildResult)
 
         switch (templateType) {
             case 'buildVisualizerApp':
                 fileNameList.add([
-                        name: 'buildResults.html',
+                        name: 'buildResults' + buildResultForTestConsole + '.html',
                         data: body
                 ])
                 break
@@ -68,12 +91,12 @@ class NotificationsHelper implements Serializable {
                 def jsonString = JsonOutput.toJson(runs)
 
                 fileNameList.add([
-                        name: 'testResults.html',
+                        name: 'testResults' + buildResultForTestConsole + '.html',
                         data: body
                 ])
 
                 fileNameList.add([
-                        name: 'testResults.json',
+                        name: 'testResults' + buildResultForTestConsole + '.json',
                         data: jsonString
                 ])
                 break
