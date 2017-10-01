@@ -6,11 +6,12 @@ import com.kony.appfactory.helper.BuildHelper
 class IosChannel extends Channel {
     private bundleID
     private karFile
-    private plistFileName
+    private final plistFileName
 
     /* Build parameters */
-    private String matchType = script.env.IOS_DISTRIBUTION_TYPE
-    private String appleID = script.env.APPLE_ID
+    private final matchType = script.params.IOS_DISTRIBUTION_TYPE
+    private final appleID = script.params.APPLE_ID
+    private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
 
     IosChannel(script) {
         super(script)
@@ -87,7 +88,7 @@ class IosChannel extends Channel {
                             "FASTLANE_DONT_STORE_PASSWORD=true",
                             "MATCH_APP_IDENTIFIER=${bundleID}",
                             "MATCH_GIT_URL=${script.env.MATCH_GIT_URL}",
-                            "MATCH_GIT_BRANCH=${(script.env.APPLE_DEVELOPER_TEAM_ID) ?: script.env.MATCH_USERNAME}",
+                            "MATCH_GIT_BRANCH=${(appleDeveloperTeamId) ?: script.env.MATCH_USERNAME}",
                             "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                             "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                             "GYM_OUTPUT_NAME=${projectName}",
@@ -136,7 +137,16 @@ class IosChannel extends Channel {
     }
 
     protected final void createPipeline() {
+        script.stage('Check build configuration') {
+            BuildHelper.checkBuildConfiguration(script)
+        }
+
         script.node(nodeLabel) {
+            script.stage('Check build-node environment') {
+                BuildHelper.checkBuildConfiguration(script,
+                        ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName])
+            }
+
             exposeFastlaneConfig() // Get configuration file for fastlane
 
             pipelineWrapper {
@@ -176,8 +186,8 @@ class IosChannel extends Channel {
                     def channelArtifacts = []
 
                     artifacts.each { artifact ->
-                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                sourceFileName: artifact.name, sourceFilePath: artifact.path
+                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                                exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
 
                         if (!artifact.name.contains('ipa')) { // Exclude ipa from artifacts list
                             channelArtifacts.add([channelPath: channelPath,
@@ -186,7 +196,7 @@ class IosChannel extends Channel {
                         }
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                 }
             }
         }

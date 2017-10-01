@@ -5,21 +5,30 @@ import com.kony.appfactory.helper.BuildHelper
 
 class SpaChannel extends Channel {
     /* Build parameters */
-    Boolean publishFabricApp
-    String fabricAppName
-    String fabricAccountId
+    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    private final fabricAppName = script.params.FABRIC_APP_NAME
+    private final fabricAccountId = script.params.FABRIC_ACCOUNT_ID
 
     SpaChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
-        publishFabricApp = this.script.params.PUBLISH_FABRIC_APP
-        fabricAppName = this.script.env.FABRIC_APP_NAME
-        fabricAccountId = this.script.env.FABRIC_ACCOUNT_ID
         channelVariableName = channelPath = 'SPA'
     }
 
     protected final void createPipeline() {
+        script.stage('Check build configuration') {
+            BuildHelper.checkBuildConfiguration(script)
+
+            if (publishFabricApp) {
+                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID', 'FABRIC_URL'])
+            }
+        }
+
         script.node(nodeLabel) {
+            script.stage('Check build-node environment') {
+                BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+            }
+
             pipelineWrapper {
                 script.deleteDir()
 
@@ -57,15 +66,15 @@ class SpaChannel extends Channel {
                     def channelArtifacts = []
 
                     artifacts.each { artifact ->
-                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                sourceFileName: artifact.name, sourceFilePath: artifact.path
+                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                                exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
 
                         channelArtifacts.add([channelPath: channelPath,
                                               name       : artifact.name,
                                               url        : artifactUrl])
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                 }
             }
         }

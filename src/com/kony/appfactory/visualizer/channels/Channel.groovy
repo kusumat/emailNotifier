@@ -12,41 +12,40 @@ class Channel implements Serializable {
     protected visualizerDependencies
     protected buildArtifacts
     protected fabric
-    protected boolean isUnixNode
-    protected String workspace
-    protected String projectFullPath
-    protected String visualizerHome
-    protected String visualizerVersion
-    protected String channelPath
-    protected String channelVariableName
-    protected String channelType
-    protected String artifactsBasePath
-    protected String artifactExtension
-    protected String s3ArtifactPath
-    protected String nodeLabel
-    final String resourceBasePath = 'com/kony/appfactory/visualizer/'
-    final String projectRoot
-
+    protected isUnixNode
+    protected workspace
+    protected projectFullPath
+    protected visualizerHome
+    protected visualizerVersion
+    protected channelPath
+    protected channelVariableName
+    protected channelType
+    protected artifactsBasePath
+    protected artifactExtension
+    protected s3ArtifactPath
+    protected nodeLabel
+    final resourceBasePath = 'com/kony/appfactory/visualizer/'
     /* Common build parameters */
-    protected String projectName = script.env.PROJECT_NAME
-    protected String gitCredentialsID = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
-    protected String gitURL = script.env.PROJECT_GIT_URL
-    protected String gitBranch = script.env.PROJECT_SOURCE_CODE_BRANCH
-    protected String environment = script.env.FABRIC_ENVIRONMENT_NAME
-    protected String cloudCredentialsID = script.env.FABRIC_CREDENTIALS_ID
-    protected String jobBuildNumber = script.env.BUILD_NUMBER
-    protected String buildMode = script.env.BUILD_MODE
-    protected String mobileFabricAppConfig = script.env.FABRIC_APP_CONFIG
+    protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+    protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
+    protected final environment = script.params.FABRIC_ENVIRONMENT_NAME
+    protected final cloudCredentialsID = script.params.FABRIC_CREDENTIALS_ID
+    protected final buildMode = script.params.BUILD_MODE
+    protected final mobileFabricAppConfig = script.params.FABRIC_APP_CONFIG
+    /* Common environment variables */
+    protected final projectName = script.env.PROJECT_NAME
+    protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME
+    protected final gitURL = script.env.PROJECT_GIT_URL
+    protected final jobBuildNumber = script.env.BUILD_NUMBER
 
     Channel(script) {
         this.script = script
-        projectRoot = this.script.env.PROJECT_ROOT_FOLDER_NAME
         String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
         String channelFormFactor = script.env.FORM_FACTOR
         channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
         channelPath = [(channelOs.contains('Ios')) ? 'iOS' : channelOs, channelFormFactor, channelType].join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-        /* Exposing environment variable with channel to build */
+        /* Expose environment variable with channel name in the build */
         this.script.env[channelVariableName] = true
     }
 
@@ -62,8 +61,7 @@ class Channel implements Serializable {
         artifactExtension = getArtifactExtension(channelVariableName)
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
         fabric = new Fabric(script, isUnixNode)
-        visualizerHome = (script.env.VISUALIZER_HOME) ?:
-                script.error("VISUALIZER_HOME environment variable is missing!")
+        visualizerHome = script.env.VISUALIZER_HOME
 
         try {
             closure()

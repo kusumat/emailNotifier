@@ -4,7 +4,7 @@ import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
 
 class WindowsChannel extends Channel {
-    def shortenedWorkspace = 'C:\\J\\' + projectName + '\\' + script.env.JOB_BASE_NAME
+    private final shortenedWorkspace = ['C:', 'J', projectName, script.env.JOB_BASE_NAME].join('\\')
 
     WindowsChannel(script) {
         super(script)
@@ -12,7 +12,15 @@ class WindowsChannel extends Channel {
     }
 
     protected final void createPipeline() {
+        script.stage('Check build configuration') {
+            BuildHelper.checkBuildConfiguration(script)
+        }
+
         script.node(nodeLabel) {
+            script.stage('Check build-node environment') {
+                BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+            }
+
             script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
                 pipelineWrapper {
                     script.deleteDir()
@@ -40,15 +48,15 @@ class WindowsChannel extends Channel {
                         def channelArtifacts = []
 
                         artifacts.each { artifact ->
-                            String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                    sourceFileName: artifact.name, sourceFilePath: artifact.path
+                            String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                                    exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
 
                             channelArtifacts.add([channelPath: channelPath,
                                                   name       : artifact.name,
                                                   url        : artifactUrl])
                         }
 
-                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
+                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                     }
                 }
             }

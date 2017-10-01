@@ -101,6 +101,28 @@ class BuildHelper implements Serializable {
         causedBy
     }
 
+    protected static void checkBuildConfiguration(script, channelSpecificRequiredParams = []) {
+        def buildConfiguration = script.params + script.env.getEnvironment() + script.env.getOverriddenEnvironment()
+        def commonRequiredParams = ['PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH',
+                                    'BUILD_MODE', 'FABRIC_CREDENTIALS_ID', 'FABRIC_ENVIRONMENT_NAME',
+                                    'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER', 'FORM_FACTOR']
+        def requiredParams = (channelSpecificRequiredParams) ?: commonRequiredParams
+        def emptyParams = checkForNull(buildConfiguration, requiredParams)
+
+        if (emptyParams) {
+            String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
+            script.error([emptyParams.join(', '), message, "can't be null!"].join(' '))
+        }
+    }
+
+    private static checkForNull(items, requiredItems) {
+        items?.findResults {
+            if (requiredItems?.contains(it.key) && !it.value) {
+                it.key
+            }
+        }
+    }
+
     /*  Workaround for switching Visualizer dependencies */
     /* --------------------------------------------------- START --------------------------------------------------- */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
