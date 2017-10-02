@@ -13,6 +13,8 @@ class AndroidChannel extends Channel {
     AndroidChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
+        channelOs = 'Android'
+        channelType = 'Native'
     }
 
     private final void signArtifacts(buildArtifacts) {
@@ -75,12 +77,12 @@ class AndroidChannel extends Channel {
         }
 
         script.node(nodeLabel) {
-            script.stage('Check build-node environment') {
-                BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName])
-            }
-
             pipelineWrapper {
                 script.deleteDir()
+
+                script.stage('Check build-node environment') {
+                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName])
+                }
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,

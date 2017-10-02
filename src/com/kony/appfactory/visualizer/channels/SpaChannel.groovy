@@ -12,7 +12,7 @@ class SpaChannel extends Channel {
     SpaChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
-        channelVariableName = channelPath = 'SPA'
+        channelOs = channelFormFactor = channelType = 'SPA'
     }
 
     protected final void createPipeline() {
@@ -25,12 +25,12 @@ class SpaChannel extends Channel {
         }
 
         script.node(nodeLabel) {
-            script.stage('Check build-node environment') {
-                BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
-            }
-
             pipelineWrapper {
                 script.deleteDir()
+
+                script.stage('Check build-node environment') {
+                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                }
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,
@@ -50,7 +50,7 @@ class SpaChannel extends Channel {
                 script.stage('Publish to Fabric') {
                     if (publishFabricApp) {
                         fabric.fetchFabricCli('7.3.0.43')
-                        fabric.fabricCli('publish', cloudCredentialsID, [
+                        fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, [
                                 '-t': fabricAccountId, '-a': fabricAppName, '-e': "\"$environment\""
                         ])
                     } else {

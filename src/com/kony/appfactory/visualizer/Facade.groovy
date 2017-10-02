@@ -4,18 +4,16 @@ import com.kony.appfactory.helper.NotificationsHelper
 
 class Facade implements Serializable {
     private script
-    private environment
     private nodeLabel = 'master'
     private runList = [:]
     private channelsToRun
-    private projectName
     private artifacts = []
     private jobResultList = []
+    /* Build parameters */
+    private final environment = script.params.FABRIC_ENVIRONMENT_NAME
 
     Facade(script) {
         this.script = script
-        projectName = this.script.env.PROJECT_NAME
-        environment = this.script.params.FABRIC_ENVIRONMENT_NAME
     }
 
     private static getSelectedChannels(buildParameters) {
@@ -85,8 +83,10 @@ class Facade implements Serializable {
 
     private final getCommonJobBuildParameters() {
         [
-                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
-                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID}"),
+                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
+                        value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
+                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
+                        value: "${script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID}"),
                 script.string(name: 'BUILD_MODE', value: "${script.params.BUILD_MODE}"),
                 script.credentials(name: 'FABRIC_CREDENTIALS_ID', value: "${script.params.FABRIC_CREDENTIALS_ID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${script.params.FABRIC_APP_CONFIG}"),
@@ -110,17 +110,23 @@ class Facade implements Serializable {
         switch (channelName) {
             case ~/^.*ANDROID.*$/:
                 channelJobParameters = commonParameters + [
-                        script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${script.params.ANDROID_KEYSTORE_FILE}"),
-                        script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${script.params.ANDROID_KEYSTORE_PASSWORD}"),
-                        script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${script.params.ANDROID_KEY_PASSWORD}"),
+                        script.credentials(name: 'ANDROID_KEYSTORE_FILE',
+                                value: "${script.params.ANDROID_KEYSTORE_FILE}"),
+                        script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD',
+                                value: "${script.params.ANDROID_KEYSTORE_PASSWORD}"),
+                        script.credentials(name: 'ANDROID_KEY_PASSWORD',
+                                value: "${script.params.ANDROID_KEY_PASSWORD}"),
                         script.string(name: 'ANDROID_KEY_ALIAS', value: "${script.params.ANDROID_KEY_ALIAS}")
                 ]
                 break
             case ~/^.*IOS.*$/:
                 channelJobParameters = commonParameters + [
-                        script.credentials(name: 'APPLE_ID', value: "${script.params.APPLE_ID}"),
-                        script.string(name: 'APPLE_DEVELOPER_TEAM_ID', value: "${script.params.APPLE_DEVELOPER_TEAM_ID}"),
-                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${script.params.IOS_DISTRIBUTION_TYPE}")
+                        script.credentials(name: 'APPLE_ID',
+                                value: "${script.params.APPLE_ID}"),
+                        script.string(name: 'APPLE_DEVELOPER_TEAM_ID',
+                                value: "${script.params.APPLE_DEVELOPER_TEAM_ID}"),
+                        script.string(name: 'IOS_DISTRIBUTION_TYPE',
+                                value: "${script.params.IOS_DISTRIBUTION_TYPE}")
                 ]
                 break
             case ~/^.*WINDOWS.*$/:
@@ -139,8 +145,10 @@ class Facade implements Serializable {
 
     private final getTestAutomationJobParameters() {
         def parameters = [
-                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
-                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID}"),
+                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
+                        value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
+                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
+                        value: "${script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID}"),
                 script.string(name: 'TESTS_BINARY_URL', value: ''),
                 script.string(name: 'AVAILABLE_TEST_POOLS', value: "${script.params.AVAILABLE_TEST_POOLS}")
         ]
@@ -183,8 +191,9 @@ class Facade implements Serializable {
             def channelOs = getChannelOs(channelName)
             def channelFormFactor = (getChannelFormFactor(channelName)) ?:
                     script.error("Channel form factor can't be null")
-            def channelJobBuildParameters = (getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)) ?:
-                    script.error("Channel job build parameters list can't be null")
+            def channelJobBuildParameters = (
+                    getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)
+            ) ?: script.error("Channel job build parameters list can't be null")
             def channelPath = getChannelPath(channelName)
 
             runList[channelName] = {

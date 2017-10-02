@@ -20,6 +20,7 @@ class Channel implements Serializable {
     protected channelPath
     protected channelVariableName
     protected channelType
+    protected channelOs
     protected artifactsBasePath
     protected artifactExtension
     protected s3ArtifactPath
@@ -32,6 +33,7 @@ class Channel implements Serializable {
     protected final cloudCredentialsID = script.params.FABRIC_CREDENTIALS_ID
     protected final buildMode = script.params.BUILD_MODE
     protected final mobileFabricAppConfig = script.params.FABRIC_APP_CONFIG
+    protected channelFormFactor = script.params.FORM_FACTOR
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
     protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME
@@ -40,28 +42,25 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
-        String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
-        String channelFormFactor = script.env.FORM_FACTOR
-        channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
-        channelPath = [(channelOs.contains('Ios')) ? 'iOS' : channelOs, channelFormFactor, channelType].join('/')
-        channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-        /* Expose environment variable with channel name in the build */
-        this.script.env[channelVariableName] = true
+        fabric = new Fabric(this.script)
     }
 
     protected final void pipelineWrapper(closure) {
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
-        separator = (isUnixNode) ? '/' : '\\'
-        pathSeparator = ((isUnixNode) ? ':' : ';')
+        separator = isUnixNode ? '/' : '\\'
+        pathSeparator = isUnixNode ? ':' : ';'
         workspace = script.env.WORKSPACE
-        projectFullPath = [workspace, projectName, projectRoot].findAll().join(separator)
-        artifactsBasePath = (getArtifactTempPath(workspace, projectName, separator, channelVariableName)) ?:
-                script.error('Artifacts path is missing!')
-        artifactExtension = getArtifactExtension(channelVariableName)
-        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
-        fabric = new Fabric(script, isUnixNode)
         visualizerHome = script.env.VISUALIZER_HOME
+        projectFullPath = [workspace, projectName, projectRoot].findAll().join(separator)
+        channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
+        channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
+        script.env[channelVariableName] = true // Expose environment variable with channel name in the build
+        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        artifactsBasePath = getArtifactTempPath(workspace, projectName, separator, channelVariableName) ?:
+                script.error('Artifacts base path is missing!')
+        artifactExtension = getArtifactExtension(channelVariableName) ?:
+                script.error('Artifacts extension is missing!')
 
         try {
             closure()
@@ -95,7 +94,7 @@ class Channel implements Serializable {
 
         script.withEnv(["PATH+TOOLS=${toolBinPath}"]) {
             script.withCredentials([script.usernamePassword(credentialsId: "${cloudCredentialsID}",
-                    passwordVariable: 'CLOUD_PASS', usernameVariable: 'CLOUD_NAME')]) {
+                    passwordVariable: 'CLOUD_PASSWORD', usernameVariable: 'CLOUD_USERNAME')]) {
                 closure()
             }
         }

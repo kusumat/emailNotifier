@@ -9,21 +9,24 @@ class WindowsChannel extends Channel {
     WindowsChannel(script) {
         super(script)
         nodeLabel = 'win'
+        channelOs = this.script.params.OS
+        channelType = 'Native'
     }
 
     protected final void createPipeline() {
         script.stage('Check build configuration') {
             BuildHelper.checkBuildConfiguration(script)
+            BuildHelper.checkBuildConfiguration(script, ['OS'])
         }
 
         script.node(nodeLabel) {
-            script.stage('Check build-node environment') {
-                BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
-            }
-
             script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
                 pipelineWrapper {
                     script.deleteDir()
+
+                    script.stage('Check build-node environment') {
+                        BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                    }
 
                     script.stage('Checkout') {
                         BuildHelper.checkoutProject script: script,

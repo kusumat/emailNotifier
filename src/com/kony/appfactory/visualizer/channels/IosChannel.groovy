@@ -16,6 +16,8 @@ class IosChannel extends Channel {
     IosChannel(script) {
         super(script)
         nodeLabel = 'mac'
+        channelOs = 'iOS'
+        channelType = 'Native'
         plistFileName = "${projectName}_${jobBuildNumber}.plist"
     }
 
@@ -142,15 +144,15 @@ class IosChannel extends Channel {
         }
 
         script.node(nodeLabel) {
-            script.stage('Check build-node environment') {
-                BuildHelper.checkBuildConfiguration(script,
-                        ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName])
-            }
-
             exposeFastlaneConfig() // Get configuration file for fastlane
 
             pipelineWrapper {
                 script.deleteDir()
+
+                script.stage('Check build-node environment') {
+                    BuildHelper.checkBuildConfiguration(script,
+                            ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName])
+                }
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,

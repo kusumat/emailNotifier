@@ -1,13 +1,11 @@
 package com.kony.appfactory.fabric
 
 class Fabric implements Serializable {
-    def script
-    final fabricCliFileName
-    final isUnixNode
+    private script
+    private final fabricCliFileName
 
-    Fabric(script, isUnixNode) {
+    Fabric(script) {
         this.script = script
-        this.isUnixNode = isUnixNode
         this.fabricCliFileName = 'mfcli.jar'
     }
 
@@ -24,7 +22,7 @@ class Fabric implements Serializable {
         }
     }
 
-    protected fabricCli(String fabricCommand, String fabricCredentialsId, fabricCommandOptions = [:]) {
+    protected fabricCli(String fabricCommand, String fabricCredentialsId, Boolean isUnixNode, fabricCommandOptions = [:]) {
         (fabricCommand) ?: script.error('fabricCommand argument cann\'t be null')
         (fabricCredentialsId) ?: script.error('fabricCredentialsId argument cann\'t be null')
 
