@@ -32,7 +32,7 @@ class Channel implements Serializable {
     protected final environment = script.params.FABRIC_ENVIRONMENT_NAME
     protected final cloudCredentialsID = script.params.FABRIC_CREDENTIALS_ID
     protected final buildMode = script.params.BUILD_MODE
-    protected final mobileFabricAppConfig = script.params.FABRIC_APP_CONFIG
+    protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     protected channelFormFactor = script.params.FORM_FACTOR
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
@@ -104,8 +104,8 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
         script.catchErrorCustom('FAILED to build the project') {
-            // Populate MobileFabric configuration to appfactory.js file
-            populateMobileFabricAppConfig('appfactory.js')
+            // Populate Fabric configuration to appfactory.js file
+            populateFabricAppConfig('appfactory.js')
 
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
@@ -183,11 +183,11 @@ class Channel implements Serializable {
         renamedArtifacts
     }
 
-    protected final populateMobileFabricAppConfig(configFileName) {
-        String successMessage = 'MobileFabric app key, secret and service URL were populated successfully'
-        String errorMessage = 'FAILED to populate MobileFabric app key, secret and service URL'
+    protected final populateFabricAppConfig(configFileName) {
+        String successMessage = 'Fabric app key, secret and service URL were populated successfully'
+        String errorMessage = 'FAILED to populate Fabric app key, secret and service URL'
 
-        if (mobileFabricAppConfig) {
+        if (fabricAppConfig) {
             script.dir(projectFullPath) {
                 script.dir('modules') {
                     def updatedConfig = ''
@@ -198,7 +198,7 @@ class Channel implements Serializable {
                     script.catchErrorCustom(errorMessage, successMessage) {
                         script.withCredentials([
                                 script.fabricAppTriplet(
-                                        credentialsId: mobileFabricAppConfig,
+                                        credentialsId: fabricAppConfig,
                                         applicationKeyVariable: 'APP_KEY',
                                         applicationSecretVariable: 'APP_SECRET',
                                         serviceUrlVariable: 'SERVICE_URL'
