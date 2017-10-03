@@ -115,11 +115,13 @@ class AndroidChannel extends Channel {
                     def channelArtifacts = []
 
                     artifacts?.each { artifact ->
+                        String artifactName = artifact.name
+                        String artifactPath = artifact.path
                         String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
-                                exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
+                                exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                         channelArtifacts.add([channelPath: channelPath,
-                                              name       : artifact.name,
+                                              name       : artifactName,
                                               url        : artifactUrl])
                     }
 

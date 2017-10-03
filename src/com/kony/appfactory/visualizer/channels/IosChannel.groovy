@@ -188,12 +188,15 @@ class IosChannel extends Channel {
                     def channelArtifacts = []
 
                     artifacts?.each { artifact ->
+                        String artifactName = artifact.name
+                        String artifactPath = artifact.path
                         String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
-                                exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
+                                exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                         if (!artifact.name.contains('ipa')) { // Exclude ipa from artifacts list
+
                             channelArtifacts.add([channelPath: channelPath,
-                                                  name       : "${artifact.name}",
+                                                  name       : artifactName,
                                                   url        : artifactUrl])
                         }
                     }
