@@ -67,7 +67,7 @@ class AndroidChannel extends Channel {
     }
 
     protected final void createPipeline() {
-        script.stage('Check build configuration') {
+        script.stage('Check provided parameters') {
             BuildHelper.checkBuildConfiguration(script)
 
             if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
@@ -114,7 +114,7 @@ class AndroidChannel extends Channel {
                     /* Create a list with artifact objects for e-mail template */
                     def channelArtifacts = []
 
-                    artifacts.each { artifact ->
+                    artifacts?.each { artifact ->
                         String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
                                 exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
 

@@ -6,7 +6,7 @@ import com.kony.appfactory.helper.BuildHelper
 class IosChannel extends Channel {
     private bundleID
     private karFile
-    private final plistFileName
+    private plistFileName
 
     /* Build parameters */
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
@@ -149,7 +149,7 @@ class IosChannel extends Channel {
             pipelineWrapper {
                 script.deleteDir()
 
-                script.stage('Check build-node environment') {
+                script.stage('Check provided parameters') {
                     BuildHelper.checkBuildConfiguration(script,
                             ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName])
                 }
@@ -187,13 +187,13 @@ class IosChannel extends Channel {
                     /* Create a list with artifact objects for e-mail template */
                     def channelArtifacts = []
 
-                    artifacts.each { artifact ->
+                    artifacts?.each { artifact ->
                         String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
                                 exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
 
                         if (!artifact.name.contains('ipa')) { // Exclude ipa from artifacts list
                             channelArtifacts.add([channelPath: channelPath,
-                                                  name       : artifact.name,
+                                                  name       : "${artifact.name}",
                                                   url        : artifactUrl])
                         }
                     }

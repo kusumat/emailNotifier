@@ -14,7 +14,7 @@ class WindowsChannel extends Channel {
     }
 
     protected final void createPipeline() {
-        script.stage('Check build configuration') {
+        script.stage('Check provided parameters') {
             BuildHelper.checkBuildConfiguration(script)
             BuildHelper.checkBuildConfiguration(script, ['OS'])
         }
@@ -50,7 +50,7 @@ class WindowsChannel extends Channel {
                         /* Create a list with artifact objects for e-mail template */
                         def channelArtifacts = []
 
-                        artifacts.each { artifact ->
+                        artifacts?.each { artifact ->
                             String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
                                     exposeURL: true, sourceFileName: artifact.name, sourceFilePath: artifact.path
 
