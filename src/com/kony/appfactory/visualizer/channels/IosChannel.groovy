@@ -9,7 +9,7 @@ class IosChannel extends Channel {
     private final plistFileName
 
     /* Build parameters */
-    private final matchType = script.params.IOS_DISTRIBUTION_TYPE
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final appleID = script.params.APPLE_ID
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
 
@@ -56,7 +56,7 @@ class IosChannel extends Channel {
         String errorMessage = 'FAILED to create IPA file'
         String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
         String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join('/')
-        String codeSignIdentity = (matchType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
+        String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             /* Get bundle identifier and iOS plugin version */
@@ -96,7 +96,7 @@ class IosChannel extends Channel {
                             "GYM_OUTPUT_NAME=${projectName}",
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
-                            "MATCH_TYPE=${matchType}"
+                            "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
                             def fastFileName = 'Fastfile'
