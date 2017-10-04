@@ -24,14 +24,6 @@
 
     <target name="property" description="-> prepare property files">
         <property environment="env"/>
-        <!-- Made these two properties (fabricAccountId, fabricAppName) conditional because of failing build even though
-        that they we not provided -->
-        <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="">
-            <isset property="env.FABRIC_ACCOUNT_ID"/>
-        </condition>
-        <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
-            <isset property="env.FABRIC_APP_NAME"/>
-        </condition>
         <!-- Set of properties that depend on chosen target platform -->
         <condition property="separator" value="\" else="/">
             <os family="windows"/>
@@ -99,41 +91,88 @@
         </condition>
 
         <!-- Set of common properties -->
-        <property name="android.home" value="${env.ANDROID_HOME}"/>
-        <property name="workspace.location" value="${env.WORKSPACE}"/>
-        <property name="vis.root" value="${env.VISUALIZER_HOME}"/>
-        <property name="vis.inner" value="${vis.root}${separator}Kony_Visualizer_Enterprise"/>
-        <property name="vis.bundles"
-                  value="${vis.inner}${separator}configuration${separator}org.eclipse.osgi${separator}bundles"/>
-        <property name="imagemagic.home" value="${vis.root}${separator}ImageMagick"/>
-        <property name="eclipse.equinox.file.name" value="org.eclipse.equinox.launcher_1.3.0.v20130327-1440.jar"/>
-        <property name="eclipse.equinox.path"
-                  value="${vis.inner}${separator}plugins${separator}${eclipse.equinox.file.name}"/>
+        <condition property="projectName" value="${env.PROJECT_NAME}" else="">
+            <isset property="env.PROJECT_NAME"/>
+        </condition>
+        <condition property="androidHome" value="${env.ANDROID_HOME}" else="">
+            <isset property="env.ANDROID_HOME"/>
+        </condition>
+        <condition property="workspace" value="${env.WORKSPACE}" else="">
+            <isset property="env.WORKSPACE"/>
+        </condition>
+        <condition property="visualizerHome" value="${env.VISUALIZER_HOME}" else="">
+            <isset property="env.VISUALIZER_HOME"/>
+        </condition>
+        <condition property="buildMode" value="${env.BUILD_MODE}" else="">
+            <isset property="env.BUILD_MODE"/>
+        </condition>
+        <condition property="mainVersion" value="${env.VERSION}" else="">
+            <isset property="env.VERSION"/>
+        </condition>
+        <condition property="mapGoogleKey" value="${env.MAP_GOOGLE_KEY}" else="">
+            <isset property="env.MAP_GOOGLE_KEY"/>
+        </condition>
+        <condition property="defaultLocale" value="${env.DEFAULT_LOCALE}" else="">
+            <isset property="env.DEFAULT_LOCALE"/>
+        </condition>
+        <condition property="androidPackageName" value="${env.ANDROID_PACKAGENAME}" else="">
+            <isset property="env.ANDROID_PACKAGENAME"/>
+        </condition>
+        <condition property="androidVersionCode" value="${env.ANDROID_VERSIONCODE}" else="">
+            <isset property="env.ANDROID_VERSIONCODE"/>
+        </condition>
+        <condition property="iosBundleVersion" value="${env.IOS_BUNDLEVERSION}" else="">
+            <isset property="env.IOS_BUNDLEVERSION"/>
+        </condition>
+        <condition property="cloudUsername" value="${env.CLOUD_USERNAME}" else="">
+            <isset property="env.CLOUD_USERNAME"/>
+        </condition>
+        <condition property="cloudPassword" value="${env.CLOUD_PASSWORD}" else="">
+            <isset property="env.CLOUD_PASSWORD"/>
+        </condition>
+        <condition property="fabricUrl" value="${env.FABRIC_URL}" else="">
+            <isset property="env.FABRIC_URL"/>
+        </condition>
+        <condition property="fabricEnvironmentName" value="${env.FABRIC_ENVIRONMENT_NAME}" else="">
+            <isset property="env.FABRIC_ENVIRONMENT_NAME"/>
+        </condition>
+        <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="">
+            <isset property="env.FABRIC_ACCOUNT_ID"/>
+        </condition>
+        <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
+            <isset property="env.FABRIC_APP_NAME"/>
+        </condition>
+        <property name="visInner" value="${visualizerHome}${separator}Kony_Visualizer_Enterprise"/>
+        <property name="visBundles"
+                  value="${visInner}${separator}configuration${separator}org.eclipse.osgi${separator}bundles"/>
+        <property name="imageMagicHome" value="${visualizerHome}${separator}ImageMagick"/>
+        <property name="eclipseEquinoxFileName" value="org.eclipse.equinox.launcher_1.3.0.v20130327-1440.jar"/>
+        <property name="eclipseEquinoxPath"
+                  value="${visInner}${separator}plugins${separator}${eclipseEquinoxFileName}"/>
 
         <propertyfile file="HeadlessBuild-Global.properties" comment="Autogenerated file">
-            <entry key="android.home" value="${android.home}"/>
-            <entry key="workspace.location" value="${workspace.location}"/>
-            <entry key="imagemagic.home" value="${imagemagic.home}"/>
-            <entry key="eclipse.equinox.path" value="${eclipse.equinox.path}"/>
+            <entry key="android.home" value="${androidHome}"/>
+            <entry key="workspace.location" value="${workspace}"/>
+            <entry key="imagemagic.home" value="${imageMagicHome}"/>
+            <entry key="eclipse.equinox.path" value="${eclipseEquinoxPath}"/>
         </propertyfile>
 
-        <property environment="env"/>
         <propertyfile file="HeadlessBuild.properties" comment="Autogenerated file">
-            <entry key="project.name" value="${env.PROJECT_NAME}"/>
+            <entry key="project.name" value="${projectName}"/>
             <!-- Mode been hardcoded to 0 to fit requirement of publishing Fabric application with Fabric CLI -->
             <entry key="mode" value="0"/>
-            <entry key="build.mode" value="${env.BUILD_MODE}"/>
-            <entry key="appid" value="${env.PROJECT_NAME}"/>
-            <entry key="version" value=""/>
-            <entry key="map_google_key" value=""/>
-            <entry key="default_locale" value=""/>
-            <entry key="android.packagename" value=""/>
-            <entry key="android.versioncode" value=""/>
-            <entry key="ios.bundleversion" value=""/>
-            <entry key="cloud.username" value="${env.CLOUD_NAME}"/>
-            <entry key="cloud.password" value="${env.CLOUD_PASS}"/>
-            <entry key="mobilefabric.url" value="${env.FABRIC_URL}"/>
-            <entry key="environment.name" value="${env.FABRIC_ENVIRONMENT_NAME}"/>
+            <entry key="build.mode" value="${buildMode}"/>
+            <entry key="appid" value="${projectName}"/>
+            <entry key="version" value="${mainVersion}"/>
+            <entry key="map_google_key" value="${mapGoogleKey}"/>
+            <entry key="default_locale" value="${defaultLocale}"/>
+            <entry key="android.packagename" value="${androidPackageName}"/>
+            <entry key="android.versioncode" value="${androidVersionCode}"/>
+            <entry key="ios.bundleversion" value="${iosBundleVersion}"/>
+            <entry key="cloud.username" value="${cloudUsername}"/>
+            <entry key="cloud.password" value="${cloudPassword}"/>
+            <entry key="mobilefabric.url" value="${fabricUrl}"/>
+            <entry key="environment.name" value="${fabricEnvironmentName}"/>
             <entry key="account.id" value="${fabricAccountId}"/>
             <entry key="mf.appname" value="${fabricAppName}"/>
             <entry key="iphone" value="${iosMobileNative}"/>
@@ -197,20 +236,20 @@
 	</target>
 
     <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
-        <ivy:retrieve pattern="${vis.inner}/dropins/[artifact]_[revision].[ext]"/>
+        <ivy:retrieve pattern="${visInner}/dropins/[artifact]_[revision].[ext]"/>
     </target>
 
     <target name="wipe" depends="clean,retrieve,plugins" description="-> wipe duplacates in plugins directory">
         <delete>
-            <fileset dir="${vis.inner}/plugins" includes="**/*">
-                <present targetdir="${vis.inner}/dropins" />
+            <fileset dir="${visInner}/plugins" includes="**/*">
+                <present targetdir="${visInner}/dropins" />
             </fileset>
         </delete>
     </target>
 
     <target name="clean" description="-> clean dropins and bundles directory">
-        <delete dir="${vis.inner}/dropins"/>
-        <delete dir="${vis.bundles}"/>
+        <delete dir="${visInner}/dropins"/>
+        <delete dir="${visBundles}"/>
     </target>
 
     <target name="clean-all" depends="clean" description="-> clean dropins directory and ivy cache">

@@ -9,12 +9,15 @@ class IosChannel extends Channel {
     private plistFileName
 
     /* Build parameters */
-    private String matchType = script.env.IOS_DISTRIBUTION_TYPE
-    private String appleID = script.env.APPLE_ID
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final appleID = script.params.APPLE_ID
+    private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
 
     IosChannel(script) {
         super(script)
         nodeLabel = 'mac'
+        channelOs = 'iOS'
+        channelType = 'Native'
         plistFileName = "${projectName}_${jobBuildNumber}.plist"
     }
 
@@ -53,7 +56,7 @@ class IosChannel extends Channel {
         String errorMessage = 'FAILED to create IPA file'
         String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
         String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join('/')
-        String codeSignIdentity = (matchType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
+        String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             /* Get bundle identifier and iOS plugin version */
@@ -87,13 +90,13 @@ class IosChannel extends Channel {
                             "FASTLANE_DONT_STORE_PASSWORD=true",
                             "MATCH_APP_IDENTIFIER=${bundleID}",
                             "MATCH_GIT_URL=${script.env.MATCH_GIT_URL}",
-                            "MATCH_GIT_BRANCH=${(script.env.APPLE_DEVELOPER_TEAM_ID) ?: script.env.MATCH_USERNAME}",
+                            "MATCH_GIT_BRANCH=${(appleDeveloperTeamId) ?: script.env.MATCH_USERNAME}",
                             "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                             "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                             "GYM_OUTPUT_NAME=${projectName}",
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
-                            "MATCH_TYPE=${matchType}"
+                            "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
                             def fastFileName = 'Fastfile'
@@ -136,11 +139,20 @@ class IosChannel extends Channel {
     }
 
     protected final void createPipeline() {
+        script.stage('Check build configuration') {
+            BuildHelper.checkBuildConfiguration(script)
+        }
+
         script.node(nodeLabel) {
             exposeFastlaneConfig() // Get configuration file for fastlane
 
             pipelineWrapper {
                 script.deleteDir()
+
+                script.stage('Check provided parameters') {
+                    BuildHelper.checkBuildConfiguration(script,
+                            ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName])
+                }
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,
@@ -175,18 +187,21 @@ class IosChannel extends Channel {
                     /* Create a list with artifact objects for e-mail template */
                     def channelArtifacts = []
 
-                    artifacts.each { artifact ->
-                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                sourceFileName: artifact.name, sourceFilePath: artifact.path
+                    artifacts?.each { artifact ->
+                        String artifactName = artifact.name
+                        String artifactPath = artifact.path
+                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                                exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                         if (!artifact.name.contains('ipa')) { // Exclude ipa from artifacts list
+
                             channelArtifacts.add([channelPath: channelPath,
-                                                  name       : artifact.name,
+                                                  name       : artifactName,
                                                   url        : artifactUrl])
                         }
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                 }
             }
         }

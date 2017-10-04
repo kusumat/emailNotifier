@@ -7,23 +7,24 @@ import com.kony.appfactory.visualizer.testing.DeviceFarm
 
 class TestAutomation implements Serializable {
     private script
-    private String nodeLabel = 'linux'
-    private String workspace
-    private String projectFullPath
-    private String testFolder
-    private String projectName = script.env.PROJECT_NAME
-    private String gitURL = script.env.PROJECT_GIT_URL
-    private String gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    private String gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
-
+    private final nodeLabel = 'linux'
+    private workspace
+    private projectFullPath
+    private testFolder
+    /* Build parameters */
+    private gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
+    private gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+    private devicePoolName = script.params.AVAILABLE_TEST_POOLS
+    /* Environment variables */
+    private projectName = script.env.PROJECT_NAME
+    private gitURL = script.env.PROJECT_GIT_URL
     /* Device Farm properties */
     private runTests = false
-    private devicePoolName = script.env.AVAILABLE_TEST_POOLS
     private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
     private deviceFarmTestRunResults = [runs:[]]
-    private awsRegion = 'us-west-2'
+    private final awsRegion = 'us-west-2'
     private projectArtifacts = [
             Android_Mobile: [binaryName: getBinaryName(script.env.ANDROID_MOBILE_NATIVE_BINARY_URL),
                              extension : 'apk',
@@ -168,9 +169,11 @@ class TestAutomation implements Serializable {
     }
 
     protected final void createPipeline() {
-        script.node(nodeLabel) {
+        script.stage('Check provided parameters') {
             validateBuildParameters(script.params)
+        }
 
+        script.node(nodeLabel) {
             /* Set environment-dependent variables */
             workspace = script.env.WORKSPACE
             projectFullPath = workspace + '/' + projectName
@@ -209,7 +212,8 @@ class TestAutomation implements Serializable {
                     }
                 }
             } catch (Exception e) {
-                script.echo e.getLocalizedMessage()
+                String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                script.echo "ERROR: $exceptionMessage"
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 NotificationsHelper.sendEmail(script, 'buildTests')
@@ -340,7 +344,8 @@ class TestAutomation implements Serializable {
                     }
                 }
                 } catch (Exception e) {
-                    script.echo e.getLocalizedMessage()
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                    script.echo "ERROR: $exceptionMessage"
                     script.currentBuild.result = 'FAILURE'
                 } finally {
                     cleanup(deviceFarmUploadArns, devicePoolArns)

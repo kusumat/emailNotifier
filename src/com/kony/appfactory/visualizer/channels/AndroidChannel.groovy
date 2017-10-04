@@ -5,14 +5,16 @@ import com.kony.appfactory.helper.BuildHelper
 
 class AndroidChannel extends Channel {
     /* Build parameters */
-    private String keystoreFileID = script.env.ANDROID_KEYSTORE_FILE
-    private String keystorePasswordID = script.env.ANDROID_KEYSTORE_PASSWORD
-    private String privateKeyPassword = script.env.ANDROID_KEY_PASSWORD
-    private String keystoreAlias = script.env.ANDROID_KEY_ALIAS
+    private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
+    private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
+    private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
+    private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
 
     AndroidChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
+        channelOs = 'Android'
+        channelType = 'Native'
     }
 
     private final void signArtifacts(buildArtifacts) {
@@ -65,9 +67,22 @@ class AndroidChannel extends Channel {
     }
 
     protected final void createPipeline() {
+        script.stage('Check provided parameters') {
+            BuildHelper.checkBuildConfiguration(script)
+
+            if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                BuildHelper.checkBuildConfiguration(script,
+                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+            }
+        }
+
         script.node(nodeLabel) {
             pipelineWrapper {
                 script.deleteDir()
+
+                script.stage('Check build-node environment') {
+                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName])
+                }
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,
@@ -99,16 +114,18 @@ class AndroidChannel extends Channel {
                     /* Create a list with artifact objects for e-mail template */
                     def channelArtifacts = []
 
-                    artifacts.each { artifact ->
-                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                sourceFileName: artifact.name, sourceFilePath: artifact.path
+                    artifacts?.each { artifact ->
+                        String artifactName = artifact.name
+                        String artifactPath = artifact.path
+                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                                exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                         channelArtifacts.add([channelPath: channelPath,
-                                              name       : artifact.name,
+                                              name       : artifactName,
                                               url        : artifactUrl])
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                 }
             }
         }

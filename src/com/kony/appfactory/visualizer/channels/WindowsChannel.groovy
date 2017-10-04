@@ -4,18 +4,29 @@ import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
 
 class WindowsChannel extends Channel {
-    def shortenedWorkspace = 'C:\\J\\' + projectName + '\\' + script.env.JOB_BASE_NAME
+    private final shortenedWorkspace = ['C:', 'J', projectName, script.env.JOB_BASE_NAME].join('\\')
 
     WindowsChannel(script) {
         super(script)
         nodeLabel = 'win'
+        channelOs = this.script.params.OS
+        channelType = 'Native'
     }
 
     protected final void createPipeline() {
+        script.stage('Check provided parameters') {
+            BuildHelper.checkBuildConfiguration(script)
+            BuildHelper.checkBuildConfiguration(script, ['OS'])
+        }
+
         script.node(nodeLabel) {
             script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
                 pipelineWrapper {
                     script.deleteDir()
+
+                    script.stage('Check build-node environment') {
+                        BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                    }
 
                     script.stage('Checkout') {
                         BuildHelper.checkoutProject script: script,
@@ -39,16 +50,18 @@ class WindowsChannel extends Channel {
                         /* Create a list with artifact objects for e-mail template */
                         def channelArtifacts = []
 
-                        artifacts.each { artifact ->
-                            String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                    sourceFileName: artifact.name, sourceFilePath: artifact.path
+                        artifacts?.each { artifact ->
+                            String artifactName = artifact.name
+                            String artifactPath = artifact.path
+                            String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                                    exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                             channelArtifacts.add([channelPath: channelPath,
-                                                  name       : artifact.name,
+                                                  name       : artifactName,
                                                   url        : artifactUrl])
                         }
 
-                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
+                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                     }
                 }
             }

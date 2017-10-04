@@ -12,58 +12,55 @@ class Channel implements Serializable {
     protected visualizerDependencies
     protected buildArtifacts
     protected fabric
-    protected boolean isUnixNode
-    protected String workspace
-    protected String projectFullPath
-    protected String visualizerHome
-    protected String visualizerVersion
-    protected String channelPath
-    protected String channelVariableName
-    protected String channelType
-    protected String artifactsBasePath
-    protected String artifactExtension
-    protected String s3ArtifactPath
-    protected String nodeLabel
-    final String resourceBasePath = 'com/kony/appfactory/visualizer/'
-    final String projectRoot
-
+    protected isUnixNode
+    protected workspace
+    protected projectFullPath
+    protected visualizerHome
+    protected visualizerVersion
+    protected channelPath
+    protected channelVariableName
+    protected channelType
+    protected channelOs
+    protected artifactsBasePath
+    protected artifactExtension
+    protected s3ArtifactPath
+    protected nodeLabel
+    final resourceBasePath = 'com/kony/appfactory/visualizer/'
     /* Common build parameters */
-    protected String projectName = script.env.PROJECT_NAME
-    protected String gitCredentialsID = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
-    protected String gitURL = script.env.PROJECT_GIT_URL
-    protected String gitBranch = script.env.PROJECT_SOURCE_CODE_BRANCH
-    protected String environment = script.env.FABRIC_ENVIRONMENT_NAME
-    protected String cloudCredentialsID = script.env.FABRIC_CREDENTIALS_ID
-    protected String jobBuildNumber = script.env.BUILD_NUMBER
-    protected String buildMode = script.env.BUILD_MODE
-    protected String mobileFabricAppConfig = script.env.FABRIC_APP_CONFIG
+    protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+    protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
+    protected final environment = script.params.FABRIC_ENVIRONMENT_NAME
+    protected final cloudCredentialsID = script.params.FABRIC_CREDENTIALS_ID
+    protected final buildMode = script.params.BUILD_MODE
+    protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
+    protected channelFormFactor = script.params.FORM_FACTOR
+    /* Common environment variables */
+    protected final projectName = script.env.PROJECT_NAME
+    protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME
+    protected final gitURL = script.env.PROJECT_GIT_URL
+    protected final jobBuildNumber = script.env.BUILD_NUMBER
 
     Channel(script) {
         this.script = script
-        projectRoot = this.script.env.PROJECT_ROOT_FOLDER_NAME
-        String channelOs = (this.script.env.OS) ?: this.script.env.JOB_BASE_NAME - 'build'
-        String channelFormFactor = script.env.FORM_FACTOR
-        channelType = (channelOs.contains('Spa')) ? 'SPA' : 'Native'
-        channelPath = [(channelOs.contains('Ios')) ? 'iOS' : channelOs, channelFormFactor, channelType].join('/')
-        channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-        /* Exposing environment variable with channel to build */
-        this.script.env[channelVariableName] = true
+        fabric = new Fabric(this.script)
     }
 
     protected final void pipelineWrapper(closure) {
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
-        separator = (isUnixNode) ? '/' : '\\'
-        pathSeparator = ((isUnixNode) ? ':' : ';')
+        separator = isUnixNode ? '/' : '\\'
+        pathSeparator = isUnixNode ? ':' : ';'
         workspace = script.env.WORKSPACE
+        visualizerHome = script.env.VISUALIZER_HOME
         projectFullPath = [workspace, projectName, projectRoot].findAll().join(separator)
-        artifactsBasePath = (getArtifactTempPath(workspace, projectName, separator, channelVariableName)) ?:
-                script.error('Artifacts path is missing!')
-        artifactExtension = getArtifactExtension(channelVariableName)
+        channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
+        channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
+        script.env[channelVariableName] = true // Expose environment variable with channel name in the build
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
-        fabric = new Fabric(script, isUnixNode)
-        visualizerHome = (script.env.VISUALIZER_HOME) ?:
-                script.error("VISUALIZER_HOME environment variable is missing!")
+        artifactsBasePath = getArtifactTempPath(workspace, projectName, separator, channelVariableName) ?:
+                script.error('Artifacts base path is missing!')
+        artifactExtension = getArtifactExtension(channelVariableName) ?:
+                script.error('Artifacts extension is missing!')
 
         try {
             closure()
@@ -97,7 +94,7 @@ class Channel implements Serializable {
 
         script.withEnv(["PATH+TOOLS=${toolBinPath}"]) {
             script.withCredentials([script.usernamePassword(credentialsId: "${cloudCredentialsID}",
-                    passwordVariable: 'CLOUD_PASS', usernameVariable: 'CLOUD_NAME')]) {
+                    passwordVariable: 'CLOUD_PASSWORD', usernameVariable: 'CLOUD_USERNAME')]) {
                 closure()
             }
         }
@@ -107,8 +104,8 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
         script.catchErrorCustom('FAILED to build the project') {
-            // Populate MobileFabric configuration to appfactory.js file
-            populateMobileFabricAppConfig('appfactory.js')
+            // Populate Fabric configuration to appfactory.js file
+            populateFabricAppConfig('appfactory.js')
 
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
@@ -186,11 +183,11 @@ class Channel implements Serializable {
         renamedArtifacts
     }
 
-    protected final populateMobileFabricAppConfig(configFileName) {
-        String successMessage = 'MobileFabric app key, secret and service URL were populated successfully'
-        String errorMessage = 'FAILED to populate MobileFabric app key, secret and service URL'
+    protected final populateFabricAppConfig(configFileName) {
+        String successMessage = 'Fabric app key, secret and service URL were populated successfully'
+        String errorMessage = 'FAILED to populate Fabric app key, secret and service URL'
 
-        if (mobileFabricAppConfig) {
+        if (fabricAppConfig) {
             script.dir(projectFullPath) {
                 script.dir('modules') {
                     def updatedConfig = ''
@@ -201,7 +198,7 @@ class Channel implements Serializable {
                     script.catchErrorCustom(errorMessage, successMessage) {
                         script.withCredentials([
                                 script.fabricAppTriplet(
-                                        credentialsId: mobileFabricAppConfig,
+                                        credentialsId: fabricAppConfig,
                                         applicationKeyVariable: 'APP_KEY',
                                         applicationSecretVariable: 'APP_SECRET',
                                         serviceUrlVariable: 'SERVICE_URL'

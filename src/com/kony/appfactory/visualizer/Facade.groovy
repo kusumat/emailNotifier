@@ -1,23 +1,44 @@
 package com.kony.appfactory.visualizer
 
+import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
 class Facade implements Serializable {
     private script
-    private environment
     private nodeLabel = 'master'
     private runList = [:]
     private channelsToRun
-    private projectName
     private artifacts = []
     private jobResultList = []
+    /* Build parameters */
+    private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+    private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
+    private final fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
+    private final fabricCredentialsId = script.params.FABRIC_CREDENTIALS_ID
+    private final buildMode = script.params.BUILD_MODE
+    private final fabricUrl = script.params.FABRIC_URL
+    private final fabricAppName = script.params.FABRIC_APP_NAME
+    private final fabricAccountId = script.params.FABRIC_ACCOUNT_ID
+    private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final appleID = script.params.APPLE_ID
+    private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
+    private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
+    private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
+    private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
+    private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+    private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
+    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    private final recipientsList = script.params.RECIPIENTS_LIST
 
     Facade(script) {
         this.script = script
-        projectName = this.script.env.PROJECT_NAME
-        environment = this.script.params.FABRIC_ENVIRONMENT_NAME
+        /* Checking if at least one channel been selected */
+        channelsToRun = (getSelectedChannels(this.script.params)) ?:
+                script.error('Please select at least one channel to build!')
     }
 
+    @NonCPS
     private static getSelectedChannels(buildParameters) {
         buildParameters.findAll {
             it.value instanceof  Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
@@ -85,17 +106,19 @@ class Facade implements Serializable {
 
     private final getCommonJobBuildParameters() {
         [
-                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
-                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID}"),
-                script.string(name: 'BUILD_MODE', value: "${script.params.BUILD_MODE}"),
-                script.credentials(name: 'FABRIC_CREDENTIALS_ID', value: "${script.params.FABRIC_CREDENTIALS_ID}"),
-                script.credentials(name: 'FABRIC_APP_CONFIG', value: "${script.params.FABRIC_APP_CONFIG}"),
-                script.string(name: 'FABRIC_URL', value: "${script.params.FABRIC_URL}"),
-                script.string(name: 'FABRIC_APP_NAME', value: "${script.params.FABRIC_APP_NAME}"),
-                script.string(name: 'FABRIC_ACCOUNT_ID', value: "${script.params.FABRIC_ACCOUNT_ID}"),
-                script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${environment}"),
-                script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: script.params.PUBLISH_FABRIC_APP),
-                script.string(name: 'RECIPIENTS_LIST', value: "${script.params.RECIPIENTS_LIST}")
+                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
+                        value: "${projectSourceCodeBranch}"),
+                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
+                        value: "${projectSourceCodeRepositoryCredentialsId}"),
+                script.string(name: 'BUILD_MODE', value: "${buildMode}"),
+                script.credentials(name: 'FABRIC_CREDENTIALS_ID', value: "${fabricCredentialsId}"),
+                script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
+                script.string(name: 'FABRIC_URL', value: "${fabricUrl}"),
+                script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
+                script.string(name: 'FABRIC_ACCOUNT_ID', value: "${fabricAccountId}"),
+                script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${fabricEnvironmentName}"),
+                script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
+                script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
         ]
     }
 
@@ -110,17 +133,17 @@ class Facade implements Serializable {
         switch (channelName) {
             case ~/^.*ANDROID.*$/:
                 channelJobParameters = commonParameters + [
-                        script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${script.params.ANDROID_KEYSTORE_FILE}"),
-                        script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${script.params.ANDROID_KEYSTORE_PASSWORD}"),
-                        script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${script.params.ANDROID_KEY_PASSWORD}"),
-                        script.string(name: 'ANDROID_KEY_ALIAS', value: "${script.params.ANDROID_KEY_ALIAS}")
+                        script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${keystoreFileID}"),
+                        script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${keystorePasswordID}"),
+                        script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${privateKeyPassword}"),
+                        script.string(name: 'ANDROID_KEY_ALIAS', value: "${keystoreAlias}")
                 ]
                 break
             case ~/^.*IOS.*$/:
                 channelJobParameters = commonParameters + [
-                        script.credentials(name: 'APPLE_ID', value: "${script.params.APPLE_ID}"),
-                        script.string(name: 'APPLE_DEVELOPER_TEAM_ID', value: "${script.params.APPLE_DEVELOPER_TEAM_ID}"),
-                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${script.params.IOS_DISTRIBUTION_TYPE}")
+                        script.credentials(name: 'APPLE_ID', value: "${appleID}"),
+                        script.string(name: 'APPLE_DEVELOPER_TEAM_ID', value: "${appleDeveloperTeamId}"),
+                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}")
                 ]
                 break
             case ~/^.*WINDOWS.*$/:
@@ -139,10 +162,12 @@ class Facade implements Serializable {
 
     private final getTestAutomationJobParameters() {
         def parameters = [
-                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${script.params.PROJECT_SOURCE_CODE_BRANCH}"),
-                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID}"),
+                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
+                        value: "${projectSourceCodeBranch}"),
+                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
+                        value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'TESTS_BINARY_URL', value: ''),
-                script.string(name: 'AVAILABLE_TEST_POOLS', value: "${script.params.AVAILABLE_TEST_POOLS}")
+                script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}")
         ]
 
         parameters
@@ -168,9 +193,6 @@ class Facade implements Serializable {
     }
 
     private final void prepareRun() {
-        /* Checking if at least one channel been selected */
-        channelsToRun = (getSelectedChannels(script.params)) ?:
-                script.error('Please choose at least one channel to build!')
         /* Filter Native channels */
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
         /* Filter SPA channels */
@@ -183,8 +205,9 @@ class Facade implements Serializable {
             def channelOs = getChannelOs(channelName)
             def channelFormFactor = (getChannelFormFactor(channelName)) ?:
                     script.error("Channel form factor can't be null")
-            def channelJobBuildParameters = (getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)) ?:
-                    script.error("Channel job build parameters list can't be null")
+            def channelJobBuildParameters = (
+                    getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)
+            ) ?: script.error("Channel job build parameters list can't be null")
             def channelPath = getChannelPath(channelName)
 
             runList[channelName] = {
@@ -237,7 +260,7 @@ class Facade implements Serializable {
     private final void setBuildDescription() {
         script.currentBuild.description = """\
             <div id="build-description">
-                <p>Environment: $environment</p>
+                <p>Environment: $fabricEnvironmentName</p>
                 <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
                 <img src="/static/b33030df/images/24x24/clock.png"
                 style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
@@ -247,13 +270,34 @@ class Facade implements Serializable {
     }
 
     protected final void createPipeline() {
+        script.stage('Check provided parameters') {
+            /* Check common params */
+            BuildHelper.checkBuildConfiguration(script)
+
+            /* Check Android specific params */
+            if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                BuildHelper.checkBuildConfiguration(script,
+                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+            }
+
+            /* Check iOS specific params */
+            if (channelsToRun.findAll { it.contains('IOS') }) {
+                BuildHelper.checkBuildConfiguration(script, ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID'])
+            }
+
+            /* Check publish params */
+            if (publishFabricApp) {
+                BuildHelper.checkBuildConfiguration(script, ['FABRIC_URL', 'FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID'])
+            }
+        }
+
         script.node(nodeLabel) {
             prepareRun()
 
             try {
                 script.parallel(runList)
 
-                if (script.params.AVAILABLE_TEST_POOLS) {
+                if (availableTestPools) {
                     def testAutomationJobParameters = getTestAutomationJobParameters() ?:
                             script.error("runTests job parameters are missing!")
                     def testAutomationJobBinaryParameters = (getTestAutomationJobBinaryParameters(artifacts)) ?:

@@ -5,23 +5,32 @@ import com.kony.appfactory.helper.BuildHelper
 
 class SpaChannel extends Channel {
     /* Build parameters */
-    Boolean publishFabricApp
-    String fabricAppName
-    String fabricAccountId
+    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    private final fabricAppName = script.params.FABRIC_APP_NAME
+    private final fabricAccountId = script.params.FABRIC_ACCOUNT_ID
 
     SpaChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
-        publishFabricApp = this.script.params.PUBLISH_FABRIC_APP
-        fabricAppName = this.script.env.FABRIC_APP_NAME
-        fabricAccountId = this.script.env.FABRIC_ACCOUNT_ID
-        channelVariableName = channelPath = 'SPA'
+        channelOs = channelFormFactor = channelType = 'SPA'
     }
 
     protected final void createPipeline() {
+        script.stage('Check build configuration') {
+            BuildHelper.checkBuildConfiguration(script)
+
+            if (publishFabricApp) {
+                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID', 'FABRIC_URL'])
+            }
+        }
+
         script.node(nodeLabel) {
             pipelineWrapper {
                 script.deleteDir()
+
+                script.stage('Check provided parameters') {
+                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                }
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,
@@ -41,7 +50,7 @@ class SpaChannel extends Channel {
                 script.stage('Publish to Fabric') {
                     if (publishFabricApp) {
                         fabric.fetchFabricCli('7.3.0.43')
-                        fabric.fabricCli('publish', cloudCredentialsID, [
+                        fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, [
                                 '-t': fabricAccountId, '-a': fabricAppName, '-e': "\"$environment\""
                         ])
                     } else {
@@ -56,16 +65,18 @@ class SpaChannel extends Channel {
                     /* Create a list with artifact objects for e-mail template */
                     def channelArtifacts = []
 
-                    artifacts.each { artifact ->
-                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                sourceFileName: artifact.name, sourceFilePath: artifact.path
+                    artifacts?.each { artifact ->
+                        String artifactName = artifact.name
+                        String artifactPath = artifact.path
+                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                                exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                         channelArtifacts.add([channelPath: channelPath,
-                                              name       : artifact.name,
+                                              name       : artifactName,
                                               url        : artifactUrl])
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.inspect()
+                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                 }
             }
         }
