@@ -57,6 +57,9 @@ class IosChannel extends Channel {
         String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
         String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
         String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
+        String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
+        String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithKonylib'].join(separator)
+        String iosDummyProjectGenPath = [iosDummyProjectWorkspacePath, 'gen'].join(separator)
 
         script.catchErrorCustom(errorMessage, successMessage) {
             /* Get bundle identifier and iOS plugin version */
@@ -64,21 +67,21 @@ class IosChannel extends Channel {
                 bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
             }
             /* Extract Visualizer iOS Dummy Project */
-            script.dir("${workspace}/KonyiOSWorkspace") {
+            script.dir(iosDummyProjectBasePath) {
                 script.sh "cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip"
                 script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
-            script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
+            script.dir(iosDummyProjectGenPath) {
                 script.sh """
                     cp ${karFile.path}/${karFile.name} .
                     perl extract.pl ${karFile.name} sqd
                 """
             }
             /* Build project and export IPA using Fastlane */
-            script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib") {
+            script.dir(iosDummyProjectWorkspacePath) {
                 script.withCredentials([
                     script.usernamePassword(
                         credentialsId: "${appleID}",
@@ -95,7 +98,7 @@ class IosChannel extends Channel {
                             "GYM_OUTPUT_DIRECTORY=${karFile.path}",
                             "GYM_OUTPUT_NAME=${projectName}",
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
-                            "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
+                            "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
                             "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
