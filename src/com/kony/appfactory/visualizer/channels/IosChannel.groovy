@@ -55,7 +55,7 @@ class IosChannel extends Channel {
         String successMessage = 'IPA file created successfully'
         String errorMessage = 'FAILED to create IPA file'
         String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
-        String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join('/')
+        String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
         String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
 
         script.catchErrorCustom(errorMessage, successMessage) {
@@ -156,7 +156,7 @@ class IosChannel extends Channel {
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,
-                            projectName: projectName,
+                            projectRelativePath: checkoutRelativeTargetFolder,
                             gitBranch: gitBranch,
                             gitCredentialsID: gitCredentialsID,
                             gitURL: gitURL

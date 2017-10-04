@@ -6,21 +6,21 @@ package com.kony.appfactory.helper
 class BuildHelper implements Serializable {
     protected static checkoutProject(Map args) {
         def script = args.script
-        def projectName = args.projectName
-        def gitCredentialsID = args.gitCredentialsID
-        def gitURL = args.gitURL
-        def gitBranch = args.gitBranch
+        String relativeTargetDir = args.projectRelativePath
+        String gitCredentialsID = args.gitCredentialsID
+        String gitURL = args.gitURL
+        String gitBranch = args.gitBranch
 
         script.catchErrorCustom('FAILED to checkout the project') {
             script.checkout(
                     changelog: false,
                     poll: false,
-                    scm: getSCMConfiguration(projectName, gitCredentialsID, gitURL, gitBranch)
+                    scm: getSCMConfiguration(relativeTargetDir, gitCredentialsID, gitURL, gitBranch)
             )
         }
     }
 
-    private static getSCMConfiguration(projectName, gitCredentialsID, gitURL, gitBranch) {
+    private static getSCMConfiguration(relativeTargetDir, gitCredentialsID, gitURL, gitBranch) {
         def scm
 
         switch (gitURL) {
@@ -35,24 +35,24 @@ class BuildHelper implements Serializable {
                        ignoreDirPropChanges  : false,
                        includedRegions       : '',
                        locations             : [
-                               [credentialsId        : "${gitCredentialsID}",
+                               [credentialsId        : gitCredentialsID,
                                 depthOption          : 'infinity',
                                 ignoreExternalsOption: true,
-                                local                : "${projectName}",
-                                remote               : "${gitURL}"]
+                                local                : relativeTargetDir,
+                                remote               : gitURL]
                        ],
                        workspaceUpdater      : [$class: 'UpdateUpdater']]
                 break
             default:
                 scm = [$class                           : 'GitSCM',
-                       branches                         : [[name: "*/${gitBranch}"]],
+                       branches                         : [[name: gitBranch]],
                        doGenerateSubmoduleConfigurations: false,
                        extensions                       : [[$class           : 'RelativeTargetDirectory',
-                                                            relativeTargetDir: "${projectName}"],
+                                                            relativeTargetDir: relativeTargetDir],
                                                            [$class: 'WipeWorkspace']],
                        submoduleCfg                     : [],
-                       userRemoteConfigs                : [[credentialsId: "${gitCredentialsID}",
-                                                            url          : "${gitURL}"]]]
+                       userRemoteConfigs                : [[credentialsId: gitCredentialsID,
+                                                            url          : gitURL]]]
                 break
         }
 
@@ -105,7 +105,7 @@ class BuildHelper implements Serializable {
         def buildConfiguration = script.params + script.env.getEnvironment() + script.env.getOverriddenEnvironment()
         def commonRequiredParams = ['PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH',
                                     'BUILD_MODE', 'FABRIC_CREDENTIALS_ID', 'FABRIC_ENVIRONMENT_NAME',
-                                    'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER', 'FORM_FACTOR']
+                                    'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER', 'FORM_FACTOR', 'PROJECT_WORKSPACE']
         def requiredParams = (channelSpecificRequiredParams) ?: commonRequiredParams
         def emptyParams = checkForNull(buildConfiguration, requiredParams)
 
