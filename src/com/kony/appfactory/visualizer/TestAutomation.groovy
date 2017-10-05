@@ -187,7 +187,7 @@ class TestAutomation implements Serializable {
                 if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
                     script.stage('Checkout') {
                         BuildHelper.checkoutProject script: script,
-                                projectName: projectName,
+                                projectRelativePath: projectName,
                                 gitBranch: gitBranch,
                                 gitCredentialsID: gitCredentialsID,
                                 gitURL: gitURL

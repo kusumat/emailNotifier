@@ -14,7 +14,14 @@ class Channel implements Serializable {
     protected fabric
     protected isUnixNode
     protected workspace
+    /* Target folder for checkout, default value vis_ws/<project_name> */
+    protected checkoutRelativeTargetFolder
+    /* If projectRoot value has been provide, than value of this property will be set to <job_workspace>/vis_ws/<project_name>
+     * otherwise it will be set to <job_workspace>/vis_ws */
+    protected projectWorkspacePath
+    /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     protected projectFullPath
+    /* Visualizer home folder, slave(build-node) dependent value, fetched from environment variables of the slave */
     protected visualizerHome
     protected visualizerVersion
     protected channelPath
@@ -25,6 +32,8 @@ class Channel implements Serializable {
     protected artifactExtension
     protected s3ArtifactPath
     protected nodeLabel
+    /* Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and can not be used */
+    final projectWorkspaceFolderName = 'vis_ws'
     final resourceBasePath = 'com/kony/appfactory/visualizer/'
     /* Common build parameters */
     protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
@@ -52,12 +61,18 @@ class Channel implements Serializable {
         pathSeparator = isUnixNode ? ':' : ';'
         workspace = script.env.WORKSPACE
         visualizerHome = script.env.VISUALIZER_HOME
-        projectFullPath = [workspace, projectName, projectRoot].findAll().join(separator)
+        checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
+        projectWorkspacePath = (projectRoot) ? [workspace, checkoutRelativeTargetFolder].join(separator) :
+                [workspace, projectWorkspaceFolderName].join(separator)
+        /* Expose Visualizer workspace to environment variables to use it in HeadlessBuild.properties */
+        script.env['PROJECT_WORKSPACE'] = projectWorkspacePath
+        projectFullPath = [workspace, checkoutRelativeTargetFolder, projectRoot].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-        script.env[channelVariableName] = true // Expose environment variable with channel name in the build
+        /* Expose channel to build to environment variable to use it in HeadlessBuild.properties */
+        script.env[channelVariableName] = true
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
-        artifactsBasePath = getArtifactTempPath(workspace, projectName, separator, channelVariableName) ?:
+        artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.error('Artifacts base path is missing!')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.error('Artifacts extension is missing!')
@@ -245,11 +260,11 @@ class Channel implements Serializable {
         searchGlob
     }
 
-    protected final getArtifactTempPath(workspace, projectName, separator, channelVariableName) {
+    protected final getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) {
         def artifactsTempPath
 
         def getPath = {
-            def tempBasePath = [workspace, 'temp', projectName]
+            def tempBasePath = [projectWorkspacePath, 'temp', projectName]
             (tempBasePath + it).join(separator)
         }
 

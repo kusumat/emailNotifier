@@ -86,7 +86,7 @@ class AndroidChannel extends Channel {
 
                 script.stage('Checkout') {
                     BuildHelper.checkoutProject script: script,
-                            projectName: projectName,
+                            projectRelativePath: checkoutRelativeTargetFolder,
                             gitBranch: gitBranch,
                             gitCredentialsID: gitCredentialsID,
                             gitURL: gitURL
