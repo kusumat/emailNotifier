@@ -9,12 +9,19 @@ class AndroidChannel extends Channel {
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+    /* At least one of application id parameters should be set */
+    private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
+    private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
+    private final androidPackageName = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+            androidMobileAppId : androidTabletAppId
 
     AndroidChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
         channelOs = 'Android'
         channelType = 'Native'
+        /* Expose Android package name to environment variables to use it in HeadlessBuild.properties */
+        this.script.env['ANDROID_PACKAGE_NAME'] = androidPackageName
     }
 
     private final void signArtifacts(buildArtifacts) {
@@ -70,9 +77,12 @@ class AndroidChannel extends Channel {
         script.stage('Check provided parameters') {
             BuildHelper.checkBuildConfiguration(script)
 
+            BuildHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'])
+
             if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
                 BuildHelper.checkBuildConfiguration(script,
-                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
+                         'ANDROID_KEY_ALIAS'])
             }
         }
 
@@ -81,7 +91,7 @@ class AndroidChannel extends Channel {
                 script.deleteDir()
 
                 script.stage('Check build-node environment') {
-                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName])
+                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME'])
                 }
 
                 script.stage('Checkout') {

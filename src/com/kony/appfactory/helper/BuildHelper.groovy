@@ -108,10 +108,17 @@ class BuildHelper implements Serializable {
                                     'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER', 'FORM_FACTOR', 'PROJECT_WORKSPACE']
         def requiredParams = (channelSpecificRequiredParams) ?: commonRequiredParams
         def emptyParams = checkForNull(buildConfiguration, requiredParams)
+        def notValidPrams = checkIfValid(buildConfiguration)
 
         if (emptyParams) {
             String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
-            script.error([emptyParams.join(', '), message, "can't be null!"].join(' '))
+            String errorMessage = [emptyParams.join(', '), message, "can't be null!"].join(' ')
+            script.error(errorMessage)
+        }
+
+        if (notValidPrams) {
+            String errorMessage = notValidPrams.join('\n')
+            script.error(errorMessage)
         }
     }
 
@@ -121,6 +128,35 @@ class BuildHelper implements Serializable {
                 it.key
             }
         }
+    }
+
+    private static checkIfValid(items) {
+        def validationResult = []
+        String regex
+
+        items.each { key, value ->
+            switch(key) {
+                case 'ANDROID_MOBILE_APP_ID':
+                case 'ANDROID_TABLET_APP_ID':
+                case 'IOS_MOBILE_APP_ID':
+                case 'IOS_TABLET_APP_ID':
+                    regex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+[0-9a-zA-Z_]?$/
+                    break
+                case 'ANDROID_VERSION':
+                case 'IOS_BUNDLE_VERSION':
+                    regex = /^(\d+\.)?(\d+\.)?(\*|\d+)$/
+                    break
+                default:
+                    regex = /.*/
+                    break
+            }
+
+            if (!(value ==~ regex)) {
+                validationResult.add("$key parameter value($value) is not valid!")
+            }
+        }
+
+        validationResult
     }
 
     /*  Workaround for switching Visualizer dependencies */
