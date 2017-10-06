@@ -14,7 +14,7 @@ class Facade implements Serializable {
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     private final fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
-    private final fabricCredentialsId = script.params.FABRIC_CREDENTIALS_ID
+    private final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
     private final fabricAppName = script.params.FABRIC_APP_NAME
     private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
@@ -110,7 +110,7 @@ class Facade implements Serializable {
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                         value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
-                script.credentials(name: 'FABRIC_CREDENTIALS_ID', value: "${fabricCredentialsId}"),
+                script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
                 script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
                 script.string(name: 'CLOUD_ACCOUNT_ID', value: "${cloudAccountId}"),
@@ -269,23 +269,25 @@ class Facade implements Serializable {
 
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
+            def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
+            def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
+
             /* Check common params */
             BuildHelper.checkBuildConfiguration(script)
 
             /* Check Android specific params */
-            def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
             if (androidChannels) {
-                def checkParams
+                def checkParams = []
 
                 if (androidChannels.findAll { it.contains('MOBILE') }) {
-                    checkParams = ['ANDROID_MOBILE_APP_ID']
+                    checkParams.add('ANDROID_MOBILE_APP_ID')
                 }
 
                 if (androidChannels.findAll { it.contains('TABLET') }) {
-                    checkParams = ['ANDROID_TABLET_APP_ID']
+                    checkParams.add('ANDROID_TABLET_APP_ID')
                 }
 
-                BuildHelper.checkBuildConfiguration(script, checkParams)
+                BuildHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + checkParams)
 
                 if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
                     BuildHelper.checkBuildConfiguration(script,
@@ -294,16 +296,15 @@ class Facade implements Serializable {
             }
 
             /* Check iOS specific params */
-            def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
             if (iosChannels) {
-                def checkParams
+                def checkParams = []
 
                 if (iosChannels.findAll { it.contains('MOBILE') }) {
-                    checkParams = ['IOS_MOBILE_APP_ID']
+                    checkParams.add('IOS_MOBILE_APP_ID')
                 }
 
                 if (iosChannels.findAll { it.contains('TABLET') }) {
-                    checkParams = ['IOS_TABLET_APP_ID']
+                    checkParams.add('IOS_TABLET_APP_ID')
                 }
 
                 BuildHelper.checkBuildConfiguration(script,

@@ -22,16 +22,16 @@ class Fabric implements Serializable {
         }
     }
 
-    protected fabricCli(String fabricCommand, String fabricCredentialsId, Boolean isUnixNode, fabricCommandOptions = [:]) {
+    protected fabricCli(String fabricCommand, String cloudCredentialsID, Boolean isUnixNode, fabricCommandOptions = [:]) {
         (fabricCommand) ?: script.error('fabricCommand argument cann\'t be null')
-        (fabricCredentialsId) ?: script.error('fabricCredentialsId argument cann\'t be null')
+        (cloudCredentialsID) ?: script.error('cloudCredentialsID argument cann\'t be null')
 
         String errorMessage = ['FAILED to run', fabricCommand, 'command'].join(' ')
 
         script.catchErrorCustom(errorMessage) {
             script.withCredentials([
                     [$class          : 'UsernamePasswordMultiBinding',
-                     credentialsId   : fabricCredentialsId,
+                     credentialsId   : cloudCredentialsID,
                      passwordVariable: 'fabricPassword',
                      usernameVariable: 'fabricUsername']
             ]) {
