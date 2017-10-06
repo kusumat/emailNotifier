@@ -17,7 +17,7 @@ class Facade implements Serializable {
     private final fabricCredentialsId = script.params.FABRIC_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
     private final fabricAppName = script.params.FABRIC_APP_NAME
-    private final fabricAccountId = script.params.FABRIC_ACCOUNT_ID
+    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final appleID = script.params.APPLE_ID
@@ -113,7 +113,7 @@ class Facade implements Serializable {
                 script.credentials(name: 'FABRIC_CREDENTIALS_ID', value: "${fabricCredentialsId}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
                 script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
-                script.string(name: 'FABRIC_ACCOUNT_ID', value: "${fabricAccountId}"),
+                script.string(name: 'CLOUD_ACCOUNT_ID', value: "${cloudAccountId}"),
                 script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${fabricEnvironmentName}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
@@ -312,7 +312,7 @@ class Facade implements Serializable {
 
             /* Check publish params */
             if (publishFabricApp) {
-                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID'])
+                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
         }
 

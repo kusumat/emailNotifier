@@ -20,7 +20,7 @@ class SpaChannel extends Channel {
             BuildHelper.checkBuildConfiguration(script)
 
             if (publishFabricApp) {
-                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID'])
+                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
         }
 
