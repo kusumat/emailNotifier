@@ -275,14 +275,41 @@ class Facade implements Serializable {
             BuildHelper.checkBuildConfiguration(script)
 
             /* Check Android specific params */
-            if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                BuildHelper.checkBuildConfiguration(script,
-                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+            def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
+            if (androidChannels) {
+                def checkParams
+
+                if (androidChannels.findAll { it.contains('MOBILE') }) {
+                    checkParams = ['ANDROID_MOBILE_APP_ID']
+                }
+
+                if (androidChannels.findAll { it.contains('TABLET') }) {
+                    checkParams = ['ANDROID_TABLET_APP_ID']
+                }
+
+                BuildHelper.checkBuildConfiguration(script, checkParams)
+
+                if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                    BuildHelper.checkBuildConfiguration(script,
+                            ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+                }
             }
 
             /* Check iOS specific params */
-            if (channelsToRun.findAll { it.contains('IOS') }) {
-                BuildHelper.checkBuildConfiguration(script, ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID'])
+            def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
+            if (iosChannels) {
+                def checkParams
+
+                if (iosChannels.findAll { it.contains('MOBILE') }) {
+                    checkParams = ['IOS_MOBILE_APP_ID']
+                }
+
+                if (iosChannels.findAll { it.contains('TABLET') }) {
+                    checkParams = ['IOS_TABLET_APP_ID']
+                }
+
+                BuildHelper.checkBuildConfiguration(script,
+                        ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION'] + checkParams)
             }
 
             /* Check publish params */

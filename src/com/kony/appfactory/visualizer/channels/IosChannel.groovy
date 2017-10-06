@@ -9,9 +9,14 @@ class IosChannel extends Channel {
     private plistFileName
 
     /* Build parameters */
-    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final appleID = script.params.APPLE_ID
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
+    /* At least one of application id parameters should be set */
+    private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
+    private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+            iosMobileAppId : iosTabletAppId
 
     IosChannel(script) {
         super(script)
@@ -19,6 +24,8 @@ class IosChannel extends Channel {
         channelOs = 'iOS'
         channelType = 'Native'
         plistFileName = "${projectName}_${jobBuildNumber}.plist"
+        /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
+        this.script.env['IOS_BUNDLE_ID'] = iosBundleId
     }
 
     protected final exposeFastlaneConfig() {
@@ -154,7 +161,8 @@ class IosChannel extends Channel {
 
                 script.stage('Check provided parameters') {
                     BuildHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName])
+                            ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName,
+                             'IOS_BUNDLE_ID', 'IOS_BUNDLE_VERSION'])
                 }
 
                 script.stage('Checkout') {

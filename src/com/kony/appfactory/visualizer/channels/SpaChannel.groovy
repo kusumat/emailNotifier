@@ -7,7 +7,7 @@ class SpaChannel extends Channel {
     /* Build parameters */
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final fabricAppName = script.params.FABRIC_APP_NAME
-    private final fabricAccountId = script.params.FABRIC_ACCOUNT_ID
+    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
 
     SpaChannel(script) {
         super(script)
@@ -51,7 +51,7 @@ class SpaChannel extends Channel {
                     if (publishFabricApp) {
                         fabric.fetchFabricCli('7.3.0.43')
                         fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, [
-                                '-t': fabricAccountId, '-a': fabricAppName, '-e': "\"$environment\""
+                                '-t': cloudAccountId, '-a': fabricAppName, '-e': "\"$environment\""
                         ])
                     } else {
                         script.echo 'PUBLISH_FABRIC_APP flag set to false, skipping Fabric application publishing...'

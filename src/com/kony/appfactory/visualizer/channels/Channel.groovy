@@ -69,7 +69,7 @@ class Channel implements Serializable {
         projectFullPath = [workspace, checkoutRelativeTargetFolder, projectRoot].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-        /* Expose channel to build to environment variable to use it in HeadlessBuild.properties */
+        /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
