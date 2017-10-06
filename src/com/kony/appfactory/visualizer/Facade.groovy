@@ -16,7 +16,6 @@ class Facade implements Serializable {
     private final fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
     private final fabricCredentialsId = script.params.FABRIC_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
-    private final fabricUrl = script.params.FABRIC_URL
     private final fabricAppName = script.params.FABRIC_APP_NAME
     private final fabricAccountId = script.params.FABRIC_ACCOUNT_ID
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
@@ -113,7 +112,6 @@ class Facade implements Serializable {
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
                 script.credentials(name: 'FABRIC_CREDENTIALS_ID', value: "${fabricCredentialsId}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
-                script.string(name: 'FABRIC_URL', value: "${fabricUrl}"),
                 script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
                 script.string(name: 'FABRIC_ACCOUNT_ID', value: "${fabricAccountId}"),
                 script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${fabricEnvironmentName}"),
@@ -314,7 +312,7 @@ class Facade implements Serializable {
 
             /* Check publish params */
             if (publishFabricApp) {
-                BuildHelper.checkBuildConfiguration(script, ['FABRIC_URL', 'FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID'])
+                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID'])
             }
         }
 
