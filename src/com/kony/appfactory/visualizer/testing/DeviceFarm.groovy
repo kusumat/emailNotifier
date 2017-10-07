@@ -11,7 +11,7 @@ class DeviceFarm implements Serializable {
     /**
      * Class constructor.
      *
-     * @param {Object} script - Pipeline object.
+     * @param script the pipeline object.
      */
     DeviceFarm(script) {
         this.script = script
@@ -48,7 +48,6 @@ class DeviceFarm implements Serializable {
         script.catchErrorCustom(errorMessage, successMessage) {
             def getProjectScript = "aws devicefarm list-projects --no-paginate --query \'projects[?name==" +
                     "`" + name + "`" + "]\'"
-//            def getProjectScriptOutput = script.sh(script: getProjectScript, returnStdout: true).trim()
             def getProjectScriptOutput = script.shellCustom(getProjectScript, true, [returnStdout: true]).trim()
             def getProjectScriptOutputJSON = script.readJSON(text: getProjectScriptOutput)
 
@@ -72,7 +71,6 @@ class DeviceFarm implements Serializable {
 
         script.catchErrorCustom(errorMessage, successMessage) {
             def createProjectScript = "aws devicefarm create-project --name \'" + name + "\'" + " --query project.arn"
-//            def createProjectOutput = script.sh(script: createProjectScript, returnStdout: true).trim()
             def createProjectOutput = script.shellCustom(createProjectScript, true, [returnStdout: true]).trim()
 
             projectArn = (createProjectOutput) ?: null
@@ -122,7 +120,6 @@ class DeviceFarm implements Serializable {
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.configFileProvider([script.configFile(fileId: "$configID", variable: 'DEVICES')]) {
-//                def getDevicesInPoolOutput = script.sh(script: 'cat $DEVICES', returnStdout: true).trim()
                 def getDevicesInPoolOutput = script.shellCustom('cat $DEVICES', true, [returnStdout: true]).trim()
                 devices = parseDevicesList(getDevicesInPoolOutput)
             }
@@ -145,7 +142,6 @@ class DeviceFarm implements Serializable {
 
         script.catchErrorCustom(errorMessage) {
             def getDeviceArnsScript = "aws devicefarm list-devices"
-//            def getDeviceArnsScriptOutput = script.sh(script: getDeviceArnsScript, returnStdout: true).trim()
             def getDeviceArnsScriptOutput = script.shellCustom(getDeviceArnsScript, true, [returnStdout: true]).trim()
             def existingDevices = script.readJSON(text: getDeviceArnsScriptOutput).devices
             def phonesList = []
@@ -201,7 +197,6 @@ class DeviceFarm implements Serializable {
 
         script.catchErrorCustom(errorMessage, successMessage) {
             def generateSkeletonScript = "aws devicefarm create-device-pool --generate-cli-skeleton"
-//            def generateSkeletonScriptResult = script.sh(script: generateSkeletonScript, returnStdout: true).trim()
             def generateSkeletonScriptResult = script.shellCustom(generateSkeletonScript, true, [returnStdout: true]).trim()
             def devicePool = script.readJSON text: generateSkeletonScriptResult
 
@@ -221,7 +216,6 @@ class DeviceFarm implements Serializable {
             for (int i = 0; i < poolNames.size(); ++i) {
                 def createDevicePoolScript = "aws devicefarm create-device-pool --cli-input-json" +
                         " '${devicePoolJsons.get(poolNames[i])}' --query devicePool.arn"
-//                def createDevicePoolScriptOutput = script.sh(script: createDevicePoolScript, returnStdout: true).trim()
                 def createDevicePoolScriptOutput = script.shellCustom(createDevicePoolScript, true, [returnStdout: true]).trim()
 
                 devicePoolArns.put(poolNames[i], createDevicePoolScriptOutput)
@@ -248,19 +242,16 @@ class DeviceFarm implements Serializable {
         script.catchErrorCustom(errorMessage, successMessage) {
             def createUploadScript = "aws devicefarm create-upload --project-arn ${projectArn}" +
                     " --name ${uploadFileName}" + " --type ${uploadType}"
-//            def createUploadOutput = script.sh(script: createUploadScript, returnStdout: true).trim()
             def createUploadOutput = script.shellCustom(createUploadScript, true, [returnStdout: true]).trim()
             def createUploadJSON = script.readJSON text: createUploadOutput
             uploadArn = createUploadJSON.upload.arn
             def uploadUrl = createUploadJSON.upload.url
             def uploadScript = "curl -k -s -S -f -T ${uploadFileName} '${uploadUrl}'"
 
-//            script.sh script: uploadScript
             script.shellCustom(uploadScript)
 
             script.waitUntil {
                 def getUploadScript = "aws devicefarm get-upload --arn ${uploadArn}"
-//                def getUploadOutput = script.sh script: getUploadScript, returnStdout: true
                 def getUploadOutput = script.shellCustom(getUploadScript, true, [returnStdout: true]).trim()
                 def getUploadJSON = script.readJSON text: getUploadOutput
                 def uploadStatus = getUploadJSON.upload.status
@@ -301,7 +292,6 @@ class DeviceFarm implements Serializable {
                     " --test type=${runType},testPackageArn=${testPackageArn}" +
                     " --query run.arn"
 
-//            runArn = script.sh(script: runScript, returnStdout: true).trim()
             runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim()
         }
 
@@ -323,7 +313,6 @@ class DeviceFarm implements Serializable {
         script.catchErrorCustom(errorMessage, successMessage) {
             script.waitUntil {
                 def runResultScript = "aws devicefarm get-run --arn ${testRunArn}"
-//                def runResultOutput = script.sh(script: runResultScript, returnStdout: true).trim()
                 def runResultOutput = script.shellCustom(runResultScript, true, [returnStdout: true]).trim()
                 def runResultJSON = script.readJSON text: runResultOutput
                 testRunStatus = runResultJSON.run.status
@@ -483,7 +472,6 @@ class DeviceFarm implements Serializable {
      */
     protected final void deleteUploadedArtifact(artifactArn) {
         script.catchErrorCustom('FAILED to delete artifact') {
-//            script.sh "aws devicefarm delete-upload --arn ${artifactArn}"
             script.shellCustom("aws devicefarm delete-upload --arn ${artifactArn}")
         }
     }
@@ -495,7 +483,6 @@ class DeviceFarm implements Serializable {
      */
     protected final void deleteDevicePool(devicePoolArn) {
         script.catchErrorCustom('FAILED to delete device pool') {
-//            script.sh "aws devicefarm delete-device-pool --arn ${devicePoolArn}"
             script.shellCustom("aws devicefarm delete-device-pool --arn ${devicePoolArn}")
         }
     }

@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 class AndroidChannel extends Channel {
     /* Build parameters */
@@ -9,12 +10,19 @@ class AndroidChannel extends Channel {
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+    /* At least one of application id parameters should be set */
+    private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
+    private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
+    private final androidPackageName = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+            androidMobileAppId : androidTabletAppId
 
     AndroidChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
         channelOs = 'Android'
         channelType = 'Native'
+        /* Expose Android package name to environment variables to use it in HeadlessBuild.properties */
+        this.script.env['ANDROID_PACKAGE_NAME'] = androidPackageName
     }
 
     private final void signArtifacts(buildArtifacts) {
@@ -68,12 +76,20 @@ class AndroidChannel extends Channel {
 
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
-            BuildHelper.checkBuildConfiguration(script)
+            ValidationHelper.checkBuildConfiguration(script)
+
+            def mandatoryParameters = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
+
+            channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
+                    mandatoryParameters.add('ANDROID_TABLET_APP_ID')
 
             if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                BuildHelper.checkBuildConfiguration(script,
-                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+                mandatoryParameters.addAll([
+                        'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                ])
             }
+
+            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {
@@ -81,7 +97,9 @@ class AndroidChannel extends Channel {
                 script.deleteDir()
 
                 script.stage('Check build-node environment') {
-                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName])
+                    ValidationHelper.checkBuildConfiguration(script,
+                            ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME']
+                    )
                 }
 
                 script.stage('Checkout') {

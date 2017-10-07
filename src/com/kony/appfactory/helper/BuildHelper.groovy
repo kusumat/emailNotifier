@@ -101,28 +101,6 @@ class BuildHelper implements Serializable {
         causedBy
     }
 
-    protected static void checkBuildConfiguration(script, channelSpecificRequiredParams = []) {
-        def buildConfiguration = script.params + script.env.getEnvironment() + script.env.getOverriddenEnvironment()
-        def commonRequiredParams = ['PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH',
-                                    'BUILD_MODE', 'FABRIC_CREDENTIALS_ID', 'FABRIC_ENVIRONMENT_NAME',
-                                    'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER', 'FORM_FACTOR', 'PROJECT_WORKSPACE']
-        def requiredParams = (channelSpecificRequiredParams) ?: commonRequiredParams
-        def emptyParams = checkForNull(buildConfiguration, requiredParams)
-
-        if (emptyParams) {
-            String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
-            script.error([emptyParams.join(', '), message, "can't be null!"].join(' '))
-        }
-    }
-
-    private static checkForNull(items, requiredItems) {
-        items?.findResults {
-            if (requiredItems?.contains(it.key) && !it.value) {
-                it.key
-            }
-        }
-    }
-
     /*  Workaround for switching Visualizer dependencies */
     /* --------------------------------------------------- START --------------------------------------------------- */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
@@ -218,9 +196,6 @@ class BuildHelper implements Serializable {
                     } else {
                         installationPath = getInstallationPath(['Java', "jdk${dependency.version}"])
                     }
-//                    def installationPath = (isUnixNode) ?
-//                            getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home']) :
-//                            getInstallationPath(['Java', "jdk${dependency.version}"])
                     switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('JAVA_HOME', installationPath))
                     break

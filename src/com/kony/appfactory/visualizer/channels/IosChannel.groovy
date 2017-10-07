@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 class IosChannel extends Channel {
     private bundleID
@@ -9,9 +10,14 @@ class IosChannel extends Channel {
     private plistFileName
 
     /* Build parameters */
-    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final appleID = script.params.APPLE_ID
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
+    /* At least one of application id parameters should be set */
+    private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
+    private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+            iosMobileAppId : iosTabletAppId
 
     IosChannel(script) {
         super(script)
@@ -19,6 +25,8 @@ class IosChannel extends Channel {
         channelOs = 'iOS'
         channelType = 'Native'
         plistFileName = "${projectName}_${jobBuildNumber}.plist"
+        /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
+        this.script.env['IOS_BUNDLE_ID'] = iosBundleId
     }
 
     protected final exposeFastlaneConfig() {
@@ -142,19 +150,27 @@ class IosChannel extends Channel {
     }
 
     protected final void createPipeline() {
-        script.stage('Check build configuration') {
-            BuildHelper.checkBuildConfiguration(script)
+        script.stage('Check provided parameters') {
+            ValidationHelper.checkBuildConfiguration(script)
+
+            def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+
+            channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
+                    mandatoryParameters.add('IOS_TABLET_APP_ID')
+
+            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {
-            exposeFastlaneConfig() // Get configuration file for fastlane
+            /* Get and expose configuration file for fastlane */
+            exposeFastlaneConfig()
 
             pipelineWrapper {
                 script.deleteDir()
 
-                script.stage('Check provided parameters') {
-                    BuildHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName])
+                script.stage('Check build-node environment') {
+                    ValidationHelper.checkBuildConfiguration(script,
+                            ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID'])
                 }
 
                 script.stage('Checkout') {

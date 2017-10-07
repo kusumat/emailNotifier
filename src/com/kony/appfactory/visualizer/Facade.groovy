@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer
 
-import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
 class Facade implements Serializable {
@@ -10,26 +10,37 @@ class Facade implements Serializable {
     private channelsToRun
     private artifacts = []
     private jobResultList = []
-    /* Build parameters */
+    /* Common build parameters */
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     private final fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
-    private final fabricCredentialsId = script.params.FABRIC_CREDENTIALS_ID
+    private final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
-    private final fabricUrl = script.params.FABRIC_URL
     private final fabricAppName = script.params.FABRIC_APP_NAME
-    private final fabricAccountId = script.params.FABRIC_ACCOUNT_ID
+    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
-    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    private final recipientsList = script.params.RECIPIENTS_LIST
+    private final defaultLocale = script.params.DEFAULT_LOCALE
+    /* iOS build parameters */
     private final appleID = script.params.APPLE_ID
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final iosMobileAppId =  script.params.IOS_MOBILE_APP_ID
+    private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
+    /* Android build parameters */
+    private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
+    private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
+    private final androidVersion = script.params.ANDROID_VERSION
+    private final androidVersionCode = script.params.ANDROID_VERSION_CODE
+    private final googleMapsKey = script.params.GOOGLE_MAPS_KEY
     private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+    /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
-    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
-    private final recipientsList = script.params.RECIPIENTS_LIST
 
     Facade(script) {
         this.script = script
@@ -111,12 +122,12 @@ class Facade implements Serializable {
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                         value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
-                script.credentials(name: 'FABRIC_CREDENTIALS_ID', value: "${fabricCredentialsId}"),
+                script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
-                script.string(name: 'FABRIC_URL', value: "${fabricUrl}"),
                 script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
-                script.string(name: 'FABRIC_ACCOUNT_ID', value: "${fabricAccountId}"),
+                script.string(name: 'CLOUD_ACCOUNT_ID', value: "${cloudAccountId}"),
                 script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${fabricEnvironmentName}"),
+                script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
         ]
@@ -133,6 +144,11 @@ class Facade implements Serializable {
         switch (channelName) {
             case ~/^.*ANDROID.*$/:
                 channelJobParameters = commonParameters + [
+                        script.string(name: 'ANDROID_MOBILE_APP_ID', value: "${androidMobileAppId}"),
+                        script.string(name: 'ANDROID_TABLET_APP_ID', value: "${androidTabletAppId}"),
+                        script.string(name: 'ANDROID_VERSION', value: "${androidVersion}"),
+                        script.string(name: 'ANDROID_VERSION_CODE', value: "${androidVersionCode}"),
+                        script.string(name: 'GOOGLE_MAPS_KEY', value: "${googleMapsKey}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${keystoreFileID}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${keystorePasswordID}"),
                         script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${privateKeyPassword}"),
@@ -143,7 +159,10 @@ class Facade implements Serializable {
                 channelJobParameters = commonParameters + [
                         script.credentials(name: 'APPLE_ID', value: "${appleID}"),
                         script.string(name: 'APPLE_DEVELOPER_TEAM_ID', value: "${appleDeveloperTeamId}"),
-                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}")
+                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}"),
+                        script.string(name: 'IOS_MOBILE_APP_ID', value: "${iosMobileAppId}"),
+                        script.string(name: 'IOS_TABLET_APP_ID', value: "${iosTabletAppId}"),
+                        script.string(name: 'IOS_BUNDLE_VERSION', value: "${iosBundleVersion}")
                 ]
                 break
             case ~/^.*WINDOWS.*$/:
@@ -181,7 +200,8 @@ class Facade implements Serializable {
         def binaryParameters = []
 
         for (buildJobArtifact in buildJobArtifacts) {
-            def artifactName = (!buildJobArtifact['name'].contains('.plist')) ?: buildJobArtifact['name'].replaceAll('.plist', '.ipa')
+            def artifactName = (!buildJobArtifact['name'].contains('.plist')) ?:
+                    buildJobArtifact['name'].replaceAll('.plist', '.ipa')
             def artifactURL = buildJobArtifact.url
             def channelName = buildJobArtifact.channelPath.toUpperCase().replaceAll('/', '_')
             if (artifactName != '-') {
@@ -272,23 +292,55 @@ class Facade implements Serializable {
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
             /* Check common params */
-            BuildHelper.checkBuildConfiguration(script)
+            ValidationHelper.checkBuildConfiguration(script)
 
+            def checkParams = []
+
+            def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
             /* Check Android specific params */
-            if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                BuildHelper.checkBuildConfiguration(script,
-                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+            if (androidChannels) {
+                def androidMandatoryParams = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
+
+                if (androidChannels.findAll { it.contains('MOBILE') }) {
+                    androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
+                }
+
+                if (androidChannels.findAll { it.contains('TABLET') }) {
+                    androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                }
+
+                if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                    androidMandatoryParams.addAll([
+                            'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                    ])
+                }
+
+                checkParams.addAll(androidMandatoryParams)
             }
 
+            def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
             /* Check iOS specific params */
-            if (channelsToRun.findAll { it.contains('IOS') }) {
-                BuildHelper.checkBuildConfiguration(script, ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID'])
+            if (iosChannels) {
+                def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+
+                if (iosChannels.findAll { it.contains('MOBILE') }) {
+                    iosMandatoryParams.add('IOS_MOBILE_APP_ID')
+                }
+
+                if (iosChannels.findAll { it.contains('TABLET') }) {
+                    iosMandatoryParams.add('IOS_TABLET_APP_ID')
+                }
+
+                checkParams.addAll(iosMandatoryParams)
             }
 
             /* Check publish params */
             if (publishFabricApp) {
-                BuildHelper.checkBuildConfiguration(script, ['FABRIC_URL', 'FABRIC_APP_NAME', 'FABRIC_ACCOUNT_ID'])
+                checkParams.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
+
+            /* Check all required parameters depending on user input */
+            ValidationHelper.checkBuildConfiguration(script, checkParams)
         }
 
         script.node(nodeLabel) {
@@ -304,7 +356,8 @@ class Facade implements Serializable {
                             script.error("runTests job binary URL parameters are missing!")
 
                     script.stage('TESTS') {
-                        def testAutomationJob = script.build job: "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests",
+                        def testAutomationJobName = "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests"
+                        def testAutomationJob = script.build job: testAutomationJobName,
                                 parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
                                 propagate: false
                         def testAutomationJobResult = testAutomationJob.currentResult
@@ -317,7 +370,10 @@ class Facade implements Serializable {
                     }
                 }
 
-                if (jobResultList.contains('FAILURE') || jobResultList.contains('UNSTABLE') || jobResultList.contains('ABORTED')) {
+                if (jobResultList.contains('FAILURE') ||
+                        jobResultList.contains('UNSTABLE') ||
+                        jobResultList.contains('ABORTED')
+                ) {
                     script.currentBuild.result = 'UNSTABLE'
                 } else {
                     script.currentBuild.result = 'SUCCESS'

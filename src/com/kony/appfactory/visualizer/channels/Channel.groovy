@@ -39,7 +39,7 @@ class Channel implements Serializable {
     protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     protected final environment = script.params.FABRIC_ENVIRONMENT_NAME
-    protected final cloudCredentialsID = script.params.FABRIC_CREDENTIALS_ID
+    protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected final buildMode = script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     protected channelFormFactor = script.params.FORM_FACTOR
@@ -69,7 +69,7 @@ class Channel implements Serializable {
         projectFullPath = [workspace, checkoutRelativeTargetFolder, projectRoot].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
-        /* Expose channel to build to environment variable to use it in HeadlessBuild.properties */
+        /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
         s3ArtifactPath = ['Builds', environment, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:

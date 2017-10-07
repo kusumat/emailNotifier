@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 class WindowsChannel extends Channel {
     private final shortenedWorkspace = ['C:', 'J', projectName, script.env.JOB_BASE_NAME].join('\\')
@@ -15,8 +16,11 @@ class WindowsChannel extends Channel {
 
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
-            BuildHelper.checkBuildConfiguration(script)
-            BuildHelper.checkBuildConfiguration(script, ['OS'])
+            ValidationHelper.checkBuildConfiguration(script)
+
+            def mandatoryParameters = ['OS']
+
+            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {
@@ -25,7 +29,7 @@ class WindowsChannel extends Channel {
                     script.deleteDir()
 
                     script.stage('Check build-node environment') {
-                        BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                        ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
                     }
 
                     script.stage('Checkout') {

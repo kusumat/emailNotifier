@@ -106,23 +106,23 @@
         <condition property="buildMode" value="${env.BUILD_MODE}" else="">
             <isset property="env.BUILD_MODE"/>
         </condition>
-        <condition property="mainVersion" value="${env.VERSION}" else="">
-            <isset property="env.VERSION"/>
+        <condition property="mainVersion" value="${env.ANDROID_VERSION}" else="">
+            <isset property="env.ANDROID_VERSION"/>
         </condition>
-        <condition property="mapGoogleKey" value="${env.MAP_GOOGLE_KEY}" else="">
-            <isset property="env.MAP_GOOGLE_KEY"/>
+        <condition property="mapGoogleKey" value="${env.GOOGLE_MAPS_KEY}" else="">
+            <isset property="env.GOOGLE_MAPS_KEY"/>
         </condition>
         <condition property="defaultLocale" value="${env.DEFAULT_LOCALE}" else="">
             <isset property="env.DEFAULT_LOCALE"/>
         </condition>
-        <condition property="androidPackageName" value="${env.ANDROID_PACKAGENAME}" else="">
-            <isset property="env.ANDROID_PACKAGENAME"/>
+        <condition property="androidPackageName" value="${env.ANDROID_PACKAGE_NAME}" else="">
+            <isset property="env.ANDROID_PACKAGE_NAME"/>
         </condition>
-        <condition property="androidVersionCode" value="${env.ANDROID_VERSIONCODE}" else="">
-            <isset property="env.ANDROID_VERSIONCODE"/>
+        <condition property="androidVersionCode" value="${env.ANDROID_VERSION_CODE}" else="">
+            <isset property="env.ANDROID_VERSION_CODE"/>
         </condition>
-        <condition property="iosBundleVersion" value="${env.IOS_BUNDLEVERSION}" else="">
-            <isset property="env.IOS_BUNDLEVERSION"/>
+        <condition property="iosBundleVersion" value="${env.IOS_BUNDLE_VERSION}" else="">
+            <isset property="env.IOS_BUNDLE_VERSION"/>
         </condition>
         <condition property="cloudUsername" value="${env.CLOUD_USERNAME}" else="">
             <isset property="env.CLOUD_USERNAME"/>
@@ -130,14 +130,12 @@
         <condition property="cloudPassword" value="${env.CLOUD_PASSWORD}" else="">
             <isset property="env.CLOUD_PASSWORD"/>
         </condition>
-        <condition property="fabricUrl" value="${env.FABRIC_URL}" else="">
-            <isset property="env.FABRIC_URL"/>
+        <condition property="cloudAccountId" value="${env.CLOUD_ACCOUNT_ID}" else="">
+            <isset property="env.CLOUD_ACCOUNT_ID"/>
         </condition>
+        <property name="fabricUrl" value="https://manage.kony.com"/>
         <condition property="fabricEnvironmentName" value="${env.FABRIC_ENVIRONMENT_NAME}" else="">
             <isset property="env.FABRIC_ENVIRONMENT_NAME"/>
-        </condition>
-        <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="">
-            <isset property="env.FABRIC_ACCOUNT_ID"/>
         </condition>
         <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
             <isset property="env.FABRIC_APP_NAME"/>
@@ -171,9 +169,10 @@
             <entry key="ios.bundleversion" value="${iosBundleVersion}"/>
             <entry key="cloud.username" value="${cloudUsername}"/>
             <entry key="cloud.password" value="${cloudPassword}"/>
+            <entry key="account.id" value="${cloudAccountId}"/>
+            <entry key="cloud.environment" value=""/>
             <entry key="mobilefabric.url" value="${fabricUrl}"/>
             <entry key="environment.name" value="${fabricEnvironmentName}"/>
-            <entry key="account.id" value="${fabricAccountId}"/>
             <entry key="mf.appname" value="${fabricAppName}"/>
             <entry key="iphone" value="${iosMobileNative}"/>
             <entry key="android" value="${androidMobileNative}"/>
