@@ -10,7 +10,7 @@ class Facade implements Serializable {
     private channelsToRun
     private artifacts = []
     private jobResultList = []
-    /* Build parameters */
+    /* Common build parameters */
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     private final fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
@@ -19,16 +19,28 @@ class Facade implements Serializable {
     private final fabricAppName = script.params.FABRIC_APP_NAME
     private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
-    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    private final recipientsList = script.params.RECIPIENTS_LIST
+    private final defaultLocale = script.params.DEFAULT_LOCALE
+    /* iOS build parameters */
     private final appleID = script.params.APPLE_ID
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final iosMobileAppId =  script.params.IOS_MOBILE_APP_ID
+    private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
+    /* Android build parameters */
+    private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
+    private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
+    private final androidVersion = script.params.ANDROID_VERSION
+    private final androidVersionCode = script.params.ANDROID_VERSION_CODE
+    private final googleMapsKey = script.params.GOOGLE_MAPS_KEY
     private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+    /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
-    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
-    private final recipientsList = script.params.RECIPIENTS_LIST
 
     Facade(script) {
         this.script = script
@@ -115,6 +127,7 @@ class Facade implements Serializable {
                 script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
                 script.string(name: 'CLOUD_ACCOUNT_ID', value: "${cloudAccountId}"),
                 script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${fabricEnvironmentName}"),
+                script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
         ]
@@ -131,6 +144,11 @@ class Facade implements Serializable {
         switch (channelName) {
             case ~/^.*ANDROID.*$/:
                 channelJobParameters = commonParameters + [
+                        script.string(name: 'ANDROID_MOBILE_APP_ID', value: "${androidMobileAppId}"),
+                        script.string(name: 'ANDROID_TABLET_APP_ID', value: "${androidTabletAppId}"),
+                        script.string(name: 'ANDROID_VERSION', value: "${androidVersion}"),
+                        script.string(name: 'ANDROID_VERSION_CODE', value: "${androidVersionCode}"),
+                        script.string(name: 'GOOGLE_MAPS_KEY', value: "${googleMapsKey}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${keystoreFileID}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${keystorePasswordID}"),
                         script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${privateKeyPassword}"),
@@ -141,7 +159,10 @@ class Facade implements Serializable {
                 channelJobParameters = commonParameters + [
                         script.credentials(name: 'APPLE_ID', value: "${appleID}"),
                         script.string(name: 'APPLE_DEVELOPER_TEAM_ID', value: "${appleDeveloperTeamId}"),
-                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}")
+                        script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}"),
+                        script.string(name: 'IOS_MOBILE_APP_ID', value: "${iosMobileAppId}"),
+                        script.string(name: 'IOS_TABLET_APP_ID', value: "${iosTabletAppId}"),
+                        script.string(name: 'IOS_BUNDLE_VERSION', value: "${iosBundleVersion}")
                 ]
                 break
             case ~/^.*WINDOWS.*$/:

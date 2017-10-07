@@ -151,6 +151,9 @@ class BuildHelper implements Serializable {
                 case 'IOS_BUNDLE_VERSION':
                     regex = /^(\d+\.)?(\d+\.)?(\*|\d+)$/
                     break
+                case 'ANDROID_VERSION_CODE':
+                    regex = /^\d+$/
+                    break
                 default:
                     regex = /.*/
                     break

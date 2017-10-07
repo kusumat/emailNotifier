@@ -75,9 +75,12 @@ class AndroidChannel extends Channel {
 
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
+            def channelAppIdType = (channelFormFactor.equalsIgnoreCase('Mobile')) ? ['ANDROID_MOBILE_APP_ID'] :
+                    ['ANDROID_TABLET_APP_ID']
+
             BuildHelper.checkBuildConfiguration(script)
 
-            BuildHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'])
+            BuildHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + channelAppIdType)
 
             if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
                 BuildHelper.checkBuildConfiguration(script,

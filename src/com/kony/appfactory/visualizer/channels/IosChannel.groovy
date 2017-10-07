@@ -149,20 +149,22 @@ class IosChannel extends Channel {
     }
 
     protected final void createPipeline() {
-        script.stage('Check build configuration') {
-            BuildHelper.checkBuildConfiguration(script)
+        script.stage('Check provided parameters') {
+            def channelAppIdType = (channelFormFactor.equalsIgnoreCase('Mobile')) ? ['IOS_MOBILE_APP_ID'] :
+                    ['IOS_TABLET_APP_ID']
+
+            BuildHelper.checkBuildConfiguration(script, ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION'] + channelAppIdType)
         }
 
         script.node(nodeLabel) {
-            exposeFastlaneConfig() // Get configuration file for fastlane
+            /* Get and expose configuration file for fastlane */
+            exposeFastlaneConfig()
 
             pipelineWrapper {
                 script.deleteDir()
 
-                script.stage('Check provided parameters') {
-                    BuildHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', 'IOS_DISTRIBUTION_TYPE', 'APPLE_ID', channelVariableName,
-                             'IOS_BUNDLE_ID', 'IOS_BUNDLE_VERSION'])
+                script.stage('Check build-node environment') {
+                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID'])
                 }
 
                 script.stage('Checkout') {
