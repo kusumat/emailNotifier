@@ -200,7 +200,8 @@ class Facade implements Serializable {
         def binaryParameters = []
 
         for (buildJobArtifact in buildJobArtifacts) {
-            def artifactName = (!buildJobArtifact['name'].contains('.plist')) ?: buildJobArtifact['name'].replaceAll('.plist', '.ipa')
+            def artifactName = (!buildJobArtifact['name'].contains('.plist')) ?:
+                    buildJobArtifact['name'].replaceAll('.plist', '.ipa')
             def artifactURL = buildJobArtifact.url
             def channelName = buildJobArtifact.channelPath.toUpperCase().replaceAll('/', '_')
             if (artifactName != '-') {
@@ -290,52 +291,56 @@ class Facade implements Serializable {
 
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
-            def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
-            def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
-
             /* Check common params */
             ValidationHelper.checkBuildConfiguration(script)
 
+            def checkParams = []
+
+            def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
             /* Check Android specific params */
             if (androidChannels) {
-                def checkParams = []
+                def androidMandatoryParams = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
 
                 if (androidChannels.findAll { it.contains('MOBILE') }) {
-                    checkParams.add('ANDROID_MOBILE_APP_ID')
+                    androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
                 }
 
                 if (androidChannels.findAll { it.contains('TABLET') }) {
-                    checkParams.add('ANDROID_TABLET_APP_ID')
+                    androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
                 }
-
-                ValidationHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + checkParams)
 
                 if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                    ValidationHelper.checkBuildConfiguration(script,
-                            ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
+                    androidMandatoryParams.addAll([
+                            'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                    ])
                 }
+
+                checkParams.addAll(androidMandatoryParams)
             }
 
+            def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
             /* Check iOS specific params */
             if (iosChannels) {
-                def checkParams = []
+                def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
 
                 if (iosChannels.findAll { it.contains('MOBILE') }) {
-                    checkParams.add('IOS_MOBILE_APP_ID')
+                    iosMandatoryParams.add('IOS_MOBILE_APP_ID')
                 }
 
                 if (iosChannels.findAll { it.contains('TABLET') }) {
-                    checkParams.add('IOS_TABLET_APP_ID')
+                    iosMandatoryParams.add('IOS_TABLET_APP_ID')
                 }
 
-                ValidationHelper.checkBuildConfiguration(script,
-                        ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION'] + checkParams)
+                checkParams.addAll(iosMandatoryParams)
             }
 
             /* Check publish params */
             if (publishFabricApp) {
-                ValidationHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
+                checkParams.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
+
+            /* Check all required parameters depending on user input */
+            ValidationHelper.checkBuildConfiguration(script, checkParams)
         }
 
         script.node(nodeLabel) {
@@ -351,7 +356,8 @@ class Facade implements Serializable {
                             script.error("runTests job binary URL parameters are missing!")
 
                     script.stage('TESTS') {
-                        def testAutomationJob = script.build job: "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests",
+                        def testAutomationJobName = "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests"
+                        def testAutomationJob = script.build job: testAutomationJobName,
                                 parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
                                 propagate: false
                         def testAutomationJobResult = testAutomationJob.currentResult
@@ -364,7 +370,10 @@ class Facade implements Serializable {
                     }
                 }
 
-                if (jobResultList.contains('FAILURE') || jobResultList.contains('UNSTABLE') || jobResultList.contains('ABORTED')) {
+                if (jobResultList.contains('FAILURE') ||
+                        jobResultList.contains('UNSTABLE') ||
+                        jobResultList.contains('ABORTED')
+                ) {
                     script.currentBuild.result = 'UNSTABLE'
                 } else {
                     script.currentBuild.result = 'SUCCESS'

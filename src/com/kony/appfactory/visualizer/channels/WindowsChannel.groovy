@@ -17,7 +17,10 @@ class WindowsChannel extends Channel {
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
             ValidationHelper.checkBuildConfiguration(script)
-            ValidationHelper.checkBuildConfiguration(script, ['OS'])
+
+            def mandatoryParameters = ['OS']
+
+            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {

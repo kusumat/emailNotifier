@@ -76,18 +76,20 @@ class AndroidChannel extends Channel {
 
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
-            def channelAppIdType = (channelFormFactor.equalsIgnoreCase('Mobile')) ? ['ANDROID_MOBILE_APP_ID'] :
-                    ['ANDROID_TABLET_APP_ID']
-
             ValidationHelper.checkBuildConfiguration(script)
 
-            ValidationHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + channelAppIdType)
+            def mandatoryParameters = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
+
+            channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
+                    mandatoryParameters.add('ANDROID_TABLET_APP_ID')
 
             if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                ValidationHelper.checkBuildConfiguration(script,
-                        ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
-                         'ANDROID_KEY_ALIAS'])
+                mandatoryParameters.addAll([
+                        'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                ])
             }
+
+            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {
@@ -95,7 +97,9 @@ class AndroidChannel extends Channel {
                 script.deleteDir()
 
                 script.stage('Check build-node environment') {
-                    ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME'])
+                    ValidationHelper.checkBuildConfiguration(script,
+                            ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME']
+                    )
                 }
 
                 script.stage('Checkout') {

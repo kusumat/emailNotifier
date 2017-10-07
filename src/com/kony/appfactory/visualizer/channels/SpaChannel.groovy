@@ -17,19 +17,23 @@ class SpaChannel extends Channel {
     }
 
     protected final void createPipeline() {
-        script.stage('Check build configuration') {
+        script.stage('Check provided parameters') {
             ValidationHelper.checkBuildConfiguration(script)
 
+            def mandatoryParameters = []
+
             if (publishFabricApp) {
-                ValidationHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
+                mandatoryParameters.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
+
+            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {
             pipelineWrapper {
                 script.deleteDir()
 
-                script.stage('Check provided parameters') {
+                script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
                 }
 

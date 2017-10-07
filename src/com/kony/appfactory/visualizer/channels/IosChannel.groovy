@@ -151,10 +151,14 @@ class IosChannel extends Channel {
 
     protected final void createPipeline() {
         script.stage('Check provided parameters') {
-            def channelAppIdType = (channelFormFactor.equalsIgnoreCase('Mobile')) ? ['IOS_MOBILE_APP_ID'] :
-                    ['IOS_TABLET_APP_ID']
+            ValidationHelper.checkBuildConfiguration(script)
 
-            ValidationHelper.checkBuildConfiguration(script, ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION'] + channelAppIdType)
+            def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+
+            channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
+                    mandatoryParameters.add('IOS_TABLET_APP_ID')
+
+            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {
@@ -165,7 +169,8 @@ class IosChannel extends Channel {
                 script.deleteDir()
 
                 script.stage('Check build-node environment') {
-                    ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID'])
+                    ValidationHelper.checkBuildConfiguration(script,
+                            ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID'])
                 }
 
                 script.stage('Checkout') {
