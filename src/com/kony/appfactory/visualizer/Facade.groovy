@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer
 
-import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
 class Facade implements Serializable {
@@ -294,7 +294,7 @@ class Facade implements Serializable {
             def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
 
             /* Check common params */
-            BuildHelper.checkBuildConfiguration(script)
+            ValidationHelper.checkBuildConfiguration(script)
 
             /* Check Android specific params */
             if (androidChannels) {
@@ -308,10 +308,10 @@ class Facade implements Serializable {
                     checkParams.add('ANDROID_TABLET_APP_ID')
                 }
 
-                BuildHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + checkParams)
+                ValidationHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + checkParams)
 
                 if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                    BuildHelper.checkBuildConfiguration(script,
+                    ValidationHelper.checkBuildConfiguration(script,
                             ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'])
                 }
             }
@@ -328,13 +328,13 @@ class Facade implements Serializable {
                     checkParams.add('IOS_TABLET_APP_ID')
                 }
 
-                BuildHelper.checkBuildConfiguration(script,
+                ValidationHelper.checkBuildConfiguration(script,
                         ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION'] + checkParams)
             }
 
             /* Check publish params */
             if (publishFabricApp) {
-                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
+                ValidationHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
         }
 

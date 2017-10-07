@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 class IosChannel extends Channel {
     private bundleID
@@ -153,7 +154,7 @@ class IosChannel extends Channel {
             def channelAppIdType = (channelFormFactor.equalsIgnoreCase('Mobile')) ? ['IOS_MOBILE_APP_ID'] :
                     ['IOS_TABLET_APP_ID']
 
-            BuildHelper.checkBuildConfiguration(script, ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION'] + channelAppIdType)
+            ValidationHelper.checkBuildConfiguration(script, ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION'] + channelAppIdType)
         }
 
         script.node(nodeLabel) {
@@ -164,7 +165,7 @@ class IosChannel extends Channel {
                 script.deleteDir()
 
                 script.stage('Check build-node environment') {
-                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID'])
+                    ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID'])
                 }
 
                 script.stage('Checkout') {

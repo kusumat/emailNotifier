@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 class SpaChannel extends Channel {
     /* Build parameters */
@@ -17,10 +18,10 @@ class SpaChannel extends Channel {
 
     protected final void createPipeline() {
         script.stage('Check build configuration') {
-            BuildHelper.checkBuildConfiguration(script)
+            ValidationHelper.checkBuildConfiguration(script)
 
             if (publishFabricApp) {
-                BuildHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
+                ValidationHelper.checkBuildConfiguration(script, ['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
         }
 
@@ -29,7 +30,7 @@ class SpaChannel extends Channel {
                 script.deleteDir()
 
                 script.stage('Check provided parameters') {
-                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                    ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
                 }
 
                 script.stage('Checkout') {

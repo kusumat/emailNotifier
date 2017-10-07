@@ -101,68 +101,6 @@ class BuildHelper implements Serializable {
         causedBy
     }
 
-    protected static void checkBuildConfiguration(script, channelSpecificRequiredParams = [], parametersToCheck = [:]) {
-        def commonRequiredParams = ['PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH',
-                                    'BUILD_MODE', 'CLOUD_CREDENTIALS_ID', 'FABRIC_ENVIRONMENT_NAME',
-                                    'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER', 'FORM_FACTOR', 'PROJECT_WORKSPACE']
-        def buildConfiguration = (parametersToCheck) ?:
-                script.params + script.env.getEnvironment() + script.env.getOverriddenEnvironment()
-        def requiredParams = (channelSpecificRequiredParams) ?: commonRequiredParams
-        script.println "Build P: $buildConfiguration"
-        script.println "Required P: $requiredParams"
-        def filteredParams = filterItems(buildConfiguration, requiredParams)
-        script.println "$filteredParams"
-        def emptyParams = checkForNull(filteredParams)
-        script.println "NOT N: $emptyParams, ${emptyParams.class}"
-        if (emptyParams) {
-            String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
-            String errorMessage = [emptyParams.keySet().join(', '), message, "can't be null!"].join(' ')
-            script.error(errorMessage)
-        }
-        script.println "$filteredParams"
-        def notValidPrams = checkIfValid(filteredParams)
-        script.println "NOT V: $notValidPrams"
-        if (notValidPrams) {
-            String errorMessage = (['Please provide valid values for following parameters:'] + notValidPrams.keySet()).join('\n')
-            script.error(errorMessage)
-        }
-    }
-
-    private static filterItems(items, requiredItems) {
-        items?.findAll { item -> requiredItems?.contains(item.key) }
-    }
-
-    private static checkForNull(items) {
-        items?.findAll { !it.value }
-    }
-
-    private static checkIfValid(items) {
-        items?.findAll { item ->
-            String regex
-
-            switch(item.key) {
-                case 'ANDROID_MOBILE_APP_ID':
-                case 'ANDROID_TABLET_APP_ID':
-                case 'IOS_MOBILE_APP_ID':
-                case 'IOS_TABLET_APP_ID':
-                    regex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+[0-9a-zA-Z_]?$/
-                    break
-                case 'ANDROID_VERSION':
-                case 'IOS_BUNDLE_VERSION':
-                    regex = /^(\d+\.)?(\d+\.)?(\*|\d+)$/
-                    break
-                case 'ANDROID_VERSION_CODE':
-                    regex = /^\d+$/
-                    break
-                default:
-                    regex = /.*/
-                    break
-            }
-
-            !(item.value ==~ regex)
-        }
-    }
-
     /*  Workaround for switching Visualizer dependencies */
     /* --------------------------------------------------- START --------------------------------------------------- */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
@@ -258,9 +196,6 @@ class BuildHelper implements Serializable {
                     } else {
                         installationPath = getInstallationPath(['Java', "jdk${dependency.version}"])
                     }
-//                    def installationPath = (isUnixNode) ?
-//                            getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home']) :
-//                            getInstallationPath(['Java', "jdk${dependency.version}"])
                     switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('JAVA_HOME', installationPath))
                     break

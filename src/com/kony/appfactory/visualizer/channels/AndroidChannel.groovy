@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 class AndroidChannel extends Channel {
     /* Build parameters */
@@ -78,12 +79,12 @@ class AndroidChannel extends Channel {
             def channelAppIdType = (channelFormFactor.equalsIgnoreCase('Mobile')) ? ['ANDROID_MOBILE_APP_ID'] :
                     ['ANDROID_TABLET_APP_ID']
 
-            BuildHelper.checkBuildConfiguration(script)
+            ValidationHelper.checkBuildConfiguration(script)
 
-            BuildHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + channelAppIdType)
+            ValidationHelper.checkBuildConfiguration(script, ['ANDROID_VERSION', 'ANDROID_VERSION_CODE'] + channelAppIdType)
 
             if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                BuildHelper.checkBuildConfiguration(script,
+                ValidationHelper.checkBuildConfiguration(script,
                         ['ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
                          'ANDROID_KEY_ALIAS'])
             }
@@ -94,7 +95,7 @@ class AndroidChannel extends Channel {
                 script.deleteDir()
 
                 script.stage('Check build-node environment') {
-                    BuildHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME'])
+                    ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME'])
                 }
 
                 script.stage('Checkout') {
