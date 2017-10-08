@@ -26,7 +26,8 @@ class Fabric implements Serializable {
     /* Import build parameters */
     private final String commitAuthor = script.params.COMMIT_AUTHOR?.trim() ?: 'Jenkins'
     private final String authorEmail = script.params.AUTHOR_EMAIL
-    private String commitMessage = script.params.COMMIT_MESSAGE?.trim() ?: 'Automatic backup of Fabric services.'
+    private String commitMessage = script.params.COMMIT_MESSAGE?.trim() ?:
+            "Automatic backup of Fabric services" + (script.env.BUILD_NUMBER ? ", build-${script.env.BUILD_NUMBER}" : '.')
     private final boolean overwriteExisting = script.params.OVERWRITE_EXISTING
     private final boolean enablePublish = script.params.ENABLE_PUBLISH
     /* Publish build parameters */
@@ -413,8 +414,8 @@ class Fabric implements Serializable {
 
         script.stage('Check provided parameters') {
             def mandatoryParameters = [
-                    'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_SOURCE_CODE_REPOSITORY_URL',
-                    'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID'
+                    'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_EXPORT_REPOSITORY_URL',
+                    'PROJECT_EXPORT_BRANCH', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'
             ]
 
             if (enablePublish) {
