@@ -181,7 +181,7 @@ class TestAutomation implements Serializable {
             deviceFarmWorkingDirectory = projectFullPath + '/' + 'deviceFarm'
 
             try {
-                script.deleteDir()
+                script.cleanWs deleteDirs: true
 
                 /* Build test automation scripts if URL with test binaries was not provided */
                 if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {

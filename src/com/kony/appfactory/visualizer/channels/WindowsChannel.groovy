@@ -26,7 +26,7 @@ class WindowsChannel extends Channel {
         script.node(nodeLabel) {
             script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
                 pipelineWrapper {
-                    script.deleteDir()
+                    script.cleanWs deleteDirs: true
 
                     script.stage('Check build-node environment') {
                         ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])

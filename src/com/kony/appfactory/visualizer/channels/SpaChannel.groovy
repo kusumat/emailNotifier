@@ -31,7 +31,7 @@ class SpaChannel extends Channel {
 
         script.node(nodeLabel) {
             pipelineWrapper {
-                script.deleteDir()
+                script.cleanWs deleteDirs: true
 
                 script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])

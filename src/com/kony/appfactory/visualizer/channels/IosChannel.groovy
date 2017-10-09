@@ -166,7 +166,7 @@ class IosChannel extends Channel {
             exposeFastlaneConfig()
 
             pipelineWrapper {
-                script.deleteDir()
+                script.cleanWs deleteDirs: true
 
                 script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script,
