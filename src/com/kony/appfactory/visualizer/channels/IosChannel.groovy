@@ -85,7 +85,7 @@ class IosChannel extends Channel {
             script.dir(iosDummyProjectGenPath) {
                 script.sh """
                     cp ${karFile.path}/${karFile.name} .
-                    perl extract.pl ${karFile.name} sqd
+                    perl extract.pl ${karFile.name}
                 """
             }
             /* Build project and export IPA using Fastlane */
