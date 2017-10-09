@@ -9,11 +9,20 @@ class SpaChannel extends Channel {
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final fabricAppName = script.params.FABRIC_APP_NAME
     private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
+    private final selectedSpaChannels
 
     SpaChannel(script) {
         super(script)
         nodeLabel = 'win || mac'
         channelOs = channelFormFactor = channelType = 'SPA'
+        selectedSpaChannels = getSelectedSpaChannels(this.script.params)
+    }
+
+    @NonCPS
+    private static getSelectedSpaChannels(buildParameters) {
+        buildParameters.findAll {
+            it.value instanceof  Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
+        }.keySet().collect()
     }
 
     protected final void createPipeline() {
@@ -26,6 +35,10 @@ class SpaChannel extends Channel {
                 mandatoryParameters.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
 
+            if (!selectedSpaChannels) {
+                script.error('Please select at least one channel to build!')
+            }
+
             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
@@ -34,7 +47,8 @@ class SpaChannel extends Channel {
                 script.cleanWs deleteDirs: true
 
                 script.stage('Check build-node environment') {
-                    ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                    ValidationHelper.checkBuildConfiguration(script,
+                            ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE'])
                 }
 
                 script.stage('Checkout') {

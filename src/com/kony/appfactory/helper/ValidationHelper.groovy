@@ -13,8 +13,7 @@ class ValidationHelper implements Serializable {
         /* List of the parameters that every channel job requires */
         def commonRequiredParams = [
                 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
-                'CLOUD_CREDENTIALS_ID', 'FABRIC_ENVIRONMENT_NAME', 'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER',
-                'FORM_FACTOR', 'PROJECT_WORKSPACE'
+                'CLOUD_CREDENTIALS_ID', 'FABRIC_ENVIRONMENT_NAME', 'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER'
         ]
         /* List of the build parameters and environment variables to check */
         def buildConfiguration = script.params + script.env.getEnvironment() + script.env.getOverriddenEnvironment()

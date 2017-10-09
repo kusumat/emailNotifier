@@ -78,7 +78,7 @@ class AndroidChannel extends Channel {
         script.stage('Check provided parameters') {
             ValidationHelper.checkBuildConfiguration(script)
 
-            def mandatoryParameters = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
+            def mandatoryParameters = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
 
             channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
                     mandatoryParameters.add('ANDROID_TABLET_APP_ID')
@@ -98,7 +98,8 @@ class AndroidChannel extends Channel {
 
                 script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME']
+                            ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME',
+                             'PROJECT_WORKSPACE']
                     )
                 }
 

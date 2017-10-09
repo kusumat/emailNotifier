@@ -153,7 +153,7 @@ class IosChannel extends Channel {
         script.stage('Check provided parameters') {
             ValidationHelper.checkBuildConfiguration(script)
 
-            def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+            def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
 
             channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
                     mandatoryParameters.add('IOS_TABLET_APP_ID')
@@ -170,7 +170,7 @@ class IosChannel extends Channel {
 
                 script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID'])
+                            ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE'])
                 }
 
                 script.stage('Checkout') {

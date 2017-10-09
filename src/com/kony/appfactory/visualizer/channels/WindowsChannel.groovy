@@ -18,7 +18,7 @@ class WindowsChannel extends Channel {
         script.stage('Check provided parameters') {
             ValidationHelper.checkBuildConfiguration(script)
 
-            def mandatoryParameters = ['OS']
+            def mandatoryParameters = ['OS', 'FORM_FACTOR']
 
             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
@@ -29,7 +29,8 @@ class WindowsChannel extends Channel {
                     script.cleanWs deleteDirs: true
 
                     script.stage('Check build-node environment') {
-                        ValidationHelper.checkBuildConfiguration(script, ['VISUALIZER_HOME', channelVariableName])
+                        ValidationHelper.checkBuildConfiguration(script,
+                                ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE'])
                     }
 
                     script.stage('Checkout') {
