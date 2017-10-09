@@ -48,8 +48,7 @@ class BuildHelper implements Serializable {
                        branches                         : [[name: gitBranch]],
                        doGenerateSubmoduleConfigurations: false,
                        extensions                       : [[$class           : 'RelativeTargetDirectory',
-                                                            relativeTargetDir: relativeTargetDir],
-                                                           [$class: 'WipeWorkspace']],
+                                                            relativeTargetDir: relativeTargetDir]],
                        submoduleCfg                     : [],
                        userRemoteConfigs                : [[credentialsId: gitCredentialsID,
                                                             url          : gitURL]]]
