@@ -136,7 +136,7 @@ class NotificationsHelper implements Serializable {
             case 'Export':
             case 'Import':
             case 'Publish':
-                emailContent = mobileFabricContent(commonBinding)
+                emailContent = fabricContent(commonBinding)
                 break
             default:
                 emailContent
@@ -420,7 +420,7 @@ class NotificationsHelper implements Serializable {
     }
 
     @NonCPS
-    private static mobileFabricContent(binding) {
+    private static fabricContent(binding) {
         Writer writer = new StringWriter()
         MarkupBuilder htmlBuilder = new MarkupBuilder(writer)
 
@@ -457,14 +457,14 @@ class NotificationsHelper implements Serializable {
                                 tr {
                                     td 'Repository URL'
                                     td {
-                                        a(href: binding.gitURL, "${binding.gitURL}")
+                                        a(href: binding.gitURL, "${binding.exportRepositoryUrl}")
                                     }
                                 }
                             }
                             if (binding.gitBranch) {
                                 tr {
                                     td 'Repository Branch'
-                                    td(class: "table-value", binding.gitBranch)
+                                    td(class: "table-value", binding.exportRepositoryBranch)
                                 }
                             }
                             if (binding.commitAuthor) {
@@ -487,12 +487,6 @@ class NotificationsHelper implements Serializable {
                                     td(class: "table-value", binding.commitMessage)
                                 }
                             }
-                            if (binding.gitTagID) {
-                                tr {
-                                    td 'Repository tag'
-                                    td(class: "table-value", binding.gitTagID)
-                                }
-                            }
                             if (binding.overwriteExisting) {
                                 tr {
                                     td 'Overwrite Existing'
@@ -508,7 +502,7 @@ class NotificationsHelper implements Serializable {
                             if (binding.mfEnv) {
                                 tr {
                                     td 'Environment'
-                                    td(class: "table-value", binding.mfEnv)
+                                    td(class: "table-value", binding.fabricEnvironmentName)
                                 }
                             }
                         }
@@ -520,7 +514,7 @@ class NotificationsHelper implements Serializable {
                 td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                     h4(style: "margin-bottom:0", "${binding.commandName} Details")
                     p {
-                        mkp.yield "${binding.commandName} of Mobile Fabric app ${binding.projectName} is: "
+                        mkp.yield "${binding.commandName} of Fabric app ${binding.projectName} is: "
                         strong binding.build.result
                         mkp.yield '.'
                     }

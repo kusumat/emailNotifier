@@ -23,6 +23,16 @@ class ValidationHelper implements Serializable {
         def requiredParams = (parametersToCheck) ?: commonRequiredParams
         /* Filter required parameters from all build parameters */
         def filteredParams = filterItems(buildConfiguration, requiredParams)
+
+        /* Check if there are any not set parameters */
+        def notSet = checkIfNotSet(filteredParams, requiredParams)
+        if (notSet) {
+            String message = 'parameter' + ((notSet.size() > 1) ? 's were' : ' was')
+            String errorMessage = [notSet.join(', '), message, "not set!"].join(' ')
+            /* Break the build and print all empty parameters */
+            script.error(errorMessage)
+        }
+
         /* Check if there are empty parameters among required parameters */
         def emptyParams = checkForNull(filteredParams)
         /* If there are empty parameters */
@@ -32,6 +42,7 @@ class ValidationHelper implements Serializable {
             /* Break the build and print all empty parameters */
             script.error(errorMessage)
         }
+
         /* Validate required parameters */
         def notValidPrams = checkIfValid(filteredParams)
         /* If there are not valid parameters */
@@ -46,17 +57,30 @@ class ValidationHelper implements Serializable {
 
     /**
      * Filter required parameters
-     * @param items - build configuration (environment variables and build parameters).
-     * @param requiredItems - required parameter names
+     * @param items build configuration (environment variables and build parameters).
+     * @param requiredItems required parameter names
      * @return filtered parameters
      */
     private static filterItems(items, requiredItems) {
-        items?.findAll { item -> requiredItems?.contains(item.key) }
+        items?.subMap(requiredItems)
+    }
+
+    /**
+     * Check if there is not set parameters
+     * @param items build configuration (environment variables and build parameters).
+     * @param requiredItems required parameter names
+     * @return parameters that have not been set
+     */
+    private static checkIfNotSet(items, requiredItems) {
+        def paramsThatBeenSet = items.keySet()
+        /* Get disjunction (opposite of intersection) from required parameters list and parameters
+            that been set in the environment, to figure out what parameters were not set. */
+        (requiredItems + paramsThatBeenSet) - requiredItems.intersect(paramsThatBeenSet)
     }
 
     /**
      * Check if any of the parameters is empty
-     * @param items - parameters to check
+     * @param items parameters to check for null
      * @return parameters that have empty values
      */
     private static checkForNull(items) {
@@ -65,7 +89,7 @@ class ValidationHelper implements Serializable {
 
     /**
      * Validates values of the required parameters
-     * @param items - parameters to validate
+     * @param items parameters to validate
      * @return parameters that have not valid values
      */
     private static checkIfValid(items) {
