@@ -499,7 +499,7 @@ class NotificationsHelper implements Serializable {
                                     td(class: "table-value", binding.publishApp)
                                 }
                             }
-                            if (binding.mfEnv) {
+                            if (binding.fabricEnvironmentName) {
                                 tr {
                                     td 'Environment'
                                     td(class: "table-value", binding.fabricEnvironmentName)
