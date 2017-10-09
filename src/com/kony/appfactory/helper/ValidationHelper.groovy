@@ -15,25 +15,14 @@ class ValidationHelper implements Serializable {
                 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
                 'CLOUD_CREDENTIALS_ID', 'FABRIC_ENVIRONMENT_NAME', 'PROJECT_NAME', 'PROJECT_GIT_URL', 'BUILD_NUMBER'
         ]
-        /* List of the build parameters and environment variables to check */
-        def buildConfiguration = script.params + script.env.getEnvironment() + script.env.getOverriddenEnvironment()
-        /* List of the required parameters, without second(parametersToCheck) argument call -
-            commonRequiredParams list will be used */
+        /* List of the required parameters.
+            Please note, that without second(parametersToCheck) argument call - commonRequiredParams list will be used */
         def requiredParams = (parametersToCheck) ?: commonRequiredParams
-        /* Filter required parameters from all build parameters */
-        def filteredParams = filterItems(buildConfiguration, requiredParams)
-
-        /* Check if there are any not set parameters */
-        def notSet = checkIfNotSet(filteredParams, requiredParams)
-        if (notSet) {
-            String message = 'parameter' + ((notSet.size() > 1) ? 's were' : ' was')
-            String errorMessage = [notSet.join(', '), message, "not set!"].join(' ')
-            /* Break the build and print all empty parameters */
-            script.error(errorMessage)
-        }
-
+        /* Collect(filter) build parameters and environment variables to check */
+        def buildConfiguration = collectEnvironmentVariables(script.env, requiredParams)
         /* Check if there are empty parameters among required parameters */
-        def emptyParams = checkForNull(filteredParams)
+        def emptyParams = checkForNull(buildConfiguration)
+
         /* If there are empty parameters */
         if (emptyParams) {
             String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
@@ -43,7 +32,7 @@ class ValidationHelper implements Serializable {
         }
 
         /* Validate required parameters */
-        def notValidPrams = checkIfValid(filteredParams)
+        def notValidPrams = checkIfValid(buildConfiguration)
         /* If there are not valid parameters */
         if (notValidPrams) {
             String errorMessage = (
@@ -56,25 +45,17 @@ class ValidationHelper implements Serializable {
 
     /**
      * Filter required parameters
-     * @param items build configuration (environment variables and build parameters).
-     * @param requiredItems required parameter names
+     * @param environment Map<String, String> build parameters and environment variables
+     * @param requiredParams required parameters list
      * @return filtered parameters
      */
-    private static filterItems(items, requiredItems) {
-        items?.subMap(requiredItems)
-    }
-
-    /**
-     * Check if there is not set parameters
-     * @param items build configuration (environment variables and build parameters).
-     * @param requiredItems required parameter names
-     * @return parameters that have not been set
-     */
-    private static checkIfNotSet(items, requiredItems) {
-        def paramsThatBeenSet = items.keySet()
-        /* Get disjunction (opposite of intersection) from required parameters list and parameters
-            that been set in the environment, to figure out what parameters were not set. */
-        (requiredItems + paramsThatBeenSet) - requiredItems.intersect(paramsThatBeenSet)
+    private static collectEnvironmentVariables(environment, requiredParams) {
+        requiredParams.collectEntries { param ->
+            /* Check if we have not set parameters. Because item value is String,
+                to be able to check if parameter is null (not set), we need to set it explicitly to null */
+            def paramValue = (environment.getProperty(param) != 'null') ? environment.getProperty(param) : null
+            [(param): paramValue]
+        }
     }
 
     /**
