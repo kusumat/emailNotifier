@@ -232,6 +232,7 @@
 </ivy-module>]]></replacevalue>
         </replace>
         <replace file="ivy.xml" token="win64" value="${plugin.os.ver}"/>
+        <replace file="ivy.xml" token="mac64" value="${plugin.os.ver}"/>
 	</target>
 
     <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
