@@ -120,13 +120,12 @@ class BuildHelper implements Serializable {
 
         if (isUnixNode) {
             script.shellCustom(
-                    ['rm', '-rf', installationPath, '&&', 'ln', '-s', dependencyPath, installationPath].join(' '),
+                    ['rm -rf', installationPath, '&&', 'ln -s', dependencyPath, installationPath].join(' '),
                     isUnixNode
             )
         } else {
-            script.shellCustom(
-                    ['rmdir', '/s', '/q', installationPath, '&&', 'mklink', '/J', installationPath, dependencyPath].join(' '),
-                    isUnixNode
+            script.shellCustom(['if exist', installationPath + '\\', 'rmdir /s /q', installationPath, '&&',
+                                'mklink /J', installationPath, dependencyPath].join(' '), isUnixNode
             )
         }
     }
