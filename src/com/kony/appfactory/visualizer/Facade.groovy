@@ -16,8 +16,6 @@ class Facade implements Serializable {
     private final fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
     private final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
-    private final fabricAppName = script.params.FABRIC_APP_NAME
-    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final recipientsList = script.params.RECIPIENTS_LIST
@@ -124,11 +122,8 @@ class Facade implements Serializable {
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
                 script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
-                script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
-                script.string(name: 'CLOUD_ACCOUNT_ID', value: "${cloudAccountId}"),
-                script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${fabricEnvironmentName}"),
-                script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
+                script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
         ]
     }
@@ -332,11 +327,6 @@ class Facade implements Serializable {
                 }
 
                 checkParams.addAll(iosMandatoryParams)
-            }
-
-            /* Check publish params */
-            if (publishFabricApp) {
-                checkParams.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
             }
 
             /* Check all required parameters depending on user input */
