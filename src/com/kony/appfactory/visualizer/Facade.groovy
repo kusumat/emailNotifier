@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer
 
+import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
@@ -275,7 +276,7 @@ class Facade implements Serializable {
     private final void setBuildDescription() {
         script.currentBuild.description = """\
             <div id="build-description">
-                <p>Environment: $fabricEnvironmentName</p>
+                <p>Environment: $script.env.FABRIC_ENV_NAME</p>
                 <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
                 <img src="/static/b33030df/images/24x24/clock.png"
                 style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
@@ -337,6 +338,16 @@ class Facade implements Serializable {
             prepareRun()
 
             try {
+                /* Expose Fabric configuration */
+                BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                    /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
+                        to not mask required values during the build we simply need redefine parameter values.
+                        Also, because of the case, when user didn't provide some not mandatory values we can get null value
+                        and script.env object returns only String values, been added elvis operator for assigning variable value
+                        as ''(empty). */
+                    script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+                }
+
                 script.parallel(runList)
 
                 if (availableTestPools) {
