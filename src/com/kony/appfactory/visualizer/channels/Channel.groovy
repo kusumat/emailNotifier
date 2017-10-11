@@ -38,7 +38,6 @@ class Channel implements Serializable {
     /* Common build parameters */
     protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    protected final environment = script.params.FABRIC_ENVIRONMENT_NAME
     protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected final buildMode = script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
@@ -55,6 +54,17 @@ class Channel implements Serializable {
     }
 
     protected final void pipelineWrapper(closure) {
+        /* Expose Fabric configuration */
+        BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+            /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
+                to not mask required values during the build we simply need redefine parameter values.
+                Also, because of the case, when user didn't provide some not mandatory values we can get null value
+                and script.env object returns only String values, been added elvis operator for assigning variable value
+                as ''(empty). */
+            script.env.FABRIC_APP_NAME = (script.env.FABRIC_APP_NAME) ?: ''
+            script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+            script.env.CLOUD_ACCOUNT_ID = (script.env.CLOUD_ACCOUNT_ID) ?: ''
+        }
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
         separator = isUnixNode ? '/' : '\\'
@@ -68,10 +78,10 @@ class Channel implements Serializable {
         script.env['PROJECT_WORKSPACE'] = projectWorkspacePath
         projectFullPath = [workspace, checkoutRelativeTargetFolder, projectRoot].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
-        channelVariableName = channelPath.toUpperCase().replaceAll('/','_')
+        channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
-        s3ArtifactPath = ['Builds', environment, channelPath].join('/')
+        s3ArtifactPath = ['Builds', script.env.FABRIC_ENV_NAME, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.error('Artifacts base path is missing!')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
@@ -118,10 +128,10 @@ class Channel implements Serializable {
     protected final void build() {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
-        script.catchErrorCustom('FAILED to build the project') {
-            // Populate Fabric configuration to appfactory.js file
-            populateFabricAppConfig('appfactory.js')
+        // Populate Fabric configuration to appfactory.js file
+        populateFabricAppConfig('appfactory.js')
 
+        script.catchErrorCustom('FAILED to build the project') {
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i < requiredResources.size(); i++) {
@@ -199,7 +209,7 @@ class Channel implements Serializable {
     }
 
     protected final populateFabricAppConfig(configFileName) {
-        String successMessage = 'Fabric app key, secret and service URL were populated successfully'
+        String successMessage = 'Fabric app key, secret and service URL were successfully populated'
         String errorMessage = 'FAILED to populate Fabric app key, secret and service URL'
 
         if (fabricAppConfig) {
@@ -211,21 +221,14 @@ class Channel implements Serializable {
                             script.error("FAILED ${configFileName} not found!")
 
                     script.catchErrorCustom(errorMessage, successMessage) {
-                        script.withCredentials([
-                                script.fabricAppTriplet(
-                                        credentialsId: fabricAppConfig,
-                                        applicationKeyVariable: 'APP_KEY',
-                                        applicationSecretVariable: 'APP_SECRET',
-                                        serviceUrlVariable: 'SERVICE_URL'
-                                )
-                        ]) {
+                        BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                             updatedConfig = config.
                                     replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
                                     replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
                                     replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
-                        }
 
-                        script.writeFile file: configFileName, text: updatedConfig
+                            script.writeFile file: configFileName, text: updatedConfig
+                        }
                     }
                 }
             }
@@ -368,7 +371,7 @@ class Channel implements Serializable {
     protected final void setBuildDescription() {
         script.currentBuild.description = """\
         <div id="build-description">
-            <p>Environment: $environment</p>
+            <p>Environment: ${script.env.FABRIC_ENV_NAME}</p>
             <p>Channel: $channelVariableName</p>
         </div>\
         """.stripIndent()

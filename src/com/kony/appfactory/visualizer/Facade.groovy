@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer
 
+import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
@@ -16,8 +17,6 @@ class Facade implements Serializable {
     private final fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
     private final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
-    private final fabricAppName = script.params.FABRIC_APP_NAME
-    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final recipientsList = script.params.RECIPIENTS_LIST
@@ -124,11 +123,8 @@ class Facade implements Serializable {
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
                 script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
-                script.string(name: 'FABRIC_APP_NAME', value: "${fabricAppName}"),
-                script.string(name: 'CLOUD_ACCOUNT_ID', value: "${cloudAccountId}"),
-                script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: "${fabricEnvironmentName}"),
-                script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
+                script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
         ]
     }
@@ -280,7 +276,7 @@ class Facade implements Serializable {
     private final void setBuildDescription() {
         script.currentBuild.description = """\
             <div id="build-description">
-                <p>Environment: $fabricEnvironmentName</p>
+                <p>Environment: $script.env.FABRIC_ENV_NAME</p>
                 <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
                 <img src="/static/b33030df/images/24x24/clock.png"
                 style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
@@ -334,11 +330,6 @@ class Facade implements Serializable {
                 checkParams.addAll(iosMandatoryParams)
             }
 
-            /* Check publish params */
-            if (publishFabricApp) {
-                checkParams.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
-            }
-
             /* Check all required parameters depending on user input */
             ValidationHelper.checkBuildConfiguration(script, checkParams)
         }
@@ -347,6 +338,16 @@ class Facade implements Serializable {
             prepareRun()
 
             try {
+                /* Expose Fabric configuration */
+                BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                    /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
+                        to not mask required values during the build we simply need redefine parameter values.
+                        Also, because of the case, when user didn't provide some not mandatory values we can get null value
+                        and script.env object returns only String values, been added elvis operator for assigning variable value
+                        as ''(empty). */
+                    script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+                }
+
                 script.parallel(runList)
 
                 if (availableTestPools) {

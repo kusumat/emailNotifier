@@ -134,8 +134,8 @@
             <isset property="env.CLOUD_ACCOUNT_ID"/>
         </condition>
         <property name="fabricUrl" value="https://manage.kony.com"/>
-        <condition property="fabricEnvironmentName" value="${env.FABRIC_ENVIRONMENT_NAME}" else="">
-            <isset property="env.FABRIC_ENVIRONMENT_NAME"/>
+        <condition property="fabricEnvironmentName" value="${env.FABRIC_ENV_NAME}" else="">
+            <isset property="env.FABRIC_ENV_NAME"/>
         </condition>
         <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
             <isset property="env.FABRIC_APP_NAME"/>

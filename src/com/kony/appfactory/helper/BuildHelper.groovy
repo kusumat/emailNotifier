@@ -100,6 +100,21 @@ class BuildHelper implements Serializable {
         causedBy
     }
 
+    protected final static fabricConfigEnvWrapper(script, fabricAppConfig, closure) {
+        script.withCredentials([
+                script.fabricAppTriplet(
+                        credentialsId: fabricAppConfig,
+                        applicationNameVariable: 'FABRIC_APP_NAME',
+                        environmentNameVariable: 'FABRIC_ENV_NAME',
+                        applicationKeyVariable: 'APP_KEY',
+                        applicationSecretVariable: 'APP_SECRET',
+                        serviceUrlVariable: 'SERVICE_URL'
+                )
+        ]) {
+            closure()
+        }
+    }
+
     /*  Workaround for switching Visualizer dependencies */
     /* --------------------------------------------------- START --------------------------------------------------- */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
