@@ -99,7 +99,7 @@ class AndroidChannel extends Channel {
                 script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script,
                             ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME',
-                             'PROJECT_WORKSPACE']
+                             'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME']
                     )
                 }
 

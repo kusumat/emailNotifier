@@ -170,7 +170,8 @@ class IosChannel extends Channel {
 
                 script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE'])
+                            ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE',
+                            'FABRIC_ENV_NAME'])
                 }
 
                 script.stage('Checkout') {

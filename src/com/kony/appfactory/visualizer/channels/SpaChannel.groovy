@@ -48,7 +48,8 @@ class SpaChannel extends Channel {
 
                 script.stage('Check build-node environment') {
                     ValidationHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE'])
+                            ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE',
+                             'FABRIC_ENV_NAME'])
                 }
 
                 script.stage('Checkout') {
