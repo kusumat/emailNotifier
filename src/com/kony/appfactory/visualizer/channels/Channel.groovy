@@ -38,7 +38,6 @@ class Channel implements Serializable {
     /* Common build parameters */
     protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    protected final environment = script.params.FABRIC_ENVIRONMENT_NAME
     protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected final buildMode = script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
@@ -66,7 +65,6 @@ class Channel implements Serializable {
             script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
             script.env.CLOUD_ACCOUNT_ID = (script.env.CLOUD_ACCOUNT_ID) ?: ''
         }
-
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
         separator = isUnixNode ? '/' : '\\'
@@ -373,7 +371,7 @@ class Channel implements Serializable {
     protected final void setBuildDescription() {
         script.currentBuild.description = """\
         <div id="build-description">
-            <p>Environment: $environment</p>
+            <p>Environment: ${script.env.FABRIC_ENV_NAME}</p>
             <p>Channel: $channelVariableName</p>
         </div>\
         """.stripIndent()
