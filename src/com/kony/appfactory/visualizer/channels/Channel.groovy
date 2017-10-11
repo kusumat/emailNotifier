@@ -118,9 +118,17 @@ class Channel implements Serializable {
             it.binPath
         }.join(pathSeparator)
 
+        def credentialsTypeList = [script.usernamePassword(credentialsId: "${cloudCredentialsID}",
+                passwordVariable: 'CLOUD_PASSWORD', usernameVariable: 'CLOUD_USERNAME')]
+
+        if (channelOs == 'Android' && script.params.GOOGLE_MAPS_KEY_ID) {
+            credentialsTypeList.add(
+                    script.string(credentialsId: "${script.params.GOOGLE_MAPS_KEY_ID}", variable: 'GOOGLE_MAPS_KEY')
+            )
+        }
+
         script.withEnv(["PATH+TOOLS=${toolBinPath}"]) {
-            script.withCredentials([script.usernamePassword(credentialsId: "${cloudCredentialsID}",
-                    passwordVariable: 'CLOUD_PASSWORD', usernameVariable: 'CLOUD_USERNAME')]) {
+            script.withCredentials(credentialsTypeList) {
                 closure()
             }
         }
