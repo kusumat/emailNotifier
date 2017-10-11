@@ -7,8 +7,8 @@ import com.kony.appfactory.helper.ValidationHelper
 class SpaChannel extends Channel {
     /* Build parameters */
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
-    private final fabricAppName = script.params.FABRIC_APP_NAME
-    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
+//    private final fabricAppName = script.params.FABRIC_APP_NAME
+//    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final selectedSpaChannels
 
     SpaChannel(script) {
@@ -70,7 +70,9 @@ class SpaChannel extends Channel {
                     if (publishFabricApp) {
                         fabric.fetchFabricCli('7.3.0.43')
                         fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, [
-                                '-t': cloudAccountId, '-a': fabricAppName, '-e': "\"$environment\""
+                                '-t': "\"${script.env.CLOUD_ACCOUNT_ID}\"",
+                                '-a': "\"${script.env.FABRIC_APP_NAME}\"",
+                                '-e': "\"${script.env.FABRIC_ENV_NAME}\""
                         ])
                     } else {
                         script.echo 'PUBLISH_FABRIC_APP flag set to false, skipping Fabric application publishing...'
