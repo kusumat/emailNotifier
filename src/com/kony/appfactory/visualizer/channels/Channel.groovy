@@ -56,7 +56,7 @@ class Channel implements Serializable {
 
     protected final void pipelineWrapper(closure) {
         /* Expose Fabric configuration */
-        fabricConfigEnvWrapper {
+        BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
             /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                 to not mask required values during the build we simply need redefine parameter values.
                 Also, because of the case, when user didn't provide some not mandatory values we can get null value
@@ -223,7 +223,7 @@ class Channel implements Serializable {
                             script.error("FAILED ${configFileName} not found!")
 
                     script.catchErrorCustom(errorMessage, successMessage) {
-                        fabricConfigEnvWrapper {
+                        BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                             updatedConfig = config.
                                     replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
                                     replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
@@ -237,21 +237,6 @@ class Channel implements Serializable {
         } else {
             script.println "Skipping population of Fabric app key, secret and service URL, " +
                     "credentials parameter was not provided!"
-        }
-    }
-
-    protected final fabricConfigEnvWrapper(closure) {
-        script.withCredentials([
-                script.fabricAppTriplet(
-                        credentialsId: fabricAppConfig,
-                        applicationNameVariable: 'FABRIC_APP_NAME',
-                        environmentNameVariable: 'FABRIC_ENV_NAME',
-                        applicationKeyVariable: 'APP_KEY',
-                        applicationSecretVariable: 'APP_SECRET',
-                        serviceUrlVariable: 'SERVICE_URL'
-                )
-        ]) {
-            closure()
         }
     }
 
