@@ -45,7 +45,7 @@ class Channel implements Serializable {
     protected channelFormFactor = script.params.FORM_FACTOR
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
-    protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME
+    protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
     protected final gitURL = script.env.PROJECT_GIT_URL
     protected final jobBuildNumber = script.env.BUILD_NUMBER
 
@@ -73,11 +73,12 @@ class Channel implements Serializable {
         workspace = script.env.WORKSPACE
         visualizerHome = script.env.VISUALIZER_HOME
         checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
-        projectWorkspacePath = (projectRoot) ? [workspace, checkoutRelativeTargetFolder].join(separator) :
-                [workspace, projectWorkspaceFolderName].join(separator)
+        projectWorkspacePath = (projectRoot) ?
+                ([workspace, checkoutRelativeTargetFolder] + projectRoot.dropRight(1))?.join(separator) :
+                [workspace, projectWorkspaceFolderName]?.join(separator)
         /* Expose Visualizer workspace to environment variables to use it in HeadlessBuild.properties */
         script.env['PROJECT_WORKSPACE'] = projectWorkspacePath
-        projectFullPath = [workspace, checkoutRelativeTargetFolder, projectRoot].findAll().join(separator)
+        projectFullPath = [workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
