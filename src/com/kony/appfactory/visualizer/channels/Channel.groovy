@@ -3,6 +3,7 @@ package com.kony.appfactory.visualizer.channels
 import com.kony.appfactory.fabric.Fabric
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import java.util.regex.Matcher
 
 class Channel implements Serializable {
     protected script
@@ -148,10 +149,28 @@ class Channel implements Serializable {
         }
     }
 
-    /* Determine which Visualizer version project requires, according to the version of the keditor plugin */
+    /* Determine which Visualizer version project requires, according to the version that matches first in the order of branding/studioviz/keditor plugin */
     protected final getVisualizerVersion(text) {
-        def matcher = text =~ '<pluginInfo version-no="(\\d+\\.\\d+\\.\\d+)\\.\\w*" plugin-id="com.pat.tool.keditor"'
-        return matcher ? matcher[0][1] : null
+	    String visualizerVersion = ''
+        def plugins = [
+                'Branding': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.ide.paas.branding"/,
+                'Studioviz win64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.win64"/,
+                'Studioviz mac64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.mac64"/,
+                'KEditor': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.pat.tool.keditor"/
+        ]
+
+        plugins.find { pluginName, pluginSearchPattern ->
+            if (text =~ pluginSearchPattern) {
+                println "Found $pluginName plugin!"
+                visualizerVersion = Matcher.lastMatcher[0][1]
+                /* Return true to break the find loop, if at least one much been found */
+                return true
+            } else {
+                println "Could not find $pluginName plugin entry... Switching to the next plugin to search..."
+            }
+        }
+
+        return visualizerVersion ? visualizerVersion : null
     }
 
     protected final getArtifactLocations(artifactExtension) {
