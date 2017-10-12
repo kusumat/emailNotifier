@@ -7,8 +7,6 @@ import com.kony.appfactory.helper.ValidationHelper
 class SpaChannel extends Channel {
     /* Build parameters */
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
-//    private final fabricAppName = script.params.FABRIC_APP_NAME
-//    private final cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final selectedSpaChannels
 
     SpaChannel(script) {
