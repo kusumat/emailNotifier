@@ -253,7 +253,7 @@ class Fabric implements Serializable {
         script.catchErrorCustom(errorMessage, successMessage) {
             String gitUsername = URLEncoder.encode(script.env.gitUsername)
             String gitPassword = URLEncoder.encode(script.env.gitPassword)
-            String pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}")
+            String pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}@")
             String checkoutCommand = "git checkout \"$exportRepositoryBranch\""
             String commitCommand = "git commit -m \"$commitMessage\""
             String pushCommand = "git push \"$pushUrl\""
