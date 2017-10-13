@@ -23,7 +23,7 @@ class TestAutomation implements Serializable {
     private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
-    private deviceFarmTestRunResults = [runs:[]]
+    private deviceFarmTestRunResults = [:]
     private final awsRegion = 'us-west-2'
     private projectArtifacts = [
             Android_Mobile: [binaryName: getBinaryName(script.env.ANDROID_MOBILE_NATIVE_BINARY_URL),
@@ -318,10 +318,11 @@ class TestAutomation implements Serializable {
                                     def testRunResult = deviceFarm.getTestRunResult(arn)
                                     /* If we got a test result */
                                     if (testRunResult) {
-                                        /* Query DeviceFarm for test artifacts (logs, videos, etc) */
-                                        def testRunArtifacts = deviceFarm.getTestRunArtifacts(arn)[0]
-                                        /* Store test run artifact object in list */
-                                        deviceFarmTestRunResults['runs'].add(testRunArtifacts)
+                                        /*
+                                            Query DeviceFarm for test artifacts (logs, videos, etc) and
+                                            store test run artifact object in list
+                                         */
+                                        deviceFarmTestRunResults.runs = deviceFarm.getTestRunArtifacts(arn)
                                         /* Else notify user that result value is empty */
                                     } else {
                                         script.println "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
