@@ -3,7 +3,7 @@ package com.kony.appfactory.helper
 /**
  * Implements logic related to Amazon Web Services.
  */
-class AWSHelper implements Serializable {
+class AwsHelper implements Serializable {
     @NonCPS
     protected static getS3ArtifactURL(script, artifactPath) {
         def bucketName = script.env.S3_BUCKET_NAME

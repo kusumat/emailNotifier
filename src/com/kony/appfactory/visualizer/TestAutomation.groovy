@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer
 
-import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
@@ -199,7 +199,7 @@ class TestAutomation implements Serializable {
 
                     script.stage('Publish test automation scripts build result to S3') {
                         if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
-                            AWSHelper.publishToS3 script: script, sourceFileName: "${projectName}_TestApp.zip",
+                            AwsHelper.publishToS3 script: script, sourceFileName: "${projectName}_TestApp.zip",
                                     bucketPath: [
                                             'Tests',
                                             script.env.JOB_BASE_NAME,

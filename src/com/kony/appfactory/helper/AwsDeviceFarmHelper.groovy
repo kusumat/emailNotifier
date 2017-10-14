@@ -1,6 +1,5 @@
 package com.kony.appfactory.helper
 
-import com.kony.appfactory.helper.AWSHelper
 import groovy.json.JsonOutput
 
 /**
@@ -453,9 +452,9 @@ class AwsDeviceFarmHelper implements Serializable {
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll("\\s", '_')
 
                             fetchArtifact(artifactFullName, artifact.url)
-                            AWSHelper.publishToS3 script: script, bucketPath: s3path, sourceFileName: artifactFullName,
+                            AwsHelper.publishToS3 script: script, bucketPath: s3path, sourceFileName: artifactFullName,
                                     sourceFilePath: script.pwd()
-                            artifact.url = AWSHelper.getS3ArtifactURL(script, [s3path, artifactFullName].join('/'))
+                            artifact.url = AwsHelper.getS3ArtifactURL(script, [s3path, artifactFullName].join('/'))
                         }
                     }
                 }

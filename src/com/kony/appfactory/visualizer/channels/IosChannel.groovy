@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
@@ -127,7 +127,7 @@ class IosChannel extends Channel {
         String successMessage = 'PLIST file created successfully'
         String errorMessage = 'FAILED to create PLIST file'
         String plistResourcesFileName = 'apple_orig.plist'
-        String plistPathTagValue = AWSHelper.getS3ArtifactURL(script, ['Builds', script.env.FABRIC_ENV_NAME].join('/'))
+        String plistPathTagValue = AwsHelper.getS3ArtifactURL(script, ['Builds', script.env.FABRIC_ENV_NAME].join('/'))
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifacts[0].path) {
@@ -210,7 +210,7 @@ class IosChannel extends Channel {
                     artifacts?.each { artifact ->
                         String artifactName = artifact.name
                         String artifactPath = artifact.path
-                        String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                        String artifactUrl = AwsHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
                                 exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                         if (!artifact.name.contains('ipa')) { // Exclude ipa from artifacts list

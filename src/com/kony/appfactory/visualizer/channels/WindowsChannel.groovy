@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
@@ -58,7 +58,7 @@ class WindowsChannel extends Channel {
                         artifacts?.each { artifact ->
                             String artifactName = artifact.name
                             String artifactPath = artifact.path
-                            String artifactUrl = AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
+                            String artifactUrl = AwsHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
                                     exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
 
                             channelArtifacts.add([channelPath: channelPath,
