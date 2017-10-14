@@ -27,17 +27,9 @@ class SpaChannel extends Channel {
         script.stage('Check provided parameters') {
             ValidationHelper.checkBuildConfiguration(script)
 
-            def mandatoryParameters = []
-
-            if (publishFabricApp) {
-                mandatoryParameters.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
-            }
-
             if (!selectedSpaChannels) {
                 script.error('Please select at least one channel to build!')
             }
-
-            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
         script.node(nodeLabel) {
@@ -45,9 +37,15 @@ class SpaChannel extends Channel {
                 script.cleanWs deleteDirs: true
 
                 script.stage('Check build-node environment') {
-                    ValidationHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE',
-                             'FABRIC_ENV_NAME'])
+                    def mandatoryParameters = [
+                            'VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME'
+                    ]
+
+                    if (publishFabricApp) {
+                        mandatoryParameters.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
+                    }
+
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
                 script.stage('Checkout') {
