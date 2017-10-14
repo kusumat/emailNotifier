@@ -5,9 +5,10 @@ package com.kony.appfactory.helper
  */
 class ValidationHelper implements Serializable {
     /**
-     * Validate build parameters and environment variables
-     * @param script - pipeline object.
-     * @param [parametersToCheck] - parameters that need to be validated.
+     * Validate build parameters and environment variables.
+     *
+     * @param script pipeline object.
+     * @param [parametersToCheck] parameters that need to be validated.
      */
     protected static void checkBuildConfiguration(script, parametersToCheck = []) {
         /* List of the parameters that every channel job requires */
@@ -44,10 +45,11 @@ class ValidationHelper implements Serializable {
     }
 
     /**
-     * Filter required parameters
-     * @param environment Map<String, String> build parameters and environment variables
-     * @param requiredParams required parameters list
-     * @return filtered parameters
+     * Filters required parameters.
+     *
+     * @param environment Map<String, String> build parameters and environment variables.
+     * @param requiredParams required parameters list.
+     * @return filtered parameters.
      */
     private static collectEnvironmentVariables(environment, requiredParams) {
         requiredParams.collectEntries { param ->
@@ -59,18 +61,20 @@ class ValidationHelper implements Serializable {
     }
 
     /**
-     * Check if any of the parameters is empty
-     * @param items parameters to check for null
-     * @return parameters that have empty values
+     * Checks if any of the parameters is empty.
+     *
+     * @param items parameters to check for null.
+     * @return parameters that have empty values.
      */
     private static checkForNull(items) {
         items?.findAll { !it.value }
     }
 
     /**
-     * Validates values of the required parameters
-     * @param items parameters to validate
-     * @return parameters that have not valid values
+     * Validates values of the required parameters.
+     *
+     * @param items parameters to validate.
+     * @return parameters that have not valid values.
      */
     private static checkIfValid(items) {
         items?.findAll { item ->
