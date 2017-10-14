@@ -1,4 +1,4 @@
-package com.kony.appfactory.visualizer.testing
+package com.kony.appfactory.helper
 
 import com.kony.appfactory.helper.AWSHelper
 import groovy.json.JsonOutput
@@ -6,14 +6,14 @@ import groovy.json.JsonOutput
 /**
  * Implements DeviceFarm logic.
  */
-class DeviceFarm implements Serializable {
+class AwsDeviceFarmHelper implements Serializable {
     def script
     /**
      * Class constructor.
      *
      * @param script the pipeline object.
      */
-    DeviceFarm(script) {
+    AwsDeviceFarmHelper(script) {
         this.script = script
     }
 

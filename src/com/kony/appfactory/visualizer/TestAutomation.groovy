@@ -3,7 +3,7 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.AWSHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
-import com.kony.appfactory.visualizer.testing.DeviceFarm
+import com.kony.appfactory.helper.AwsDeviceFarmHelper
 
 class TestAutomation implements Serializable {
     private script
@@ -52,7 +52,7 @@ class TestAutomation implements Serializable {
 
     TestAutomation(script) {
         this.script = script
-        deviceFarm = new DeviceFarm(this.script)
+        deviceFarm = new AwsDeviceFarmHelper(this.script)
     }
 
     protected final void validateBuildParameters(buildParameters) {
