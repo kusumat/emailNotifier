@@ -103,9 +103,9 @@ class NotificationsHelper implements Serializable {
             /* Get sub-folder for S3 path */
             String subFolder = (fileToStore.name.contains('build')) ? 'Builds' : 'Tests'
             /* Publish file on S3 */
-            AwsHelper.publishToS3 script: script, sourceFileName: fileToStore.name,
+            AwsHelper.publishToS3 sourceFileName: fileToStore.name,
                     bucketPath: [subFolder, script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'),
-                    sourceFilePath: script.pwd()
+                    sourceFilePath: script.pwd(), script
         }
     }
 

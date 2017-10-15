@@ -19,8 +19,8 @@ class AwsHelper implements Serializable {
             the bucket name is part of the domain name in the URL.
             For example: http://bucket.s3.amazonaws.com
          */
-        String bucketUrl = (script.env.S3_BUCKET_URL) ?: script.error("S3 bucket URL is missing!")
-        String projectName = (script.env.PROJECT_NAME) ?: script.error("Project name is missing!")
+        String bucketUrl = (script.env.S3_BUCKET_URL) ?: script.error("S3 bucket URL value can't be null!")
+        String projectName = (script.env.PROJECT_NAME) ?: script.error("Project name value can't be null!")
         String s3Path = [projectName, artifactPath].join('/')
         String s3UrlString = [bucketUrl, s3Path].join('/')
 
@@ -38,15 +38,25 @@ class AwsHelper implements Serializable {
         s3Uri.toString()
     }
 
-    protected static publishToS3(args) {
-        def script = args.script
-        String fileName = args.sourceFileName
-        String bucketPath = [script.env.S3_BUCKET_NAME, script.env.PROJECT_NAME, args.bucketPath].join('/')
-        String bucketRegion = script.env.S3_BUCKET_REGION
-        String artifactFolder = args.sourceFilePath
-        String artifactUrl = getS3ArtifactUrl(script, [args.bucketPath, fileName].join('/'))
-        String successMessage = 'Artifact published successfully'
-        String errorMessage = 'FAILED to publish artifact'
+    /**
+     * Uploads file on S3 to provided location.
+     *
+     * @param args method named arguments.
+     * @param script pipeline object.
+     * @param exposeUrl flag to expose S3 artifact URL.
+     * @return S3 URL for uploaded artifact.
+     */
+    protected static String publishToS3(Map args, script, boolean exposeUrl = false) {
+        String fileName = (args.sourceFileName) ?: script.error("fileName argument can't be null!")
+        String projectName = (script.env.PROJECT_NAME) ?: script.error("Project name value can't be null!")
+        String bucketName = (script.env.S3_BUCKET_NAME) ?: script.error("Bucket name value can't be null!")
+        String bucketPath = (args.bucketPath) ?: script.error("bucketPath argument can't be null!")
+        String bucketRegion = (script.env.S3_BUCKET_REGION) ?: script.error("Bucket region value can't be null!")
+        String fullBucketPath = [bucketName, projectName, bucketPath].join('/')
+        String artifactFolder = (args.sourceFilePath) ?: script.error("artifactFolder argument can't be null!")
+        String artifactUrl = getS3ArtifactUrl(script, [bucketPath, fileName].join('/'))
+        String successMessage = 'Artifact published successfully.'
+        String errorMessage = 'Failed to publish artifact!'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
@@ -54,7 +64,7 @@ class AwsHelper implements Serializable {
                              consoleLogLevel                     : 'INFO',
                              dontWaitForConcurrentBuildCompletion: false,
                              entries                             : [
-                                     [bucket           : bucketPath,
+                                     [bucket           : fullBucketPath,
                                       flatten          : true,
                                       keepForever      : true,
                                       managedArtifacts : false,
@@ -63,12 +73,15 @@ class AwsHelper implements Serializable {
                                       sourceFile       : fileName]
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
-                if (args.exposeURL) {
-                    script.echo "Artifact($fileName) URL: ${artifactUrl}"
-                }
+
             }
         }
 
+        if (exposeUrl) {
+            script.echo "Artifact($fileName) URL: ${artifactUrl}"
+        }
+
+        /* Return uploaded artifact S3 URL */
         artifactUrl
     }
 }

@@ -452,8 +452,8 @@ class AwsDeviceFarmHelper implements Serializable {
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll("\\s", '_')
 
                             fetchArtifact(artifactFullName, artifact.url)
-                            AwsHelper.publishToS3 script: script, bucketPath: s3path, sourceFileName: artifactFullName,
-                                    sourceFilePath: script.pwd()
+                            AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: artifactFullName,
+                                    sourceFilePath: script.pwd(), script
                             artifact.url = AwsHelper.getS3ArtifactUrl(script, [s3path, artifactFullName].join('/'))
                         }
                     }

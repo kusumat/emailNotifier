@@ -58,8 +58,8 @@ class WindowsChannel extends Channel {
                         artifacts?.each { artifact ->
                             String artifactName = artifact.name
                             String artifactPath = artifact.path
-                            String artifactUrl = AwsHelper.publishToS3 script: script, bucketPath: s3ArtifactPath,
-                                    exposeURL: true, sourceFileName: artifactName, sourceFilePath: artifactPath
+                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
 
                             channelArtifacts.add([channelPath: channelPath,
                                                   name       : artifactName,
