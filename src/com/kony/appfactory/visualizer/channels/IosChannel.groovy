@@ -127,7 +127,7 @@ class IosChannel extends Channel {
         String successMessage = 'PLIST file created successfully'
         String errorMessage = 'FAILED to create PLIST file'
         String plistResourcesFileName = 'apple_orig.plist'
-        String plistPathTagValue = AwsHelper.getS3ArtifactURL(script, ['Builds', script.env.FABRIC_ENV_NAME].join('/'))
+        String plistPathTagValue = AwsHelper.getS3ArtifactUrl(script, ['Builds', script.env.FABRIC_ENV_NAME].join('/'))
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifacts[0].path) {

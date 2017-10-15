@@ -4,15 +4,38 @@ package com.kony.appfactory.helper
  * Implements logic related to Amazon Web Services.
  */
 class AwsHelper implements Serializable {
-    @NonCPS
-    protected static getS3ArtifactURL(script, artifactPath) {
-        def bucketName = script.env.S3_BUCKET_NAME
-        def bucketRegion = (script.env.S3_BUCKET_REGION == 'us-east-1') ? '' : "-${script.env.S3_BUCKET_REGION}"
-        def projectName = script.env.PROJECT_NAME
-        def s3Path = [bucketName, projectName, artifactPath].join('/')
-        URI s3URI = new URI('https', "s3${bucketRegion}.amazonaws.com", "/${s3Path}", null)
+    /**
+     * Generates s3 URL for provided artifact path.
+     *
+     * @param script pipeline object.
+     * @param artifactPath artifact path on s3 bucket.
+     * @return s3 URL for artifact, all special characters in URL path will be escaped.
+     */
+    protected static String getS3ArtifactUrl(script, String artifactPath) {
+        URL s3Url
+        URI s3Uri
+        /*
+            S3_BUCKET_URL must contain s3 base URL in a virtual-hosted–style,
+            the bucket name is part of the domain name in the URL.
+            For example: http://bucket.s3.amazonaws.com
+         */
+        String bucketUrl = (script.env.S3_BUCKET_URL) ?: script.error("S3 bucket URL is missing!")
+        String projectName = (script.env.PROJECT_NAME) ?: script.error("Project name is missing!")
+        String s3Path = [projectName, artifactPath].join('/')
+        String s3UrlString = [bucketUrl, s3Path].join('/')
 
-        s3URI.toString()
+        script.catchErrorCustom('Artifact S3 URL is not valid!') {
+            /* Transform s3 URL into a URL object, to be able to get protocol, host, path for next step */
+            s3Url = s3UrlString.toURL()
+            /*
+                Construct a URI by parsing scheme(protocol), host, path, fragment(null).
+                This step been added, to be able to escape spaces and rest of specials characters in s3 bucket path.
+            */
+            s3Uri = new URI(s3Url.protocol, s3Url.host, s3Url.path, null)
+        }
+
+        /* Return escaped s3 artifact URL as a string */
+        s3Uri.toString()
     }
 
     protected static publishToS3(args) {
@@ -21,7 +44,7 @@ class AwsHelper implements Serializable {
         String bucketPath = [script.env.S3_BUCKET_NAME, script.env.PROJECT_NAME, args.bucketPath].join('/')
         String bucketRegion = script.env.S3_BUCKET_REGION
         String artifactFolder = args.sourceFilePath
-        String artifactUrl = getS3ArtifactURL(script, [args.bucketPath, fileName].join('/'))
+        String artifactUrl = getS3ArtifactUrl(script, [args.bucketPath, fileName].join('/'))
         String successMessage = 'Artifact published successfully'
         String errorMessage = 'FAILED to publish artifact'
 
