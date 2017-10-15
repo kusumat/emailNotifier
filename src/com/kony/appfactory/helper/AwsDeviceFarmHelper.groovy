@@ -1,19 +1,18 @@
-package com.kony.appfactory.visualizer.testing
+package com.kony.appfactory.helper
 
-import com.kony.appfactory.helper.AWSHelper
 import groovy.json.JsonOutput
 
 /**
  * Implements DeviceFarm logic.
  */
-class DeviceFarm implements Serializable {
+class AwsDeviceFarmHelper implements Serializable {
     def script
     /**
      * Class constructor.
      *
      * @param script the pipeline object.
      */
-    DeviceFarm(script) {
+    AwsDeviceFarmHelper(script) {
         this.script = script
     }
 
@@ -453,9 +452,9 @@ class DeviceFarm implements Serializable {
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll("\\s", '_')
 
                             fetchArtifact(artifactFullName, artifact.url)
-                            AWSHelper.publishToS3 script: script, bucketPath: s3path, sourceFileName: artifactFullName,
-                                    sourceFilePath: script.pwd()
-                            artifact.url = AWSHelper.getS3ArtifactURL(script, [s3path, artifactFullName].join('/'))
+                            AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: artifactFullName,
+                                    sourceFilePath: script.pwd(), script
+                            artifact.url = AwsHelper.getS3ArtifactUrl(script, [s3path, artifactFullName].join('/'))
                         }
                     }
                 }

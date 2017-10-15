@@ -1,9 +1,9 @@
 package com.kony.appfactory.visualizer
 
-import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
-import com.kony.appfactory.visualizer.testing.DeviceFarm
+import com.kony.appfactory.helper.AwsDeviceFarmHelper
 
 class TestAutomation implements Serializable {
     private script
@@ -52,7 +52,7 @@ class TestAutomation implements Serializable {
 
     TestAutomation(script) {
         this.script = script
-        deviceFarm = new DeviceFarm(this.script)
+        deviceFarm = new AwsDeviceFarmHelper(this.script)
     }
 
     protected final void validateBuildParameters(buildParameters) {
@@ -199,13 +199,13 @@ class TestAutomation implements Serializable {
 
                     script.stage('Publish test automation scripts build result to S3') {
                         if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
-                            AWSHelper.publishToS3 script: script, sourceFileName: "${projectName}_TestApp.zip",
+                            AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
                                     bucketPath: [
                                             'Tests',
                                             script.env.JOB_BASE_NAME,
                                             script.env.BUILD_NUMBER
                                     ].join('/'),
-                                    sourceFilePath: "${testFolder}/target", exposeURL: true
+                                    sourceFilePath: "${testFolder}/target", script, true
                         } else {
                             script.error 'FAILED to find build result artifact!'
                         }
