@@ -46,7 +46,8 @@ class Fabric implements Serializable {
         ].join('/')
 
         script.catchErrorCustom("FAILED to fetch Fabric CLI (version: $fabricCliVersion)") {
-            script.httpRequest url: fabricCliUrl, outputFile: fabricCliFileName, validResponseCodes: '200'
+//            script.httpRequest url: fabricCliUrl, outputFile: fabricCliFileName, validResponseCodes: '200'
+            script.shellCustom("curl -k -s -S -f -L -o \'${fabricCliFileName}\' \'${fabricCliUrl}\'")
         }
     }
 
