@@ -6,6 +6,7 @@ import com.kony.appfactory.helper.ValidationHelper
 
 class AndroidChannel extends Channel {
     /* Build parameters */
+    private final androidVersion = script.params.ANDROID_VERSION
     private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
@@ -21,7 +22,8 @@ class AndroidChannel extends Channel {
         nodeLabel = 'win || mac'
         channelOs = 'Android'
         channelType = 'Native'
-        /* Expose Android package name to environment variables to use it in HeadlessBuild.properties */
+        /* Expose Android build parameters to environment variables to use it in HeadlessBuild.properties */
+        this.script.env['APP_VERSION'] = androidVersion
         this.script.env['ANDROID_PACKAGE_NAME'] = androidPackageName
     }
 
@@ -78,7 +80,7 @@ class AndroidChannel extends Channel {
         script.stage('Check provided parameters') {
             ValidationHelper.checkBuildConfiguration(script)
 
-            def mandatoryParameters = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
+            def mandatoryParameters = ['APP_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
 
             channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
                     mandatoryParameters.add('ANDROID_TABLET_APP_ID')
