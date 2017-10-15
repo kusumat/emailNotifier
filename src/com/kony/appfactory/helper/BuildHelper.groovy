@@ -169,7 +169,6 @@ class BuildHelper implements Serializable {
     }
 
     protected final static getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion) {
-        (script) ?: script.error("script argument can't be null!")
         (separator) ?: script.error("separator argument can't be null!")
         (visualizerHome) ?: script.error("visualizerHome argument can't be null!")
         (visualizerVersion) ?: script.error("visualizerVersion argument can't be null!")
