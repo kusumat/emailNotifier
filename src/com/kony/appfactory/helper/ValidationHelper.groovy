@@ -94,6 +94,9 @@ class ValidationHelper implements Serializable {
                 case 'ANDROID_VERSION_CODE':
                     regex = /^\d+$/
                     break
+                case 'CLOUD_ACCOUNT_ID':
+                    regex = /^\d{9}$/
+                    break
                 default:
                     regex = /.*/
                     break
