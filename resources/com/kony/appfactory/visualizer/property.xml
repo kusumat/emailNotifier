@@ -106,8 +106,8 @@
         <condition property="buildMode" value="${env.BUILD_MODE}" else="">
             <isset property="env.BUILD_MODE"/>
         </condition>
-        <condition property="mainVersion" value="${env.ANDROID_VERSION}" else="">
-            <isset property="env.ANDROID_VERSION"/>
+        <condition property="appVersion" value="${env.APP_VERSION}" else="">
+            <isset property="env.APP_VERSION"/>
         </condition>
         <condition property="mapGoogleKey" value="${env.GOOGLE_MAPS_KEY}" else="">
             <isset property="env.GOOGLE_MAPS_KEY"/>
@@ -161,7 +161,7 @@
             <entry key="mode" value="0"/>
             <entry key="build.mode" value="${buildMode}"/>
             <entry key="appid" value="${projectName}"/>
-            <entry key="version" value="${mainVersion}"/>
+            <entry key="version" value="${appVersion}"/>
             <entry key="map_google_key" value="${mapGoogleKey}"/>
             <entry key="default_locale" value="${defaultLocale}"/>
             <entry key="android.packagename" value="${androidPackageName}"/>
