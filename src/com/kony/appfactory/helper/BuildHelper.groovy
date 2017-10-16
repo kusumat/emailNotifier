@@ -115,6 +115,18 @@ class BuildHelper implements Serializable {
         }
     }
 
+    @NonCPS
+    protected final static Properties loadLibraryProperties(script, String resourcePath) {
+        String propertyFileContent = script.libraryResource(resourcePath)
+
+        Properties libraryProperties = new Properties()
+        InputStream inputStream = new ByteArrayInputStream(propertyFileContent.getBytes())
+
+        libraryProperties.load(inputStream)
+
+        libraryProperties
+    }
+
     /*  Workaround for switching Visualizer dependencies */
     /* --------------------------------------------------- START --------------------------------------------------- */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
