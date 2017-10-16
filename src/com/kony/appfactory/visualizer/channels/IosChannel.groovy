@@ -29,7 +29,7 @@ class IosChannel extends Channel {
     }
 
     protected final exposeFastlaneConfig() {
-        Properties libraryProperties = script.loadLibraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
+        def libraryProperties = script.loadLibraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
         String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
         /* For using temporary access keys (AssumeRole) */
@@ -45,10 +45,10 @@ class IosChannel extends Channel {
                         force: true
 
                 /* Read fastlane configuration for file */
-                def config = script.readFile file: fastlaneEnvFileName
+                String config = script.readFile file: fastlaneEnvFileName
 
                 /* Convert to properties */
-                def fastlaneConfig = script.readProperties text: config
+                Properties fastlaneConfig = script.readProperties text: config
 
                 /* Expose values from config as env variables to use them during IPA file creation */
                 for (item in fastlaneConfig) {
