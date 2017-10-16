@@ -7,7 +7,7 @@ import com.kony.appfactory.helper.AwsDeviceFarmHelper
 
 class TestAutomation implements Serializable {
     private script
-    private final nodeLabel = 'linux'
+    private libraryProperties
     private workspace
     private projectFullPath
     private testFolder
@@ -20,11 +20,15 @@ class TestAutomation implements Serializable {
     private gitURL = script.env.PROJECT_GIT_URL
     /* Device Farm properties */
     private runTests = false
-    private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn
+    private deviceFarm
+    private deviceFarmProjectArn
+    private devicePoolArns
+    private deviceFarmTestUploadArtifactArn
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
     private deviceFarmTestRunResults = [:]
-    private final awsRegion = 'us-west-2'
+    private deviceFarmWorkingFolder
+    private awsRegion
     private projectArtifacts = [
             Android_Mobile: [binaryName: getBinaryName(script.env.ANDROID_MOBILE_NATIVE_BINARY_URL),
                              extension : 'apk',
@@ -48,11 +52,12 @@ class TestAutomation implements Serializable {
                                        uploadType: 'APPIUM_JAVA_TESTNG_TEST_PACKAGE',
                                        url       : (script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
     ]
-    private deviceFarmWorkingDirectory
 
     TestAutomation(script) {
         this.script = script
         deviceFarm = new AwsDeviceFarmHelper(this.script)
+        libraryProperties = BuildHelper.loadLibraryProperties(this.script, 'com/kony/appfactory/configurations/common.properties')
+        awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
     }
 
     protected final void validateBuildParameters(buildParameters) {
@@ -173,12 +178,12 @@ class TestAutomation implements Serializable {
             validateBuildParameters(script.params)
         }
 
-        script.node(nodeLabel) {
+        script.node(libraryProperties.'test.automation.node.label') {
             /* Set environment-dependent variables */
             workspace = script.env.WORKSPACE
             projectFullPath = workspace + '/' + projectName
-            testFolder = projectFullPath + '/' + 'test/TestNG'
-            deviceFarmWorkingDirectory = projectFullPath + '/' + 'deviceFarm'
+            testFolder = projectFullPath + '/' + libraryProperties.'test.automation.scripts.path'
+            deviceFarmWorkingFolder = projectFullPath + '/' + libraryProperties.'test.automation.device.farm.working.folder.name'
 
             try {
                 script.cleanWs deleteDirs: true
@@ -226,7 +231,7 @@ class TestAutomation implements Serializable {
             /* Run tests on provided binaries */
             if (runTests) {
                 try {
-                    script.dir(deviceFarmWorkingDirectory) {
+                    script.dir(deviceFarmWorkingFolder) {
                     /* Providing AWS region for DeviceFarm, currently DeviceFarm available in us-west-2 */
                     script.withAWS(region: awsRegion) {
                         script.stage('Fetch binaries') {
@@ -235,7 +240,7 @@ class TestAutomation implements Serializable {
                                 /* If test binaries URL was not provided, copy binaries from the build step */
                                 if (artifactURL == 'jobWorkspace') {
                                     String artifactPath = "${testFolder}/target/${artifactName}.${artifactExt}"
-                                    script.sh "cp $artifactPath $deviceFarmWorkingDirectory"
+                                    script.sh "cp $artifactPath $deviceFarmWorkingFolder"
                                     /* Else, fetch binaries */
                                 } else {
                                     deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
