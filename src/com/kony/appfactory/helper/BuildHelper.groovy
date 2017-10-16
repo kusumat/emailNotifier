@@ -124,6 +124,10 @@ class BuildHelper implements Serializable {
 
         libraryProperties.load(inputStream)
 
+        if (!libraryProperties) {
+            throw new NullPointerException('Failed to load library configuration!')
+        }
+
         libraryProperties
     }
 
