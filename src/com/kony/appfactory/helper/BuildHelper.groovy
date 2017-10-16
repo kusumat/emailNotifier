@@ -161,15 +161,16 @@ class BuildHelper implements Serializable {
         }
     }
 
-    private final static fetchRequiredDependencies(script, visualizerVersion) {
+    private final static fetchRequiredDependencies(script, visualizerVersion, dependenciesFileName,
+                                                   dependenciesBaseUrl, dependenciesArchiveFilePrefix,
+                                                   dependenciesArchiveFileExtension) {
         (visualizerVersion) ?: script.error("Visualizer version couldn't be null!")
 
         def dependenciesArchive = null
-        def dependenciesFileName = 'externaldependencies.json'
-        def dependenciesBaseURL = "http://download.kony.com/visualizer_enterprise/citools"
-        def dependenciesArchiveFileName = 'visualizer-ci-tool-' + visualizerVersion + '.' + 'zip'
+        def dependenciesArchiveFileName = dependenciesArchiveFilePrefix + visualizerVersion +
+                dependenciesArchiveFileExtension
         def dependenciesURL = [
-                dependenciesBaseURL, visualizerVersion, dependenciesArchiveFileName
+                dependenciesBaseUrl, visualizerVersion, dependenciesArchiveFileName
         ].join('/')
 
         script.catchErrorCustom('FAILED to fetch Visualizer dependencies file!') {
@@ -184,13 +185,20 @@ class BuildHelper implements Serializable {
         dependenciesArchive?."$dependenciesFileName"
     }
 
-    protected final static getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion) {
+    protected final static getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion,
+                                                     dependenciesFileName, dependenciesBaseUrl,
+                                                     dependenciesArchiveFilePrefix, dependenciesArchiveFileExtension) {
         (separator) ?: script.error("separator argument can't be null!")
         (visualizerHome) ?: script.error("visualizerHome argument can't be null!")
         (visualizerVersion) ?: script.error("visualizerVersion argument can't be null!")
+        (dependenciesFileName) ?: script.error("dependenciesFileName argument can't be null!")
+        (dependenciesBaseUrl) ?: script.error("dependenciesBaseUrl argument can't be null!")
+        (dependenciesArchiveFilePrefix) ?: script.error("dependenciesArchiveFilePrefix argument can't be null!")
+        (dependenciesArchiveFileExtension) ?: script.error("dependenciesArchiveFileExtension argument can't be null!")
 
         def dependencies = []
-        def dependenciesFileContent = fetchRequiredDependencies(script, visualizerVersion)
+        def dependenciesFileContent = fetchRequiredDependencies(script, visualizerVersion, dependenciesFileName,
+                dependenciesBaseUrl, dependenciesArchiveFilePrefix, dependenciesArchiveFileExtension)
         def visualizerDependencies = (parseDependenciesFileContent(script, dependenciesFileContent)) ?:
                 script.error("Visualizer dependencies object can't be null!")
         def getInstallationPath = { toolPath ->
