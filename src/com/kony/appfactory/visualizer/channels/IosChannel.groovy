@@ -21,7 +21,6 @@ class IosChannel extends Channel {
 
     IosChannel(script) {
         super(script)
-        nodeLabel = 'mac'
         channelOs = 'iOS'
         channelType = 'Native'
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
@@ -29,7 +28,6 @@ class IosChannel extends Channel {
     }
 
     protected final exposeFastlaneConfig() {
-        def libraryProperties = script.loadLibraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
         String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
         /* For using temporary access keys (AssumeRole) */
@@ -105,11 +103,11 @@ class IosChannel extends Channel {
                             "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
-                            String fastFileName = 'Fastfile'
+                            String fastFileName = libraryProperties.'fastlane.fastfile.name'
                             String fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
                             script.writeFile file: fastFileName, text: fastFileContent
                         }
-                        script.sshagent (credentials: ['jenkins_github_ssh-certificates']) {
+                        script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
                             script.sh '$FASTLANE_DIR/fastlane kony_ios_' + fastLaneBuildCommand
                         }
                     }
@@ -122,9 +120,9 @@ class IosChannel extends Channel {
         (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
         (ipaArtifactPath) ?: script.error("ipaArtifactPath argument can't be null!")
 
-        String successMessage = 'PLIST file created successfully'
+        String successMessage = 'PLIST file created successfully.'
         String errorMessage = 'Failed to create PLIST file'
-        String plistResourcesFileName = 'apple_orig.plist'
+        String plistResourcesFileName = libraryProperties.'ios.plist.file.name'
         String plistFileName = "${projectName}_${jobBuildNumber}.plist"
 
         script.catchErrorCustom(errorMessage, successMessage) {
@@ -156,7 +154,7 @@ class IosChannel extends Channel {
             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
-        script.node(nodeLabel) {
+        script.node(libraryProperties.'ios.node.label') {
             /* Get and expose configuration file for fastlane */
             exposeFastlaneConfig()
 
@@ -202,7 +200,7 @@ class IosChannel extends Channel {
                     plistArtifact = createPlist(ipaArtifactUrl, ipaArtifact.path)
                 }
 
-                script.stage("Publish plist artifact to S3") {
+                script.stage("Publish PLIST artifact to S3") {
                     String artifactName = plistArtifact.name
                     String artifactPath = plistArtifact.path
                     String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,

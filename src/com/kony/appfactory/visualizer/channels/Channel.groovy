@@ -32,10 +32,10 @@ class Channel implements Serializable {
     protected artifactsBasePath
     protected artifactExtension
     protected s3ArtifactPath
-    protected nodeLabel
+    protected libraryProperties
     /* Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and can not be used */
-    final projectWorkspaceFolderName = 'vis_ws'
-    final resourceBasePath = 'com/kony/appfactory/visualizer/'
+    final projectWorkspaceFolderName
+    final resourceBasePath
     /* Common build parameters */
     protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
@@ -51,9 +51,13 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
+        libraryProperties = BuildHelper.loadLibraryProperties(this.script, 'com/kony/appfactory/configurations/common.properties')
+        projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
+        resourceBasePath = libraryProperties.'project.resources.base.path'
         fabric = new Fabric(this.script)
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
+        this.script.println libraryProperties
     }
 
     protected final void pipelineWrapper(closure) {
@@ -110,7 +114,11 @@ class Channel implements Serializable {
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
         /* Get Visualizer dependencies */
         visualizerDependencies = (
-                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerHome, visualizerVersion)
+                BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerHome,
+                        visualizerVersion, libraryProperties.'visualizer.dependencies.file.name',
+                        libraryProperties.'visualizer.dependencies.base.url',
+                        libraryProperties.'visualizer.dependencies.archive.file.prefix',
+                        libraryProperties.'visualizer.dependencies.archive.file.extension')
         ) ?: script.error('Missing Visualizer dependencies!')
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath
@@ -140,7 +148,7 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
         // Populate Fabric configuration to appfactory.js file
-        populateFabricAppConfig('appfactory.js')
+        populateFabricAppConfig()
 
         script.catchErrorCustom('FAILED to build the project') {
             script.dir(projectFullPath) {
@@ -159,7 +167,10 @@ class Channel implements Serializable {
         }
     }
 
-    /* Determine which Visualizer version project requires, according to the version that matches first in the order of branding/studioviz/keditor plugin */
+    /*
+        Determine which Visualizer version project requires,
+        according to the version that matches first in the order of branding/studioviz/keditor plugin
+    */
     protected final getVisualizerVersion(text) {
 	    String visualizerVersion = ''
         def plugins = [
@@ -171,16 +182,16 @@ class Channel implements Serializable {
 
         plugins.find { pluginName, pluginSearchPattern ->
             if (text =~ pluginSearchPattern) {
-                println "Found $pluginName plugin!"
+                script.echo "Found $pluginName plugin!"
                 visualizerVersion = Matcher.lastMatcher[0][1]
                 /* Return true to break the find loop, if at least one much been found */
                 return true
             } else {
-                println "Could not find $pluginName plugin entry... Switching to the next plugin to search..."
+                script.echo "Could not find $pluginName plugin entry... Switching to the next plugin to search..."
             }
         }
 
-        return visualizerVersion ? visualizerVersion : null
+        visualizerVersion
     }
 
     protected final getArtifactLocations(artifactExtension) {
@@ -237,7 +248,8 @@ class Channel implements Serializable {
         renamedArtifacts
     }
 
-    protected final populateFabricAppConfig(configFileName) {
+    protected final void populateFabricAppConfig() {
+        String configFileName = libraryProperties.'fabric.config.file.name'
         String successMessage = 'Fabric app key, secret and service URL were successfully populated'
         String errorMessage = 'FAILED to populate Fabric app key, secret and service URL'
 
@@ -262,7 +274,7 @@ class Channel implements Serializable {
                 }
             }
         } else {
-            script.println "Skipping population of Fabric app key, secret and service URL, " +
+            script.echo "Skipping population of Fabric app key, secret and service URL, " +
                     "credentials parameter was not provided!"
         }
     }

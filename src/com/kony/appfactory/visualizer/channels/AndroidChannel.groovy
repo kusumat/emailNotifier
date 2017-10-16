@@ -19,7 +19,6 @@ class AndroidChannel extends Channel {
 
     AndroidChannel(script) {
         super(script)
-        nodeLabel = 'win || mac'
         channelOs = 'Android'
         channelType = 'Native'
         /* Expose Android build parameters to environment variables to use it in HeadlessBuild.properties */
@@ -29,7 +28,7 @@ class AndroidChannel extends Channel {
 
     private final void signArtifacts(buildArtifacts) {
         String errorMessage = 'FAILED to sign artifact'
-        String signer = 'jarsigner'
+        String signer = libraryProperties.'android.signer.name'
         String androidBuildToolsPath = (visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath) ?:
                 script.error('Android build tools path is missing!')
         String javaBinPath = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
@@ -94,7 +93,7 @@ class AndroidChannel extends Channel {
             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
-        script.node(nodeLabel) {
+        script.node(libraryProperties.'android.node.label') {
             pipelineWrapper {
                 script.cleanWs deleteDirs: true
 
@@ -124,7 +123,8 @@ class AndroidChannel extends Channel {
                     if (buildMode == 'release') {
                         signArtifacts(buildArtifacts)
                     } else {
-                        script.println "Build mode is $buildMode, skipping signing!"
+                        script.echo "Build mode is $buildMode, " +
+                                "skipping signing (artifact already signed with debug certificate)!"
                     }
                 }
 
