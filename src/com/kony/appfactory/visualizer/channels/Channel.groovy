@@ -33,6 +33,7 @@ class Channel implements Serializable {
     protected artifactExtension
     protected s3ArtifactPath
     protected nodeLabel
+    protected libraryProperties
     /* Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and can not be used */
     final projectWorkspaceFolderName = 'vis_ws'
     final resourceBasePath = 'com/kony/appfactory/visualizer/'
@@ -52,6 +53,7 @@ class Channel implements Serializable {
     Channel(script) {
         this.script = script
         fabric = new Fabric(this.script)
+        libraryProperties = this.script.libraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
     }
