@@ -21,7 +21,6 @@ class IosChannel extends Channel {
 
     IosChannel(script) {
         super(script)
-        nodeLabel = libraryProperties.'ios.node.label'
         channelOs = 'iOS'
         channelType = 'Native'
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
@@ -155,7 +154,7 @@ class IosChannel extends Channel {
             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
-        script.node(nodeLabel) {
+        script.node(libraryProperties.'ios.node.label') {
             /* Get and expose configuration file for fastlane */
             exposeFastlaneConfig()
 

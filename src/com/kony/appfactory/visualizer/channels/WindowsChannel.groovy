@@ -10,7 +10,6 @@ class WindowsChannel extends Channel {
 
     WindowsChannel(script) {
         super(script)
-        nodeLabel = libraryProperties.'windows.node.label'
         channelOs = this.script.params.OS
         channelType = 'Native'
         shortenedWorkspaceBasePath = libraryProperties.'windows.shortened.workspace.base.path'
@@ -26,7 +25,7 @@ class WindowsChannel extends Channel {
             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
-        script.node(nodeLabel) {
+        script.node(libraryProperties.'windows.node.label') {
             script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
                 pipelineWrapper {
                     script.cleanWs deleteDirs: true

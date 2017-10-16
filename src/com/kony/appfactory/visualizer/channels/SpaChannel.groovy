@@ -12,7 +12,6 @@ class SpaChannel extends Channel {
 
     SpaChannel(script) {
         super(script)
-        nodeLabel = libraryProperties.'spa.node.label'
         channelOs = channelFormFactor = channelType = 'SPA'
         selectedSpaChannels = getSelectedSpaChannels(this.script.params)
         /* Expose SPA build parameters to environment variables to use it in HeadlessBuild.properties */
@@ -35,7 +34,7 @@ class SpaChannel extends Channel {
             }
         }
 
-        script.node(nodeLabel) {
+        script.node(libraryProperties.'spa.node.label') {
             pipelineWrapper {
                 script.cleanWs deleteDirs: true
 

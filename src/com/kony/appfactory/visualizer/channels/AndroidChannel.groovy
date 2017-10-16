@@ -19,7 +19,6 @@ class AndroidChannel extends Channel {
 
     AndroidChannel(script) {
         super(script)
-        nodeLabel = libraryProperties.'android.node.label'
         channelOs = 'Android'
         channelType = 'Native'
         /* Expose Android build parameters to environment variables to use it in HeadlessBuild.properties */
@@ -94,7 +93,7 @@ class AndroidChannel extends Channel {
             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
         }
 
-        script.node(nodeLabel) {
+        script.node(libraryProperties.'android.node.label') {
             pipelineWrapper {
                 script.cleanWs deleteDirs: true
 

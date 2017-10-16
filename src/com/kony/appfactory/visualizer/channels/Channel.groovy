@@ -32,7 +32,6 @@ class Channel implements Serializable {
     protected artifactsBasePath
     protected artifactExtension
     protected s3ArtifactPath
-    protected nodeLabel
     protected libraryProperties
     /* Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and can not be used */
     final projectWorkspaceFolderName
