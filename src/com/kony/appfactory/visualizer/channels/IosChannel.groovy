@@ -5,9 +5,10 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
 class IosChannel extends Channel {
-    private bundleID
-    private karFile
-    private plistFileName
+    private karArtifact
+    private plistArtifact
+    private ipaArtifact
+    private ipaArtifactUrl
 
     /* Build parameters */
     private final appleID = script.params.APPLE_ID
@@ -16,15 +17,13 @@ class IosChannel extends Channel {
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
-    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
-            iosMobileAppId : iosTabletAppId
+    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
 
     IosChannel(script) {
         super(script)
         nodeLabel = 'mac'
         channelOs = 'iOS'
         channelType = 'Native'
-        plistFileName = "${projectName}_${jobBuildNumber}.plist"
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
         this.script.env['IOS_BUNDLE_ID'] = iosBundleId
     }
@@ -84,8 +83,8 @@ class IosChannel extends Channel {
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectGenPath) {
                 script.sh """
-                    cp ${karFile.path}/${karFile.name} .
-                    perl extract.pl ${karFile.name}
+                    cp ${karArtifactFile.path}/${karArtifactFile.name} .
+                    perl extract.pl ${karArtifactFile.name}
                 """
             }
             /* Build project and export IPA using Fastlane */
@@ -103,15 +102,15 @@ class IosChannel extends Channel {
                             "MATCH_GIT_URL=${script.env.MATCH_GIT_URL}",
                             "MATCH_GIT_BRANCH=${(appleDeveloperTeamId) ?: script.env.MATCH_USERNAME}",
                             "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
-                            "GYM_OUTPUT_DIRECTORY=${karFile.path}",
+                            "GYM_OUTPUT_DIRECTORY=${karArtifactFile.path}",
                             "GYM_OUTPUT_NAME=${projectName}",
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
                             "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
-                            def fastFileName = 'Fastfile'
-                            def fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
+                            String fastFileName = 'Fastfile'
+                            String fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
                             script.writeFile file: fastFileName, text: fastFileContent
                         }
                         script.sshagent (credentials: ['jenkins_github_ssh-certificates']) {
@@ -123,30 +122,35 @@ class IosChannel extends Channel {
         }
     }
 
-    private final void createPlist() {
+    private final createPlist(String ipaArtifactUrl, String ipaArtifactPath) {
+        (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
+
         String successMessage = 'PLIST file created successfully'
         String errorMessage = 'FAILED to create PLIST file'
         String plistResourcesFileName = 'apple_orig.plist'
-        String plistPathTagValue = AwsHelper.getS3ArtifactUrl(script, ['Builds', script.env.FABRIC_ENV_NAME].join('/'))
+        String plistFileName = "${projectName}_${jobBuildNumber}.plist"
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.dir(artifacts[0].path) {
+            script.dir(ipaArtifactPath) {
                 /* Load property list file template */
                 String plist = script.loadLibraryResource(resourceBasePath + plistResourcesFileName)
 
                 /* Substitute required values */
-                String plistUpdated = plist.replaceAll('\\$path', plistPathTagValue)
+                String plistUpdated = plist.replaceAll('\\$path', ipaArtifactUrl)
                         .replaceAll('\\$bundleIdentifier', bundleID)
 
                 /* Write updated property list file to current working directory */
                 script.writeFile file: plistFileName, text: plistUpdated
             }
         }
+
+        [name: plistFileName, path: "${karArtifactFile.path}"]
     }
 
     private final bundleIdentifier(text) {
         def matcher = text =~ '<attributes name="iphonebundleidentifierkey" value="(.+)"/>'
-        return matcher ? matcher[0][1] : null
+
+        matcher ? matcher[0][1] : null
     }
 
     protected final void createPipeline() {
@@ -185,7 +189,7 @@ class IosChannel extends Channel {
                 script.stage('Build') {
                     build()
                     /* Search for build artifacts */
-                    karFile = getArtifactLocations(artifactExtension)[0] ?:
+                    karArtifactFile = getArtifactLocations(artifactExtension).first() ?:
                             script.error('Build artifacts were not found!')
                 }
 
@@ -194,35 +198,31 @@ class IosChannel extends Channel {
                     /* Get ipa file name and path */
                     def foundArtifacts = getArtifactLocations('ipa')
                     /* Rename artifacts for publishing */
-                    artifacts = renameArtifacts(foundArtifacts)
+                    ipaArtifact = renameArtifacts(foundArtifacts).first()
+                }
+
+                script.stage("Publish ipa artifact to S3") {
+                    ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                            sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script, true
                 }
 
                 script.stage("Generate property list file") {
-                    createPlist()
                     /* Get plist artifact */
-                    artifacts.add([name: plistFileName, path: "${karFile.path}"])
+                    plistArtifact = createPlist(ipaArtifactUrl, ipaArtifact.path)
                 }
 
-                script.stage("Publish artifacts to S3") {
-                    /* Create a list with artifact objects for e-mail template */
-                    def channelArtifacts = []
+                script.stage("Publish plist artifact to S3") {
+                    String artifactName = plistArtifact.name
+                    String artifactPath = plistArtifact.path
+                    String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                            sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
 
-                    artifacts?.each { artifact ->
-                        String artifactName = artifact.name
-                        String artifactPath = artifact.path
-                        String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
-
-                        if (!artifact.name.contains('ipa')) { // Exclude ipa from artifacts list
-
-                            channelArtifacts.add([channelPath: channelPath,
-                                                  name       : artifactName,
-                                                  url        : artifactUrl])
-                        }
-                    }
-
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                    artifacts.add([
+                            channelPath: channelPath, name: artifactName, url: artifactUrl
+                    ])
                 }
+
+                script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
             }
         }
     }
