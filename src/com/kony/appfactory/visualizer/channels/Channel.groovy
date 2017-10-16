@@ -7,7 +7,7 @@ import java.util.regex.Matcher
 
 class Channel implements Serializable {
     protected script
-    protected artifacts
+    protected artifacts = []
     protected separator
     protected pathSeparator
     protected visualizerDependencies
