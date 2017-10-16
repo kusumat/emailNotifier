@@ -35,8 +35,8 @@ class Channel implements Serializable {
     protected nodeLabel
     protected libraryProperties
     /* Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and can not be used */
-    final projectWorkspaceFolderName = 'vis_ws'
-    final resourceBasePath = 'com/kony/appfactory/visualizer/'
+    final projectWorkspaceFolderName
+    final resourceBasePath
     /* Common build parameters */
     protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
@@ -52,7 +52,9 @@ class Channel implements Serializable {
 
     Channel(script) {
         this.script = script
-        libraryProperties = BuildHelper.loadLibraryProperties(this.script, resourceBasePath + 'configurations/' + 'common.properties')
+        libraryProperties = BuildHelper.loadLibraryProperties(this.script, 'com/kony/appfactory/configurations/common.properties')
+        projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
+        resourceBasePath = libraryProperties.'project.resources.base.path'
         fabric = new Fabric(this.script)
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
@@ -143,7 +145,7 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
         // Populate Fabric configuration to appfactory.js file
-        populateFabricAppConfig('appfactory.js')
+        populateFabricAppConfig(libraryProperties.'fabric.config.file.name')
 
         script.catchErrorCustom('FAILED to build the project') {
             script.dir(projectFullPath) {

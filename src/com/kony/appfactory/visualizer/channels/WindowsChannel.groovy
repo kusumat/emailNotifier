@@ -5,13 +5,16 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
 class WindowsChannel extends Channel {
-    private final shortenedWorkspace = ['C:', 'J', projectName, script.env.JOB_BASE_NAME].join('\\')
+    private final shortenedWorkspaceBasePath
+    private final shortenedWorkspace
 
     WindowsChannel(script) {
         super(script)
-        nodeLabel = 'win'
+        nodeLabel = libraryProperties.'windows.node.label'
         channelOs = this.script.params.OS
         channelType = 'Native'
+        shortenedWorkspaceBasePath = libraryProperties.'windows.shortened.workspace.base.path'
+        shortenedWorkspace = [shortenedWorkspaceBasePath, projectName, script.env.JOB_BASE_NAME].join('\\')
     }
 
     protected final void createPipeline() {

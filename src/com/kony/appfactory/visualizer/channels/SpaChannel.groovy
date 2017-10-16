@@ -12,7 +12,7 @@ class SpaChannel extends Channel {
 
     SpaChannel(script) {
         super(script)
-        nodeLabel = 'win || mac'
+        nodeLabel = libraryProperties.'spa.node.label'
         channelOs = channelFormFactor = channelType = 'SPA'
         selectedSpaChannels = getSelectedSpaChannels(this.script.params)
         /* Expose SPA build parameters to environment variables to use it in HeadlessBuild.properties */
@@ -69,7 +69,7 @@ class SpaChannel extends Channel {
 
                 script.stage('Publish to Fabric') {
                     if (publishFabricApp) {
-                        fabric.fetchFabricCli('7.3.0.43')
+                        fabric.fetchFabricCli(libraryProperties.'fabric.cli.version')
                         fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, [
                                 '-t': "\"${script.env.CLOUD_ACCOUNT_ID}\"",
                                 '-a': "\"${script.env.FABRIC_APP_NAME}\"",

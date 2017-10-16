@@ -21,7 +21,7 @@ class IosChannel extends Channel {
 
     IosChannel(script) {
         super(script)
-        nodeLabel = 'mac'
+        nodeLabel = libraryProperties.'ios.node.label'
         channelOs = 'iOS'
         channelType = 'Native'
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
@@ -29,7 +29,6 @@ class IosChannel extends Channel {
     }
 
     protected final exposeFastlaneConfig() {
-        def libraryProperties = script.loadLibraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
         String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
         /* For using temporary access keys (AssumeRole) */
@@ -105,11 +104,11 @@ class IosChannel extends Channel {
                             "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
-                            String fastFileName = 'Fastfile'
+                            String fastFileName = libraryProperties.'fastlane.fastfile.name'
                             String fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
                             script.writeFile file: fastFileName, text: fastFileContent
                         }
-                        script.sshagent (credentials: ['jenkins_github_ssh-certificates']) {
+                        script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
                             script.sh '$FASTLANE_DIR/fastlane kony_ios_' + fastLaneBuildCommand
                         }
                     }
@@ -124,7 +123,7 @@ class IosChannel extends Channel {
 
         String successMessage = 'PLIST file created successfully'
         String errorMessage = 'Failed to create PLIST file'
-        String plistResourcesFileName = 'apple_orig.plist'
+        String plistResourcesFileName = libraryProperties.'ios.plist.file.name'
         String plistFileName = "${projectName}_${jobBuildNumber}.plist"
 
         script.catchErrorCustom(errorMessage, successMessage) {
