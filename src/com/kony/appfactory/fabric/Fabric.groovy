@@ -72,8 +72,8 @@ class Fabric implements Serializable {
                 }?.join(' ')
                 String shellString = [
                         'java -jar', fabricCliFileName, fabricCommand,
-                        '-u', "\"${script.env.fabricUsername}\"",
-                        '-p', "\"${script.env.fabricPassword}\"",
+                        '-u', '$fabricUsername',
+                        '-p', '$fabricPassword',
                         options
                 ].join(' ')
 
