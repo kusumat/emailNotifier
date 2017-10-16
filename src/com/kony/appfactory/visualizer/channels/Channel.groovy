@@ -162,7 +162,10 @@ class Channel implements Serializable {
         }
     }
 
-    /* Determine which Visualizer version project requires, according to the version that matches first in the order of branding/studioviz/keditor plugin */
+    /*
+        Determine which Visualizer version project requires,
+        according to the version that matches first in the order of branding/studioviz/keditor plugin
+    */
     protected final getVisualizerVersion(text) {
 	    String visualizerVersion = ''
         def plugins = [
@@ -183,7 +186,7 @@ class Channel implements Serializable {
             }
         }
 
-        return visualizerVersion ? visualizerVersion : null
+        visualizerVersion
     }
 
     protected final getArtifactLocations(artifactExtension) {
