@@ -120,7 +120,7 @@ class IosChannel extends Channel {
         (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
         (ipaArtifactPath) ?: script.error("ipaArtifactPath argument can't be null!")
 
-        String successMessage = 'PLIST file created successfully'
+        String successMessage = 'PLIST file created successfully.'
         String errorMessage = 'Failed to create PLIST file'
         String plistResourcesFileName = libraryProperties.'ios.plist.file.name'
         String plistFileName = "${projectName}_${jobBuildNumber}.plist"
@@ -200,7 +200,7 @@ class IosChannel extends Channel {
                     plistArtifact = createPlist(ipaArtifactUrl, ipaArtifact.path)
                 }
 
-                script.stage("Publish plist artifact to S3") {
+                script.stage("Publish PLIST artifact to S3") {
                     String artifactName = plistArtifact.name
                     String artifactPath = plistArtifact.path
                     String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
