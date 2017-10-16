@@ -217,6 +217,10 @@ class TestAutomation implements Serializable {
                 script.currentBuild.result = 'FAILURE'
             } finally {
                 NotificationsHelper.sendEmail(script, 'buildTests')
+                /* Exit in case of test binaries failed, throw error to build console. */
+                if (script.currentBuild.result == 'FAILURE') {
+                    script.error("Something went wrong... Unable to build Test binary!")
+                }
             }
 
             /* Run tests on provided binaries */
