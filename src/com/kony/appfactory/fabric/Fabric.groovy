@@ -11,9 +11,10 @@ class Fabric implements Serializable {
     private emailData
     private fabricCommand
     private buildDescriptionItems
-    private final String fabricCliFileName = 'mfcli.jar'
-    private final String fabricCliVersion = '7.3.0.43'
-    private final String nodeLabel = 'preparation || linux'
+    private libraryProperties
+    private final String fabricCliFileName
+    private final String fabricCliVersion
+    private final String nodeLabel
     private final boolean isUnixNode = true
     /* Common build parameters */
     private final String exportRepositoryUrl = script.params.PROJECT_EXPORT_REPOSITORY_URL
@@ -35,18 +36,20 @@ class Fabric implements Serializable {
 
     Fabric(script) {
         this.script = script
+        libraryProperties = BuildHelper.loadLibraryProperties(this.script, 'com/kony/appfactory/configurations/common.properties')
+        fabricCliVersion = libraryProperties. 'fabric.cli.version'
+        fabricCliFileName = libraryProperties.'fabric.cli.file.name'
+        nodeLabel = libraryProperties.'fabric.node.label'
     }
 
     protected final fetchFabricCli(fabricCliVersion = 'latest') {
         String fabricCliUrl = [
-//                "http://download.kony.com/onpremise/mobilefabric/mobilefabricCLI",
-                'https://s3-eu-west-1.amazonaws.com/konyappfactorydev-ci0001-storage1/configuration/mobilefabricCLI',
+                libraryProperties.'fabric.cli.fetch.url',
                 fabricCliVersion.toString(),
                 fabricCliFileName
         ].join('/')
 
         script.catchErrorCustom("FAILED to fetch Fabric CLI (version: $fabricCliVersion)") {
-//            script.httpRequest url: fabricCliUrl, outputFile: fabricCliFileName, validResponseCodes: '200'
             script.shellCustom("curl -k -s -S -f -L -o \'${fabricCliFileName}\' \'${fabricCliUrl}\'")
         }
     }
