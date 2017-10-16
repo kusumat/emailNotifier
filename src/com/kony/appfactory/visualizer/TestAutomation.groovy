@@ -303,7 +303,7 @@ class TestAutomation implements Serializable {
                                     deviceFarmTestRunArns["${artifactName}"] = runArn
                                     /* Else fail the stage, because run couldn't be scheduled without one of the binaries */
                                 } else {
-                                    script.println "FAILED to get uploadArn"
+                                    script.echo "FAILED to get uploadArn"
                                 }
                             }
                             def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
@@ -334,7 +334,7 @@ class TestAutomation implements Serializable {
                                         deviceFarmTestRunResults.runs = deviceFarm.getTestRunArtifacts(arn)
                                         /* Else notify user that result value is empty */
                                     } else {
-                                        script.println "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
+                                        script.echo "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
                                     }
                                 }
                             }

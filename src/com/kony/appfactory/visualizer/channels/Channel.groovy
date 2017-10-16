@@ -144,7 +144,7 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
         // Populate Fabric configuration to appfactory.js file
-        populateFabricAppConfig(libraryProperties.'fabric.config.file.name')
+        populateFabricAppConfig()
 
         script.catchErrorCustom('FAILED to build the project') {
             script.dir(projectFullPath) {
@@ -178,12 +178,12 @@ class Channel implements Serializable {
 
         plugins.find { pluginName, pluginSearchPattern ->
             if (text =~ pluginSearchPattern) {
-                println "Found $pluginName plugin!"
+                script.echo "Found $pluginName plugin!"
                 visualizerVersion = Matcher.lastMatcher[0][1]
                 /* Return true to break the find loop, if at least one much been found */
                 return true
             } else {
-                println "Could not find $pluginName plugin entry... Switching to the next plugin to search..."
+                script.echo "Could not find $pluginName plugin entry... Switching to the next plugin to search..."
             }
         }
 
@@ -244,7 +244,8 @@ class Channel implements Serializable {
         renamedArtifacts
     }
 
-    protected final populateFabricAppConfig(configFileName) {
+    protected final void populateFabricAppConfig() {
+        String configFileName = libraryProperties.'fabric.config.file.name'
         String successMessage = 'Fabric app key, secret and service URL were successfully populated'
         String errorMessage = 'FAILED to populate Fabric app key, secret and service URL'
 
@@ -269,7 +270,7 @@ class Channel implements Serializable {
                 }
             }
         } else {
-            script.println "Skipping population of Fabric app key, secret and service URL, " +
+            script.echo "Skipping population of Fabric app key, secret and service URL, " +
                     "credentials parameter was not provided!"
         }
     }
