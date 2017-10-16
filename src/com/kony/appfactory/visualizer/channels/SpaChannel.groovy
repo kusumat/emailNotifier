@@ -6,6 +6,7 @@ import com.kony.appfactory.helper.ValidationHelper
 
 class SpaChannel extends Channel {
     /* Build parameters */
+    private final appVersion = script.params.FABRIC_APP_VERSION
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final selectedSpaChannels
 
@@ -14,6 +15,8 @@ class SpaChannel extends Channel {
         nodeLabel = 'win || mac'
         channelOs = channelFormFactor = channelType = 'SPA'
         selectedSpaChannels = getSelectedSpaChannels(this.script.params)
+        /* Expose SPA build parameters to environment variables to use it in HeadlessBuild.properties */
+        this.script.env['APP_VERSION'] = appVersion
     }
 
     @NonCPS
@@ -38,7 +41,8 @@ class SpaChannel extends Channel {
 
                 script.stage('Check build-node environment') {
                     def mandatoryParameters = [
-                            'VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME'
+                            'VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME',
+                            'APP_VERSION'
                     ]
 
                     if (publishFabricApp) {

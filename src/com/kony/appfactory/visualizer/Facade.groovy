@@ -37,6 +37,8 @@ class Facade implements Serializable {
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+    /* SPA build parameters */
+    private final spaAppVersion = script.params.FABRIC_APP_VERSION
     /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
 
@@ -129,7 +131,8 @@ class Facade implements Serializable {
     }
 
     private final getSpaChannelJobBuildParameters(spaChannelsToBuildJobParameters) {
-        getCommonJobBuildParameters() + spaChannelsToBuildJobParameters
+        getCommonJobBuildParameters() + [script.string(name: 'FABRIC_APP_VERSION', value: "${spaAppVersion}")] +
+                spaChannelsToBuildJobParameters
     }
 
     private final getNativeChannelJobBuildParameters(channelName, channelOs = '', channelFormFactor) {

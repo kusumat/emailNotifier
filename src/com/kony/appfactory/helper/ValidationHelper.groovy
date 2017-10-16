@@ -89,10 +89,15 @@ class ValidationHelper implements Serializable {
                     break
                 case 'ANDROID_VERSION':
                 case 'IOS_BUNDLE_VERSION':
+                case 'FABRIC_APP_VERSION':
+                case 'APP_VERSION':
                     regex = /^(\d+\.)?(\d+\.)?(\*|\d+)$/
                     break
                 case 'ANDROID_VERSION_CODE':
                     regex = /^\d+$/
+                    break
+                case 'CLOUD_ACCOUNT_ID':
+                    regex = /^\d{9}$/
                     break
                 default:
                     regex = /.*/
