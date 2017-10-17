@@ -6,7 +6,7 @@ import com.kony.appfactory.helper.ValidationHelper
 
 class SpaChannel extends Channel {
     /* Build parameters */
-    private final appVersion = script.params.FABRIC_APP_VERSION
+    private final spaAppVersion = script.params.SPA_APP_VERSION
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final selectedSpaChannels
 
@@ -15,7 +15,7 @@ class SpaChannel extends Channel {
         channelOs = channelFormFactor = channelType = 'SPA'
         selectedSpaChannels = getSelectedSpaChannels(this.script.params)
         /* Expose SPA build parameters to environment variables to use it in HeadlessBuild.properties */
-        this.script.env['APP_VERSION'] = appVersion
+        this.script.env['APP_VERSION'] = spaAppVersion
     }
 
     @NonCPS
@@ -33,6 +33,8 @@ class SpaChannel extends Channel {
                 if (!selectedSpaChannels) {
                     script.error('Please select at least one channel to build!')
                 }
+
+                ValidationHelper.checkBuildConfiguration(script, ['SPA_APP_VERSION'])
             }
 
             script.node(libraryProperties.'spa.node.label') {
