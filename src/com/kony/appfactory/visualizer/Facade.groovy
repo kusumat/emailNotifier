@@ -30,7 +30,7 @@ class Facade implements Serializable {
     /* Android build parameters */
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
-    private final androidVersion = script.params.ANDROID_VERSION
+    private final androidAppVersion = script.params.ANDROID_APP_VERSION
     private final androidVersionCode = script.params.ANDROID_VERSION_CODE
     private final googleMapsKeyId = script.params.GOOGLE_MAPS_KEY_ID
     private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
@@ -144,7 +144,7 @@ class Facade implements Serializable {
                 channelJobParameters = commonParameters + [
                         script.string(name: 'ANDROID_MOBILE_APP_ID', value: "${androidMobileAppId}"),
                         script.string(name: 'ANDROID_TABLET_APP_ID', value: "${androidTabletAppId}"),
-                        script.string(name: 'ANDROID_VERSION', value: "${androidVersion}"),
+                        script.string(name: 'ANDROID_APP_VERSION', value: "${androidAppVersion}"),
                         script.string(name: 'ANDROID_VERSION_CODE', value: "${androidVersionCode}"),
                         script.string(name: 'GOOGLE_MAPS_KEY_ID', value: "${googleMapsKeyId}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${keystoreFileID}"),
@@ -294,7 +294,7 @@ class Facade implements Serializable {
                 def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
                 /* Check Android specific params */
                 if (androidChannels) {
-                    def androidMandatoryParams = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
+                    def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
 
                     if (androidChannels.findAll { it.contains('MOBILE') }) {
                         androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')

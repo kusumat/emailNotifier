@@ -87,7 +87,7 @@ class ValidationHelper implements Serializable {
                 case 'IOS_TABLET_APP_ID':
                     regex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+[0-9a-zA-Z_]?$/
                     break
-                case 'ANDROID_VERSION':
+                case 'ANDROID_APP_VERSION':
                 case 'IOS_BUNDLE_VERSION':
                 case 'SPA_APP_VERSION':
                 case 'APP_VERSION':
