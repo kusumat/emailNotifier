@@ -174,200 +174,202 @@ class TestAutomation implements Serializable {
     }
 
     protected final void createPipeline() {
-        script.stage('Check provided parameters') {
-            validateBuildParameters(script.params)
-        }
-
-        script.node(libraryProperties.'test.automation.node.label') {
-            /* Set environment-dependent variables */
-            workspace = script.env.WORKSPACE
-            projectFullPath = workspace + '/' + projectName
-            testFolder = projectFullPath + '/' + libraryProperties.'test.automation.scripts.path'
-            deviceFarmWorkingFolder = projectFullPath + '/' + libraryProperties.'test.automation.device.farm.working.folder.name'
-
-            try {
-                script.cleanWs deleteDirs: true
-
-                /* Build test automation scripts if URL with test binaries was not provided */
-                if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
-                    script.stage('Checkout') {
-                        BuildHelper.checkoutProject script: script,
-                                projectRelativePath: projectName,
-                                gitBranch: gitBranch,
-                                gitCredentialsID: gitCredentialsID,
-                                gitURL: gitURL
-                    }
-
-                    script.stage('Build') {
-                        build()
-                    }
-
-                    script.stage('Publish test automation scripts build result to S3') {
-                        if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
-                            AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
-                                    bucketPath: [
-                                            'Tests',
-                                            script.env.JOB_BASE_NAME,
-                                            script.env.BUILD_NUMBER
-                                    ].join('/'),
-                                    sourceFilePath: "${testFolder}/target", script, true
-                        } else {
-                            script.error 'FAILED to find build result artifact!'
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                script.echo "ERROR: $exceptionMessage"
-                script.currentBuild.result = 'FAILURE'
-            } finally {
-                NotificationsHelper.sendEmail(script, 'buildTests')
-                /* Exit in case of test binaries failed, throw error to build console. */
-                if (script.currentBuild.result == 'FAILURE') {
-                    script.error("Something went wrong... Unable to build Test binary!")
-                }
+        script.timestamps {
+            script.stage('Check provided parameters') {
+                validateBuildParameters(script.params)
             }
 
-            /* Run tests on provided binaries */
-            if (runTests) {
+            script.node(libraryProperties.'test.automation.node.label') {
+                /* Set environment-dependent variables */
+                workspace = script.env.WORKSPACE
+                projectFullPath = workspace + '/' + projectName
+                testFolder = projectFullPath + '/' + libraryProperties.'test.automation.scripts.path'
+                deviceFarmWorkingFolder = projectFullPath + '/' + libraryProperties.'test.automation.device.farm.working.folder.name'
+
                 try {
-                    script.dir(deviceFarmWorkingFolder) {
-                    /* Providing AWS region for DeviceFarm, currently DeviceFarm available in us-west-2 */
-                    script.withAWS(region: awsRegion) {
-                        script.stage('Fetch binaries') {
-                            /* Prepare step to run in parallel */
-                            def step = { artifactName, artifactURL, artifactExt ->
-                                /* If test binaries URL was not provided, copy binaries from the build step */
-                                if (artifactURL == 'jobWorkspace') {
-                                    String artifactPath = "${testFolder}/target/${artifactName}.${artifactExt}"
-                                    script.sh "cp $artifactPath $deviceFarmWorkingFolder"
-                                    /* Else, fetch binaries */
-                                } else {
-                                    deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
-                                }
-                            }
-                            def stepsToRun = (prepareParallelSteps(testPackage << projectArtifacts, 'fetch_', step)) ?:
-                                    script.error("No artifacts to fetch!")
+                    script.cleanWs deleteDirs: true
 
-                            /* Run prepared step in parallel */
-                            if (stepsToRun) {
-                                script.parallel(stepsToRun)
-                            }
+                    /* Build test automation scripts if URL with test binaries was not provided */
+                    if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
+                        script.stage('Checkout') {
+                            BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: projectName,
+                                    gitBranch: gitBranch,
+                                    gitCredentialsID: gitCredentialsID,
+                                    gitURL: gitURL
                         }
 
-                        script.stage('Create Device Farm Project') {
-                            /* Check if project already exists */
-                            deviceFarmProjectArn = (deviceFarm.getProject(projectName)) ?:
-                                    /* If not, create new project and return ARN or break the build, if ARN equals null */
-                                    (deviceFarm.createProject(projectName)) ?: script.error("Project ARN is empty!")
+                        script.stage('Build') {
+                            build()
                         }
 
-                        script.stage('Create Device Pools') {
-                            devicePoolArns = (deviceFarm.createDevicePools(deviceFarmProjectArn, devicePoolName)) ?:
-                                    script.error("Device pool ARN list is empty!")
-                        }
-
-                        script.stage('Upload test package') {
-                            /* Get required parameters for test binaries upload */
-                            def testUploadType = testPackage.get("${projectName}_TestApp").uploadType
-                            def testExtension = testPackage.get("${projectName}_TestApp").extension
-                            def testUploadFileName = "${projectName}_TestApp.${testExtension}"
-
-                            /* Upload test binaries and get upload ARN */
-                            deviceFarmTestUploadArtifactArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
-                                    testUploadType,
-                                    testUploadFileName)
-                            /* Add test binaries upload ARN to upload ARNs list */
-                            deviceFarmUploadArns.add(deviceFarmTestUploadArtifactArn)
-                        }
-
-                        script.stage('Upload application binaries and schedule run') {
-                            /* Prepare step to run in parallel */
-                            def step = { artifactName, artifactURL, artifactExt, uploadType ->
-                                /* Upload application binaries to DeviceFarm and add upload ARN to list */
-                                def uploadArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
-                                        uploadType, artifactName + '.' + artifactExt)
-                                deviceFarmUploadArns.add(uploadArn)
-
-                                /* If we have applicataion binaries and test binaries, schedule the run */
-                                if (uploadArn && deviceFarmTestUploadArtifactArn) {
-                                    /* Depending on artifact name we need to chose appropriate pool for the run */
-                                    def devicePoolArn = (artifactName.toLowerCase().contains('mobile')) ?
-                                            (devicePoolArns.phones) ?:
-                                                    script.error("Artifacts provided for tablets, but TABLET devices were provided") :
-                                            (devicePoolArns.tablets ?:
-                                                    script.error("Artifacts provided for tablets, but PHONE devices were provided"))
-                                    /* Once all parameters gotten, shcedule the DeviceFarm run */
-                                    def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn,
-                                            'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn)
-                                    deviceFarmTestRunArns["${artifactName}"] = runArn
-                                    /* Else fail the stage, because run couldn't be scheduled without one of the binaries */
-                                } else {
-                                    script.echo "FAILED to get uploadArn"
-                                }
-                            }
-                            def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
-                                    script.error("No artifacts to upload and run!")
-
-                            /* Run prepared step in parallel */
-                            if (stepsToRun) {
-                                script.parallel(stepsToRun)
-                            }
-                        }
-
-                        script.stage('Get Test Results') {
-                            def stepsToRun = [:]
-
-                            def deviceFarmTestRunArnsKeys = deviceFarmTestRunArns.keySet().toArray()
-                            // Workaround to iterate over map keys in c++ style for loop
-                            for (int i=0; i<deviceFarmTestRunArnsKeys.size(); ++i) {
-                                def arn = deviceFarmTestRunArns[deviceFarmTestRunArnsKeys[i]]
-                                /* Prepare step to run in parallel */
-                                stepsToRun["testResults_${deviceFarmTestRunArnsKeys[i]}"] = {
-                                    def testRunResult = deviceFarm.getTestRunResult(arn)
-                                    /* If we got a test result */
-                                    if (testRunResult) {
-                                        /*
-                                            Query DeviceFarm for test artifacts (logs, videos, etc) and
-                                            store test run artifact object in list
-                                         */
-                                        deviceFarmTestRunResults.runs = deviceFarm.getTestRunArtifacts(arn)
-                                        /* Else notify user that result value is empty */
-                                    } else {
-                                        script.echo "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
-                                    }
-                                }
-                            }
-
-                            /* Run prepared step in parallel */
-                            if (stepsToRun) {
-                                script.parallel(stepsToRun)
-                            }
-
-                            script.dir('artifacts') {
-                                deviceFarm.moveArtifactsToCustomerS3Bucket(
-                                        deviceFarmTestRunResults.runs,
-                                        ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
-                                )
+                        script.stage('Publish test automation scripts build result to S3') {
+                            if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
+                                AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
+                                        bucketPath: [
+                                                'Tests',
+                                                script.env.JOB_BASE_NAME,
+                                                script.env.BUILD_NUMBER
+                                        ].join('/'),
+                                        sourceFilePath: "${testFolder}/target", script, true
+                            } else {
+                                script.error 'FAILED to find build result artifact!'
                             }
                         }
                     }
-                }
                 } catch (Exception e) {
                     String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
                     script.echo "ERROR: $exceptionMessage"
                     script.currentBuild.result = 'FAILURE'
                 } finally {
-                    cleanup(deviceFarmUploadArns, devicePoolArns)
-                    NotificationsHelper.sendEmail(script,
-                            'runTests',
-                            deviceFarmTestRunResults + [
-                                    devicePoolName: devicePoolName,
-                                    binaryName: getBinaryNameForEmail(projectArtifacts),
-                                    missingDevices: script.env.MISSING_DEVICES
-                            ],
-                            true
-                    )
+                    NotificationsHelper.sendEmail(script, 'buildTests')
+                    /* Exit in case of test binaries failed, throw error to build console. */
+                    if (script.currentBuild.result == 'FAILURE') {
+                        script.error("Something went wrong... Unable to build Test binary!")
+                    }
+                }
+
+                /* Run tests on provided binaries */
+                if (runTests) {
+                    try {
+                        script.dir(deviceFarmWorkingFolder) {
+                            /* Providing AWS region for DeviceFarm, currently DeviceFarm available in us-west-2 */
+                            script.withAWS(region: awsRegion) {
+                                script.stage('Fetch binaries') {
+                                    /* Prepare step to run in parallel */
+                                    def step = { artifactName, artifactURL, artifactExt ->
+                                        /* If test binaries URL was not provided, copy binaries from the build step */
+                                        if (artifactURL == 'jobWorkspace') {
+                                            String artifactPath = "${testFolder}/target/${artifactName}.${artifactExt}"
+                                            script.sh "cp $artifactPath $deviceFarmWorkingFolder"
+                                            /* Else, fetch binaries */
+                                        } else {
+                                            deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
+                                        }
+                                    }
+                                    def stepsToRun = (prepareParallelSteps(testPackage << projectArtifacts, 'fetch_', step)) ?:
+                                            script.error("No artifacts to fetch!")
+
+                                    /* Run prepared step in parallel */
+                                    if (stepsToRun) {
+                                        script.parallel(stepsToRun)
+                                    }
+                                }
+
+                                script.stage('Create Device Farm Project') {
+                                    /* Check if project already exists */
+                                    deviceFarmProjectArn = (deviceFarm.getProject(projectName)) ?:
+                                            /* If not, create new project and return ARN or break the build, if ARN equals null */
+                                            (deviceFarm.createProject(projectName)) ?: script.error("Project ARN is empty!")
+                                }
+
+                                script.stage('Create Device Pools') {
+                                    devicePoolArns = (deviceFarm.createDevicePools(deviceFarmProjectArn, devicePoolName)) ?:
+                                            script.error("Device pool ARN list is empty!")
+                                }
+
+                                script.stage('Upload test package') {
+                                    /* Get required parameters for test binaries upload */
+                                    def testUploadType = testPackage.get("${projectName}_TestApp").uploadType
+                                    def testExtension = testPackage.get("${projectName}_TestApp").extension
+                                    def testUploadFileName = "${projectName}_TestApp.${testExtension}"
+
+                                    /* Upload test binaries and get upload ARN */
+                                    deviceFarmTestUploadArtifactArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
+                                            testUploadType,
+                                            testUploadFileName)
+                                    /* Add test binaries upload ARN to upload ARNs list */
+                                    deviceFarmUploadArns.add(deviceFarmTestUploadArtifactArn)
+                                }
+
+                                script.stage('Upload application binaries and schedule run') {
+                                    /* Prepare step to run in parallel */
+                                    def step = { artifactName, artifactURL, artifactExt, uploadType ->
+                                        /* Upload application binaries to DeviceFarm and add upload ARN to list */
+                                        def uploadArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
+                                                uploadType, artifactName + '.' + artifactExt)
+                                        deviceFarmUploadArns.add(uploadArn)
+
+                                        /* If we have applicataion binaries and test binaries, schedule the run */
+                                        if (uploadArn && deviceFarmTestUploadArtifactArn) {
+                                            /* Depending on artifact name we need to chose appropriate pool for the run */
+                                            def devicePoolArn = (artifactName.toLowerCase().contains('mobile')) ?
+                                                    (devicePoolArns.phones) ?:
+                                                            script.error("Artifacts provided for tablets, but TABLET devices were provided") :
+                                                    (devicePoolArns.tablets ?:
+                                                            script.error("Artifacts provided for tablets, but PHONE devices were provided"))
+                                            /* Once all parameters gotten, shcedule the DeviceFarm run */
+                                            def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn,
+                                                    'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn)
+                                            deviceFarmTestRunArns["${artifactName}"] = runArn
+                                            /* Else fail the stage, because run couldn't be scheduled without one of the binaries */
+                                        } else {
+                                            script.echo "FAILED to get uploadArn"
+                                        }
+                                    }
+                                    def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
+                                            script.error("No artifacts to upload and run!")
+
+                                    /* Run prepared step in parallel */
+                                    if (stepsToRun) {
+                                        script.parallel(stepsToRun)
+                                    }
+                                }
+
+                                script.stage('Get Test Results') {
+                                    def stepsToRun = [:]
+
+                                    def deviceFarmTestRunArnsKeys = deviceFarmTestRunArns.keySet().toArray()
+                                    // Workaround to iterate over map keys in c++ style for loop
+                                    for (int i = 0; i < deviceFarmTestRunArnsKeys.size(); ++i) {
+                                        def arn = deviceFarmTestRunArns[deviceFarmTestRunArnsKeys[i]]
+                                        /* Prepare step to run in parallel */
+                                        stepsToRun["testResults_${deviceFarmTestRunArnsKeys[i]}"] = {
+                                            def testRunResult = deviceFarm.getTestRunResult(arn)
+                                            /* If we got a test result */
+                                            if (testRunResult) {
+                                                /*
+                                            Query DeviceFarm for test artifacts (logs, videos, etc) and
+                                            store test run artifact object in list
+                                         */
+                                                deviceFarmTestRunResults.runs = deviceFarm.getTestRunArtifacts(arn)
+                                                /* Else notify user that result value is empty */
+                                            } else {
+                                                script.echo "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
+                                            }
+                                        }
+                                    }
+
+                                    /* Run prepared step in parallel */
+                                    if (stepsToRun) {
+                                        script.parallel(stepsToRun)
+                                    }
+
+                                    script.dir('artifacts') {
+                                        deviceFarm.moveArtifactsToCustomerS3Bucket(
+                                                deviceFarmTestRunResults.runs,
+                                                ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                        script.echo "ERROR: $exceptionMessage"
+                        script.currentBuild.result = 'FAILURE'
+                    } finally {
+                        cleanup(deviceFarmUploadArns, devicePoolArns)
+                        NotificationsHelper.sendEmail(script,
+                                'runTests',
+                                deviceFarmTestRunResults + [
+                                        devicePoolName: devicePoolName,
+                                        binaryName    : getBinaryNameForEmail(projectArtifacts),
+                                        missingDevices: script.env.MISSING_DEVICES
+                                ],
+                                true
+                        )
+                    }
                 }
             }
         }
