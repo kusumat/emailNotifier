@@ -6,7 +6,7 @@ import com.kony.appfactory.helper.ValidationHelper
 
 class AndroidChannel extends Channel {
     /* Build parameters */
-    private final androidVersion = script.params.ANDROID_VERSION
+    private final androidAppVersion = script.params.ANDROID_APP_VERSION
     private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
@@ -22,7 +22,7 @@ class AndroidChannel extends Channel {
         channelOs = 'Android'
         channelType = 'Native'
         /* Expose Android build parameters to environment variables to use it in HeadlessBuild.properties */
-        this.script.env['APP_VERSION'] = androidVersion
+        this.script.env['APP_VERSION'] = androidAppVersion
         this.script.env['ANDROID_PACKAGE_NAME'] = androidPackageName
     }
 
