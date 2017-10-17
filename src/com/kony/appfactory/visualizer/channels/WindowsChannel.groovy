@@ -17,58 +17,60 @@ class WindowsChannel extends Channel {
     }
 
     protected final void createPipeline() {
-        script.stage('Check provided parameters') {
-            ValidationHelper.checkBuildConfiguration(script)
+        script.timestamps {
+            script.stage('Check provided parameters') {
+                ValidationHelper.checkBuildConfiguration(script)
 
-            def mandatoryParameters = ['OS', 'FORM_FACTOR']
+                def mandatoryParameters = ['OS', 'FORM_FACTOR']
 
-            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
-        }
+                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+            }
 
-        script.node(libraryProperties.'windows.node.label') {
-            script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
-                pipelineWrapper {
-                    script.cleanWs deleteDirs: true
+            script.node(libraryProperties.'windows.node.label') {
+                script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
+                    pipelineWrapper {
+                        script.cleanWs deleteDirs: true
 
-                    script.stage('Check build-node environment') {
-                        ValidationHelper.checkBuildConfiguration(script,
-                                ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME'])
-                    }
-
-                    script.stage('Checkout') {
-                        BuildHelper.checkoutProject script: script,
-                                projectRelativePath: checkoutRelativeTargetFolder,
-                                gitBranch: gitBranch,
-                                gitCredentialsID: gitCredentialsID,
-                                gitURL: gitURL
-                    }
-
-                    script.stage('Build') {
-                        build()
-                        /* Search for build artifacts */
-                        buildArtifacts = getArtifactLocations(artifactExtension) ?:
-                                script.error('Build artifacts were not found!')
-                    }
-
-                    script.stage("Publish artifacts to S3") {
-                        /* Rename artifacts for publishing */
-                        artifacts = renameArtifacts(buildArtifacts)
-
-                        /* Create a list with artifact objects for e-mail template */
-                        def channelArtifacts = []
-
-                        artifacts?.each { artifact ->
-                            String artifactName = artifact.name
-                            String artifactPath = artifact.path
-                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
-
-                            channelArtifacts.add([channelPath: channelPath,
-                                                  name       : artifactName,
-                                                  url        : artifactUrl])
+                        script.stage('Check build-node environment') {
+                            ValidationHelper.checkBuildConfiguration(script,
+                                    ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME'])
                         }
 
-                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                        script.stage('Checkout') {
+                            BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: checkoutRelativeTargetFolder,
+                                    gitBranch: gitBranch,
+                                    gitCredentialsID: gitCredentialsID,
+                                    gitURL: gitURL
+                        }
+
+                        script.stage('Build') {
+                            build()
+                            /* Search for build artifacts */
+                            buildArtifacts = getArtifactLocations(artifactExtension) ?:
+                                    script.error('Build artifacts were not found!')
+                        }
+
+                        script.stage("Publish artifacts to S3") {
+                            /* Rename artifacts for publishing */
+                            artifacts = renameArtifacts(buildArtifacts)
+
+                            /* Create a list with artifact objects for e-mail template */
+                            def channelArtifacts = []
+
+                            artifacts?.each { artifact ->
+                                String artifactName = artifact.name
+                                String artifactPath = artifact.path
+                                String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                        sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
+
+                                channelArtifacts.add([channelPath: channelPath,
+                                                      name       : artifactName,
+                                                      url        : artifactUrl])
+                            }
+
+                            script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                        }
                     }
                 }
             }

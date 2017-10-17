@@ -76,77 +76,79 @@ class AndroidChannel extends Channel {
     }
 
     protected final void createPipeline() {
-        script.stage('Check provided parameters') {
-            ValidationHelper.checkBuildConfiguration(script)
+        script.timestamps {
+            script.stage('Check provided parameters') {
+                ValidationHelper.checkBuildConfiguration(script)
 
-            def mandatoryParameters = ['APP_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
+                def mandatoryParameters = ['APP_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
 
-            channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
-                    mandatoryParameters.add('ANDROID_TABLET_APP_ID')
+                channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
+                        mandatoryParameters.add('ANDROID_TABLET_APP_ID')
 
-            if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                mandatoryParameters.addAll([
-                        'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
-                ])
+                if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                    mandatoryParameters.addAll([
+                            'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                    ])
+                }
+
+                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
             }
 
-            ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
-        }
+            script.node(libraryProperties.'android.node.label') {
+                pipelineWrapper {
+                    script.cleanWs deleteDirs: true
 
-        script.node(libraryProperties.'android.node.label') {
-            pipelineWrapper {
-                script.cleanWs deleteDirs: true
-
-                script.stage('Check build-node environment') {
-                    ValidationHelper.checkBuildConfiguration(script,
-                            ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME',
-                             'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME']
-                    )
-                }
-
-                script.stage('Checkout') {
-                    BuildHelper.checkoutProject script: script,
-                            projectRelativePath: checkoutRelativeTargetFolder,
-                            gitBranch: gitBranch,
-                            gitCredentialsID: gitCredentialsID,
-                            gitURL: gitURL
-                }
-
-                script.stage('Build') {
-                    build()
-                    /* Search for build artifacts */
-                    buildArtifacts = getArtifactLocations(artifactExtension) ?:
-                            script.error('Build artifacts were not found!')
-                }
-
-                script.stage("Sign artifacts") {
-                    if (buildMode == 'release') {
-                        signArtifacts(buildArtifacts)
-                    } else {
-                        script.echo "Build mode is $buildMode, " +
-                                "skipping signing (artifact already signed with debug certificate)!"
-                    }
-                }
-
-                script.stage("Publish artifacts to S3") {
-                    /* Rename artifacts for publishing */
-                    artifacts = renameArtifacts(buildArtifacts)
-
-                    /* Create a list with artifact objects for e-mail template */
-                    def channelArtifacts = []
-
-                    artifacts?.each { artifact ->
-                        String artifactName = artifact.name
-                        String artifactPath = artifact.path
-                        String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
-
-                        channelArtifacts.add([channelPath: channelPath,
-                                              name       : artifactName,
-                                              url        : artifactUrl])
+                    script.stage('Check build-node environment') {
+                        ValidationHelper.checkBuildConfiguration(script,
+                                ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME',
+                                 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME']
+                        )
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                    script.stage('Checkout') {
+                        BuildHelper.checkoutProject script: script,
+                                projectRelativePath: checkoutRelativeTargetFolder,
+                                gitBranch: gitBranch,
+                                gitCredentialsID: gitCredentialsID,
+                                gitURL: gitURL
+                    }
+
+                    script.stage('Build') {
+                        build()
+                        /* Search for build artifacts */
+                        buildArtifacts = getArtifactLocations(artifactExtension) ?:
+                                script.error('Build artifacts were not found!')
+                    }
+
+                    script.stage("Sign artifacts") {
+                        if (buildMode == 'release') {
+                            signArtifacts(buildArtifacts)
+                        } else {
+                            script.echo "Build mode is $buildMode, " +
+                                    "skipping signing (artifact already signed with debug certificate)!"
+                        }
+                    }
+
+                    script.stage("Publish artifacts to S3") {
+                        /* Rename artifacts for publishing */
+                        artifacts = renameArtifacts(buildArtifacts)
+
+                        /* Create a list with artifact objects for e-mail template */
+                        def channelArtifacts = []
+
+                        artifacts?.each { artifact ->
+                            String artifactName = artifact.name
+                            String artifactPath = artifact.path
+                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
+
+                            channelArtifacts.add([channelPath: channelPath,
+                                                  name       : artifactName,
+                                                  url        : artifactUrl])
+                        }
+
+                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                    }
                 }
             }
         }

@@ -288,107 +288,109 @@ class Facade implements Serializable {
     }
 
     protected final void createPipeline() {
-        script.stage('Check provided parameters') {
-            /* Check common params */
-            ValidationHelper.checkBuildConfiguration(script)
+        script.timestamps {
+            script.stage('Check provided parameters') {
+                /* Check common params */
+                ValidationHelper.checkBuildConfiguration(script)
 
-            def checkParams = []
+                def checkParams = []
 
-            def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
-            /* Check Android specific params */
-            if (androidChannels) {
-                def androidMandatoryParams = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
+                def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
+                /* Check Android specific params */
+                if (androidChannels) {
+                    def androidMandatoryParams = ['ANDROID_VERSION', 'ANDROID_VERSION_CODE']
 
-                if (androidChannels.findAll { it.contains('MOBILE') }) {
-                    androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
+                    if (androidChannels.findAll { it.contains('MOBILE') }) {
+                        androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
+                    }
+
+                    if (androidChannels.findAll { it.contains('TABLET') }) {
+                        androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                    }
+
+                    if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                        androidMandatoryParams.addAll([
+                                'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                        ])
+                    }
+
+                    checkParams.addAll(androidMandatoryParams)
                 }
 
-                if (androidChannels.findAll { it.contains('TABLET') }) {
-                    androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
+                /* Check iOS specific params */
+                if (iosChannels) {
+                    def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+
+                    if (iosChannels.findAll { it.contains('MOBILE') }) {
+                        iosMandatoryParams.add('IOS_MOBILE_APP_ID')
+                    }
+
+                    if (iosChannels.findAll { it.contains('TABLET') }) {
+                        iosMandatoryParams.add('IOS_TABLET_APP_ID')
+                    }
+
+                    checkParams.addAll(iosMandatoryParams)
                 }
 
-                if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
-                    androidMandatoryParams.addAll([
-                            'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
-                    ])
-                }
-
-                checkParams.addAll(androidMandatoryParams)
+                /* Check all required parameters depending on user input */
+                ValidationHelper.checkBuildConfiguration(script, checkParams)
             }
 
-            def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
-            /* Check iOS specific params */
-            if (iosChannels) {
-                def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+            script.node(nodeLabel) {
+                prepareRun()
 
-                if (iosChannels.findAll { it.contains('MOBILE') }) {
-                    iosMandatoryParams.add('IOS_MOBILE_APP_ID')
-                }
-
-                if (iosChannels.findAll { it.contains('TABLET') }) {
-                    iosMandatoryParams.add('IOS_TABLET_APP_ID')
-                }
-
-                checkParams.addAll(iosMandatoryParams)
-            }
-
-            /* Check all required parameters depending on user input */
-            ValidationHelper.checkBuildConfiguration(script, checkParams)
-        }
-
-        script.node(nodeLabel) {
-            prepareRun()
-
-            try {
-                /* Expose Fabric configuration */
-                BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-                    /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
+                try {
+                    /* Expose Fabric configuration */
+                    BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                        /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                         to not mask required values during the build we simply need redefine parameter values.
                         Also, because of the case, when user didn't provide some not mandatory values we can get null value
                         and script.env object returns only String values, been added elvis operator for assigning variable value
                         as ''(empty). */
-                    script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
-                }
+                        script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+                    }
 
-                script.parallel(runList)
+                    script.parallel(runList)
 
-                if (availableTestPools) {
-                    def testAutomationJobParameters = getTestAutomationJobParameters() ?:
-                            script.error("runTests job parameters are missing!")
-                    def testAutomationJobBinaryParameters = (getTestAutomationJobBinaryParameters(artifacts)) ?:
-                            script.error("runTests job binary URL parameters are missing!")
+                    if (availableTestPools) {
+                        def testAutomationJobParameters = getTestAutomationJobParameters() ?:
+                                script.error("runTests job parameters are missing!")
+                        def testAutomationJobBinaryParameters = (getTestAutomationJobBinaryParameters(artifacts)) ?:
+                                script.error("runTests job binary URL parameters are missing!")
 
-                    script.stage('TESTS') {
-                        def testAutomationJobName = "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests"
-                        def testAutomationJob = script.build job: testAutomationJobName,
-                                parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
-                                propagate: false
-                        def testAutomationJobResult = testAutomationJob.currentResult
+                        script.stage('TESTS') {
+                            def testAutomationJobName = "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests"
+                            def testAutomationJob = script.build job: testAutomationJobName,
+                                    parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
+                                    propagate: false
+                            def testAutomationJobResult = testAutomationJob.currentResult
 
-                        jobResultList.add(testAutomationJobResult)
+                            jobResultList.add(testAutomationJobResult)
 
-                        if (testAutomationJobResult != 'SUCCESS') {
-                            script.echo "Status of the runTests job: ${testAutomationJobResult}"
+                            if (testAutomationJobResult != 'SUCCESS') {
+                                script.echo "Status of the runTests job: ${testAutomationJobResult}"
+                            }
                         }
                     }
-                }
 
-                if (jobResultList.contains('FAILURE') ||
-                        jobResultList.contains('UNSTABLE') ||
-                        jobResultList.contains('ABORTED')
-                ) {
-                    script.currentBuild.result = 'UNSTABLE'
-                } else {
-                    script.currentBuild.result = 'SUCCESS'
-                }
-            } catch (Exception e) {
-                String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                script.echo "ERROR: $exceptionMessage"
-                script.currentBuild.result = 'FAILURE'
-            } finally {
-                setBuildDescription()
-                if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                    NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                    if (jobResultList.contains('FAILURE') ||
+                            jobResultList.contains('UNSTABLE') ||
+                            jobResultList.contains('ABORTED')
+                    ) {
+                        script.currentBuild.result = 'UNSTABLE'
+                    } else {
+                        script.currentBuild.result = 'SUCCESS'
+                    }
+                } catch (Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                    script.echo "ERROR: $exceptionMessage"
+                    script.currentBuild.result = 'FAILURE'
+                } finally {
+                    setBuildDescription()
+                    if (channelsToRun && script.currentBuild.result != 'FAILURE') {
+                        NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                    }
                 }
             }
         }
