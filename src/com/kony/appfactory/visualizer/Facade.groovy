@@ -178,7 +178,7 @@ class Facade implements Serializable {
     }
 
     private final getTestAutomationJobParameters() {
-        def parameters = [
+        [
                 script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
                         value: "${projectSourceCodeBranch}"),
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
@@ -186,28 +186,24 @@ class Facade implements Serializable {
                 script.string(name: 'TESTS_BINARY_URL', value: ''),
                 script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}")
         ]
-
-        parameters
     }
 
     private final getArtifactObjects(channelPath, artifacts) {
-        return (artifacts) ? Eval.me(artifacts) : [[name: '', url: '', channelPath: channelPath]]
+        (artifacts) ? Eval.me(artifacts) : [[name: '', url: '', channelPath: channelPath]]
     }
 
     private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
-        def binaryParameters = []
+        buildJobArtifacts.findResults { artifact ->
+            /* Filter Android and iOS channels */
+            String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|apk)\$")) ? artifact.name : ''
+            /* Workaround to get ipa URL for iOS */
+            String artifactUrl = artifact.url ? (!artifact.url.contains('.plist') ? artifact.url :
+                    artifact.url.replaceAll('.plist', '.ipa')) : ''
+            String channelName = artifact.channelPath.toUpperCase().replaceAll('/', '_')
 
-        for (buildJobArtifact in buildJobArtifacts) {
-            def artifactName = (!buildJobArtifact['name'].contains('.plist')) ?:
-                    buildJobArtifact['name'].replaceAll('.plist', '.ipa')
-            def artifactURL = buildJobArtifact.url
-            def channelName = buildJobArtifact.channelPath.toUpperCase().replaceAll('/', '_')
-            if (artifactName != '-') {
-                binaryParameters.add(script.stringParam(name: "${channelName}_BINARY_URL", value: artifactURL))
-            }
+            /* Create build parameter for Test Automation job */
+            artifactName ? script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
         }
-
-        binaryParameters
     }
 
     private final void prepareRun() {
@@ -360,7 +356,7 @@ class Facade implements Serializable {
                                 script.error("runTests job binary URL parameters are missing!")
 
                         script.stage('TESTS') {
-                            def testAutomationJobName = "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests"
+                            String testAutomationJobName = "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests"
                             def testAutomationJob = script.build job: testAutomationJobName,
                                     parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
                                     propagate: false
