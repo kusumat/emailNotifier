@@ -46,7 +46,7 @@ class Channel implements Serializable {
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
     protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
-    protected final scmUrl = script.env.PROJECT_GIT_URL
+    protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected final jobBuildNumber = script.env.BUILD_NUMBER
 
     Channel(script) {

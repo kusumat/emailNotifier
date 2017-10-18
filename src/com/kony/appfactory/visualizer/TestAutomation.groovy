@@ -17,7 +17,7 @@ class TestAutomation implements Serializable {
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
     /* Environment variables */
     private projectName = script.env.PROJECT_NAME
-    private scmUrl = script.env.PROJECT_GIT_URL
+    private scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     /* Device Farm properties */
     private runTests = false
     private deviceFarm
