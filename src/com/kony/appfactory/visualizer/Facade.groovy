@@ -291,7 +291,7 @@ class Facade implements Serializable {
 
                 def checkParams = []
 
-                def androidChannels = channelsToRun?.findAll { it.contains('ANDROID') }
+                def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
                 /* Check Android specific params */
                 if (androidChannels) {
                     def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
@@ -306,14 +306,15 @@ class Facade implements Serializable {
 
                     if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
                         androidMandatoryParams.addAll([
-                                'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                                'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
+                                'ANDROID_KEY_ALIAS'
                         ])
                     }
 
                     checkParams.addAll(androidMandatoryParams)
                 }
 
-                def iosChannels = channelsToRun?.findAll { it.contains('IOS') }
+                def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
                 /* Check iOS specific params */
                 if (iosChannels) {
                     def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
@@ -329,6 +330,14 @@ class Facade implements Serializable {
                     checkParams.addAll(iosMandatoryParams)
                 }
 
+                def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
+                /* Check SPA specific params */
+                if (spaChannels) {
+                    def spaMandatoryParams = ['SPA_APP_VERSION']
+
+                    checkParams.addAll(spaMandatoryParams)
+                }
+
                 /* Check all required parameters depending on user input */
                 ValidationHelper.checkBuildConfiguration(script, checkParams)
             }
@@ -339,12 +348,15 @@ class Facade implements Serializable {
                 try {
                     /* Expose Fabric configuration */
                     BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-                        /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
-                        to not mask required values during the build we simply need redefine parameter values.
-                        Also, because of the case, when user didn't provide some not mandatory values we can get null value
-                        and script.env object returns only String values, been added elvis operator for assigning variable value
-                        as ''(empty). */
-                        script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+                        /*
+                            Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
+                            to not mask required values during the build we simply need redefine parameter values.
+                            Also, because of the case, when user didn't provide some not mandatory values we can get null value
+                            and script.env object returns only String values, been added elvis operator for assigning variable value
+                            as ''(empty).
+                        */
+                        script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
+                                script.error("Fabric environment value can't be null")
                     }
 
                     script.parallel(runList)
