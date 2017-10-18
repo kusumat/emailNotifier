@@ -116,17 +116,17 @@ class IosChannel extends Channel {
         }
     }
 
-    private final createPlist(String ipaArtifactUrl, String ipaArtifactPath) {
+    private final createPlist(String ipaArtifactUrl) {
         (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
-        (ipaArtifactPath) ?: script.error("ipaArtifactPath argument can't be null!")
 
         String successMessage = 'PLIST file created successfully.'
         String errorMessage = 'Failed to create PLIST file'
         String plistResourcesFileName = libraryProperties.'ios.plist.file.name'
         String plistFileName = "${projectName}_${jobBuildNumber}.plist"
+        String plistFilePath = "${script.pwd()}"
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.dir(ipaArtifactPath) {
+            script.dir(plistFilePath) {
                 /* Load property list file template */
                 String plist = script.loadLibraryResource(resourceBasePath + plistResourcesFileName)
 
@@ -139,7 +139,7 @@ class IosChannel extends Channel {
             }
         }
 
-        [name: plistFileName, path: "${karArtifact.path}"]
+        [name: "$plistFileName", path: "$plistFilePath"]
     }
 
     protected final void createPipeline() {
@@ -198,7 +198,7 @@ class IosChannel extends Channel {
 
                     script.stage("Generate property list file") {
                         /* Get plist artifact */
-                        plistArtifact = createPlist(ipaArtifactUrl, ipaArtifact.path)
+                        plistArtifact = createPlist(ipaArtifactUrl)
                     }
 
                     script.stage("Publish PLIST artifact to S3") {
