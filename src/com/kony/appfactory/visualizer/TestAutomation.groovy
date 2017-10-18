@@ -12,12 +12,12 @@ class TestAutomation implements Serializable {
     private projectFullPath
     private testFolder
     /* Build parameters */
-    private gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    private gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+    private scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
+    private scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
     /* Environment variables */
     private projectName = script.env.PROJECT_NAME
-    private gitURL = script.env.PROJECT_GIT_URL
+    private scmUrl = script.env.PROJECT_GIT_URL
     /* Device Farm properties */
     private runTests = false
     private deviceFarm
@@ -194,9 +194,9 @@ class TestAutomation implements Serializable {
                         script.stage('Checkout') {
                             BuildHelper.checkoutProject script: script,
                                     projectRelativePath: projectName,
-                                    gitBranch: gitBranch,
-                                    gitCredentialsID: gitCredentialsID,
-                                    gitURL: gitURL
+                                    scmBranch: scmBranch,
+                                    scmCredentialsId: scmCredentialsId,
+                                    scmUrl: scmUrl
                         }
 
                         script.stage('Build') {

@@ -363,9 +363,9 @@ class Fabric implements Serializable {
                         script.stage('Fetch project from remote git repository') {
                             BuildHelper.checkoutProject script: script,
                                     projectRelativePath: projectName,
-                                    gitBranch: exportRepositoryBranch,
-                                    gitCredentialsID: exportRepositoryCredentialsId,
-                                    gitURL: exportRepositoryUrl
+                                    scmBranch: exportRepositoryBranch,
+                                    scmCredentialsId: exportRepositoryCredentialsId,
+                                    scmUrl: exportRepositoryUrl
                         }
 
                         script.stage('Prettify exported JSON files') {
@@ -443,9 +443,9 @@ class Fabric implements Serializable {
                     script.stage('Fetch project from remote git repository') {
                         BuildHelper.checkoutProject script: script,
                                 projectRelativePath: projectName,
-                                gitBranch: exportRepositoryBranch,
-                                gitCredentialsID: exportRepositoryCredentialsId,
-                                gitURL: exportRepositoryUrl
+                                scmBranch: exportRepositoryBranch,
+                                scmCredentialsId: exportRepositoryCredentialsId,
+                                scmUrl: exportRepositoryUrl
                     }
 
                     script.stage("Create zip archive of the project") {
