@@ -37,8 +37,8 @@ class Channel implements Serializable {
     final projectWorkspaceFolderName
     final resourceBasePath
     /* Common build parameters */
-    protected final gitCredentialsID = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
-    protected final gitBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
+    protected final scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+    protected final scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected final buildMode = script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
@@ -46,7 +46,7 @@ class Channel implements Serializable {
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
     protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
-    protected final gitURL = script.env.PROJECT_GIT_URL
+    protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected final jobBuildNumber = script.env.BUILD_NUMBER
 
     Channel(script) {

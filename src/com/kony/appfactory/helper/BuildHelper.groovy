@@ -7,23 +7,23 @@ class BuildHelper implements Serializable {
     protected static checkoutProject(Map args) {
         def script = args.script
         String relativeTargetDir = args.projectRelativePath
-        String gitCredentialsID = args.gitCredentialsID
-        String gitURL = args.gitURL
-        String gitBranch = args.gitBranch
+        String scmCredentialsId = args.scmCredentialsId
+        String scmUrl = args.scmUrl
+        String scmBranch = args.scmBranch
 
-        script.catchErrorCustom('FAILED to checkout the project') {
+        script.catchErrorCustom('Failed to checkout the project') {
             script.checkout(
                     changelog: false,
                     poll: false,
-                    scm: getSCMConfiguration(relativeTargetDir, gitCredentialsID, gitURL, gitBranch)
+                    scm: getScmConfiguration(relativeTargetDir, scmCredentialsId, scmUrl, scmBranch)
             )
         }
     }
 
-    private static getSCMConfiguration(relativeTargetDir, gitCredentialsID, gitURL, gitBranch) {
+    private static getScmConfiguration(relativeTargetDir, scmCredentialsId, scmUrl, scmBranch) {
         def scm
 
-        switch (gitURL) {
+        switch (scmUrl) {
             case ~/^.*svn.*$/:
                 scm = [$class                : 'SubversionSCM',
                        additionalCredentials : [],
@@ -35,23 +35,23 @@ class BuildHelper implements Serializable {
                        ignoreDirPropChanges  : false,
                        includedRegions       : '',
                        locations             : [
-                               [credentialsId        : gitCredentialsID,
+                               [credentialsId        : scmCredentialsId,
                                 depthOption          : 'infinity',
                                 ignoreExternalsOption: true,
                                 local                : relativeTargetDir,
-                                remote               : gitURL]
+                                remote               : scmUrl]
                        ],
                        workspaceUpdater      : [$class: 'UpdateUpdater']]
                 break
             default:
                 scm = [$class                           : 'GitSCM',
-                       branches                         : [[name: gitBranch]],
+                       branches                         : [[name: scmBranch]],
                        doGenerateSubmoduleConfigurations: false,
                        extensions                       : [[$class           : 'RelativeTargetDirectory',
                                                             relativeTargetDir: relativeTargetDir]],
                        submoduleCfg                     : [],
-                       userRemoteConfigs                : [[credentialsId: gitCredentialsID,
-                                                            url          : gitURL]]]
+                       userRemoteConfigs                : [[credentialsId: scmCredentialsId,
+                                                            url          : scmUrl]]]
                 break
         }
 
