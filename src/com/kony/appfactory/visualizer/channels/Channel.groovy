@@ -250,26 +250,29 @@ class Channel implements Serializable {
 
     protected final void populateFabricAppConfig() {
         String configFileName = libraryProperties.'fabric.config.file.name'
-        String successMessage = 'Fabric app key, secret and service URL were successfully populated'
-        String errorMessage = 'FAILED to populate Fabric app key, secret and service URL'
 
         if (fabricAppConfig) {
             script.dir(projectFullPath) {
                 script.dir('modules') {
-                    def updatedConfig = ''
-                    def config = (script.fileExists(configFileName)) ?
-                            script.readFile(configFileName) :
-                            script.error("FAILED ${configFileName} not found!")
+                    if (script.fileExists(configFileName)) {
+                        String config = (script.readFile(configFileName)) ?:
+                                script.error("$configFileName content is empty!")
+                        String successMessage = 'Fabric app key, secret and service URL were successfully populated'
+                        String errorMessage = 'Failed to populate Fabric app key, secret and service URL'
 
-                    script.catchErrorCustom(errorMessage, successMessage) {
-                        BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-                            updatedConfig = config.
-                                    replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
-                                    replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
-                                    replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
+                        script.catchErrorCustom(errorMessage, successMessage) {
+                            BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                                String updatedConfig = config.
+                                        replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
+                                        replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
+                                        replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
 
-                            script.writeFile file: configFileName, text: updatedConfig
+                                script.writeFile file: configFileName, text: updatedConfig
+                            }
                         }
+                    } else {
+                        script.echo "Skipping population of Fabric app key, secret and service URL, " +
+                                "$configFileName was not found in the project modules folder!"
                     }
                 }
             }
