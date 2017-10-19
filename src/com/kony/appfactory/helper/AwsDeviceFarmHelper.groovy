@@ -27,7 +27,7 @@ class AwsDeviceFarmHelper implements Serializable {
         String errorMessage = 'Failed to fetch artifact ' + artifactName
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactURL}\'")
+            script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactURL}\'", true)
         }
     }
 
@@ -239,7 +239,7 @@ class AwsDeviceFarmHelper implements Serializable {
             String uploadUrl = createUploadJSON.upload.url
             String uploadScript = "curl -k -s -S -f -T \'${uploadFileName}\' \'${uploadUrl}\'"
 
-            script.shellCustom(uploadScript)
+            script.shellCustom(uploadScript, true)
 
             script.waitUntil {
                 String getUploadScript = "aws devicefarm get-upload --arn ${uploadArn}"
@@ -460,7 +460,7 @@ class AwsDeviceFarmHelper implements Serializable {
      */
     protected final void deleteUploadedArtifact(artifactArn) {
         script.catchErrorCustom('Failed to delete artifact') {
-            script.shellCustom("aws devicefarm delete-upload --arn ${artifactArn}")
+            script.shellCustom("aws devicefarm delete-upload --arn ${artifactArn}", true)
         }
     }
 
@@ -471,7 +471,7 @@ class AwsDeviceFarmHelper implements Serializable {
      */
     protected final void deleteDevicePool(devicePoolArn) {
         script.catchErrorCustom('Failed to delete device pool') {
-            script.shellCustom("aws devicefarm delete-device-pool --arn ${devicePoolArn}")
+            script.shellCustom("aws devicefarm delete-device-pool --arn ${devicePoolArn}", true)
         }
     }
 }
