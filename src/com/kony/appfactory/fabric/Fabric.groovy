@@ -49,7 +49,7 @@ class Fabric implements Serializable {
                 fabricCliFileName
         ].join('/')
 
-        script.catchErrorCustom("FAILED to fetch Fabric CLI (version: $fabricCliVersion)") {
+        script.catchErrorCustom("Failed to fetch Fabric CLI (version: $fabricCliVersion)") {
             script.shellCustom("curl -k -s -S -f -L -o \'${fabricCliFileName}\' \'${fabricCliUrl}\'")
         }
     }
@@ -58,7 +58,7 @@ class Fabric implements Serializable {
         (fabricCommand) ?: script.error("fabricCommand argument can't be null")
         (cloudCredentialsID) ?: script.error("cloudCredentialsID argument can't be null")
 
-        String errorMessage = ['FAILED to run', fabricCommand, 'command'].join(' ')
+        String errorMessage = ['Failed to run', fabricCommand, 'command'].join(' ')
 
         script.catchErrorCustom(errorMessage) {
             script.withCredentials([
@@ -86,7 +86,7 @@ class Fabric implements Serializable {
         boolean status = true
         String previousArchivePath = args.previousPath
         String currentArchivePath = args.currentPath
-        String errorMessage = 'FAILED to check if exported project has been changed!'
+        String errorMessage = 'Failed to check if exported project has been changed!'
 
         script.catchErrorCustom(errorMessage) {
             if (script.fileExists(previousArchivePath)) {
@@ -115,7 +115,7 @@ class Fabric implements Serializable {
     private final findJsonFiles(args) {
         def files
         String folderToSearchIn = args.folderToSearchIn
-        String errorMessage = 'FAILED to find JSON files'
+        String errorMessage = 'Failed to find JSON files'
 
         script.catchErrorCustom(errorMessage) {
             script.dir(folderToSearchIn) {
@@ -129,7 +129,7 @@ class Fabric implements Serializable {
     private final prettifyJsonFiles(args) {
         def files = args.files
         String rootFolder = args.rootFolder
-        String errorMessage = 'FAILED to prettify JSON files'
+        String errorMessage = 'Failed to prettify JSON files'
 
         script.catchErrorCustom(errorMessage) {
             script.dir(rootFolder) {
@@ -186,7 +186,7 @@ class Fabric implements Serializable {
     private final void overwriteFilesInGit(args) {
         String projectPath = args.projectPath
         String exportDir = args.exportDir
-        String errorMessage = 'FAILED overwrite exported files'
+        String errorMessage = 'Failed overwrite exported files'
 
         script.catchErrorCustom(errorMessage) {
             script.dir("${projectPath}/${exportDir}") {
@@ -198,7 +198,7 @@ class Fabric implements Serializable {
     }
 
     private final void storeArtifacts(projectName) {
-        String errorMessage = 'FAILED to store artifacts'
+        String errorMessage = 'Failed to store artifacts'
 
         script.catchErrorCustom(errorMessage) {
             script.shellCustom("cp -p ${projectName}.zip ${projectName}_PREV.zip")
@@ -206,7 +206,7 @@ class Fabric implements Serializable {
     }
 
     private final void zipProject(projectName, fabricApplicationName) {
-        String errorMessage = "FAILED to create zip file for project ${projectName}"
+        String errorMessage = "Failed to create zip file for project ${projectName}"
 
         script.catchErrorCustom(errorMessage) {
             script.shellCustom("zip -r \"${fabricApplicationName}.zip\" \"${projectName}/export/Apps\" -x *.pretty.json")
@@ -215,7 +215,7 @@ class Fabric implements Serializable {
 
     private final boolean isGitCodeChanged() {
         boolean status
-        String errorMessage = 'FAILED to check if there were changes in local repository'
+        String errorMessage = 'Failed to check if there were changes in local repository'
 
         script.catchErrorCustom(errorMessage) {
             script.shellCustom('git add .')
@@ -232,7 +232,7 @@ class Fabric implements Serializable {
 
     private final void configureLocalGitAccount() {
         String successMessage = 'Local git account configured successfully'
-        String errorMessage = 'FAILED configure local git account'
+        String errorMessage = 'Failed configure local git account'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.shellCustom([
@@ -252,7 +252,7 @@ class Fabric implements Serializable {
 
     private final void pushChanges() {
         String successMessage = 'All changes were successfully pushed to remote git repository'
-        String errorMessage = 'FAILED to push changes to remote git repository'
+        String errorMessage = 'Failed to push changes to remote git repository'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             String gitUsername = URLEncoder.encode(script.env.gitUsername)

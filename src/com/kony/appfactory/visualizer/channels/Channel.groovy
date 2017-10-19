@@ -149,7 +149,7 @@ class Channel implements Serializable {
         // Populate Fabric configuration to appfactory.js file
         populateFabricAppConfig()
 
-        script.catchErrorCustom('FAILED to build the project') {
+        script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i < requiredResources.size(); i++) {
@@ -199,7 +199,7 @@ class Channel implements Serializable {
         def files = null
         def artifactLocations = []
 
-        script.catchErrorCustom('FAILED to search build artifacts!') {
+        script.catchErrorCustom('Failed to search build artifacts!') {
             script.dir(artifactsBasePath) {
                 files = script.findFiles glob: getSearchGlob(artifactExtension)
             }
@@ -219,7 +219,7 @@ class Channel implements Serializable {
         def renamedArtifacts = []
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
 
-        script.catchErrorCustom('FAILED to rename artifacts') {
+        script.catchErrorCustom('Failed to rename artifacts') {
             for (int i = 0; i < buildArtifacts?.size(); ++i) {
                 def artifact = buildArtifacts[i]
                 String artifactName = artifact.name

@@ -138,7 +138,7 @@ class BuildHelper implements Serializable {
 
         def requiredDependencies = null
 
-        script.catchErrorCustom('FAILED to parse Visualizer dependencies file content') {
+        script.catchErrorCustom('Failed to parse Visualizer dependencies file content') {
             requiredDependencies = script.readJSON(text: dependenciesFileContent)?.visualizer.dependencies
         }
 
@@ -173,12 +173,12 @@ class BuildHelper implements Serializable {
                 dependenciesBaseUrl, visualizerVersion, dependenciesArchiveFileName
         ].join('/')
 
-        script.catchErrorCustom('FAILED to fetch Visualizer dependencies file!') {
+        script.catchErrorCustom('Failed to fetch Visualizer dependencies file!') {
             script.httpRequest url: dependenciesURL, acceptType: 'APPLICATION_ZIP', contentType: 'APPLICATION_ZIP',
                     outputFile: dependenciesArchiveFileName, validResponseCodes: '200'
         }
 
-        script.catchErrorCustom('FAILED to unzip Visualizer dependencies file!') {
+        script.catchErrorCustom('Failed to unzip Visualizer dependencies file!') {
             dependenciesArchive = script.unzip zipFile: dependenciesArchiveFileName, read: true
         }
 
