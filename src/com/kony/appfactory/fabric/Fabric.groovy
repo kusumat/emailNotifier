@@ -15,6 +15,10 @@ class Fabric implements Serializable {
     private final String fabricCliFileName
     private final String fabricCliVersion
     private final String nodeLabel
+    /*
+        Currently all scripts in this class been written with the thought that they(scripts) will be executed on *nix machine,
+        for future improvements OS type check been added to every command(export, import, publish).
+     */
     private boolean isUnixNode
     /* Common build parameters */
     private final String exportRepositoryUrl = script.params.PROJECT_EXPORT_REPOSITORY_URL
@@ -255,15 +259,22 @@ class Fabric implements Serializable {
         String errorMessage = 'Failed to push changes to remote git repository'
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            String gitUsername = URLEncoder.encode(script.env.gitUsername)
-            String gitPassword = URLEncoder.encode(script.env.gitPassword)
+            String gitUsername = URLEncoder.encode(script.env.GIT_USERNAME)
+            String gitPassword = URLEncoder.encode(script.env.GIT_PASSWORD)
             String pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}@")
+            /*
+                Because of need to escape special characters in git username and password,
+                we have URLEncoder.encode() call which modifies the values from credentials parameter,
+                and Jenkins will not hide them, the shell debug mode for push command should be disabled
+                to not expose the credentials to console output.
+            */
+            String hideShellOutput = '#!/bin/sh -e\n'
             String checkoutCommand = "git checkout \"$exportRepositoryBranch\""
             String commitCommand = "git commit -m \"$commitMessage\""
             String pushCommand = "git push \"$pushUrl\""
 
             script.shellCustom(
-                    [checkoutCommand, commitCommand, pushCommand].join(' && '),
+                    [hideShellOutput + checkoutCommand, commitCommand, pushCommand].join(' && '),
                     isUnixNode
             )
         }
@@ -273,8 +284,8 @@ class Fabric implements Serializable {
         script.withCredentials([
                 [$class: 'UsernamePasswordMultiBinding',
                  credentialsId: exportRepositoryCredentialsId,
-                 passwordVariable: 'gitPassword',
-                 usernameVariable: 'gitUsername']
+                 passwordVariable: 'GIT_PASSWORD',
+                 usernameVariable: 'GIT_USERNAME']
         ]) {
             closure()
         }
@@ -303,7 +314,6 @@ class Fabric implements Serializable {
 
     protected final void exportApp() {
         script.timestamps {
-            isUnixNode = script.isUnix()
             fabricCommand = 'export'
             emailData = [
                     projectName           : fabricAppName,
@@ -332,6 +342,7 @@ class Fabric implements Serializable {
 
             pipelineWrapper {
                 script.node(nodeLabel) {
+                    isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
                     script.stage('Prepare build-node environment') {
                         script.cleanWs deleteDirs: true, patterns: [[pattern: "**/${projectName}_PREV.zip", type: 'EXCLUDE']]
                         fetchFabricCli(fabricCliVersion)
@@ -404,7 +415,6 @@ class Fabric implements Serializable {
 
     protected final void importApp() {
         script.timestamps {
-            isUnixNode = script.isUnix()
             fabricCommand = 'import'
             emailData = [
                     projectName           : fabricAppName,
@@ -437,6 +447,7 @@ class Fabric implements Serializable {
 
             pipelineWrapper {
                 script.node(nodeLabel) {
+                    isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
                     script.cleanWs deleteDirs: true
 
                     script.stage('Prepare build-node environment') {
@@ -484,7 +495,6 @@ class Fabric implements Serializable {
 
     protected final void publishApp() {
         script.timestamps {
-            isUnixNode = script.isUnix()
             fabricCommand = 'publish'
             emailData = [
                     projectName          : fabricAppName,
@@ -506,6 +516,7 @@ class Fabric implements Serializable {
 
             pipelineWrapper {
                 script.node(nodeLabel) {
+                    isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
                     script.cleanWs deleteDirs: true
 
                     script.stage('Prepare build-node environment') {
