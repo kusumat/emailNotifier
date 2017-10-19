@@ -1,4 +1,4 @@
-def call(String shellScript, Boolean isUnixNode = true, Map args = [:]) {
+def call(String shellScript, Boolean isUnixNode, Map args = [:]) {
     String shellType = (isUnixNode) ? 'sh' : 'bat'
 
     "$shellType" script: shellScript,

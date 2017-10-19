@@ -15,7 +15,7 @@ class Fabric implements Serializable {
     private final String fabricCliFileName
     private final String fabricCliVersion
     private final String nodeLabel
-    private final boolean isUnixNode = true
+    private boolean isUnixNode
     /* Common build parameters */
     private final String exportRepositoryUrl = script.params.PROJECT_EXPORT_REPOSITORY_URL
     private final String exportRepositoryBranch = script.params.PROJECT_EXPORT_BRANCH
@@ -50,7 +50,7 @@ class Fabric implements Serializable {
         ].join('/')
 
         script.catchErrorCustom("Failed to fetch Fabric CLI (version: $fabricCliVersion)") {
-            script.shellCustom("curl -k -s -S -f -L -o \'${fabricCliFileName}\' \'${fabricCliUrl}\'")
+            script.httpRequest url: fabricCliUrl, outputFile: fabricCliFileName, validResponseCodes: '200'
         }
     }
 
@@ -193,7 +193,7 @@ class Fabric implements Serializable {
                 script.deleteDir()
             }
 
-            script.shellCustom("mv -f ./${exportDir} ./${projectPath}/")
+            script.shellCustom("mv -f ./${exportDir} ./${projectPath}/", isUnixNode)
         }
     }
 
@@ -201,7 +201,7 @@ class Fabric implements Serializable {
         String errorMessage = 'Failed to store artifacts'
 
         script.catchErrorCustom(errorMessage) {
-            script.shellCustom("cp -p ${projectName}.zip ${projectName}_PREV.zip")
+            script.shellCustom("cp -p ${projectName}.zip ${projectName}_PREV.zip", isUnixNode)
         }
     }
 
@@ -209,7 +209,7 @@ class Fabric implements Serializable {
         String errorMessage = "Failed to create zip file for project ${projectName}"
 
         script.catchErrorCustom(errorMessage) {
-            script.shellCustom("zip -r \"${fabricApplicationName}.zip\" \"${projectName}/export/Apps\" -x *.pretty.json")
+            script.shellCustom("zip -r \"${fabricApplicationName}.zip\" \"${projectName}/export/Apps\" -x *.pretty.json", isUnixNode)
         }
     }
 
@@ -218,7 +218,7 @@ class Fabric implements Serializable {
         String errorMessage = 'Failed to check if there were changes in local repository'
 
         script.catchErrorCustom(errorMessage) {
-            script.shellCustom('git add .')
+            script.shellCustom('git add .', isUnixNode)
 
             status = script.shellCustom(
                     'git diff --cached --exit-code > /dev/null',
@@ -238,14 +238,14 @@ class Fabric implements Serializable {
             script.shellCustom([
                     "git config --local push.default simple",
                     "git config --local user.name \"$commitAuthor\""
-            ].join(' && '))
+            ].join(' && '), isUnixNode)
 
             if (commitAuthor == 'Jenkins') {
                 commitMessage += " Used credentials of user \"${script.env.gitUsername}\""
             }
 
             if (authorEmail != '') {
-                script.shellCustom("git config --local user.email \"$authorEmail\"")
+                script.shellCustom("git config --local user.email \"$authorEmail\"", isUnixNode)
             }
         }
     }
@@ -263,7 +263,8 @@ class Fabric implements Serializable {
             String pushCommand = "git push \"$pushUrl\""
 
             script.shellCustom(
-                    [checkoutCommand, commitCommand, pushCommand].join(' && ')
+                    [checkoutCommand, commitCommand, pushCommand].join(' && '),
+                    isUnixNode
             )
         }
     }
@@ -302,6 +303,7 @@ class Fabric implements Serializable {
 
     protected final void exportApp() {
         script.timestamps {
+            isUnixNode = script.isUnix()
             fabricCommand = 'export'
             emailData = [
                     projectName           : fabricAppName,
@@ -402,6 +404,7 @@ class Fabric implements Serializable {
 
     protected final void importApp() {
         script.timestamps {
+            isUnixNode = script.isUnix()
             fabricCommand = 'import'
             emailData = [
                     projectName           : fabricAppName,
@@ -481,6 +484,7 @@ class Fabric implements Serializable {
 
     protected final void publishApp() {
         script.timestamps {
+            isUnixNode = script.isUnix()
             fabricCommand = 'publish'
             emailData = [
                     projectName          : fabricAppName,

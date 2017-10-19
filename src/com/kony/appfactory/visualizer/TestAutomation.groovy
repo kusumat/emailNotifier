@@ -107,8 +107,8 @@ class TestAutomation implements Serializable {
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(testFolder) {
-                script.sh 'mvn clean package -DskipTests=true'
-                script.sh "mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip"
+                script.shellCustom('mvn clean package -DskipTests=true', true)
+                script.shellCustom("mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip", true)
             }
         }
     }
@@ -241,7 +241,7 @@ class TestAutomation implements Serializable {
                                         /* If test binaries URL was not provided, copy binaries from the build step */
                                         if (artifactURL == 'jobWorkspace') {
                                             String artifactPath = "${testFolder}/target/${artifactName}.${artifactExt}"
-                                            script.sh "cp $artifactPath $deviceFarmWorkingFolder"
+                                            script.shellCustom("cp $artifactPath $deviceFarmWorkingFolder", true)
                                             /* Else, fetch binaries */
                                         } else {
                                             deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)

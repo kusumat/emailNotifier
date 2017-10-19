@@ -69,17 +69,17 @@ class IosChannel extends Channel {
         script.catchErrorCustom(errorMessage, successMessage) {
             /* Extract Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectBasePath) {
-                script.sh "cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip"
+                script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
                 script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectGenPath) {
-                script.sh """
+                script.shellCustom("""
                     cp ${karArtifact.path}/${karArtifact.name} .
                     perl extract.pl ${karArtifact.name}
-                """
+                """, true)
             }
             /* Build project and export IPA using Fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
@@ -108,7 +108,7 @@ class IosChannel extends Channel {
                             script.writeFile file: fastFileName, text: fastFileContent
                         }
                         script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
-                            script.sh '$FASTLANE_DIR/fastlane kony_ios_' + fastLaneBuildCommand
+                            script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + fastLaneBuildCommand, true)
                         }
                     }
                 }
