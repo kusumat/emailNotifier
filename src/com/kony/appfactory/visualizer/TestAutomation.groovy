@@ -103,7 +103,7 @@ class TestAutomation implements Serializable {
 
     protected final void build() {
         String successMessage = 'Test Automation scripts have been built successfully'
-        String errorMessage = 'FAILED to build the Test Automation scripts'
+        String errorMessage = 'Failed to build the Test Automation scripts'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(testFolder) {
@@ -213,7 +213,7 @@ class TestAutomation implements Serializable {
                                         ].join('/'),
                                         sourceFilePath: "${testFolder}/target", script, true
                             } else {
-                                script.error 'FAILED to find build result artifact!'
+                                script.error 'Failed to find build result artifact!'
                             }
                         }
                     }
@@ -304,7 +304,7 @@ class TestAutomation implements Serializable {
                                             deviceFarmTestRunArns["${artifactName}"] = runArn
                                             /* Else fail the stage, because run couldn't be scheduled without one of the binaries */
                                         } else {
-                                            script.echo "FAILED to get uploadArn"
+                                            script.echo "Failed to get uploadArn"
                                         }
                                     }
                                     def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:

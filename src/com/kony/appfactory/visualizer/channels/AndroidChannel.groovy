@@ -27,7 +27,7 @@ class AndroidChannel extends Channel {
     }
 
     private final void signArtifacts(buildArtifacts) {
-        String errorMessage = 'FAILED to sign artifact'
+        String errorMessage = 'Failed to sign artifact'
         String signer = libraryProperties.'android.signer.name'
         String androidBuildToolsPath = (visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath) ?:
                 script.error('Android build tools path is missing!')
