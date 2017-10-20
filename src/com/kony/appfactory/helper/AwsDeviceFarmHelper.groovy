@@ -88,11 +88,11 @@ class AwsDeviceFarmHelper implements Serializable {
             for (item in devicesList.tokenize(',')) {
                 def deviceProperties = item.tokenize('*')
                 devices.add([
-                        formFactor  : deviceProperties[0].trim(),
-                        manufacturer: deviceProperties[2].trim(),
-                        model       : deviceProperties[3].trim(),
-                        os          : deviceProperties[4].trim(),
-                        platform    : deviceProperties[1].trim()
+                        formFactor  : "${deviceProperties[0].trim()}",
+                        manufacturer: "${deviceProperties[2].trim()}",
+                        model       : "${deviceProperties[3].trim()}",
+                        os          : "${deviceProperties[4].trim()}",
+                        platform    : "${deviceProperties[1].trim()}"
                 ])
             }
         }
