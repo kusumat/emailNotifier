@@ -81,16 +81,10 @@ class ValidationHelper implements Serializable {
             String regex
 
             switch(item.key) {
-                case 'ANDROID_MOBILE_APP_ID':
-                case 'ANDROID_TABLET_APP_ID':
-                case 'IOS_MOBILE_APP_ID':
-                case 'IOS_TABLET_APP_ID':
+                case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID', 'IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID']:
                     regex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+[0-9a-zA-Z_]?$/
                     break
-                case 'ANDROID_APP_VERSION':
-                case 'IOS_BUNDLE_VERSION':
-                case 'SPA_APP_VERSION':
-                case 'APP_VERSION':
+                case ['ANDROID_APP_VERSION', 'IOS_BUNDLE_VERSION', 'SPA_APP_VERSION', 'APP_VERSION']:
                     regex = /^(\d+\.)?(\d+\.)?(\*|\d+)$/
                     break
                 case 'ANDROID_VERSION_CODE':
