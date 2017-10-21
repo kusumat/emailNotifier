@@ -1,0 +1,1 @@
+Loads resource file from library by provided path.

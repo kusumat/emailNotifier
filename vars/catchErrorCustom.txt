@@ -1,0 +1,2 @@
+If the body throws an exception, mark the build as a failure, and breaks the build with provided error message.<br>
+If second argument (success message) provided prints content of provided argument in console output.
