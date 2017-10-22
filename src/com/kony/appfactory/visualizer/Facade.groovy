@@ -4,12 +4,31 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 
+/**
+ * Implements logic for buildVisualizerApp job.
+ *
+ * buildVisualizer job is the main job that responsible for orchestration of channel builds and
+ *  testing application binaries.
+ *
+ * Logic here validates user provided parameters, prepares build parameters for channels and test automation job,
+ *  triggers channel jobs and/or test automation job with prepared parameters, stores e-mail notification body on S3
+ *  for AppFactory console.
+ */
 class Facade implements Serializable {
+    /* Pipeline object */
     private script
-    private nodeLabel = 'master'
+    /* Library configuration */
+    private libraryProperties
+    /* List of steps for parallel run */
     private runList = [:]
+    /* List of channels to build */
     private channelsToRun
+    /*
+        List of channel artifacts in format:
+            [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+     */
     private artifacts = []
+    /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
     /* Common build parameters */
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
@@ -24,7 +43,7 @@ class Facade implements Serializable {
     private final appleID = script.params.APPLE_ID
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
-    private final iosMobileAppId =  script.params.IOS_MOBILE_APP_ID
+    private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     /* Android build parameters */
@@ -42,40 +61,93 @@ class Facade implements Serializable {
     /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     Facade(script) {
         this.script = script
+        /* Load library configuration */
+        libraryProperties = BuildHelper.loadLibraryProperties(
+                this.script, 'com/kony/appfactory/configurations/common.properties'
+        )
         /* Checking if at least one channel been selected */
         channelsToRun = (getSelectedChannels(this.script.params)) ?:
                 script.error('Please select at least one channel to build!')
     }
 
+    /**
+     * Collects selected channels to build.
+     *
+     * @param buildParameters job parameters.
+     * @return list of selected channels.
+     */
     @NonCPS
     private static getSelectedChannels(buildParameters) {
         buildParameters.findAll {
-            it.value instanceof  Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
+            it.value instanceof Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
         }.keySet().collect()
     }
 
+    /**
+     * Filters SPA channels.
+     *
+     * @param channelsToRun list of selected channels.
+     * @return list of SPA selected channels.
+     */
     private final getSpaChannels(channelsToRun) {
         channelsToRun.findAll { it.contains('SPA') }
     }
 
+    /**
+     * Filters Native channels.
+     *
+     * @param channelsToRun channelsToRun list of selected channels.
+     * @return list of Native selected channels.
+     */
     private final getNativeChannels(channelsToRun) {
         channelsToRun.findAll { !it.contains('SPA') }
     }
 
+    /**
+     * Converts selected SPA channels to build parameters for SPA job.
+     *
+     * @param channels list of selected SPA channels.
+     * @return
+     */
     private final convertSpaChannelsToBuildParameters(channels) {
         channels.collect { script.booleanParam(name: it, value: true) }
     }
 
+    /**
+     * Returns channel form factor.
+     *
+     * @param channelName channel build parameter name.
+     * @return channel form factor.
+     */
     private final getChannelFormFactor(channelName) {
         channelName.tokenize('_')[1].toLowerCase().capitalize()
     }
 
+    /**
+     * Returns channel operating system.
+     *
+     * @param channelName channel build parameter name.
+     * @return channel operating system.
+     */
     private final getChannelOs(channelName) {
         channelName.tokenize('_')[0].toLowerCase().capitalize()
     }
 
+    /**
+     * Returns job name for specific channel.
+     * Because of naming conventions the channel job name has following format:
+     *  build<ChannelName(Capitalized OS name)>.
+     *
+     * @param channelName channel build parameter name.
+     * @return channel job name.
+     */
     private final getChannelJobName(channelName) {
         String channelsBaseFolder = 'Channels'
         String channelType = ''
@@ -100,6 +172,12 @@ class Facade implements Serializable {
         channelsBaseFolder + '/' + 'build' + (channelType) ?: script.error('Unknown channel type!')
     }
 
+    /**
+     * Returns relative channel path on S3.
+     *
+     * @param channel channel build parameter name.
+     * @return relative channel path on S3.
+     */
     private final getChannelPath(channel) {
         def channelPath = channel.tokenize('_').collect() { item ->
             /* Workaround for SPA jobs */
@@ -115,6 +193,11 @@ class Facade implements Serializable {
         channelPath
     }
 
+    /**
+     * Return group of common build parameters.
+     *
+     * @return group of common build parameters.
+     */
     private final getCommonJobBuildParameters() {
         [
                 script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
@@ -130,11 +213,25 @@ class Facade implements Serializable {
         ]
     }
 
+    /**
+     * Return SPA specific build parameters.
+     *
+     * @param spaChannelsToBuildJobParameters list of SPA channels to build.
+     * @return SPA specific build parameters.
+     */
     private final getSpaChannelJobBuildParameters(spaChannelsToBuildJobParameters) {
         getCommonJobBuildParameters() + [script.string(name: 'SPA_APP_VERSION', value: "${spaAppVersion}")] +
                 spaChannelsToBuildJobParameters
     }
 
+    /**
+     * Return specific to Native channels build parameters.
+     *
+     * @param channelName channel build parameter name.
+     * @param channelOs channel OS type.
+     * @param channelFormFactor channel form factor.
+     * @return channel specific build parameters.
+     */
     private final getNativeChannelJobBuildParameters(channelName, channelOs = '', channelFormFactor) {
         def channelJobParameters = []
         def commonParameters = getCommonJobBuildParameters()
@@ -177,6 +274,11 @@ class Facade implements Serializable {
         ]
     }
 
+    /**
+     * Return specific to Test Automation job build parameters.
+     *
+     * @return Test Automation job build parameters.
+     */
     private final getTestAutomationJobParameters() {
         [
                 script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
@@ -188,15 +290,33 @@ class Facade implements Serializable {
         ]
     }
 
+    /**
+     * Deserializes channel artifact object.
+     *
+     * @param channelPath relative path to the artifact on S3, generated from channel build parameter.
+     * @param artifacts serialized list of channel artifacts.
+     * @return list of channel artifacts.
+     */
     private final getArtifactObjects(channelPath, artifacts) {
         (artifacts) ? Eval.me(artifacts) : [[name: '', url: '', channelPath: channelPath]]
     }
 
+    /**
+     * Generates Test Automation job application binaries build parameters.
+     * If AVAILABLE_TEST_POOLS build parameter been provided, we need generate values with URLs to application binaries
+     *  on S3 from artifact object and pass them to Test Automation job.
+     *
+     * @param buildJobArtifacts list of channel artifacts.
+     * @return Test Automation binaries build parameters.
+     */
     private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
         buildJobArtifacts.findResults { artifact ->
             /* Filter Android and iOS channels */
             String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|apk)\$")) ? artifact.name : ''
-            /* Workaround to get ipa URL for iOS */
+            /*
+                Workaround to get ipa URL for iOS, just switching extension in URL to ipa,
+                because ipa file should be places nearby plist file on S3.
+             */
             String artifactUrl = artifact.url ? (!artifact.url.contains('.plist') ? artifact.url :
                     artifact.url.replaceAll('.plist', '.ipa')) : ''
             String channelName = artifact.channelPath.toUpperCase().replaceAll('/', '_')
@@ -206,6 +326,9 @@ class Facade implements Serializable {
         }
     }
 
+    /**
+     * Prepares run steps for triggering channel jobs in parallel.
+     */
     private final void prepareRun() {
         /* Filter Native channels */
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
@@ -235,6 +358,7 @@ class Facade implements Serializable {
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
 
+                    /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echo("Status of the channel ${channelName} build is: ${channelJob.currentResult}")
                     }
@@ -242,6 +366,7 @@ class Facade implements Serializable {
             }
         }
 
+        /* If SPA channels been set */
         if (spaChannelsToRun) {
             def channelName = 'SPA'
             def channelJobName = (getChannelJobName(channelName)) ?:
@@ -257,12 +382,13 @@ class Facade implements Serializable {
                     /* Trigger channel job */
                     def channelJob = script.build job: channelJobName, parameters: channelJobBuildParameters,
                             propagate: false
-                    /* Collect job results */
+                    /* Collect job result */
                     jobResultList.add(channelJob.currentResult)
 
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
 
+                    /* Notify user that SPA channel build failed */
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echo("Status of the channel ${channelName} build is: ${channelJob.currentResult}")
                     }
@@ -271,6 +397,9 @@ class Facade implements Serializable {
         }
     }
 
+    /**
+     * Sets build description at the end of the build.
+     */
     private final void setBuildDescription() {
         script.currentBuild.description = """\
             <div id="build-description">
@@ -283,16 +412,23 @@ class Facade implements Serializable {
             """.stripIndent()
     }
 
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
+        /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             script.stage('Check provided parameters') {
                 /* Check common params */
                 ValidationHelper.checkBuildConfiguration(script)
 
+                /* List of required parameters */
                 def checkParams = []
 
+                /* Collect Android channel parameters to check */
                 def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
-                /* Check Android specific params */
+
                 if (androidChannels) {
                     def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
 
@@ -314,8 +450,9 @@ class Facade implements Serializable {
                     checkParams.addAll(androidMandatoryParams)
                 }
 
+                /* Collect iOS channel parameters to check */
                 def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
-                /* Check iOS specific params */
+
                 if (iosChannels) {
                     def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
 
@@ -330,8 +467,9 @@ class Facade implements Serializable {
                     checkParams.addAll(iosMandatoryParams)
                 }
 
+                /* Collect SPA channel parameters to check */
                 def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
-                /* Check SPA specific params */
+
                 if (spaChannels) {
                     def spaMandatoryParams = ['SPA_APP_VERSION']
 
@@ -342,7 +480,8 @@ class Facade implements Serializable {
                 ValidationHelper.checkBuildConfiguration(script, checkParams)
             }
 
-            script.node(nodeLabel) {
+            /* Allocate a slave for the run */
+            script.node(libraryProperties.'facade.node.label') {
                 prepareRun()
 
                 try {
@@ -351,43 +490,54 @@ class Facade implements Serializable {
                         /*
                             Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                             to not mask required values during the build we simply need redefine parameter values.
-                            Also, because of the case, when user didn't provide some not mandatory values we can get null value
-                            and script.env object returns only String values, been added elvis operator for assigning variable value
-                            as ''(empty).
+                            Also, because of the case, when user didn't provide some not mandatory values we can get
+                            null value and script.env object returns only String values,
+                            been added elvis operator for assigning variable value as ''(empty).
                         */
                         script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
                                 script.error("Fabric environment value can't be null")
                     }
 
+                    /* Run channel builds in parallel */
                     script.parallel(runList)
 
+                    /* If test pool been provided, prepare build parameters and trigger runTests job */
                     if (availableTestPools) {
-                        def testAutomationJobParameters = getTestAutomationJobParameters() ?:
-                                script.error("runTests job parameters are missing!")
-                        def testAutomationJobBinaryParameters = (getTestAutomationJobBinaryParameters(artifacts)) ?:
-                                script.error("runTests job binary URL parameters are missing!")
-
                         script.stage('TESTS') {
-                            String testAutomationJobName = "${script.env.JOB_NAME - script.env.JOB_BASE_NAME - 'Builds/'}Tests/runTests"
+                            def testAutomationJobParameters = getTestAutomationJobParameters() ?:
+                                    script.error("runTests job parameters are missing!")
+                            def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
+                                    script.error("runTests job binary URL parameters are missing!")
+                            String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
+                                    "${script.env.JOB_BASE_NAME}" -
+                                    'Builds/'
+                            String testAutomationJobName = "${testAutomationJobBasePath}Tests/runTests"
+
+                            /* Trigger runTests job to test build binaries */
                             def testAutomationJob = script.build job: testAutomationJobName,
                                     parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
                                     propagate: false
                             def testAutomationJobResult = testAutomationJob.currentResult
 
+                            /* Collect job result */
                             jobResultList.add(testAutomationJobResult)
 
+                            /* Notify user that runTests job build failed */
                             if (testAutomationJobResult != 'SUCCESS') {
                                 script.echo "Status of the runTests job: ${testAutomationJobResult}"
                             }
                         }
                     }
 
+                    /* Check if there are failed or unstable or aborted jobs */
                     if (jobResultList.contains('FAILURE') ||
                             jobResultList.contains('UNSTABLE') ||
                             jobResultList.contains('ABORTED')
                     ) {
+                        /* Set job result to 'UNSTABLE' if above check is true */
                         script.currentBuild.result = 'UNSTABLE'
                     } else {
+                        /* Set job result to 'SUCCESS' if above check is false */
                         script.currentBuild.result = 'SUCCESS'
                     }
                 } catch (Exception e) {
@@ -396,6 +546,11 @@ class Facade implements Serializable {
                     script.currentBuild.result = 'FAILURE'
                 } finally {
                     setBuildDescription()
+                    /*
+                        Been agreed to send notification from buildVisualizerApp job only
+                        if result not equals 'FAILURE', all notification with failed channel builds
+                        will be sent directly from channel job.
+                     */
                     if (channelsToRun && script.currentBuild.result != 'FAILURE') {
                         NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
                     }
