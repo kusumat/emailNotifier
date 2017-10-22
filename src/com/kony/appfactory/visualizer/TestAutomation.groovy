@@ -5,10 +5,25 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
 
+/**
+ * Implements logic for runTests job.
+ *
+ * runTests job responsible for Test Automation scripts build and scheduling Device Farm test runs with provided
+ *  application binaries and device pools.
+ *
+ * Test run and Test Automation scripts artifacts are stored on S3 according with approved folder structure.
+ *
+ * E-mail notification template and JSON file for AppFactory console,
+ *  also stored on S3 according with approved folder structure.
+ */
 class TestAutomation implements Serializable {
+    /* Pipeline object */
     private script
+    /* Library configuration */
     private libraryProperties
+    /* Job workspace path */
     private workspace
+    /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     private projectFullPath
     private testFolder
     /* Build parameters */
@@ -20,6 +35,7 @@ class TestAutomation implements Serializable {
     private scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     /* Device Farm properties */
     private runTests = false
+    /* Device Farm scripts object */
     private deviceFarm
     private deviceFarmProjectArn
     private devicePoolArns
@@ -27,7 +43,9 @@ class TestAutomation implements Serializable {
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
     private deviceFarmTestRunResults = [:]
+    /* Temp folder for Device Farm objects (test run results) */
     private deviceFarmWorkingFolder
+    /* Device Farm AWS region */
     private awsRegion
     private projectArtifacts = [
             Android_Mobile: [binaryName: getBinaryName(script.env.ANDROID_MOBILE_NATIVE_BINARY_URL),
@@ -53,46 +71,83 @@ class TestAutomation implements Serializable {
                                        url       : (script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
     ]
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     TestAutomation(script) {
         this.script = script
+        /* Initializer Device Farm scrips object */
         deviceFarm = new AwsDeviceFarmHelper(this.script)
-        libraryProperties = BuildHelper.loadLibraryProperties(this.script, 'com/kony/appfactory/configurations/common.properties')
+        /* Load library configuration */
+        libraryProperties = BuildHelper.loadLibraryProperties(
+                this.script, 'com/kony/appfactory/configurations/common.properties'
+        )
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
     }
 
+    /**
+     * Validates build parameters.
+     *
+     * @param buildParameters job parameters.
+     */
     protected final void validateBuildParameters(buildParameters) {
-        def appBinaryURLParameters = buildParameters.findAll {
+        /* Filter all application binaries build parameters */
+        def appBinaryUrlParameters = buildParameters.findAll {
             it.key.contains('URL') && it.key != 'TESTS_BINARY_URL' && it.value
         }
-        def gitParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
-        def testBinaryURLParameter = buildParameters.findAll { it.key == 'TESTS_BINARY_URL' && it.value }
-        def deviceListParameter = buildParameters.findAll { it.key.contains('AVAILABLE_TEST_POOLS') && it.value }
-        def URLParameters = testBinaryURLParameter + appBinaryURLParameters
+        /* Filter all SCM build parameters */
+        def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
+        /* Filter test binaries build parameter */
+        def testBinaryUrlParameter = buildParameters.findAll { it.key == 'TESTS_BINARY_URL' && it.value }
+        /* Filter pool name build parameter */
+        def poolNameParameter = buildParameters.findAll { it.key.contains('AVAILABLE_TEST_POOLS') && it.value }
+        /* Combine binaries build parameters */
+        def UrlParameters = testBinaryUrlParameter + appBinaryUrlParameters
 
-        if (appBinaryURLParameters) {
-            for (parameter in URLParameters) {
-                if (!isValidURL(parameter.value)) {
+        /* Check if at least one application binaries parameter been provided */
+        if (appBinaryUrlParameters) {
+            /* Validate application binaries URLs */
+            for (parameter in UrlParameters) {
+                if (!isValidUrl(parameter.value)) {
                     script.error "Build parameter ${parameter.key} value is not valid URL!"
                 }
             }
 
+            /* Set flag to run tests on Device Farm */
             runTests = true
         }
 
-        if (testBinaryURLParameter && gitParameters) {
+        /*
+            To restrict user run tests with build Test Automation scripts or with provided test binaries,
+            fail build if both options provided.
+         */
+        if (testBinaryUrlParameter && scmParameters) {
             script.error("Please provide only one option for the source of test scripts: GIT or URL")
-        } else if (!testBinaryURLParameter && !gitParameters) {
+        }
+        /* Same if none of the options provided */
+        else if (!testBinaryUrlParameter && !scmParameters) {
             script.error "Please provide at least one source of test binaries"
         }
 
-        if (!appBinaryURLParameters && testBinaryURLParameter) {
+        /* Fail build if testBinaryUrlParameter been provided without appBinaryUrlParameters */
+        if (!appBinaryUrlParameters && testBinaryUrlParameter) {
             script.error "Please provide at least one of application binaries URL"
-        } else if (!deviceListParameter && appBinaryURLParameters) {
+        }
+        /* Fail build if appBinaryUrlParameters been provided without test pool */
+        else if (!poolNameParameter && appBinaryUrlParameters) {
             script.error "Please provide pool to test on"
         }
     }
 
-    protected final boolean isValidURL(urlString) {
+    /**
+     * Validates provided URL.
+     *
+     * @param urlString URL to validate.
+     * @return validation result (true or false).
+     */
+    protected final boolean isValidUrl(urlString) {
         try {
             urlString.toURL().toURI()
             return true
@@ -101,6 +156,9 @@ class TestAutomation implements Serializable {
         }
     }
 
+    /**
+     * Builds Test Automation scripts.
+     */
     protected final void build() {
         String successMessage = 'Test Automation scripts have been built successfully'
         String errorMessage = 'Failed to build the Test Automation scripts'
@@ -113,6 +171,13 @@ class TestAutomation implements Serializable {
         }
     }
 
+    /**
+     * Prepares steps to run in parallel. Used for fetching and uploading artifacts in parallel.
+     *
+     * @param artifacts artifact name.
+     * @param stageName stage name (for console output).
+     * @param stepClosure step body.
+     */
     protected final void prepareParallelSteps(artifacts, stageName, stepClosure) {
         def stepsToRun = [:]
 
@@ -121,14 +186,15 @@ class TestAutomation implements Serializable {
         for (int i=0; i<artifactsNames.size(); i++) {
             def artifact = artifacts.get(artifactsNames[i])
             def artifactName = artifactsNames[i]
-            def artifactURL = artifact.url
+            def artifactUrl = artifact.url
             def artifactExt = artifact.extension
             def uploadType = artifact.uploadType
 
-            if (artifactURL) {
+            if (artifactUrl) {
                 def step = {
-                    stepClosure(artifactName, artifactURL, artifactExt, uploadType)
+                    stepClosure(artifactName, artifactUrl, artifactExt, uploadType)
                 }
+
                 stepsToRun.put("${stageName}${artifactName}", step)
             } else {
                 script.echo "${artifactName.replaceAll('_', ' ')} binary was not provided!"
@@ -138,11 +204,19 @@ class TestAutomation implements Serializable {
         stepsToRun
     }
 
+    /**
+     * Cleans DeviceFarm objects after every run.
+     * Currently removes only uploads and device pools that are generated on every run.
+     *
+     * @param deviceFarmUploadArns list of upload ARNs.
+     * @param devicePoolArns list of pool ARNs.
+     */
     protected final void cleanup(deviceFarmUploadArns, devicePoolArns) {
         script.withAWS(region: awsRegion) {
             if (deviceFarmUploadArns) {
                 for (int i = 0; i < deviceFarmUploadArns.size(); ++i) {
-                    deviceFarm.deleteUploadedArtifact(deviceFarmUploadArns[i])
+                    def deviceFarmUploadArn = deviceFarmUploadArns[i]
+                    deviceFarm.deleteUploadedArtifact(deviceFarmUploadArn)
                 }
             }
 
@@ -150,12 +224,20 @@ class TestAutomation implements Serializable {
                 def poolNames = devicePoolArns.keySet().toArray()
                 // Workaround to iterate over map keys in c++ style for loop
                 for (int i = 0; i < poolNames.size(); ++i) {
-                    deviceFarm.deleteDevicePool(devicePoolArns[poolNames[i]].value)
+                    def devicePoolArn = devicePoolArns[poolNames[i]].value
+
+                    deviceFarm.deleteDevicePool(devicePoolArn)
                 }
             }
         }
     }
 
+    /**
+     * Parses binary URL to get binary name.
+     *
+     * @param urlString provided URL.
+     * @return binary name.
+     */
     @NonCPS
     protected final getBinaryName(urlString) {
         def binaryName = (urlString) ? urlString.replaceAll(/.*\//, '') : ''
@@ -163,6 +245,12 @@ class TestAutomation implements Serializable {
         binaryName
     }
 
+    /**
+     * Collects binaries names for e-mail notification.
+     *
+     * @param artifacts list of artifacts that been provided for the test run.
+     * @return key value pairs with artifact name as a key and binary name as a value.
+     */
     private final getBinaryNameForEmail(artifacts) {
         def result = [:]
 
@@ -173,20 +261,31 @@ class TestAutomation implements Serializable {
         result
     }
 
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
+        /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             script.stage('Check provided parameters') {
                 validateBuildParameters(script.params)
             }
 
+            /* Allocate a slave for the run */
             script.node(libraryProperties.'test.automation.node.label') {
                 /* Set environment-dependent variables */
                 workspace = script.env.WORKSPACE
                 projectFullPath = workspace + '/' + projectName
                 testFolder = projectFullPath + '/' + libraryProperties.'test.automation.scripts.path'
-                deviceFarmWorkingFolder = projectFullPath + '/' + libraryProperties.'test.automation.device.farm.working.folder.name'
+                deviceFarmWorkingFolder = projectFullPath + '/' +
+                        libraryProperties.'test.automation.device.farm.working.folder.name'
 
                 try {
+                    /*
+                        Clean workspace, to be sure that we have not any items from previous build,
+                        and build environment completely new.
+                     */
                     script.cleanWs deleteDirs: true
 
                     /* Build test automation scripts if URL with test binaries was not provided */
@@ -200,6 +299,7 @@ class TestAutomation implements Serializable {
                         }
 
                         script.stage('Build') {
+                            /* Build Test Automation scripts */
                             build()
                         }
 
@@ -247,8 +347,9 @@ class TestAutomation implements Serializable {
                                             deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
                                         }
                                     }
-                                    def stepsToRun = (prepareParallelSteps(testPackage << projectArtifacts, 'fetch_', step)) ?:
-                                            script.error("No artifacts to fetch!")
+                                    def stepsToRun = prepareParallelSteps(
+                                            testPackage << projectArtifacts, 'fetch_', step
+                                    ) ?: script.error("No artifacts to fetch!")
 
                                     /* Run prepared step in parallel */
                                     if (stepsToRun) {
@@ -259,13 +360,18 @@ class TestAutomation implements Serializable {
                                 script.stage('Create Device Farm Project') {
                                     /* Check if project already exists */
                                     deviceFarmProjectArn = (deviceFarm.getProject(projectName)) ?:
-                                            /* If not, create new project and return ARN or break the build, if ARN equals null */
-                                            (deviceFarm.createProject(projectName)) ?: script.error("Project ARN is empty!")
+                                            /*
+                                                If not, create new project and return ARN or break the build,
+                                                if ARN equals null
+                                             */
+                                            deviceFarm.createProject(projectName) ?:
+                                                    script.error("Project ARN is empty!")
                                 }
 
                                 script.stage('Create Device Pools') {
-                                    devicePoolArns = (deviceFarm.createDevicePools(deviceFarmProjectArn, devicePoolName)) ?:
-                                            script.error("Device pool ARN list is empty!")
+                                    devicePoolArns = deviceFarm.createDevicePools(
+                                            deviceFarmProjectArn, devicePoolName
+                                    ) ?: script.error("Device pool ARN list is empty!")
                                 }
 
                                 script.stage('Upload test package') {
@@ -292,17 +398,23 @@ class TestAutomation implements Serializable {
 
                                         /* If we have applicataion binaries and test binaries, schedule the run */
                                         if (uploadArn && deviceFarmTestUploadArtifactArn) {
-                                            /* Depending on artifact name we need to chose appropriate pool for the run */
-                                            def devicePoolArn = (artifactName.toLowerCase().contains('mobile')) ?
-                                                    (devicePoolArns.phones) ?:
-                                                            script.error("Artifacts provided for tablets, but TABLET devices were provided") :
-                                                    (devicePoolArns.tablets ?:
-                                                            script.error("Artifacts provided for tablets, but PHONE devices were provided"))
+                                            /*
+                                                Depending on artifact name we need to chose appropriate pool for
+                                                the run.
+                                             */
+                                            def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
+                                                    (devicePoolArns.phones) ?: script.error("Artifacts provided " +
+                                                            "for tablets, but TABLET devices were provided") :
+                                                    (devicePoolArns.tablets ?: script.error("Artifacts provided for " +
+                                                            "tablets, but PHONE devices were provided"))
                                             /* Once all parameters gotten, shcedule the DeviceFarm run */
                                             def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn,
                                                     'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn)
                                             deviceFarmTestRunArns["${artifactName}"] = runArn
-                                            /* Else fail the stage, because run couldn't be scheduled without one of the binaries */
+                                            /*
+                                                Otherwise, fail the stage, because run couldn't be scheduled without
+                                                one of the binaries.
+                                             */
                                         } else {
                                             script.echo "Failed to get uploadArn"
                                         }
@@ -329,13 +441,15 @@ class TestAutomation implements Serializable {
                                             /* If we got a test result */
                                             if (testRunResult) {
                                                 /*
-                                            Query DeviceFarm for test artifacts (logs, videos, etc) and
-                                            store test run artifact object in list
-                                         */
+                                                    Query DeviceFarm for test artifacts (logs, videos, etc) and
+                                                    store test run artifact object in list
+                                                 */
                                                 deviceFarmTestRunResults.runs = deviceFarm.getTestRunArtifacts(arn)
                                                 /* Else notify user that result value is empty */
                                             } else {
-                                                script.echo "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
+                                                script.echo(
+                                                        "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
+                                                )
                                             }
                                         }
                                     }
@@ -359,7 +473,6 @@ class TestAutomation implements Serializable {
                         script.echo "ERROR: $exceptionMessage"
                         script.currentBuild.result = 'FAILURE'
                     } finally {
-                        cleanup(deviceFarmUploadArns, devicePoolArns)
                         NotificationsHelper.sendEmail(script,
                                 'runTests',
                                 deviceFarmTestRunResults + [
@@ -369,6 +482,7 @@ class TestAutomation implements Serializable {
                                 ],
                                 true
                         )
+                        cleanup(deviceFarmUploadArns, devicePoolArns)
                     }
                 }
             }
