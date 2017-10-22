@@ -5,36 +5,84 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import java.util.regex.Matcher
 
+/**
+ * Implements logic for building channels. Contains common methods that are used during the channel build.
+ */
 class Channel implements Serializable {
+    /* Pipeline object */
     protected script
+    /*
+        List of channel artifacts in format:
+            [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+     */
     protected artifacts = []
+    /*
+        Platform dependent default name-separator character as String.
+        For windows, it's '\' and for unix it's '/'.
+     */
     protected separator
+    /*
+        Platform dependent variable for path-separator.
+        For example PATH or CLASSPATH variable list of paths separated by ':' in Unix systems and ';' in Windows system.
+     */
     protected pathSeparator
+    /* Stores Visualizer dependencies list */
     protected visualizerDependencies
+    /* Build artifacts */
     protected buildArtifacts
+    /*
+        Contains instance of Fabric class for publishing Fabric application,
+        if PUBLISH_FABRIC_APP build parameter set to true.
+     */
     protected fabric
+    /*
+        Flag stores slave OS type, mostly used in shellCustom step,
+        or set environment dependent variables, or run OS dependent steps
+     */
     protected isUnixNode
+    /* Job workspace path */
     protected workspace
     /* Target folder for checkout, default value vis_ws/<project_name> */
     protected checkoutRelativeTargetFolder
-    /* If projectRoot value has been provide, than value of this property will be set to <job_workspace>/vis_ws/<project_name>
-     * otherwise it will be set to <job_workspace>/vis_ws */
+    /*
+        If projectRoot value has been provide, than value of this property
+        will be set to <job_workspace>/vis_ws/<project_name> otherwise it will be set to <job_workspace>/vis_ws
+     */
     protected projectWorkspacePath
     /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     protected projectFullPath
     /* Visualizer home folder, slave(build-node) dependent value, fetched from environment variables of the slave */
     protected visualizerHome
+    /* Visualizer version */
     protected visualizerVersion
+    /*
+        Channel relative path on S3, used for storing artifacts on S3 according to agreed bucket structure,
+        also used in e-mail notifications.
+     */
     protected channelPath
+    /*
+        Channel build parameter name (exposed as environment variables),
+        used for exposing channel to build in HeadlessBuild.properties.
+     */
     protected channelVariableName
+    /* Channel type: Native or SPA */
     protected channelType
+    /* Channel OS type: Android or iOS or Windows or SPA */
     protected channelOs
+    /* Temp folder location where to search build artifacts */
     protected artifactsBasePath
+    /* Artifact extension, depends on channel type */
     protected artifactExtension
+    /* Path for storing artifact on S3 bucket, has following format: Builds/<Fabric environment name>/channelPath */
     protected s3ArtifactPath
+    /* Library configuration */
     protected libraryProperties
-    /* Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and can not be used */
+    /*
+        Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
+        can not be used.
+     */
     final projectWorkspaceFolderName
+    /* Base path for build resources (plist file template, ivysettings.xml, property.xml, Fastfile, etc.) */
     final resourceBasePath
     /* Common build parameters */
     protected final scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
@@ -49,24 +97,42 @@ class Channel implements Serializable {
     protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected final jobBuildNumber = script.env.BUILD_NUMBER
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     Channel(script) {
         this.script = script
-        libraryProperties = BuildHelper.loadLibraryProperties(this.script, 'com/kony/appfactory/configurations/common.properties')
+        /* Load library configuration */
+        libraryProperties = BuildHelper.loadLibraryProperties(
+                this.script, 'com/kony/appfactory/configurations/common.properties'
+        )
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         resourceBasePath = libraryProperties.'project.resources.base.path'
+        /*
+            Instantiate Fabric object for publishing Fabric apps,
+            because of lack of information about publishing native apps,
+            this step been moved here to be able to add support for publishing native applications if needed.
+         */
         fabric = new Fabric(this.script)
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
     }
 
+    /**
+     * Wraps block of code with required steps for every build pipeline.
+     *
+     * @param closure block of code that implements build pipeline.
+     */
     protected final void pipelineWrapper(closure) {
         /* Expose Fabric configuration */
         BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
             /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                 to not mask required values during the build we simply need redefine parameter values.
                 Also, because of the case, when user didn't provide some not mandatory values we can get null value
-                and script.env object returns only String values, been added elvis operator for assigning variable value
-                as ''(empty). */
+                and script.env object returns only String values, been added elvis operator for assigning variable
+                value as ''(empty). */
             script.env.FABRIC_APP_NAME = (script.env.FABRIC_APP_NAME) ?: ''
             script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
         }
@@ -82,7 +148,9 @@ class Channel implements Serializable {
                 [workspace, projectWorkspaceFolderName]?.join(separator)
         /* Expose Visualizer workspace to environment variables to use it in HeadlessBuild.properties */
         script.env['PROJECT_WORKSPACE'] = projectWorkspacePath
-        projectFullPath = [workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)].findAll().join(separator)
+        projectFullPath = [
+                workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
+        ].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
@@ -102,12 +170,19 @@ class Channel implements Serializable {
         } finally {
             setBuildDescription()
 
+            /* Been agreed to send notification from channel job only if result equals 'FAILURE' */
             if (script.currentBuild.result == 'FAILURE') {
                 NotificationsHelper.sendEmail(script, 'buildVisualizerApp')
             }
         }
     }
 
+    /**
+     * Wraps code with required environment variables (home paths of dependencies,
+     *  updates PATH environment variable, Kony cloud credentials and optionally GOOGLE_MAPS_KEY for Android builds).
+     *
+     * @param closure block of code.
+     */
     protected final void visualizerEnvWrapper(closure) {
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
@@ -119,14 +194,17 @@ class Channel implements Serializable {
                         libraryProperties.'visualizer.dependencies.archive.file.prefix',
                         libraryProperties.'visualizer.dependencies.archive.file.extension')
         ) ?: script.error('Missing Visualizer dependencies!')
+        /* Expose tool installation path as environment variable */
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath
         }
+        /* Collect tool installation paths for PATH environment variables */
         def toolBinPath = visualizerDependencies.collect {
             exposeToolPath(it.variableName, it.homePath)
             it.binPath
         }.join(pathSeparator)
 
+        /* Collect all additional environment variables that required for build */
         def credentialsTypeList = [script.usernamePassword(credentialsId: "${cloudCredentialsID}",
                 passwordVariable: 'CLOUD_PASSWORD', usernameVariable: 'CLOUD_USERNAME')]
 
@@ -143,10 +221,14 @@ class Channel implements Serializable {
         }
     }
 
+    /**
+     * Builds the project.
+     */
     protected final void build() {
+        /* List of required build resources */
         def requiredResources = ['property.xml', 'ivysettings.xml']
 
-        // Populate Fabric configuration to appfactory.js file
+        /* Populate Fabric configuration to appfactory.js file */
         populateFabricAppConfig()
 
         script.catchErrorCustom('Failed to build the project') {
@@ -157,20 +239,25 @@ class Channel implements Serializable {
                     script.writeFile file: requiredResources[i], text: resource
                 }
 
-                /* This wrapper responsible for adding ANT_HOME, JAVA_HOME and Kony Cloud credentials */
+                /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
+                    /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
                     script.shellCustom('ant -buildfile property.xml', isUnixNode)
+                    /* Build project */
                     script.shellCustom('ant', isUnixNode)
                 }
             }
         }
     }
 
-    /*
-        Determine which Visualizer version project requires,
-        according to the version that matches first in the order of branding/studioviz/keditor plugin
-    */
-    protected final getVisualizerVersion(text) {
+    /**
+     * Determine which Visualizer version project requires,
+     * according to the version that matches first in the order of branding/studioviz/keditor plugin.
+     *
+     * @param konyPluginsXmlFileContent content of the konyplugins.xml.
+     * @return Visualizer version.
+     */
+    protected final getVisualizerVersion(konyPluginsXmlFileContent) {
 	    String visualizerVersion = ''
         def plugins = [
                 'Branding': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.ide.paas.branding"/,
@@ -180,7 +267,7 @@ class Channel implements Serializable {
         ]
 
         plugins.find { pluginName, pluginSearchPattern ->
-            if (text =~ pluginSearchPattern) {
+            if (konyPluginsXmlFileContent =~ pluginSearchPattern) {
                 script.echo "Found $pluginName plugin!"
                 visualizerVersion = Matcher.lastMatcher[0][1]
                 /* Return true to break the find loop, if at least one much been found */
@@ -193,18 +280,28 @@ class Channel implements Serializable {
         visualizerVersion
     }
 
+    /**
+     * Searches build artifacts.
+     *
+     * @param artifactExtension artifact extension.
+     * @return list with found artifacts.
+     */
     protected final getArtifactLocations(artifactExtension) {
+        /* Check required arguments */
         (artifactExtension) ?: script.error("artifactExtension argument can't be null")
 
         def files = null
         def artifactLocations = []
 
         script.catchErrorCustom('Failed to search build artifacts!') {
+            /* Switch to artifact temp folder */
             script.dir(artifactsBasePath) {
+                /* Search for artifacts */
                 files = script.findFiles glob: getSearchGlob(artifactExtension)
             }
         }
 
+        /* Generate artifact object with required properties */
         for (file in files) {
             def filePath = (file.path == file.name) ? artifactsBasePath :
                     [artifactsBasePath, file.path.minus(separator + file.name)].join(separator)
@@ -215,6 +312,11 @@ class Channel implements Serializable {
         artifactLocations
     }
 
+    /**
+     * Renames build artifact, format: <ProjectName>_[<ArtifactArchitecture>].<artifactExtension>
+     * @param buildArtifacts build artifacts list.
+     * @return list of renamed artifacts.
+     */
     protected final renameArtifacts(buildArtifacts) {
         def renamedArtifacts = []
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
@@ -230,7 +332,10 @@ class Channel implements Serializable {
                         jobBuildNumber + '.' + artifactExtension
                 String command = [shellCommand, artifactName, artifactTargetName].join(' ')
 
-                // Workaround for Android binaries
+                /*
+                    Workaround for Android binaries, because of there are two build artifacts
+                    with debug and release suffixes, working only with required one.
+                 */
                 if (channelVariableName?.contains('ANDROID') && !artifactName.contains(buildMode)) {
                     continue
                 }
@@ -247,12 +352,17 @@ class Channel implements Serializable {
         renamedArtifacts
     }
 
+    /**
+     * Populates Fabric configuration to appfactory.js file.
+     */
     protected final void populateFabricAppConfig() {
         String configFileName = libraryProperties.'fabric.config.file.name'
 
+        /* Check if FABRIC_APP_CONFIG build parameter is set */
         if (fabricAppConfig) {
             script.dir(projectFullPath) {
                 script.dir('modules') {
+                    /* Check if appfactory.js file exists */
                     if (script.fileExists(configFileName)) {
                         String config = (script.readFile(configFileName)) ?:
                                 script.error("$configFileName content is empty!")
@@ -260,6 +370,7 @@ class Channel implements Serializable {
                         String errorMessage = 'Failed to populate Fabric app key, secret and service URL'
 
                         script.catchErrorCustom(errorMessage, successMessage) {
+                            /* Populate values from Fabric configuration */
                             BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                                 String updatedConfig = config.
                                         replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
@@ -281,6 +392,12 @@ class Channel implements Serializable {
         }
     }
 
+    /**
+     * Returns search glob for build artifacts search.
+     *
+     * @param artifactExtension artifact extension.
+     * @return search glob.
+     */
     protected final getSearchGlob(artifactExtension) {
         def searchGlob
 
@@ -306,6 +423,15 @@ class Channel implements Serializable {
         searchGlob
     }
 
+    /**
+     * Returns artifact path in build temp folder depending on channel.
+     *
+     * @param projectWorkspacePath project location on job workspace.
+     * @param projectName project name.
+     * @param separator path separator.
+     * @param channelVariableName channel build parameter name.
+     * @return path to the artifact.
+     */
     protected final getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) {
         def artifactsTempPath
 
@@ -319,7 +445,9 @@ class Channel implements Serializable {
                 artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
                 break
             case 'ANDROID_TABLET_NATIVE':
-                artifactsTempPath = getPath(['build', 'luatabrcandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                artifactsTempPath = getPath(
+                        ['build', 'luatabrcandroid', 'dist', projectName, 'build', 'outputs', 'apk']
+                )
                 break
             case 'IOS_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'server', 'iphonekbf'])
@@ -352,8 +480,8 @@ class Channel implements Serializable {
      * Returns an artifact file extension depending on channel name.
      * Method's result is used as an input parameter for build artifacts search.
      *
-     * @param channelName channel name string
-     * @return            the artifact extension string
+     * @param channelName channel build parameter name.
+     * @return the artifact extension string
      */
     protected final getArtifactExtension(channelVariableName) {
         def artifactExtension
@@ -387,7 +515,7 @@ class Channel implements Serializable {
      * Method's result is substituted to the artifact name.
      *
      * @param artifactPath location of the artifact after the build
-     * @return             the artifact architecture string
+     * @return artifact architecture
      */
     @NonCPS
     protected final getArtifactArchitecture(artifactPath) {
@@ -411,6 +539,9 @@ class Channel implements Serializable {
         artifactArchitecture
     }
 
+    /**
+     * Sets build description at the end of the build.
+     */
     protected final void setBuildDescription() {
         script.currentBuild.description = """\
         <div id="build-description">
