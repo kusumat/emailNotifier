@@ -4,11 +4,14 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
+/**
+ * Implements logic for Android channel builds.
+ */
 class AndroidChannel extends Channel {
     /* Build parameters */
     private final androidAppVersion = script.params.ANDROID_APP_VERSION
-    private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
-    private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
+    private final keystoreFileId = script.params.ANDROID_KEYSTORE_FILE
+    private final keystorePasswordId = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
     /* At least one of application id parameters should be set */
@@ -17,6 +20,11 @@ class AndroidChannel extends Channel {
     private final androidPackageName = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
             androidMobileAppId : androidTabletAppId
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     AndroidChannel(script) {
         super(script)
         channelOs = 'Android'
@@ -26,22 +34,33 @@ class AndroidChannel extends Channel {
         this.script.env['ANDROID_PACKAGE_NAME'] = androidPackageName
     }
 
+    /**
+     * Signs Android build artifacts.
+     * More info could be found: https://developer.android.com/studio/publish/app-signing.html#signing-manually
+     *                           https://docs.oracle.com/javase/6/docs/technotes/tools/solaris/jarsigner.html
+     *
+     * @param buildArtifacts build artifacts list.
+     */
     private final void signArtifacts(buildArtifacts) {
         String errorMessage = 'Failed to sign artifact'
         String signer = libraryProperties.'android.signer.name'
-        String androidBuildToolsPath = (visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath) ?:
-                script.error('Android build tools path is missing!')
+        String androidBuildToolsPath = (
+                visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath
+        ) ?: script.error('Android build tools path is missing!')
         String javaBinPath = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
                 script.error('Java binaries path is missing!')
 
         script.catchErrorCustom(errorMessage) {
             for (artifact in buildArtifacts) {
                 script.dir(artifact.path) {
+                    /* Add Java binaries and Android build tools home folder to the PATH variables */
                     script.withEnv(["PATH+TOOLS=${javaBinPath}${pathSeparator}${androidBuildToolsPath}"]) {
                         def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
+
+                        /* Inject keystoreFileId, keystorePasswordId, privateKeyPassword environment variables */
                         script.withCredentials([
-                                script.file(credentialsId: "${keystoreFileID}", variable: 'KSFILE'),
-                                script.string(credentialsId: "${keystorePasswordID}", variable: 'KSPASS'),
+                                script.file(credentialsId: "${keystoreFileId}", variable: 'KSFILE'),
+                                script.string(credentialsId: "${keystorePasswordId}", variable: 'KSPASS'),
                                 script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
                         ]) {
                             script.shellCustom(
@@ -67,6 +86,7 @@ class AndroidChannel extends Channel {
                                     isUnixNode
                             )
 
+                            /* Update artifact name */
                             artifact.name = finalArtifactName
                         }
                     }
@@ -75,7 +95,12 @@ class AndroidChannel extends Channel {
         }
     }
 
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
+        /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             script.stage('Check provided parameters') {
                 ValidationHelper.checkBuildConfiguration(script)
@@ -85,17 +110,23 @@ class AndroidChannel extends Channel {
                 channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
                         mandatoryParameters.add('ANDROID_TABLET_APP_ID')
 
-                if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                if (keystoreFileId || keystorePasswordId || privateKeyPassword || keystoreAlias) {
                     mandatoryParameters.addAll([
-                            'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS'
+                            'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
+                            'ANDROID_KEY_ALIAS'
                     ])
                 }
 
                 ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
             }
 
+            /* Allocate a slave for the run */
             script.node(libraryProperties.'android.node.label') {
                 pipelineWrapper {
+                    /*
+                        Clean workspace, to be sure that we have not any items from previous build,
+                        and build environment completely new.
+                     */
                     script.cleanWs deleteDirs: true
 
                     script.stage('Check build-node environment') {
@@ -142,9 +173,9 @@ class AndroidChannel extends Channel {
                             String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                     sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
 
-                            channelArtifacts.add([channelPath: channelPath,
-                                                  name       : artifactName,
-                                                  url        : artifactUrl])
+                            channelArtifacts.add([
+                                    channelPath: channelPath, name: artifactName, url: artifactUrl
+                            ])
                         }
 
                         script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
