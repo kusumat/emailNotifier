@@ -488,7 +488,9 @@ class AwsDeviceFarmHelper implements Serializable {
                         resultPath.add(suite.name)
                         resultPath.add(test.name)
                         for (artifact in test.artifacts) {
+                            /* Replace all spaces with underscores in S3 path */
                             def s3path = resultPath.join('/').replaceAll('\\s', '_')
+                            /* Replace all spaces with underscores in artifact name */
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll('\\s', '_')
 
                             /* Fetch run artifact */
