@@ -6,18 +6,27 @@ import com.kony.appfactory.helper.ValidationHelper
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
+/**
+ * Implements logic for base Fabric commands and some additional method (fetch Fabric CLI, prettify JSON files, etc).
+ */
 class Fabric implements Serializable {
+    /* Pipeline object */
     private script
+    /* Data that should we sent in e-mail notification */
     private emailData
+    /* Fabric CLI command to run, the same value will be used for e-mail notifications */
     private fabricCommand
+    /* Stores data that should be provided in build description section */
     private buildDescriptionItems
+    /* Library configuration */
     private libraryProperties
+    /* All properties below will be loaded from library configuration */
     private final String fabricCliFileName
     private final String fabricCliVersion
     private final String nodeLabel
     /*
-        Currently all scripts in this class been written with the thought that they(scripts) will be executed on *nix machine,
-        for future improvements OS type check been added to every command(export, import, publish).
+        Currently all scripts in this class been written with the thought that they(scripts) will be executed
+        on *nix machine, for future improvements OS type check been added to every command(export, import, publish).
      */
     private boolean isUnixNode
     /* Common build parameters */
@@ -32,21 +41,37 @@ class Fabric implements Serializable {
     private final String commitAuthor = script.params.COMMIT_AUTHOR?.trim() ?: 'Jenkins'
     private final String authorEmail = script.params.AUTHOR_EMAIL
     private String commitMessage = script.params.COMMIT_MESSAGE?.trim() ?:
-            "Automatic backup of Fabric services" + (script.env.BUILD_NUMBER ? ", build-${script.env.BUILD_NUMBER}" : '.')
+            "Automatic backup of Fabric services" +
+                    (script.env.BUILD_NUMBER ? ", build-${script.env.BUILD_NUMBER}" : '.')
+    /* Force Fabric CLI to overwrite existing application on import */
     private final boolean overwriteExisting = script.params.OVERWRITE_EXISTING
+    /* Flag for triggering Publish job */
     private final boolean enablePublish = script.params.ENABLE_PUBLISH
     /* Publish build parameters */
     private final String fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     Fabric(script) {
         this.script = script
-        libraryProperties = BuildHelper.loadLibraryProperties(this.script, 'com/kony/appfactory/configurations/common.properties')
-        fabricCliVersion = libraryProperties. 'fabric.cli.version'
+        /* Load library configuration */
+        libraryProperties = BuildHelper.loadLibraryProperties(
+                this.script, 'com/kony/appfactory/configurations/common.properties'
+        )
+        fabricCliVersion = libraryProperties.'fabric.cli.version'
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         nodeLabel = libraryProperties.'fabric.node.label'
     }
 
-    protected final fetchFabricCli(fabricCliVersion = 'latest') {
+    /**
+     * Fetches specified version of Fabric CLI application.
+     *
+     * @param fabricCliVersion version of Fabric CLI application.
+     */
+    protected final void fetchFabricCli(fabricCliVersion = 'latest') {
         String fabricCliUrl = [
                 libraryProperties.'fabric.cli.fetch.url',
                 fabricCliVersion.toString(),
@@ -54,11 +79,21 @@ class Fabric implements Serializable {
         ].join('/')
 
         script.catchErrorCustom("Failed to fetch Fabric CLI (version: $fabricCliVersion)") {
+            /* httpRequest step been used here, to be able to fetch application on any slave (any OS) */
             script.httpRequest url: fabricCliUrl, outputFile: fabricCliFileName, validResponseCodes: '200'
         }
     }
 
-    protected final fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCommandOptions = [:]) {
+    /**
+     * Runs Fabric CLI application with provided arguments.
+     *
+     * @param fabricCommand command name.
+     * @param cloudCredentialsID Kony Cloud credentials Id in Jenkins credentials store.
+     * @param isUnixNode UNIX node flag.
+     * @param fabricCommandOptions options for Fabric command.
+     */
+    protected final void fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCommandOptions = [:]) {
+        /* Check required arguments */
         (fabricCommand) ?: script.error("fabricCommand argument can't be null")
         (cloudCredentialsID) ?: script.error("cloudCredentialsID argument can't be null")
 
@@ -71,13 +106,15 @@ class Fabric implements Serializable {
                      passwordVariable: 'fabricPassword',
                      usernameVariable: 'fabricUsername']
             ]) {
+                /* Collect Fabric command options */
                 String options = fabricCommandOptions?.collect { option, value ->
                     [option, value].join(' ')
                 }?.join(' ')
+                /* Prepare string with shell script to run */
                 String shellString = [
                         'java -jar', fabricCliFileName, fabricCommand,
-                        '-u', (isUnixNode) ? '$fabricUsername': '%fabricUsername%',
-                        '-p', (isUnixNode) ? '$fabricPassword': '%fabricPassword%',
+                        '-u', (isUnixNode) ? '$fabricUsername' : '%fabricUsername%',
+                        '-p', (isUnixNode) ? '$fabricPassword' : '%fabricPassword%',
                         options
                 ].join(' ')
 
@@ -86,6 +123,14 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Checks if there were changes in application code from previous export (build).
+     *
+     * @param args method named arguments.
+     *      previousArchivePath path to the zip archive from previous build.
+     *      currentArchivePath path to the zip archive for this build.
+     * @return result of check if application code was changed.
+     */
     private final boolean fabricAppChanged(args) {
         boolean status = true
         String previousArchivePath = args.previousPath
@@ -97,12 +142,14 @@ class Fabric implements Serializable {
                 script.unzip zipFile: previousArchivePath, dir: 'previous'
                 script.unzip zipFile: currentArchivePath, dir: 'current'
 
+                /* Check if previous and current code are equal */
                 status = script.shellCustom(
                         'diff -r previous current > /dev/null',
                         isUnixNode,
                         [returnStatus: true]
                 ) != 0
 
+                /* Clean up tmp folders */
                 script.dir('previous') {
                     script.deleteDir()
                 }
@@ -116,6 +163,13 @@ class Fabric implements Serializable {
         status
     }
 
+    /**
+     * Searches for JSON files in application's code.
+     *
+     * @param args method named arguments.
+     *      folderToSearchIn path to the application folder in workspace.
+     * @return found files.
+     */
     private final findJsonFiles(args) {
         def files
         String folderToSearchIn = args.folderToSearchIn
@@ -130,7 +184,13 @@ class Fabric implements Serializable {
         files
     }
 
-    private final prettifyJsonFiles(args) {
+    /**
+     * Prettifies application's JSON files.
+     *
+     * @param args method named arguments.
+     *      rootFolder path to the application folder in workspace.
+     */
+    private final void prettifyJsonFiles(args) {
         def files = args.files
         String rootFolder = args.rootFolder
         String errorMessage = 'Failed to prettify JSON files'
@@ -148,6 +208,12 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Prettifies provided JSON string.
+     *
+     * @param fileContent content of the JSON file to prettify.
+     * @return prettified JSON file content.
+     */
     @NonCPS
     private final prettify(fileContent) {
         def slurper = new JsonSlurper()
@@ -168,13 +234,27 @@ class Fabric implements Serializable {
         JsonOutput.prettyPrint(JsonOutput.toJson(parsedJson))
     }
 
+    /**
+     * Changes file name after prettifying.
+     *
+     * @param text JSON file path.
+     * @param regex file name part to replace.
+     * @param replacement new value.
+     * @return new file name.
+     */
     private final replaceLast(text, regex, replacement) {
-        text.replaceFirst("(?s)"+regex+"(?!.*?"+regex+")", replacement)
+        text.replaceFirst("(?s)" + regex + "(?!.*?" + regex + ")", replacement)
     }
 
+    /**
+     * Prettifies file names.
+     *
+     * @param path file path.
+     * @return prettifies file name.
+     */
     private final getPrettyFilePathName(path) {
         String[] parts = path.split('/')
-        String uglyFileName = parts[parts.size()-1]
+        String uglyFileName = parts[parts.size() - 1]
 
         int extIndex = uglyFileName.toLowerCase().lastIndexOf(".json")
 
@@ -183,24 +263,42 @@ class Fabric implements Serializable {
         replaceLast(path, uglyFileName, prettyFileName)
     }
 
+    /**
+     * Fetches application name from provide git URL.
+     *
+     * @param url application git URL.
+     * @return application name.
+     */
     private final getGitProjectName(String url) {
         url.tokenize('/')?.last()?.replaceAll('.git', '')
     }
 
+    /**
+     * Updates application JSON files.
+     *
+     * @param args method named arguments.
+     *      projectPath path to the application folder in workspace.
+     *      exportFolder path to the export folder.
+     */
     private final void overwriteFilesInGit(args) {
         String projectPath = args.projectPath
-        String exportDir = args.exportDir
+        String exportFolder = args.exportFolder
         String errorMessage = 'Failed overwrite exported files'
 
         script.catchErrorCustom(errorMessage) {
-            script.dir("${projectPath}/${exportDir}") {
+            script.dir("${projectPath}/${exportFolder}") {
                 script.deleteDir()
             }
 
-            script.shellCustom("mv -f ./${exportDir} ./${projectPath}/", isUnixNode)
+            script.shellCustom("mv -f ./${exportFolder} ./${projectPath}/", isUnixNode)
         }
     }
 
+    /**
+     * Changes name of current export for next build.
+     *
+     * @param projectName name of the application.
+     */
     private final void storeArtifacts(projectName) {
         String errorMessage = 'Failed to store artifacts'
 
@@ -209,14 +307,28 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Creates application zip file for import.
+     *
+     * @param projectName name of the application.
+     * @param fabricApplicationName name of the application on Fabric.
+     */
     private final void zipProject(projectName, fabricApplicationName) {
         String errorMessage = "Failed to create zip file for project ${projectName}"
 
         script.catchErrorCustom(errorMessage) {
-            script.shellCustom("zip -r \"${fabricApplicationName}.zip\" \"${projectName}/export/Apps\" -x *.pretty.json", isUnixNode)
+            script.shellCustom(
+                    "zip -r \"${fabricApplicationName}.zip\" \"${projectName}/export/Apps\" -x *.pretty.json",
+                    isUnixNode
+            )
         }
     }
 
+    /**
+     * Checks if there is a difference between code in git and exported one.
+     *
+     * @return result of check if application code was changed.
+     */
     private final boolean isGitCodeChanged() {
         boolean status
         String errorMessage = 'Failed to check if there were changes in local repository'
@@ -234,6 +346,9 @@ class Fabric implements Serializable {
         status
     }
 
+    /**
+     * Configs local git account, to be able to push changes from export to git.
+     */
     private final void configureLocalGitAccount() {
         String successMessage = 'Local git account configured successfully'
         String errorMessage = 'Failed configure local git account'
@@ -254,11 +369,15 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Pushes changes to remote git repository.
+     */
     private final void pushChanges() {
         String successMessage = 'All changes were successfully pushed to remote git repository'
         String errorMessage = 'Failed to push changes to remote git repository'
 
         script.catchErrorCustom(errorMessage, successMessage) {
+            /* Escape special characters in git username and password, to be able to use them in push step */
             String gitUsername = URLEncoder.encode(script.env.GIT_USERNAME)
             String gitPassword = URLEncoder.encode(script.env.GIT_PASSWORD)
             String pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}@")
@@ -280,10 +399,15 @@ class Fabric implements Serializable {
         }
     }
 
-    private final void credentialsWrapper(closure) {
+    /**
+     * Wraps code with Git username and password environment variables via provided credentials ID.
+     *
+     * @param closure block of code.
+     */
+    private final void gitCredentialsWrapper(closure) {
         script.withCredentials([
-                [$class: 'UsernamePasswordMultiBinding',
-                 credentialsId: exportRepositoryCredentialsId,
+                [$class          : 'UsernamePasswordMultiBinding',
+                 credentialsId   : exportRepositoryCredentialsId,
                  passwordVariable: 'GIT_PASSWORD',
                  usernameVariable: 'GIT_USERNAME']
         ]) {
@@ -291,14 +415,28 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Sets build description at the end of the build.
+     *
+     * @param itemsToExpose list of the items to expose.
+     */
     private final void setBuildDescription(itemsToExpose) {
+        String descriptionItems = itemsToExpose?.findResults {
+            item -> item.value ? "<p>${item.key}: ${item.value}</p>" : null
+        }?.join('\n')
+
         script.currentBuild.description = """\
             <div id="build-description">
-                ${itemsToExpose?.findResults { item -> item.value ? "<p>${item.key}: ${item.value}</p>" : null }?.join('\n')}
+                ${descriptionItems}
             </div>\
             """.stripIndent()
     }
 
+    /**
+     * Wraps code with try/catch/finally block to reduce code duplication.
+     *
+     * @param closure block of code.
+     */
     private final void pipelineWrapper(closure) {
         try {
             closure()
@@ -312,9 +450,15 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Exports Fabric application.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void exportApp() {
+        /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             fabricCommand = 'export'
+            /* Data for e-mail notification */
             emailData = [
                     projectName           : fabricAppName,
                     exportRepositoryUrl   : exportRepositoryUrl,
@@ -328,8 +472,10 @@ class Fabric implements Serializable {
                     'Application name': fabricAppName
             ]
             boolean appChanged
-            String exportDir = fabricCommand
-            String projectName = getGitProjectName(exportRepositoryUrl) ?: script.echo("projectName property can't be null!")
+            /* Folder name for storing exported application */
+            String exportFolder = fabricCommand
+            String projectName = getGitProjectName(exportRepositoryUrl) ?:
+                    script.echo("projectName property can't be null!")
 
             script.stage('Check provided parameters') {
                 def mandatoryParameters = [
@@ -341,10 +487,17 @@ class Fabric implements Serializable {
             }
 
             pipelineWrapper {
+                /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
                     script.stage('Prepare build-node environment') {
-                        script.cleanWs deleteDirs: true, patterns: [[pattern: "**/${projectName}_PREV.zip", type: 'EXCLUDE']]
+                        /*
+                            Clean workspace, to be sure that we have not any items from previous build,
+                            and build environment completely new, but exclude zip file with exported
+                            application from previous run.
+                         */
+                        script.cleanWs deleteDirs: true,
+                                patterns: [[pattern: "**/${projectName}_PREV.zip", type: 'EXCLUDE']]
                         fetchFabricCli(fabricCliVersion)
                     }
 
@@ -366,7 +519,7 @@ class Fabric implements Serializable {
 
                         if (appChanged) {
                             script.echo 'There were some changes from previous run, proceeding...'
-                            script.unzip zipFile: "${projectName}.zip", dir: exportDir
+                            script.unzip zipFile: "${projectName}.zip", dir: exportFolder
                         } else {
                             script.echo 'There were no changes from previous run'
                         }
@@ -382,10 +535,10 @@ class Fabric implements Serializable {
                         }
 
                         script.stage('Prettify exported JSON files') {
-                            def JSonFilesList = findJsonFiles folderToSearchIn: exportDir
+                            def JSonFilesList = findJsonFiles folderToSearchIn: exportFolder
                             if (JSonFilesList) {
-                                prettifyJsonFiles rootFolder: exportDir, files: JSonFilesList
-                                overwriteFilesInGit exportDir: exportDir, projectPath: projectName
+                                prettifyJsonFiles rootFolder: exportFolder, files: JSonFilesList
+                                overwriteFilesInGit exportFolder: exportFolder, projectPath: projectName
                             } else {
                                 script.error 'JSON files were not found'
                             }
@@ -394,7 +547,7 @@ class Fabric implements Serializable {
                         script.stage('Push changes to remote git repository') {
                             script.dir(projectName) {
                                 if (isGitCodeChanged()) {
-                                    credentialsWrapper {
+                                    gitCredentialsWrapper {
                                         configureLocalGitAccount()
                                         pushChanges()
                                     }
@@ -413,9 +566,15 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Imports Fabric application.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void importApp() {
+        /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             fabricCommand = 'import'
+            /* Data for e-mail notification */
             emailData = [
                     projectName           : fabricAppName,
                     exportRepositoryUrl   : exportRepositoryUrl,
@@ -430,7 +589,8 @@ class Fabric implements Serializable {
                     'Published'       : (enablePublish) ? 'yes' : 'no',
                     'Environment'     : (enablePublish) ? fabricEnvironmentName : null
             ]
-            String projectName = getGitProjectName(exportRepositoryUrl) ?: script.echo("projectName property can't be null!")
+            String projectName = getGitProjectName(exportRepositoryUrl) ?:
+                    script.echo("projectName property can't be null!")
 
             script.stage('Check provided parameters') {
                 def mandatoryParameters = [
@@ -446,8 +606,13 @@ class Fabric implements Serializable {
             }
 
             pipelineWrapper {
+                /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
+                    /*
+                        Clean workspace, to be sure that we have not any items from previous build,
+                        and build environment completely new.
+                     */
                     script.cleanWs deleteDirs: true
 
                     script.stage('Prepare build-node environment') {
@@ -493,9 +658,15 @@ class Fabric implements Serializable {
         }
     }
 
+    /**
+     * Publishes Fabric application.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void publishApp() {
+        /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             fabricCommand = 'publish'
+            /* Data for e-mail notification */
             emailData = [
                     projectName          : fabricAppName,
                     fabricEnvironmentName: fabricEnvironmentName,
@@ -515,8 +686,13 @@ class Fabric implements Serializable {
             }
 
             pipelineWrapper {
+                /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
+                    /*
+                        Clean workspace, to be sure that we have not any items from previous build,
+                        and build environment completely new.
+                     */
                     script.cleanWs deleteDirs: true
 
                     script.stage('Prepare build-node environment') {

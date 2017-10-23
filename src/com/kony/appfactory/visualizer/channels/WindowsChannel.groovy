@@ -4,10 +4,18 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
+/**
+ * Implements logic for Windows channel builds.
+ */
 class WindowsChannel extends Channel {
     private final shortenedWorkspaceBasePath
     private final shortenedWorkspace
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     WindowsChannel(script) {
         super(script)
         channelOs = this.script.params.OS
@@ -16,6 +24,10 @@ class WindowsChannel extends Channel {
         shortenedWorkspace = [shortenedWorkspaceBasePath, projectName, script.env.JOB_BASE_NAME].join('\\')
     }
 
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
         script.timestamps {
             script.stage('Check provided parameters') {
@@ -26,9 +38,15 @@ class WindowsChannel extends Channel {
                 ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
             }
 
+            /* Allocate a slave for the run */
             script.node(libraryProperties.'windows.node.label') {
-                script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
+                /* Workaround to fix path limitation on windows slaves, allocating new job workspace */
+                script.ws(shortenedWorkspace) {
                     pipelineWrapper {
+                        /*
+                            Clean workspace, to be sure that we have not any items from previous build,
+                            and build environment completely new.
+                         */
                         script.cleanWs deleteDirs: true
 
                         script.stage('Check build-node environment') {
@@ -64,9 +82,9 @@ class WindowsChannel extends Channel {
                                 String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                         sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
 
-                                channelArtifacts.add([channelPath: channelPath,
-                                                      name       : artifactName,
-                                                      url        : artifactUrl])
+                                channelArtifacts.add([
+                                        channelPath: channelPath, name: artifactName, url: artifactUrl
+                                ])
                             }
 
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()

@@ -11,7 +11,7 @@ import groovy.xml.MarkupBuilder
  */
 class EmailTemplateHelper implements Serializable {
     /**
-     * Wrapper for creation of HTML content
+     * Wrapper for creation of HTML content.
      */
     private static markupBuilderWrapper = { closure ->
         Writer writer = new StringWriter()
@@ -25,10 +25,10 @@ class EmailTemplateHelper implements Serializable {
     }
 
     /**
-     * Creates HTML content for buildVisualizerApp job
+     * Creates HTML content for buildVisualizerApp job.
      *
-     * @param binding provides data for HTML
-     * @return HTML content as a string
+     * @param binding provides data for HTML.
+     * @return HTML content as a string.
      */
     @NonCPS
     protected static String createBuildVisualizerAppContent(Map binding) {
@@ -131,8 +131,8 @@ class EmailTemplateHelper implements Serializable {
     /**
      * Creates HTML content for runTests job, build of the test binaries part.
      *
-     * @param binding provides data for HTML
-     * @return HTML content as a string
+     * @param binding provides data for HTML.
+     * @return HTML content as a string.
      */
     @NonCPS
     protected static String createBuildTestsContent(Map binding) {
@@ -210,8 +210,8 @@ class EmailTemplateHelper implements Serializable {
     /**
      * Creates HTML content for runTests job, tests run part.
      *
-     * @param binding provides data for HTML
-     * @return HTML content as a string
+     * @param binding provides data for HTML.
+     * @return HTML content as a string.
      */
     @NonCPS
     protected static String createRunTestContent(Map binding) {
@@ -264,13 +264,31 @@ class EmailTemplateHelper implements Serializable {
                                         }
                                         for (suite in prop.value) {
                                             tr {
-                                                th(colspan: "2", class: "table-value", style: "padding:10px;text-transform:none", 'Suite Name: ' + suite.name)
-                                                th(class: "table-value", style: "padding:10px;text-transform:none", 'Total tests: ' + suite.totalTests)
+                                                th(
+                                                        colspan: "2",
+                                                        class: "table-value",
+                                                        style: "padding:10px;text-transform:none",
+                                                        'Suite Name: ' + suite.name
+                                                )
+                                                th(
+                                                        class: "table-value",
+                                                        style: "padding:10px;text-transform:none",
+                                                        'Total tests: ' + suite.totalTests
+                                                )
                                             }
                                             for (test in suite.tests) {
                                                 tr {
-                                                    th(colspan: "2", class: "table-value", style: "padding:10px;text-transform:none", 'Test Name: ' + test.name)
-                                                    th(class: "table-value", style: "padding:10px;text-transform:none", test.result)
+                                                    th(
+                                                            colspan: "2",
+                                                            class: "table-value",
+                                                            style: "padding:10px;text-transform:none",
+                                                            'Test Name: ' + test.name
+                                                    )
+                                                    th(
+                                                            class: "table-value",
+                                                            style: "padding:10px;text-transform:none",
+                                                            test.result
+                                                    )
                                                 }
                                                 for (artifact in test.artifacts) {
                                                     tr {
@@ -308,8 +326,8 @@ class EmailTemplateHelper implements Serializable {
     /**
      * Creates HTML content for Fabric jobs(Export, Import, Publish).
      *
-     * @param binding provides data for HTML
-     * @return HTML content as a string
+     * @param binding provides data for HTML.
+     * @return HTML content as a string.
      */
     @NonCPS
     protected static String fabricContent(binding) {

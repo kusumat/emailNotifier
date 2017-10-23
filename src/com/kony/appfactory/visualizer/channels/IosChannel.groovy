@@ -4,10 +4,14 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
+/**
+ * Implements logic for iOS channel builds.
+ */
 class IosChannel extends Channel {
     private karArtifact
     private plistArtifact
     private ipaArtifact
+    /* IPA file S3 URL, used for PLIST file creation */
     private ipaArtifactUrl
 
     /* Build parameters */
@@ -19,6 +23,11 @@ class IosChannel extends Channel {
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     IosChannel(script) {
         super(script)
         channelOs = 'iOS'
@@ -27,22 +36,26 @@ class IosChannel extends Channel {
         this.script.env['IOS_BUNDLE_ID'] = iosBundleId
     }
 
-    protected final exposeFastlaneConfig() {
+    /**
+     * Exposes Fastlane configuration for signing build artifacts.
+     */
+    protected final void exposeFastlaneConfig() {
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
         String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
-        /* For using temporary access keys (AssumeRole) */
         String awsIAMRole = script.env.AWS_IAM_ROLE
         String configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
         String configBucketName = script.env.S3_CONFIG_BUCKET
 
         script.catchErrorCustom('Failed to fetch fastlane configuration') {
+            /* Switch to configuration bucket region, and use role to pretend aws instance that has S3 access */
             script.withAWS(region: configBucketRegion, role: awsIAMRole) {
+                /* Fetch Fastlane configuration */
                 script.s3Download file: fastlaneEnvFileName,
                         bucket: configBucketName,
                         path: fastlaneEnvFileConfigBucketPath,
                         force: true
 
-                /* Read fastlane configuration for file */
+                /* Read fastlane configuration from a file */
                 String config = script.readFile file: fastlaneEnvFileName
 
                 /* Convert to properties */
@@ -56,6 +69,9 @@ class IosChannel extends Channel {
         }
     }
 
+    /**
+     * Signs build artifacts.
+     */
     private final void createIPA() {
         String successMessage = 'IPA file created successfully'
         String errorMessage = 'Failed to create IPA file'
@@ -74,6 +90,7 @@ class IosChannel extends Channel {
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
+
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectGenPath) {
                 script.shellCustom("""
@@ -81,8 +98,10 @@ class IosChannel extends Channel {
                     perl extract.pl ${karArtifact.name}
                 """, true)
             }
+
             /* Build project and export IPA using Fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
+                /* Inject required environment variables */
                 script.withCredentials([
                     script.usernamePassword(
                         credentialsId: "${appleID}",
@@ -105,6 +124,7 @@ class IosChannel extends Channel {
                         script.dir('fastlane') {
                             String fastFileName = libraryProperties.'fastlane.fastfile.name'
                             String fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
+
                             script.writeFile file: fastFileName, text: fastFileContent
                         }
                         script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
@@ -116,6 +136,11 @@ class IosChannel extends Channel {
         }
     }
 
+    /**
+     * Creates PLIST file.
+     * @param ipaArtifactUrl IPA file S3 URL.
+     * @return PLIST file object, format: {name: <NameOfPlistFile>, path: <PlistFilePath>}.
+     */
     private final createPlist(String ipaArtifactUrl) {
         (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
 
@@ -142,6 +167,10 @@ class IosChannel extends Channel {
         [name: "$plistFileName", path: "$plistFilePath"]
     }
 
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
         script.timestamps {
             script.stage('Check provided parameters') {
@@ -155,11 +184,16 @@ class IosChannel extends Channel {
                 ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
             }
 
+            /* Allocate a slave for the run */
             script.node(libraryProperties.'ios.node.label') {
                 /* Get and expose configuration file for fastlane */
                 exposeFastlaneConfig()
 
                 pipelineWrapper {
+                    /*
+                        Clean workspace, to be sure that we have not any items from previous build,
+                        and build environment completely new.
+                     */
                     script.cleanWs deleteDirs: true
 
                     script.stage('Check build-node environment') {

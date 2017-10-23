@@ -16,8 +16,10 @@ class ValidationHelper implements Serializable {
                 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
                 'CLOUD_CREDENTIALS_ID', 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER', 'FABRIC_APP_CONFIG'
         ]
-        /* List of the required parameters.
-            Please note, that without second(parametersToCheck) argument call - commonRequiredParams list will be used */
+        /*
+            List of the required parameters.
+            Please note, that without second(parametersToCheck) argument call - commonRequiredParams list will be used
+         */
         def requiredParams = (parametersToCheck) ?: commonRequiredParams
         /* Collect(filter) build parameters and environment variables to check */
         def buildConfiguration = collectEnvironmentVariables(script.env, requiredParams)
@@ -53,8 +55,10 @@ class ValidationHelper implements Serializable {
      */
     private static collectEnvironmentVariables(environment, requiredParams) {
         requiredParams.collectEntries { param ->
-            /* Check if we have not set parameters. Because item value is String,
-                to be able to check if parameter is null (not set), we need to set it explicitly to null */
+            /*
+                Check if we have not set parameters. Because item value is String,
+                to be able to check if parameter is null (not set), we need to set it explicitly to null
+             */
             def paramValue = (environment.getProperty(param) != 'null') ? environment.getProperty(param) : null
             [(param): paramValue]
         }

@@ -60,8 +60,8 @@ class NotificationsHelper implements Serializable {
          */
         String recipients = (script.params.RECIPIENTS_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS'
         /*
-            Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name and
-            result status of the job.
+            Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name
+            and result status of the job.
          */
         String subject = "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}"
 
@@ -118,7 +118,7 @@ class NotificationsHelper implements Serializable {
     private static String getBuildResultForTestConsole(buildResult) {
         String buildResultForTestConsole
 
-        switch(buildResult) {
+        switch (buildResult) {
             case 'SUCCESS':
                 buildResultForTestConsole = '-PASS'
                 break
@@ -137,7 +137,8 @@ class NotificationsHelper implements Serializable {
     }
 
     /**
-     * Creates list of files that will be stored on workspace and published on S3 depending on a templateType (job name).
+     * Creates list of files that will be stored on workspace and published on S3
+     *      depending on a templateType (job name).
      *
      * @param body e-mail body with populated values.
      * @param buildResult job build result.
@@ -185,15 +186,15 @@ class NotificationsHelper implements Serializable {
         /* Common properties for content */
         Map commonBinding = [
                 notificationHeader: "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}",
-                triggeredBy: BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
-                projectName: script.env.PROJECT_NAME,
-                build: [
+                triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
+                projectName       : script.env.PROJECT_NAME,
+                build             : [
                         duration: script.currentBuild.rawBuild.getTimestampString(),
                         number  : script.currentBuild.number,
                         result  : script.currentBuild.currentResult,
                         url     : script.env.BUILD_URL,
                         started : script.currentBuild.rawBuild.getTime().toLocaleString(),
-                        log: script.currentBuild.rawBuild.getLog(50)
+                        log     : script.currentBuild.rawBuild.getLog(50)
                 ]
         ] + templateData
 

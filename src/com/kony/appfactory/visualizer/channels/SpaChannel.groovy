@@ -4,12 +4,20 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
+/**
+ * Implements logic for SPA channel builds.
+ */
 class SpaChannel extends Channel {
     /* Build parameters */
     private final spaAppVersion = script.params.SPA_APP_VERSION
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final selectedSpaChannels
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     SpaChannel(script) {
         super(script)
         channelOs = channelFormFactor = channelType = 'SPA'
@@ -18,6 +26,11 @@ class SpaChannel extends Channel {
         this.script.env['APP_VERSION'] = spaAppVersion
     }
 
+    /**
+     *
+     * @param buildParameters
+     * @return
+     */
     @NonCPS
     private static getSelectedSpaChannels(buildParameters) {
         buildParameters.findAll {
@@ -25,6 +38,10 @@ class SpaChannel extends Channel {
         }.keySet().collect()
     }
 
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
         script.timestamps {
             script.stage('Check provided parameters') {
@@ -37,8 +54,13 @@ class SpaChannel extends Channel {
                 ValidationHelper.checkBuildConfiguration(script, ['SPA_APP_VERSION'])
             }
 
+            /* Allocate a slave for the run */
             script.node(libraryProperties.'spa.node.label') {
                 pipelineWrapper {
+                    /*
+                        Clean workspace, to be sure that we have not any items from previous build,
+                        and build environment completely new.
+                     */
                     script.cleanWs deleteDirs: true
 
                     script.stage('Check build-node environment') {
@@ -70,6 +92,7 @@ class SpaChannel extends Channel {
                     }
 
                     script.stage('Publish to Fabric') {
+                        /* Publish Fabric application if PUBLISH_FABRIC_APP set to true */
                         if (publishFabricApp) {
                             fabric.fetchFabricCli(libraryProperties.'fabric.cli.version')
                             fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, [
@@ -78,7 +101,8 @@ class SpaChannel extends Channel {
                                     '-e': "\"${script.env.FABRIC_ENV_NAME}\""
                             ])
                         } else {
-                            script.echo 'PUBLISH_FABRIC_APP flag set to false, skipping Fabric application publishing...'
+                            script.echo 'PUBLISH_FABRIC_APP flag set to false, ' +
+                                    'skipping Fabric application publishing...'
                         }
                     }
 
@@ -95,9 +119,9 @@ class SpaChannel extends Channel {
                             String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                     sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
 
-                            channelArtifacts.add([channelPath: channelPath,
-                                                  name       : artifactName,
-                                                  url        : artifactUrl])
+                            channelArtifacts.add([
+                                    channelPath: channelPath, name: artifactName, url: artifactUrl
+                            ])
                         }
 
                         script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
