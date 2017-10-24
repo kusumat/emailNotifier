@@ -21,10 +21,29 @@ class TestAutomation implements Serializable {
     private script
     /* Library configuration */
     private libraryProperties
+    /*
+        Platform dependent default name-separator character as String.
+        For windows, it's '\' and for unix it's '/'.
+        Because all logic for test will be run on linux, set separator to '/'.
+     */
+    private separator = '/'
     /* Job workspace path */
     private workspace
+    /* Target folder for checkout, default value vis_ws/<project_name> */
+    protected checkoutRelativeTargetFolder
+    /*
+        If projectRoot value has been provide, than value of this property
+        will be set to <job_workspace>/vis_ws/<project_name> otherwise it will be set to <job_workspace>/vis_ws
+     */
+    protected projectWorkspacePath
     /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     private projectFullPath
+    /*
+        Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
+        can not be used.
+     */
+    final projectWorkspaceFolderName
+    /* Folder name with test automation scripts */
     private testFolder
     /* Build parameters */
     private scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
@@ -32,6 +51,7 @@ class TestAutomation implements Serializable {
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
     /* Environment variables */
     private projectName = script.env.PROJECT_NAME
+    private projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
     private scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     /* Device Farm properties */
     private runTests = false
@@ -84,6 +104,7 @@ class TestAutomation implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
     }
 
@@ -409,10 +430,17 @@ class TestAutomation implements Serializable {
             script.node(libraryProperties.'test.automation.node.label') {
                 /* Set environment-dependent variables */
                 workspace = script.env.WORKSPACE
-                projectFullPath = workspace + '/' + projectName
-                testFolder = projectFullPath + '/' + libraryProperties.'test.automation.scripts.path'
-                deviceFarmWorkingFolder = projectFullPath + '/' +
-                        libraryProperties.'test.automation.device.farm.working.folder.name'
+                checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
+                projectWorkspacePath = (projectRoot) ?
+                        ([workspace, checkoutRelativeTargetFolder] + projectRoot.dropRight(1))?.join(separator) :
+                        [workspace, projectWorkspaceFolderName]?.join(separator)
+                projectFullPath = [
+                        workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
+                ].findAll().join(separator)
+                testFolder = [projectFullPath, libraryProperties.'test.automation.scripts.path'].join(separator)
+                deviceFarmWorkingFolder = [
+                        projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'
+                ].join(separator)
 
                 try {
                     /*
@@ -425,7 +453,7 @@ class TestAutomation implements Serializable {
                     if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
                         script.stage('Checkout') {
                             BuildHelper.checkoutProject script: script,
-                                    projectRelativePath: projectName,
+                                    projectRelativePath: checkoutRelativeTargetFolder   ,
                                     scmBranch: scmBranch,
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
@@ -500,12 +528,6 @@ class TestAutomation implements Serializable {
                                 script.stage('Get Test Results') {
                                     fetchTestResults()
                                 }
-
-                                script.stage('Cleanup') {
-                                    script.catchError {
-                                        cleanup(deviceFarmUploadArns, devicePoolArns)
-                                    }
-                                }
                             }
                         }
                     } catch (Exception e) {
@@ -519,6 +541,9 @@ class TestAutomation implements Serializable {
                                 binaryName    : getBinaryNameForEmail(projectArtifacts),
                                 missingDevices: script.env.MISSING_DEVICES
                         ], true)
+
+                        /* Cleanup created pools and uploads */
+                        cleanup(deviceFarmUploadArns, devicePoolArns)
                     }
                 }
             }
