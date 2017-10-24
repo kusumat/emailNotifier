@@ -239,6 +239,13 @@ class Channel implements Serializable {
                     script.writeFile file: requiredResources[i], text: resource
                 }
 
+                /* Workaround for run.sh files */
+                if (isUnixNode) {
+                    script.echo "Applying fix for run.sh file..."
+
+                    BuildHelper.fixRunShScript(script, script.pwd() ,'run.sh')
+                }
+
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
                     /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
