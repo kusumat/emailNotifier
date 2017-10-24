@@ -21,10 +21,29 @@ class TestAutomation implements Serializable {
     private script
     /* Library configuration */
     private libraryProperties
+    /*
+        Platform dependent default name-separator character as String.
+        For windows, it's '\' and for unix it's '/'.
+        Because all logic for test will be run on linux, set separator to '/'.
+     */
+    private separator = '/'
     /* Job workspace path */
     private workspace
+    /* Target folder for checkout, default value vis_ws/<project_name> */
+    protected checkoutRelativeTargetFolder
+    /*
+        If projectRoot value has been provide, than value of this property
+        will be set to <job_workspace>/vis_ws/<project_name> otherwise it will be set to <job_workspace>/vis_ws
+     */
+    protected projectWorkspacePath
     /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     private projectFullPath
+    /*
+        Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
+        can not be used.
+     */
+    final projectWorkspaceFolderName
+    /* Folder name with test automation scripts */
     private testFolder
     /* Build parameters */
     private scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
@@ -32,6 +51,7 @@ class TestAutomation implements Serializable {
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
     /* Environment variables */
     private projectName = script.env.PROJECT_NAME
+    private projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
     private scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     /* Device Farm properties */
     private runTests = false
@@ -42,7 +62,7 @@ class TestAutomation implements Serializable {
     private deviceFarmTestUploadArtifactArn
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
-    private deviceFarmTestRunResults = [:]
+    private deviceFarmTestRunResults = []
     /* Temp folder for Device Farm objects (test run results) */
     private deviceFarmWorkingFolder
     /* Device Farm AWS region */
@@ -56,14 +76,14 @@ class TestAutomation implements Serializable {
                              extension : 'apk',
                              uploadType: 'ANDROID_APP',
                              url       : script.env.ANDROID_TABLET_NATIVE_BINARY_URL],
-            iOS_Mobile: [binaryName: getBinaryName(script.env.IOS_MOBILE_NATIVE_BINARY_URL),
-                         extension : 'ipa',
-                         uploadType: 'IOS_APP',
-                         url       : script.env.IOS_MOBILE_NATIVE_BINARY_URL],
-            iOS_Tablet: [binaryName: getBinaryName(script.env.IOS_TABLET_NATIVE_BINARY_URL),
-                         extension : 'ipa',
-                         uploadType: 'IOS_APP',
-                         url       : script.env.IOS_TABLET_NATIVE_BINARY_URL]
+            iOS_Mobile    : [binaryName: getBinaryName(script.env.IOS_MOBILE_NATIVE_BINARY_URL),
+                             extension : 'ipa',
+                             uploadType: 'IOS_APP',
+                             url       : script.env.IOS_MOBILE_NATIVE_BINARY_URL],
+            iOS_Tablet    : [binaryName: getBinaryName(script.env.IOS_TABLET_NATIVE_BINARY_URL),
+                             extension : 'ipa',
+                             uploadType: 'IOS_APP',
+                             url       : script.env.IOS_TABLET_NATIVE_BINARY_URL]
     ]
     private testPackage = [
             "${projectName}_TestApp": [extension : 'zip',
@@ -84,6 +104,7 @@ class TestAutomation implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
     }
 
@@ -183,7 +204,7 @@ class TestAutomation implements Serializable {
 
         def artifactsNames = artifacts.keySet().toArray()
 
-        for (int i=0; i<artifactsNames.size(); i++) {
+        for (int i = 0; i < artifactsNames.size(); i++) {
             def artifact = artifacts.get(artifactsNames[i])
             def artifactName = artifactsNames[i]
             def artifactUrl = artifact.url
@@ -205,7 +226,7 @@ class TestAutomation implements Serializable {
     }
 
     /**
-     * Cleans DeviceFarm objects after every run.
+     * Cleans Device Farm objects after every run.
      * Currently removes only uploads and device pools that are generated on every run.
      *
      * @param deviceFarmUploadArns list of upload ARNs.
@@ -222,7 +243,7 @@ class TestAutomation implements Serializable {
 
             if (devicePoolArns) {
                 def poolNames = devicePoolArns.keySet().toArray()
-                // Workaround to iterate over map keys in c++ style for loop
+                /* Workaround to iterate over map keys in c++ style for loop */
                 for (int i = 0; i < poolNames.size(); ++i) {
                     def devicePoolArn = devicePoolArns[poolNames[i]].value
 
@@ -262,6 +283,139 @@ class TestAutomation implements Serializable {
     }
 
     /**
+     * Fetches test run results from Device Farm, generates data for e-mail template and JSON file and moves artifacts
+     * to customer S3 bucket.
+     */
+    private final void fetchTestResults() {
+        def stepsToRun = [:]
+        def deviceFarmTestRunArnsKeys = deviceFarmTestRunArns.keySet().toArray()
+
+        /* Workaround to iterate over map keys in c++ style for loop */
+        for (int i = 0; i < deviceFarmTestRunArnsKeys.size(); ++i) {
+            def arn = deviceFarmTestRunArns[deviceFarmTestRunArnsKeys[i]]
+            /* Prepare step to run in parallel */
+            stepsToRun["testResults_${deviceFarmTestRunArnsKeys[i]}"] = {
+                def testRunResult = deviceFarm.getTestRunResult(arn)
+                /* If we got a test result */
+                if (testRunResult) {
+                    /*
+                        Query Device Farm for test artifacts (logs, videos, etc) and
+                        store test run artifact object in list.
+                        Using addAll method to collect all run results, because
+                        getTestRunArtifacts returns list of one item (run result).
+                     */
+                    deviceFarmTestRunResults.addAll(deviceFarm.getTestRunArtifacts(arn))
+
+                }
+                /* else notify user that result value is empty */
+                else {
+                    script.echo(
+                            "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
+                    )
+                }
+            }
+        }
+
+        /* Run prepared step in parallel */
+        if (stepsToRun) {
+            script.parallel(stepsToRun)
+        }
+
+        /* Move artifacts to customer bucket */
+        script.dir('artifacts') {
+            deviceFarm.moveArtifactsToCustomerS3Bucket(
+                    deviceFarmTestRunResults,
+                    ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
+            )
+        }
+    }
+
+    /**
+     * Uploads application binaries and Schedules the run.
+     */
+    private final void uploadAndRun() {
+        /* Prepare step to run in parallel */
+        def step = { artifactName, artifactURL, artifactExt, uploadType ->
+            /* Upload application binaries to Device Farm */
+            def uploadArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
+                    uploadType, artifactName + '.' + artifactExt)
+            /* Add upload ARN to list for cleanup at the end of the build */
+            deviceFarmUploadArns.add(uploadArn)
+
+            /* Depending on artifact name we need to chose appropriate pool for the run */
+            def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
+                    (devicePoolArns.phones) ?: script.error("Artifacts provided " +
+                            "for tablets, but TABLET devices were provided") :
+                    (devicePoolArns.tablets ?: script.error("Artifacts provided for " +
+                            "tablets, but PHONE devices were provided"))
+
+            /* If we have application binaries and test binaries, schedule the run */
+            if (uploadArn && deviceFarmTestUploadArtifactArn) {
+                /* Once all parameters gotten, schedule the Device Farm run */
+                def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn,
+                        'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn)
+                deviceFarmTestRunArns["$artifactName"] = runArn
+                /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
+            } else {
+                script.echo "Failed to get uploadArn"
+            }
+        }
+
+        /* Prepare parallel steps */
+        def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
+                script.error("No artifacts to upload and run!")
+
+        /* Run prepared step in parallel */
+        if (stepsToRun) {
+            script.parallel(stepsToRun)
+        }
+    }
+
+    /**
+     * Fetches application and test binaries (if provided).
+     */
+    private final void fetchBinaries() {
+        /* Prepare step to run in parallel */
+        def step = { artifactName, artifactURL, artifactExt ->
+            /* If test binaries URL was not provided, copy binaries from the build step */
+            if (artifactURL == 'jobWorkspace') {
+                String artifactPath = "${testFolder}/target/${artifactName}.${artifactExt}"
+                script.shellCustom("cp $artifactPath $deviceFarmWorkingFolder", true)
+                /* else, fetch binaries */
+            } else {
+                deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
+            }
+        }
+        def stepsToRun = prepareParallelSteps(
+                testPackage << projectArtifacts, 'fetch_', step
+        ) ?: script.error("No artifacts to fetch!")
+
+        /* Run prepared step in parallel */
+        if (stepsToRun) {
+            script.parallel(stepsToRun)
+        }
+    }
+
+    /**
+     * Uploads Test binaries to Device Farm.
+     */
+    private final void uploadTestBinaries() {
+        /* Get required parameters for test binaries upload */
+        def testUploadType = testPackage.get("${projectName}_TestApp").uploadType
+        def testExtension = testPackage.get("${projectName}_TestApp").extension
+        def testUploadFileName = "${projectName}_TestApp.${testExtension}"
+
+        /* Upload test binaries and get upload ARN */
+        deviceFarmTestUploadArtifactArn = deviceFarm.uploadArtifact(
+                deviceFarmProjectArn,
+                testUploadType,
+                testUploadFileName
+        )
+        /* Add test binaries upload ARN to upload ARNs list */
+        deviceFarmUploadArns.add(deviceFarmTestUploadArtifactArn)
+    }
+
+    /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
      */
@@ -276,10 +430,17 @@ class TestAutomation implements Serializable {
             script.node(libraryProperties.'test.automation.node.label') {
                 /* Set environment-dependent variables */
                 workspace = script.env.WORKSPACE
-                projectFullPath = workspace + '/' + projectName
-                testFolder = projectFullPath + '/' + libraryProperties.'test.automation.scripts.path'
-                deviceFarmWorkingFolder = projectFullPath + '/' +
-                        libraryProperties.'test.automation.device.farm.working.folder.name'
+                checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
+                projectWorkspacePath = (projectRoot) ?
+                        ([workspace, checkoutRelativeTargetFolder] + projectRoot.dropRight(1))?.join(separator) :
+                        [workspace, projectWorkspaceFolderName]?.join(separator)
+                projectFullPath = [
+                        workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
+                ].findAll().join(separator)
+                testFolder = [projectFullPath, libraryProperties.'test.automation.scripts.path'].join(separator)
+                deviceFarmWorkingFolder = [
+                        projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'
+                ].join(separator)
 
                 try {
                     /*
@@ -292,7 +453,7 @@ class TestAutomation implements Serializable {
                     if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
                         script.stage('Checkout') {
                             BuildHelper.checkoutProject script: script,
-                                    projectRelativePath: projectName,
+                                    projectRelativePath: checkoutRelativeTargetFolder   ,
                                     scmBranch: scmBranch,
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
@@ -333,28 +494,10 @@ class TestAutomation implements Serializable {
                 if (runTests) {
                     try {
                         script.dir(deviceFarmWorkingFolder) {
-                            /* Providing AWS region for DeviceFarm, currently DeviceFarm available in us-west-2 */
+                            /* Providing AWS region for Device Farm, currently it is available in us-west-2 */
                             script.withAWS(region: awsRegion) {
                                 script.stage('Fetch binaries') {
-                                    /* Prepare step to run in parallel */
-                                    def step = { artifactName, artifactURL, artifactExt ->
-                                        /* If test binaries URL was not provided, copy binaries from the build step */
-                                        if (artifactURL == 'jobWorkspace') {
-                                            String artifactPath = "${testFolder}/target/${artifactName}.${artifactExt}"
-                                            script.shellCustom("cp $artifactPath $deviceFarmWorkingFolder", true)
-                                            /* Else, fetch binaries */
-                                        } else {
-                                            deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
-                                        }
-                                    }
-                                    def stepsToRun = prepareParallelSteps(
-                                            testPackage << projectArtifacts, 'fetch_', step
-                                    ) ?: script.error("No artifacts to fetch!")
-
-                                    /* Run prepared step in parallel */
-                                    if (stepsToRun) {
-                                        script.parallel(stepsToRun)
-                                    }
+                                    fetchBinaries()
                                 }
 
                                 script.stage('Create Device Farm Project') {
@@ -375,96 +518,15 @@ class TestAutomation implements Serializable {
                                 }
 
                                 script.stage('Upload test package') {
-                                    /* Get required parameters for test binaries upload */
-                                    def testUploadType = testPackage.get("${projectName}_TestApp").uploadType
-                                    def testExtension = testPackage.get("${projectName}_TestApp").extension
-                                    def testUploadFileName = "${projectName}_TestApp.${testExtension}"
-
-                                    /* Upload test binaries and get upload ARN */
-                                    deviceFarmTestUploadArtifactArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
-                                            testUploadType,
-                                            testUploadFileName)
-                                    /* Add test binaries upload ARN to upload ARNs list */
-                                    deviceFarmUploadArns.add(deviceFarmTestUploadArtifactArn)
+                                    uploadTestBinaries()
                                 }
 
                                 script.stage('Upload application binaries and schedule run') {
-                                    /* Prepare step to run in parallel */
-                                    def step = { artifactName, artifactURL, artifactExt, uploadType ->
-                                        /* Upload application binaries to DeviceFarm and add upload ARN to list */
-                                        def uploadArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
-                                                uploadType, artifactName + '.' + artifactExt)
-                                        deviceFarmUploadArns.add(uploadArn)
-
-                                        /* If we have applicataion binaries and test binaries, schedule the run */
-                                        if (uploadArn && deviceFarmTestUploadArtifactArn) {
-                                            /*
-                                                Depending on artifact name we need to chose appropriate pool for
-                                                the run.
-                                             */
-                                            def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
-                                                    (devicePoolArns.phones) ?: script.error("Artifacts provided " +
-                                                            "for tablets, but TABLET devices were provided") :
-                                                    (devicePoolArns.tablets ?: script.error("Artifacts provided for " +
-                                                            "tablets, but PHONE devices were provided"))
-                                            /* Once all parameters gotten, shcedule the DeviceFarm run */
-                                            def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn,
-                                                    'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn)
-                                            deviceFarmTestRunArns["${artifactName}"] = runArn
-                                            /*
-                                                Otherwise, fail the stage, because run couldn't be scheduled without
-                                                one of the binaries.
-                                             */
-                                        } else {
-                                            script.echo "Failed to get uploadArn"
-                                        }
-                                    }
-                                    def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
-                                            script.error("No artifacts to upload and run!")
-
-                                    /* Run prepared step in parallel */
-                                    if (stepsToRun) {
-                                        script.parallel(stepsToRun)
-                                    }
+                                    uploadAndRun()
                                 }
 
                                 script.stage('Get Test Results') {
-                                    def stepsToRun = [:]
-
-                                    def deviceFarmTestRunArnsKeys = deviceFarmTestRunArns.keySet().toArray()
-                                    // Workaround to iterate over map keys in c++ style for loop
-                                    for (int i = 0; i < deviceFarmTestRunArnsKeys.size(); ++i) {
-                                        def arn = deviceFarmTestRunArns[deviceFarmTestRunArnsKeys[i]]
-                                        /* Prepare step to run in parallel */
-                                        stepsToRun["testResults_${deviceFarmTestRunArnsKeys[i]}"] = {
-                                            def testRunResult = deviceFarm.getTestRunResult(arn)
-                                            /* If we got a test result */
-                                            if (testRunResult) {
-                                                /*
-                                                    Query DeviceFarm for test artifacts (logs, videos, etc) and
-                                                    store test run artifact object in list
-                                                 */
-                                                deviceFarmTestRunResults.runs = deviceFarm.getTestRunArtifacts(arn)
-                                                /* Else notify user that result value is empty */
-                                            } else {
-                                                script.echo(
-                                                        "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    /* Run prepared step in parallel */
-                                    if (stepsToRun) {
-                                        script.parallel(stepsToRun)
-                                    }
-
-                                    script.dir('artifacts') {
-                                        deviceFarm.moveArtifactsToCustomerS3Bucket(
-                                                deviceFarmTestRunResults.runs,
-                                                ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
-                                        )
-                                    }
+                                    fetchTestResults()
                                 }
                             }
                         }
@@ -473,15 +535,14 @@ class TestAutomation implements Serializable {
                         script.echo "ERROR: $exceptionMessage"
                         script.currentBuild.result = 'FAILURE'
                     } finally {
-                        NotificationsHelper.sendEmail(script,
-                                'runTests',
-                                deviceFarmTestRunResults + [
-                                        devicePoolName: devicePoolName,
-                                        binaryName    : getBinaryNameForEmail(projectArtifacts),
-                                        missingDevices: script.env.MISSING_DEVICES
-                                ],
-                                true
-                        )
+                        NotificationsHelper.sendEmail(script, 'runTests', [
+                                runs          : deviceFarmTestRunResults,
+                                devicePoolName: devicePoolName,
+                                binaryName    : getBinaryNameForEmail(projectArtifacts),
+                                missingDevices: script.env.MISSING_DEVICES
+                        ], true)
+
+                        /* Cleanup created pools and uploads */
                         cleanup(deviceFarmUploadArns, devicePoolArns)
                     }
                 }

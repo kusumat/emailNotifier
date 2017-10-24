@@ -216,7 +216,15 @@ class AwsDeviceFarmHelper implements Serializable {
                 if (item.value) {
                     /* Create a device pool object for creation request of the device pool */
                     devicePool.projectArn = projectArn
-                    devicePool.name = (item.key == 'phones') ? 'Phone-Device-Pool' : 'Tablet-Device-Pool'
+                    /*
+                        Device pool name on Device Farm has following format:
+                        <user_provided_pool_name>-[<job_build_number>-]<form_factor>
+                     */
+                    devicePool.name = [
+                            "${devicePoolName?.replaceAll('\\s', '-')}",
+                            (script.env.BUILD_NUMBER ?: ''),
+                            ((item.key == 'phones') ? 'Phones-Device-Pool' : 'Tablets-Device-Pool')
+                    ].findAll().join('-')
                     devicePool.rules[0].attribute = 'ARN'
                     /* Currently only this operator is working */
                     devicePool.rules[0].operator = 'IN'
@@ -488,7 +496,9 @@ class AwsDeviceFarmHelper implements Serializable {
                         resultPath.add(suite.name)
                         resultPath.add(test.name)
                         for (artifact in test.artifacts) {
+                            /* Replace all spaces with underscores in S3 path */
                             def s3path = resultPath.join('/').replaceAll('\\s', '_')
+                            /* Replace all spaces with underscores in artifact name */
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll('\\s', '_')
 
                             /* Fetch run artifact */
