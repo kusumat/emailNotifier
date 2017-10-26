@@ -168,6 +168,32 @@ class IosChannel extends Channel {
     }
 
     /**
+     * Updates projectprop.xml file with user provided bundle ID.
+     */
+    private final void updateIosBundleId() {
+        String projectPropFileName = libraryProperties.'ios.propject.props.file.name'
+        String successMessage = 'Bundle ID updated successfully.'
+        String errorMessage = 'Failed to update ' + projectPropFileName + ' file with provided Bundle ID!'
+
+        script.catchErrorCustom(errorMessage, successMessage) {
+            script.dir(projectFullPath) {
+                if (script.fileExists(projectPropFileName)) {
+                    String projectPropFileContent = script.readFile file: projectPropFileName
+
+                    String updatedProjectPropFileContent = projectPropFileContent.replaceAll(
+                            '<attributes name="iphonebundleidentifierkey".*',
+                            '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
+                    )
+
+                    script.writeFile file: projectPropFileName, text: updatedProjectPropFileContent
+                } else {
+                    script.error("Failed to find $projectPropFileName file to update bundle ID!")
+                }
+            }
+        }
+    }
+
+    /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
      */
@@ -208,6 +234,10 @@ class IosChannel extends Channel {
                                 scmBranch: scmBranch,
                                 scmCredentialsId: scmCredentialsId,
                                 scmUrl: scmUrl
+                    }
+
+                    script.stage('Update bundle ID') {
+                        updateIosBundleId()
                     }
 
                     script.stage('Build') {
