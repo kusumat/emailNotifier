@@ -168,7 +168,7 @@ class IosChannel extends Channel {
     }
 
     /**
-     * Updates projectprop.xml file with user provided bundle ID.
+     * Updates projectprop.xml file with user provided Bundle ID.
      */
     private final void updateIosBundleId() {
         String projectPropFileName = libraryProperties.'ios.propject.props.file.name'
@@ -187,7 +187,7 @@ class IosChannel extends Channel {
 
                     script.writeFile file: projectPropFileName, text: updatedProjectPropFileContent
                 } else {
-                    script.error("Failed to find $projectPropFileName file to update bundle ID!")
+                    script.error("Failed to find $projectPropFileName file to update Bundle ID!")
                 }
             }
         }
@@ -236,7 +236,7 @@ class IosChannel extends Channel {
                                 scmUrl: scmUrl
                     }
 
-                    script.stage('Update bundle ID') {
+                    script.stage('Update Bundle ID') {
                         updateIosBundleId()
                     }
 
@@ -255,12 +255,12 @@ class IosChannel extends Channel {
                         ipaArtifact = renameArtifacts(foundArtifacts).first()
                     }
 
-                    script.stage("Publish ipa artifact to S3") {
+                    script.stage("Publish IPA artifact to S3") {
                         ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                 sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script, true
                     }
 
-                    script.stage("Generate property list file") {
+                    script.stage("Generate PLIST file") {
                         /* Get plist artifact */
                         plistArtifact = createPlist(ipaArtifactUrl)
                     }
