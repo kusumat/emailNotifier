@@ -168,6 +168,32 @@ class IosChannel extends Channel {
     }
 
     /**
+     * Updates projectprop.xml file with user provided Bundle ID.
+     */
+    private final void updateIosBundleId() {
+        String projectPropFileName = libraryProperties.'ios.propject.props.file.name'
+        String successMessage = 'Bundle ID updated successfully.'
+        String errorMessage = 'Failed to update ' + projectPropFileName + ' file with provided Bundle ID!'
+
+        script.catchErrorCustom(errorMessage, successMessage) {
+            script.dir(projectFullPath) {
+                if (script.fileExists(projectPropFileName)) {
+                    String projectPropFileContent = script.readFile file: projectPropFileName
+
+                    String updatedProjectPropFileContent = projectPropFileContent.replaceAll(
+                            '<attributes name="iphonebundleidentifierkey".*',
+                            '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
+                    )
+
+                    script.writeFile file: projectPropFileName, text: updatedProjectPropFileContent
+                } else {
+                    script.error("Failed to find $projectPropFileName file to update Bundle ID!")
+                }
+            }
+        }
+    }
+
+    /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
      */
@@ -210,6 +236,10 @@ class IosChannel extends Channel {
                                 scmUrl: scmUrl
                     }
 
+                    script.stage('Update Bundle ID') {
+                        updateIosBundleId()
+                    }
+
                     script.stage('Build') {
                         build()
                         /* Search for build artifacts */
@@ -225,12 +255,12 @@ class IosChannel extends Channel {
                         ipaArtifact = renameArtifacts(foundArtifacts).first()
                     }
 
-                    script.stage("Publish ipa artifact to S3") {
+                    script.stage("Publish IPA artifact to S3") {
                         ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                 sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script, true
                     }
 
-                    script.stage("Generate property list file") {
+                    script.stage("Generate PLIST file") {
                         /* Get plist artifact */
                         plistArtifact = createPlist(ipaArtifactUrl)
                     }
