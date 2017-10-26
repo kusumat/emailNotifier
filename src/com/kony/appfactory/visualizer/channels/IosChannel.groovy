@@ -13,6 +13,8 @@ class IosChannel extends Channel {
     private ipaArtifact
     /* IPA file S3 URL, used for PLIST file creation */
     private ipaArtifactUrl
+    /* Stash name for fastlane configuration */
+    private fastlaneConfigStashName
 
     /* Build parameters */
     private final appleID = script.params.APPLE_ID
@@ -32,14 +34,18 @@ class IosChannel extends Channel {
         super(script)
         channelOs = 'iOS'
         channelType = 'Native'
+        fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
         this.script.env['IOS_BUNDLE_ID'] = iosBundleId
     }
 
     /**
-     * Exposes Fastlane configuration for signing build artifacts.
+     * Fetches fastlane configuration files for signing build artifacts from S3.
      */
-    protected final void exposeFastlaneConfig() {
+    protected final void fetchFastlaneConfig() {
+        String fastlaneFastfileName = libraryProperties.'fastlane.fastfile.name'
+        String fastlaneFastfileNameConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' +
+                fastlaneFastfileName
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
         String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
         String awsIAMRole = script.env.AWS_IAM_ROLE
@@ -49,21 +55,23 @@ class IosChannel extends Channel {
         script.catchErrorCustom('Failed to fetch fastlane configuration') {
             /* Switch to configuration bucket region, and use role to pretend aws instance that has S3 access */
             script.withAWS(region: configBucketRegion, role: awsIAMRole) {
-                /* Fetch Fastlane configuration */
-                script.s3Download file: fastlaneEnvFileName,
-                        bucket: configBucketName,
-                        path: fastlaneEnvFileConfigBucketPath,
-                        force: true
+                script.dir(fastlaneConfigStashName) {
+                    /* Fetch fastlane configuration */
+                    script.s3Download file: fastlaneEnvFileName,
+                            bucket: configBucketName,
+                            path: fastlaneEnvFileConfigBucketPath,
+                            force: true
 
-                /* Read fastlane configuration from a file */
-                String config = script.readFile file: fastlaneEnvFileName
+                    script.s3Download file: fastlaneFastfileName,
+                            bucket: configBucketName,
+                            path: fastlaneFastfileNameConfigBucketPath,
+                            force: true
 
-                /* Convert to properties */
-                Properties fastlaneConfig = script.readProperties text: config
+                    /* Stash fetch fastlane configuration files to be able to use them during signing */
+                    script.stash name: fastlaneConfigStashName
 
-                /* Expose values from config as env variables to use them during IPA file creation */
-                for (item in fastlaneConfig) {
-                    script.env[item.key] = item.value
+                    /* Remove fetched fastlane configuration files */
+                    script.deleteDir()
                 }
             }
         }
@@ -75,7 +83,6 @@ class IosChannel extends Channel {
     private final void createIPA() {
         String successMessage = 'IPA file created successfully'
         String errorMessage = 'Failed to create IPA file'
-        String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
         String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
         String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
         String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
@@ -99,7 +106,7 @@ class IosChannel extends Channel {
                 """, true)
             }
 
-            /* Build project and export IPA using Fastlane */
+            /* Build project and export IPA using fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
                 /* Inject required environment variables */
                 script.withCredentials([
@@ -112,7 +119,6 @@ class IosChannel extends Channel {
                     script.withEnv([
                             "FASTLANE_DONT_STORE_PASSWORD=true",
                             "MATCH_APP_IDENTIFIER=${iosBundleId}",
-                            "MATCH_GIT_URL=${script.env.MATCH_GIT_URL}",
                             "MATCH_GIT_BRANCH=${(appleDeveloperTeamId) ?: script.env.MATCH_USERNAME}",
                             "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                             "GYM_OUTPUT_DIRECTORY=${karArtifact.path}",
@@ -122,13 +128,10 @@ class IosChannel extends Channel {
                             "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
-                            String fastFileName = libraryProperties.'fastlane.fastfile.name'
-                            String fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
-
-                            script.writeFile file: fastFileName, text: fastFileContent
+                            script.unstash name: fastlaneConfigStashName
                         }
                         script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
-                            script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + fastLaneBuildCommand, true)
+                            script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode, true)
                         }
                     }
                 }
@@ -213,7 +216,7 @@ class IosChannel extends Channel {
             /* Allocate a slave for the run */
             script.node(libraryProperties.'ios.node.label') {
                 /* Get and expose configuration file for fastlane */
-                exposeFastlaneConfig()
+                fetchFastlaneConfig()
 
                 pipelineWrapper {
                     /*
