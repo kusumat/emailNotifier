@@ -31,7 +31,7 @@ platform :ios do
     create_keychain(name: ENV["MATCH_KEYCHAIN_NAME"], password: ENV["MATCH_KEYCHAIN_PASSWORD"], unlock: true, timeout: false)
     automatic_code_signing(path: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"])
     update_info_plist(xcodeproj: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"], plist_path: 'Info.plist')
-    match(force_for_new_devices: true, clone_branch_directly: true)
+    match(force_for_new_devices: true)
     ENV['GYM_XCARGS'] = "DEVELOPMENT_TEAM=#{ENV["sigh_#{ENV['MATCH_APP_IDENTIFIER']}_#{ENV['MATCH_TYPE']}_team-id"]} PROVISIONING_PROFILE_SPECIFIER=#{ENV["sigh_#{ENV['MATCH_APP_IDENTIFIER']}_#{ENV['MATCH_TYPE']}"]}"
   end
 
