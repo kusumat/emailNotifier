@@ -13,7 +13,7 @@ import com.kony.appfactory.helper.AwsDeviceFarmHelper
  *
  * Test run and Test Automation scripts artifacts are stored on S3 according with approved folder structure.
  *
- * E-mail notification template and JSON file for AppFactory console,
+ * E-mail notification template and JSON file for App Factory console,
  *  also stored on S3 according with approved folder structure.
  */
 class TestAutomation implements Serializable {

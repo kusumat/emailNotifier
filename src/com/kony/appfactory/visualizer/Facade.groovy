@@ -12,7 +12,7 @@ import com.kony.appfactory.helper.NotificationsHelper
  *
  * Logic here validates user provided parameters, prepares build parameters for channels and test automation job,
  *  triggers channel jobs and/or test automation job with prepared parameters, stores e-mail notification body on S3
- *  for AppFactory console.
+ *  for App Factory console.
  */
 class Facade implements Serializable {
     /* Pipeline object */
