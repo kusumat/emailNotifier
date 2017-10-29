@@ -78,6 +78,32 @@ class IosChannel extends Channel {
     }
 
     /**
+     * Updates projectprop.xml file with user provided Bundle ID.
+     */
+    private final void updateIosBundleId() {
+        String projectPropFileName = libraryProperties.'ios.propject.props.file.name'
+        String successMessage = 'Bundle ID updated successfully.'
+        String errorMessage = 'Failed to update ' + projectPropFileName + ' file with provided Bundle ID!'
+
+        script.catchErrorCustom(errorMessage, successMessage) {
+            script.dir(projectFullPath) {
+                if (script.fileExists(projectPropFileName)) {
+                    String projectPropFileContent = script.readFile file: projectPropFileName
+
+                    String updatedProjectPropFileContent = projectPropFileContent.replaceAll(
+                            '<attributes name="iphonebundleidentifierkey".*',
+                            '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
+                    )
+
+                    script.writeFile file: projectPropFileName, text: updatedProjectPropFileContent
+                } else {
+                    script.error("Failed to find $projectPropFileName file to update Bundle ID!")
+                }
+            }
+        }
+    }
+
+    /**
      * Signs build artifacts.
      */
     private final void createIPA() {
@@ -168,32 +194,6 @@ class IosChannel extends Channel {
         }
 
         [name: "$plistFileName", path: "$plistFilePath"]
-    }
-
-    /**
-     * Updates projectprop.xml file with user provided Bundle ID.
-     */
-    private final void updateIosBundleId() {
-        String projectPropFileName = libraryProperties.'ios.propject.props.file.name'
-        String successMessage = 'Bundle ID updated successfully.'
-        String errorMessage = 'Failed to update ' + projectPropFileName + ' file with provided Bundle ID!'
-
-        script.catchErrorCustom(errorMessage, successMessage) {
-            script.dir(projectFullPath) {
-                if (script.fileExists(projectPropFileName)) {
-                    String projectPropFileContent = script.readFile file: projectPropFileName
-
-                    String updatedProjectPropFileContent = projectPropFileContent.replaceAll(
-                            '<attributes name="iphonebundleidentifierkey".*',
-                            '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
-                    )
-
-                    script.writeFile file: projectPropFileName, text: updatedProjectPropFileContent
-                } else {
-                    script.error("Failed to find $projectPropFileName file to update Bundle ID!")
-                }
-            }
-        }
     }
 
     /**
