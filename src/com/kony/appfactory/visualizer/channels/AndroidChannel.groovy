@@ -37,6 +37,7 @@ class AndroidChannel extends Channel {
     /**
      * Signs Android build artifacts.
      * More info could be found: https://developer.android.com/studio/publish/app-signing.html#signing-manually
+     *                           https://developer.android.com/studio/command-line/zipalign.html
      *                           https://docs.oracle.com/javase/6/docs/technotes/tools/solaris/jarsigner.html
      *
      * @param buildArtifacts build artifacts list.
