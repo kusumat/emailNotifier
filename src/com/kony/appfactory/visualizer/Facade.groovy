@@ -476,7 +476,7 @@ class Facade implements Serializable {
                 def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
 
                 if (spaChannels) {
-                    def spaMandatoryParams = ['SPA_APP_VERSION']
+                    def spaMandatoryParams = ['SPA_APP_VERSION', 'FABRIC_APP_CONFIG']
 
                     checkParams.addAll(spaMandatoryParams)
                 }
