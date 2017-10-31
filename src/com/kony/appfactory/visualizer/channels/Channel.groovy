@@ -127,14 +127,16 @@ class Channel implements Serializable {
      */
     protected final void pipelineWrapper(closure) {
         /* Expose Fabric configuration */
-        BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-            /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
+        if (fabricAppConfig) {
+            BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                 to not mask required values during the build we simply need redefine parameter values.
                 Also, because of the case, when user didn't provide some not mandatory values we can get null value
                 and script.env object returns only String values, been added elvis operator for assigning variable
                 value as ''(empty). */
-            script.env.FABRIC_APP_NAME = (script.env.FABRIC_APP_NAME) ?: ''
-            script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+                script.env.FABRIC_APP_NAME = (script.env.FABRIC_APP_NAME) ?: ''
+                script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+            }
         }
         /* Set environment-dependent variables */
         isUnixNode = script.isUnix()
@@ -155,6 +157,8 @@ class Channel implements Serializable {
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
+        /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
+        script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: '_'
         s3ArtifactPath = ['Builds', script.env.FABRIC_ENV_NAME, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.error('Artifacts base path is missing!')
@@ -550,9 +554,13 @@ class Channel implements Serializable {
      * Sets build description at the end of the build.
      */
     protected final void setBuildDescription() {
+        String EnvironmentDescription = ""
+        if (script.env.FABRIC_ENV_NAME != '_') {
+            EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
+        }
         script.currentBuild.description = """\
         <div id="build-description">
-            <p>Environment: ${script.env.FABRIC_ENV_NAME}</p>
+            ${EnvironmentDescription}
             <p>Channel: $channelVariableName</p>
         </div>\
         """.stripIndent()

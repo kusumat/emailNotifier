@@ -51,7 +51,7 @@ class SpaChannel extends Channel {
                     script.error('Please select at least one channel to build!')
                 }
 
-                ValidationHelper.checkBuildConfiguration(script, ['SPA_APP_VERSION'])
+                ValidationHelper.checkBuildConfiguration(script, ['SPA_APP_VERSION', 'FABRIC_APP_CONFIG'])
             }
 
             /* Allocate a slave for the run */

@@ -14,7 +14,7 @@ class ValidationHelper implements Serializable {
         /* List of the parameters that every channel job requires */
         def commonRequiredParams = [
                 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
-                'CLOUD_CREDENTIALS_ID', 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER', 'FABRIC_APP_CONFIG'
+                'CLOUD_CREDENTIALS_ID', 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER'
         ]
         /*
             List of the required parameters.
