@@ -1,81 +1,140 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
+/**
+ * Implements logic for iOS channel builds.
+ */
 class IosChannel extends Channel {
-    private bundleID
-    private karFile
-    private plistFileName
+    private karArtifact
+    private plistArtifact
+    private ipaArtifact
+    /* IPA file S3 URL, used for PLIST file creation */
+    private ipaArtifactUrl
+    /* Stash name for fastlane configuration */
+    private fastlaneConfigStashName
 
     /* Build parameters */
-    private String matchType = script.env.IOS_DISTRIBUTION_TYPE
-    private String appleID = script.env.APPLE_ID
+    private final appleID = script.params.APPLE_ID
+    private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
+    /* At least one of application id parameters should be set */
+    private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
+    private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     IosChannel(script) {
         super(script)
-        nodeLabel = 'mac'
-        plistFileName = "${projectName}_${jobBuildNumber}.plist"
+        channelOs = 'iOS'
+        channelType = 'Native'
+        fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
+        /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
+        this.script.env['IOS_BUNDLE_ID'] = iosBundleId
     }
 
-    protected final exposeFastlaneConfig() {
-        def libraryProperties = script.loadLibraryProperties(resourceBasePath + 'configurations/' + 'common.properties')
-        def fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
-        def fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
-        /* For using temporary access keys (AssumeRole) */
-        def awsIAMRole = script.env.AWS_IAM_ROLE
-        def configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
-        def configBucketName = script.env.S3_CONFIG_BUCKET
+    /**
+     * Fetches fastlane configuration files for signing build artifacts from S3.
+     */
+    protected final void fetchFastlaneConfig() {
+        String fastlaneFastfileName = libraryProperties.'fastlane.fastfile.name'
+        String fastlaneFastfileNameConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' +
+                fastlaneFastfileName
+        String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
+        String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
+        String awsIAMRole = script.env.AWS_IAM_ROLE
+        String configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
+        String configBucketName = script.env.S3_CONFIG_BUCKET
 
-        script.catchErrorCustom('FAILED to fetch fastlane configuration') {
+        script.catchErrorCustom('Failed to fetch fastlane configuration') {
+            /* Switch to configuration bucket region, and use role to pretend aws instance that has S3 access */
             script.withAWS(region: configBucketRegion, role: awsIAMRole) {
-                script.s3Download file: fastlaneEnvFileName,
-                        bucket: configBucketName,
-                        path: fastlaneEnvFileConfigBucketPath,
-                        force: true
+                script.dir(fastlaneConfigStashName) {
+                    /* Fetch fastlane configuration */
+                    script.s3Download file: fastlaneEnvFileName,
+                            bucket: configBucketName,
+                            path: fastlaneEnvFileConfigBucketPath,
+                            force: true
 
-                /* Read fastlane configuration for file */
-                def config = script.readFile file: fastlaneEnvFileName
+                    script.s3Download file: fastlaneFastfileName,
+                            bucket: configBucketName,
+                            path: fastlaneFastfileNameConfigBucketPath,
+                            force: true
 
-                /* Convert to properties */
-                def fastlaneConfig = script.readProperties text: config
+                    /* Stash fetch fastlane configuration files to be able to use them during signing */
+                    script.stash name: fastlaneConfigStashName
 
-                /* Expose values from config as env variables to use them during IPA file creation */
-                for (item in fastlaneConfig) {
-                    script.env[item.key] = item.value
+                    /* Remove fetched fastlane configuration files */
+                    script.deleteDir()
                 }
             }
         }
     }
 
-    private final void createIPA() {
-        String successMessage = 'IPA file created successfully'
-        String errorMessage = 'FAILED to create IPA file'
-        String fastLaneBuildCommand = (buildMode == 'release') ? 'release' : 'debug'
-        String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join('/')
-        String codeSignIdentity = (matchType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
+    /**
+     * Updates projectprop.xml file with user provided Bundle ID.
+     */
+    private final void updateIosBundleId() {
+        String projectPropFileName = libraryProperties.'ios.propject.props.file.name'
+        String successMessage = 'Bundle ID updated successfully.'
+        String errorMessage = 'Failed to update ' + projectPropFileName + ' file with provided Bundle ID!'
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            /* Get bundle identifier and iOS plugin version */
             script.dir(projectFullPath) {
-                bundleID = bundleIdentifier(script.readFile('projectprop.xml'))
+                if (script.fileExists(projectPropFileName)) {
+                    String projectPropFileContent = script.readFile file: projectPropFileName
+
+                    String updatedProjectPropFileContent = projectPropFileContent.replaceAll(
+                            '<attributes name="iphonebundleidentifierkey".*',
+                            '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
+                    )
+
+                    script.writeFile file: projectPropFileName, text: updatedProjectPropFileContent
+                } else {
+                    script.error("Failed to find $projectPropFileName file to update Bundle ID!")
+                }
             }
+        }
+    }
+
+    /**
+     * Signs build artifacts.
+     */
+    private final void createIPA() {
+        String successMessage = 'IPA file created successfully'
+        String errorMessage = 'Failed to create IPA file'
+        String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
+        String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
+        String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
+        String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithKonylib'].join(separator)
+        String iosDummyProjectGenPath = [iosDummyProjectWorkspacePath, 'gen'].join(separator)
+
+        script.catchErrorCustom(errorMessage, successMessage) {
             /* Extract Visualizer iOS Dummy Project */
-            script.dir("${workspace}/KonyiOSWorkspace") {
-                script.sh "cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip"
+            script.dir(iosDummyProjectBasePath) {
+                script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
                 script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
+
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
-            script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib/gen") {
-                script.sh """
-                    cp ${karFile.path}/${karFile.name} .
-                    perl extract.pl ${karFile.name} sqd
-                """
+            script.dir(iosDummyProjectGenPath) {
+                script.shellCustom("""
+                    cp ${karArtifact.path}/${karArtifact.name} .
+                    perl extract.pl ${karArtifact.name}
+                """, true)
             }
-            /* Build project and export IPA using Fastlane */
-            script.dir("${workspace}/KonyiOSWorkspace/VMAppWithKonylib") {
+
+            /* Build project and export IPA using fastlane */
+            script.dir(iosDummyProjectWorkspacePath) {
+                /* Inject required environment variables */
                 script.withCredentials([
                     script.usernamePassword(
                         credentialsId: "${appleID}",
@@ -85,23 +144,20 @@ class IosChannel extends Channel {
                 ]) {
                     script.withEnv([
                             "FASTLANE_DONT_STORE_PASSWORD=true",
-                            "MATCH_APP_IDENTIFIER=${bundleID}",
-                            "MATCH_GIT_URL=${script.env.MATCH_GIT_URL}",
-                            "MATCH_GIT_BRANCH=${(script.env.APPLE_DEVELOPER_TEAM_ID) ?: script.env.MATCH_USERNAME}",
+                            "MATCH_APP_IDENTIFIER=${iosBundleId}",
+                            "MATCH_GIT_BRANCH=${(appleDeveloperTeamId) ?: script.env.MATCH_USERNAME}",
                             "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
-                            "GYM_OUTPUT_DIRECTORY=${karFile.path}",
+                            "GYM_OUTPUT_DIRECTORY=${karArtifact.path}",
                             "GYM_OUTPUT_NAME=${projectName}",
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
-                            "FL_PROJECT_SIGNING_PROJECT_PATH=${workspace}/KonyiOSWorkspace/VMAppWithKonylib/VMAppWithKonylib.xcodeproj",
-                            "MATCH_TYPE=${matchType}"
+                            "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
+                            "MATCH_TYPE=${iosDistributionType}"
                     ]) {
                         script.dir('fastlane') {
-                            def fastFileName = 'Fastfile'
-                            def fastFileContent = script.loadLibraryResource(resourceBasePath + fastFileName)
-                            script.writeFile file: fastFileName, text: fastFileContent
+                            script.unstash name: fastlaneConfigStashName
                         }
-                        script.sshagent (credentials: ['jenkins_github_ssh-certificates']) {
-                            script.sh '$HOME/.fastlane/bin/fastlane kony_ios_' + fastLaneBuildCommand
+                        script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
+                            script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode, true)
                         }
                     }
                 }
@@ -109,83 +165,121 @@ class IosChannel extends Channel {
         }
     }
 
-    private final void createPlist() {
-        String successMessage = 'PLIST file created successfully'
-        String errorMessage = 'FAILED to create PLIST file'
-        String plistResourcesFileName = 'apple_orig.plist'
-        String plistPathTagValue = AWSHelper.getS3ArtifactURL(script, ['Builds', environment].join('/'))
+    /**
+     * Creates PLIST file.
+     * @param ipaArtifactUrl IPA file S3 URL.
+     * @return PLIST file object, format: {name: <NameOfPlistFile>, path: <PlistFilePath>}.
+     */
+    private final createPlist(String ipaArtifactUrl) {
+        (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
+
+        String successMessage = 'PLIST file created successfully.'
+        String errorMessage = 'Failed to create PLIST file'
+        String plistResourcesFileName = libraryProperties.'ios.plist.file.name'
+        String plistFileName = "${projectName}_${jobBuildNumber}.plist"
+        String plistFilePath = "${script.pwd()}"
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.dir(artifacts[0].path) {
+            script.dir(plistFilePath) {
                 /* Load property list file template */
                 String plist = script.loadLibraryResource(resourceBasePath + plistResourcesFileName)
 
                 /* Substitute required values */
-                String plistUpdated = plist.replaceAll('\\$path', plistPathTagValue)
-                        .replaceAll('\\$bundleIdentifier', bundleID)
+                String plistUpdated = plist.replaceAll('\\$path', ipaArtifactUrl)
+                        .replaceAll('\\$bundleIdentifier', iosBundleId)
 
                 /* Write updated property list file to current working directory */
                 script.writeFile file: plistFileName, text: plistUpdated
             }
         }
+
+        [name: "$plistFileName", path: "$plistFilePath"]
     }
 
-    private final bundleIdentifier(text) {
-        def matcher = text =~ '<attributes name="iphonebundleidentifierkey" value="(.+)"/>'
-        return matcher ? matcher[0][1] : null
-    }
-
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
-        script.node(nodeLabel) {
-            exposeFastlaneConfig() // Get configuration file for fastlane
+        script.timestamps {
+            script.stage('Check provided parameters') {
+                ValidationHelper.checkBuildConfiguration(script)
 
-            pipelineWrapper {
-                script.deleteDir()
+                def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
 
-                script.stage('Checkout') {
-                    BuildHelper.checkoutProject script: script,
-                            projectName: projectName,
-                            gitBranch: gitBranch,
-                            gitCredentialsID: gitCredentialsID,
-                            gitURL: gitURL
-                }
+                channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
+                        mandatoryParameters.add('IOS_TABLET_APP_ID')
 
-                script.stage('Build') {
-                    build()
-                    /* Get KAR file name and path */
-                    karFile = getArtifactLocations(artifactExtension)[0]
-                }
+                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+            }
 
-                script.stage('Generate IPA file') {
-                    createIPA()
-                    /* Search for build artifacts */
-                    def foundArtifacts = getArtifactLocations('ipa')
-                    /* Rename artifacts for publishing */
-                    artifacts = (foundArtifacts) ? renameArtifacts(foundArtifacts) :
-                            script.error('FAILED build artifacts are missing!')
-                }
+            /* Allocate a slave for the run */
+            script.node(libraryProperties.'ios.node.label') {
+                /* Get and expose configuration file for fastlane */
+                fetchFastlaneConfig()
 
-                script.stage("Generate property list file") {
-                    createPlist()
-                    /* Get plist artifact */
-                    artifacts.add([name: plistFileName, path: "${karFile.path}"])
-                }
+                pipelineWrapper {
+                    /*
+                        Clean workspace, to be sure that we have not any items from previous build,
+                        and build environment completely new.
+                     */
+                    script.cleanWs deleteDirs: true
 
-                script.stage("Publish artifacts to S3") {
-                    /* Create a list with artifact names and upload them */
-                    def channelArtifacts = []
-
-                    for (artifact in artifacts) {
-                        /* Exclude ipa from artifacts list */
-                        if (!artifact.name.contains('ipa')) {
-                            channelArtifacts.add(artifact.name)
-                        }
-
-                        AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                sourceFileName: artifact.name, sourceFilePath: artifact.path
+                    script.stage('Check build-node environment') {
+                        ValidationHelper.checkBuildConfiguration(script,
+                                ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE',
+                                 'FABRIC_ENV_NAME'])
                     }
 
-                    script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.join(',')
+                    script.stage('Checkout') {
+                        BuildHelper.checkoutProject script: script,
+                                projectRelativePath: checkoutRelativeTargetFolder,
+                                scmBranch: scmBranch,
+                                scmCredentialsId: scmCredentialsId,
+                                scmUrl: scmUrl
+                    }
+
+                    script.stage('Update Bundle ID') {
+                        updateIosBundleId()
+                    }
+
+                    script.stage('Build') {
+                        build()
+                        /* Search for build artifacts */
+                        karArtifact = getArtifactLocations(artifactExtension).first() ?:
+                                script.error('Build artifacts were not found!')
+                    }
+
+                    script.stage('Generate IPA file') {
+                        createIPA()
+                        /* Get ipa file name and path */
+                        def foundArtifacts = getArtifactLocations('ipa')
+                        /* Rename artifacts for publishing */
+                        ipaArtifact = renameArtifacts(foundArtifacts).first()
+                    }
+
+                    script.stage("Publish IPA artifact to S3") {
+                        ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script, true
+                    }
+
+                    script.stage("Generate PLIST file") {
+                        /* Get plist artifact */
+                        plistArtifact = createPlist(ipaArtifactUrl)
+                    }
+
+                    script.stage("Publish PLIST artifact to S3") {
+                        String artifactName = plistArtifact.name
+                        String artifactPath = plistArtifact.path
+                        String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
+
+                        artifacts.add([
+                                channelPath: channelPath, name: artifactName, url: artifactUrl
+                        ])
+                    }
+
+                    script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                 }
             }
         }

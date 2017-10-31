@@ -1,51 +1,94 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.AWSHelper
+import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ValidationHelper
 
+/**
+ * Implements logic for Windows channel builds.
+ */
 class WindowsChannel extends Channel {
-    def shortenedWorkspace = 'C:\\J\\' + projectName + '\\' + script.env.JOB_BASE_NAME
+    private final shortenedWorkspaceBasePath
+    private final shortenedWorkspace
 
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     */
     WindowsChannel(script) {
         super(script)
-        nodeLabel = 'win'
+        channelOs = this.script.params.OS
+        channelType = 'Native'
+        shortenedWorkspaceBasePath = libraryProperties.'windows.shortened.workspace.base.path'
+        shortenedWorkspace = [shortenedWorkspaceBasePath, projectName, script.env.JOB_BASE_NAME].join('\\')
     }
 
+    /**
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
+     */
     protected final void createPipeline() {
-        script.node(nodeLabel) {
-            script.ws(shortenedWorkspace) { // Workaround to fix path limitation on windows slaves
-                pipelineWrapper {
-                    script.deleteDir()
+        script.timestamps {
+            script.stage('Check provided parameters') {
+                ValidationHelper.checkBuildConfiguration(script)
 
-                    script.stage('Checkout') {
-                        BuildHelper.checkoutProject script: script,
-                                projectName: projectName,
-                                gitBranch: gitBranch,
-                                gitCredentialsID: gitCredentialsID,
-                                gitURL: gitURL
-                    }
+                def mandatoryParameters = ['OS', 'FORM_FACTOR']
 
-                    script.stage('Build') {
-                        build()
-                        /* Search for build artifacts */
-                        buildArtifacts = getArtifactLocations(artifactExtension)
-                        /* Rename artifacts for publishing */
-                        artifacts = (buildArtifacts) ? renameArtifacts(buildArtifacts) :
-                                script.error('FAILED build artifacts are missing!')
-                    }
+                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+            }
 
-                    script.stage("Publish artifacts to S3") {
-                        /* Create a list with artifact names and upload them */
-                        def channelArtifacts = []
+            /* Allocate a slave for the run */
+            script.node(libraryProperties.'windows.node.label') {
+                /* Workaround to fix path limitation on windows slaves, allocating new job workspace */
+                script.ws(shortenedWorkspace) {
+                    pipelineWrapper {
+                        /*
+                            Clean workspace, to be sure that we have not any items from previous build,
+                            and build environment completely new.
+                         */
+                        script.cleanWs deleteDirs: true
 
-                        for (artifact in artifacts) {
-                            channelArtifacts.add(artifact.name)
-
-                            AWSHelper.publishToS3 script: script, bucketPath: s3ArtifactPath, exposeURL: true,
-                                    sourceFileName: artifact.name, sourceFilePath: artifact.path
+                        script.stage('Check build-node environment') {
+                            ValidationHelper.checkBuildConfiguration(script,
+                                    ['VISUALIZER_HOME', channelVariableName, 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME'])
                         }
 
-                        script.env['CHANNEL_ARTIFACTS'] = channelArtifacts.join(',')
+                        script.stage('Checkout') {
+                            BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: checkoutRelativeTargetFolder,
+                                    scmBranch: scmBranch,
+                                    scmCredentialsId: scmCredentialsId,
+                                    scmUrl: scmUrl
+                        }
+
+                        script.stage('Build') {
+                            build()
+                            /* Search for build artifacts */
+                            buildArtifacts = getArtifactLocations(artifactExtension) ?:
+                                    script.error('Build artifacts were not found!')
+                        }
+
+                        script.stage("Publish artifacts to S3") {
+                            /* Rename artifacts for publishing */
+                            artifacts = renameArtifacts(buildArtifacts)
+
+                            /* Create a list with artifact objects for e-mail template */
+                            def channelArtifacts = []
+
+                            artifacts?.each { artifact ->
+                                String artifactName = artifact.name
+                                String artifactPath = artifact.path
+                                String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                        sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
+
+                                channelArtifacts.add([
+                                        channelPath: channelPath, name: artifactName, url: artifactUrl
+                                ])
+                            }
+
+                            script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                        }
                     }
                 }
             }

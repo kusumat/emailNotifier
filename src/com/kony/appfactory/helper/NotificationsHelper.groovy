@@ -1,510 +1,238 @@
 package com.kony.appfactory.helper
 
 import groovy.json.JsonOutput
-import groovy.xml.MarkupBuilder
+import groovy.text.SimpleTemplateEngine
 
 /**
- * Implements logic required for sending emails.
+ * Implements logic required for sending notifications.
  */
 class NotificationsHelper implements Serializable {
-    protected static final sendEmail(script, templateType, templateData = [:], storeBody = false) {
-        def data = getData(script, templateType, templateData)
+    /**
+     * Main method for sending e-mail notifications with job results.
+     *
+     * @param script pipeline object.
+     * @param templateType type(job name) that is used for determining correspondent template properties.
+     * @param templateData job specific data for the e-mail notification.
+     * @param storeBody flag that used for storing content of the e-mail on workspace.
+     */
+    protected static final void sendEmail(script, templateType, templateData = [:], storeBody = false) {
+        /* Check required arguments */
+        (script) ?: script.error("script argument can't be null")
+        (templateType) ?: script.error("templateType argument can't be null")
 
+        /* Get data for e-mail notification */
+        Map emailData = getEmailData(script, templateType, templateData)
+
+        /* Store e-mail body on workspace, for publishing on S3, if storeBody flag set to true */
         if (storeBody) {
-            storeEmailBody(script, templateType, data.body, templateData)
+            storeEmailBody(script, emailData.body, templateType, templateData)
         }
 
-        script.catchErrorCustom('FAILED to send email') {
-            script.emailext body: data.body, subject: data.subject, to: data.recipients
-        }
-    }
-
-    private static storeEmailBody(script, templateType, body, templateData) {
-        def fileList = getFileNameList(templateType, body, templateData)
-        for (fileName in fileList) {
-            script.writeFile text: fileName.data, file: fileName.name
-            def subFolder = (fileName.name.contains('build')) ? 'Builds' : 'Tests'
-            AWSHelper.publishToS3 script: script, sourceFileName: fileName.name,
-                    bucketPath: [
-                            subFolder,
-                            script.env.JOB_BASE_NAME,
-                            script.env.BUILD_NUMBER
-                    ].join('/'),
-                    sourceFilePath: script.pwd()
+        script.catchErrorCustom('Failed to send e-mail!') {
+            /* Send e-mail notification with provided values */
+            script.emailext body: emailData.body, subject: emailData.subject, to: emailData.recipients
         }
     }
 
-    private static getData(script, templateType, templateData = [:]) {
-        def data = [:]
-        def templatesFolder = 'com/kony/appfactory/email/templates'
-        def baseTemplateName = 'KonyBase.template'
-        def recipients = (script.env.RECIPIENTS_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS'
-        def subject = "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}"
-        /* Load base email template from library resources */
-        def baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
-        def templateContent = getTemplateContent(script, templateType, templateData)
-        def bodyBinding = [title: subject, contentTable: templateContent]
-        def body = populateTemplate text: baseTemplate, binding: bodyBinding
+    /**
+     * Generates data for e-mail notification.
+     *
+     * @param script pipeline object.
+     * @param templateType type(job name) that is used for determining correspondent template content.
+     * @param templateData job specific data for the e-mail notification.
+     * @return e-mail data(body, title, recipients).
+     */
+    private static Map getEmailData(script, templateType, templateData) {
+        /* Check required arguments */
+        (script) ?: script.error("script argument can't be null")
+        (templateType) ?: script.error("templateType argument can't be null")
 
-        data.body = body
-        data.subject = subject
-        data.recipients = recipients
+        /* Location of the base template */
+        String templatesFolder = 'com/kony/appfactory/email/templates'
+        /* Name of the base template */
+        String baseTemplateName = 'KonyBase.template'
+        /*
+            Recipients list, by default will be used values from RECIPIENTS_LIST build parameter,
+            if it's empty, than DEFAULT_RECIPIENTS value from global Jenkins configuration will be used.
 
-        data
+            Person who is responsible for provisioning of the environment will have a field for providing value for
+            DEFAULT_RECIPIENTS property.
+         */
+        String recipients = (script.params.RECIPIENTS_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS'
+        /*
+            Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name
+            and result status of the job.
+         */
+        String subject = "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}"
+
+        /* Load base e-mail template from library resources */
+        String baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
+        /* Get template content depending on templateType(job name) */
+        String templateContent = getTemplateContent(script, templateType, templateData)
+        /* Populate binding values in the base template */
+        String body = populateTemplate(baseTemplate, [title: subject, contentTable: templateContent])
+
+        /* Return e-mail data */
+        [body: body, subject: subject, recipients: recipients]
     }
 
-    private static getFileNameList(templateType, body, templateData) {
-        def fileNameList = []
+    /**
+     * Stores content of the e-mail on workspace.
+     *
+     * @param script pipeline object.
+     * @param body e-mail body with populated values.
+     * @param templateType type(job name) that is used for determining files to store.
+     * @param templateData job specific data for the e-mail notification.
+     */
+    private static void storeEmailBody(script, body, templateType, templateData) {
+        /* Check required arguments */
+        (script) ?: script.error("script argument can't be null")
+        (body) ?: script.error("body argument can't be null")
+        (templateType) ?: script.error("templateType argument can't be null")
+
+        String buildResult = script.currentBuild.currentResult
+        List filesToStore = getFilesToStore(body, buildResult, templateType, templateData)
+
+        /* Iterating through all files that needs to be stored */
+        for (fileToStore in filesToStore) {
+            /* Store file on workspace */
+            script.catchErrorCustom('Failed to store e-mail body!') {
+                script.writeFile text: fileToStore.data, file: fileToStore.name
+            }
+
+            /* Get sub-folder for S3 path */
+            String subFolder = (fileToStore.name.contains('build')) ? 'Builds' : 'Tests'
+            /* Publish file on S3 */
+            AwsHelper.publishToS3 sourceFileName: fileToStore.name,
+                    bucketPath: [subFolder, script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'),
+                    sourceFilePath: script.pwd(), script
+        }
+    }
+
+    /**
+     * Modifies build result for test console.
+     *
+     * @param buildResult job build result.
+     * @return build result suffix for test console, suffix will be injected in build result file name.
+     */
+    private static String getBuildResultForTestConsole(buildResult) {
+        String buildResultForTestConsole
+
+        switch (buildResult) {
+            case 'SUCCESS':
+                buildResultForTestConsole = '-PASS'
+                break
+            case 'FAILURE':
+                buildResultForTestConsole = '-FAIL'
+                break
+            case 'UNSTABLE':
+                buildResultForTestConsole = '-UNSTABLE'
+                break
+            default:
+                buildResultForTestConsole = ''
+                break
+        }
+
+        buildResultForTestConsole
+    }
+
+    /**
+     * Creates list of files that will be stored on workspace and published on S3
+     *      depending on a templateType (job name).
+     *
+     * @param body e-mail body with populated values.
+     * @param buildResult job build result.
+     * @param templateType type(job name) that is used for determining files to store.
+     * @param templateData job specific data for the e-mail notification.
+     * @return list with the files that will be stored and published on S3.
+     */
+    private static List getFilesToStore(body, buildResult, templateType, templateData) {
+        List filesToStore = []
+        /* Get build result suffix for test console */
+        String buildResultForTestConsole = getBuildResultForTestConsole(buildResult)
 
         switch (templateType) {
             case 'buildVisualizerApp':
-                fileNameList.add([
-                        name: 'buildResults.html',
-                        data: body
-                ])
+                filesToStore.add([name: 'buildResults' + buildResultForTestConsole + '.html', data: body])
                 break
             case 'runTests':
-                def runs = templateData.runs
-                def jsonString = JsonOutput.toJson(runs)
+                /* Convert test run results to JSON */
+                String testRunsToJson = JsonOutput.toJson(templateData.runs)
 
-                fileNameList.add([
-                        name: 'testResults.html',
-                        data: body
-                ])
-
-                fileNameList.add([
-                        name: 'testResults.json',
-                        data: jsonString
+                /* For test console we are storing both HTML and JSON representation of test results */
+                filesToStore.addAll([
+                        [name: 'testResults' + buildResultForTestConsole + '.html', data: body],
+                        [name: 'testResults' + buildResultForTestConsole + '.json', data: testRunsToJson]
                 ])
                 break
             default:
-                fileNameList
+                filesToStore
                 break
         }
 
-        fileNameList
+        filesToStore
     }
 
-    private static getTemplateContent(script, templateType, templateData = [:]) {
-        def emailContent
-        def commonBinding = [
+    /**
+     * Generates template content depending on a templateType (job name).
+     *
+     * @param script pipeline object.
+     * @param templateType type(job name) that is used for determining correspondent template content.
+     * @param templateData job specific data for the e-mail notification.
+     * @return generated template content.
+     */
+    private static String getTemplateContent(script, templateType, templateData = [:]) {
+        String templateContent
+        /* Common properties for content */
+        Map commonBinding = [
                 notificationHeader: "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}",
-                triggeredBy: BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
-                projectName: script.env.PROJECT_NAME,
-                build: [duration: script.currentBuild.rawBuild.getTimestampString(),
+                triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
+                projectName       : script.env.PROJECT_NAME,
+                build             : [
+                        duration: script.currentBuild.rawBuild.getTimestampString(),
                         number  : script.currentBuild.number,
                         result  : script.currentBuild.currentResult,
                         url     : script.env.BUILD_URL,
                         started : script.currentBuild.rawBuild.getTime().toLocaleString(),
-                        log: script.currentBuild.rawBuild.getLog(50)
+                        log     : script.currentBuild.rawBuild.getLog(50)
                 ]
         ] + templateData
 
         switch (templateType) {
             case 'buildVisualizerApp':
-                emailContent = createBuildVisualizerAppContent(commonBinding)
+                templateContent = EmailTemplateHelper.createBuildVisualizerAppContent(commonBinding)
                 break
             case 'buildTests':
-                emailContent = createBuildTestsContent(commonBinding)
+                templateContent = EmailTemplateHelper.createBuildTestsContent(commonBinding)
                 break
             case 'runTests':
-                emailContent = createRunTestContent(commonBinding)
+                templateContent = EmailTemplateHelper.createRunTestContent(commonBinding)
                 break
             case 'Export':
             case 'Import':
             case 'Publish':
-                emailContent = mobileFabricContent(commonBinding)
+                templateContent = EmailTemplateHelper.fabricContent(commonBinding)
                 break
             default:
-                emailContent
+                templateContent = ''
                 break
         }
 
-        emailContent
+        templateContent
     }
 
+    /**
+     * Populates provided binding in template.
+     *
+     * @param text template with template tags.
+     * @param binding values to populate, key of the value should match to the key in template (text argument).
+     * @return populated template.
+     */
     @NonCPS
-    private static populateTemplate(Map args) {
-        def binding = args.binding
-        def text = args.text
+    private static String populateTemplate(text, binding) {
+        SimpleTemplateEngine engine = new SimpleTemplateEngine()
+        Writable template = engine.createTemplate(text).make(binding)
 
-        def engine = new groovy.text.SimpleTemplateEngine()
-        def template = engine.createTemplate(text).make(binding)
-
-        return (template) ? template.toString() : null
-    }
-
-    @NonCPS
-    private static createBuildVisualizerAppContent(binding) {
-        Writer writer = new StringWriter()
-        MarkupBuilder htmlBuilder = new MarkupBuilder(writer)
-
-        htmlBuilder.table(style: "width:100%") {
-            tr {
-                td(style: "text-align:center", class: "text-color") {
-                    h2 binding.notificationHeader
-                }
-            }
-
-            tr {
-                td(style: "text-align:left", class: "text-color") {
-                    h4(class: "subheading", "Build Details")
-                }
-            }
-
-            tr {
-                td {
-                    table(style:"width:100%", class: "text-color table-border cell-spacing") {
-                        if (binding.triggeredBy) {
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Triggered by:')
-                                td(class: "table-value", binding.triggeredBy)
-                            }
-                        }
-
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Build URL:')
-                            td {
-                                a(href: binding.build.url, "${binding.build.url}")
-                            }
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Project:')
-                            td(class: "table-value", binding.projectName)
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Build number:')
-                            td(class: "table-value", binding.build.number)
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Date of build:')
-                            td(class: "table-value", binding.build.started)
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Build duration:')
-                            td(class: "table-value", binding.build.duration)
-                        }
-                    }
-                }
-            }
-
-            if (binding.build.result != 'FAILURE') {
-                tr {
-                    td(style: "text-align:left", class: "text-color") {
-                        h4(class: "subheading", 'Build Information')
-                    }
-                }
-                tr {
-                    td {
-                        table(style: "width:100%;text-align:left", class: "text-color table-border") {
-                            thead {
-                                tr {
-                                    th('Installer')
-                                    th('URL')
-                                }
-                            }
-                            tbody {
-                                for (artifact in binding.artifacts) {
-                                    tr {
-                                        td(artifact.channelPath.replaceAll('/', ' '))
-                                        td {
-                                            if (artifact.name) {
-                                                a(href: artifact.url, artifact.name)
-                                            } else {
-                                                mkp.yield 'Build failed'
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                tr {
-                    td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
-                        h4(style: "margin-bottom:0", 'Console Output')
-                        binding.build.log.each { line ->
-                            p(line)
-                        }
-                    }
-                }
-            }
-        }
-
-        writer.toString()
-    }
-
-    @NonCPS
-    private static createBuildTestsContent(binding) {
-        Writer writer = new StringWriter()
-        MarkupBuilder htmlBuilder = new MarkupBuilder(writer)
-
-        htmlBuilder.table(style: "width:100%") {
-            tr {
-                td(style: "text-align:center", class: "text-color") {
-                    h2 binding.notificationHeader
-                }
-            }
-
-            tr {
-                td(style: "text-align:left", class: "text-color") {
-                    h4(class: "subheading", "Build Details")
-                }
-            }
-
-            tr {
-                td {
-                    table(style:"width:100%", class: "text-color table-border cell-spacing") {
-                        if (binding.triggeredBy) {
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Triggered by:')
-                                td(class: "table-value", binding.triggeredBy)
-                            }
-                        }
-
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Build URL:')
-                            td {
-                                a(href: binding.build.url, "${binding.build.url}")
-                            }
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Project:')
-                            td(class: "table-value", binding.projectName)
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Build number:')
-                            td(class: "table-value", binding.build.number)
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Date of build:')
-                            td(class: "table-value", binding.build.started)
-                        }
-                        tr {
-                            td(style: "width:22%;text-align:right", 'Build duration:')
-                            td(class: "table-value", binding.build.duration)
-                        }
-                    }
-                }
-            }
-
-            if (binding.build.result == 'SUCCESS') {
-                tr {
-                    td(style: "text-align:left", class: "text-color") {
-                        h4(class: "subheading", 'Build Information')
-                        p("Build of Test Automation scripts for ${binding.projectName} finished successfully.")
-                    }
-                }
-            } else {
-                tr {
-                    td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
-                        h4(style: "margin-bottom:0", 'Console Output')
-                        binding.build.log.each { line ->
-                            p(line)
-                        }
-                    }
-                }
-            }
-        }
-
-        writer.toString()
-    }
-
-    @NonCPS
-    private static createRunTestContent(binding) {
-        Writer writer = new StringWriter()
-        MarkupBuilder htmlBuilder = new MarkupBuilder(writer)
-
-        htmlBuilder.table(style: "width:100%") {
-            tr {
-                td(style: "text-align:center", class: "text-color") {
-                    h2 binding.notificationHeader
-                }
-            }
-
-            tr {
-                td(style: "text-align:left", class: "text-color") {
-                    h4 "Project Name: ${binding.projectName}"
-                    p { strong "Selected Device Pools: ${binding.devicePoolName}" }
-                    p { strong "Devices not available in pool: ${(binding.missingDevices) ?: 'None'}" }
-                }
-            }
-
-            for (runResult in binding.runs) {
-                for (prop in runResult) {
-                    if (prop.key == 'device') {
-                        def projectArtifactKey = ((prop.value.platform.toLowerCase() + '_' +
-                                prop.value.formFactor.toLowerCase()).contains('phone')) ?
-                                (prop.value.platform.toLowerCase() + '_' +
-                                        prop.value.formFactor.toLowerCase()).replaceAll('phone', 'mobile') :
-                                prop.value.platform.toLowerCase() + '_' + prop.value.formFactor.toLowerCase()
-                        def binaryName = binding.binaryName.find {
-                            it.key.toLowerCase() == projectArtifactKey
-                        }.value
-                        tr {
-                            td {
-                                p(style: "margin:30px 0 10px;font-weight:bold", 'Device: ' + prop.value.name +
-                                        ', FormFactor: ' + prop.value.formFactor +
-                                        ', Platform: ' + prop.value.platform +
-                                        ', OS Version: ' + prop.value.os +
-                                        ', Binary Name: ' + binaryName)
-                            }
-                        }
-                    }
-
-                    if (prop.key == 'suites') {
-                        tr {
-                            td {
-                                table(style: "width:100%;text-align:left", class: "text-color table-border") {
-                                    tr {
-                                        th('Name')
-                                        th('URL')
-                                        th(style: "width:25%", 'Status')
-                                    }
-                                    for (suite in prop.value) {
-                                        tr {
-                                            th(colspan: "2", class: "table-value", style: "padding:10px;text-transform:none", 'Suite Name: ' + suite.name)
-                                            th(class: "table-value", style: "padding:10px;text-transform:none", 'Total tests: ' + suite.totalTests)
-                                        }
-                                        for (test in suite.tests) {
-                                            tr {
-                                                th(colspan: "2", class: "table-value", style: "padding:10px;text-transform:none", 'Test Name: ' + test.name)
-                                                th(class: "table-value", style: "padding:10px;text-transform:none", test.result)
-                                            }
-                                            for (artifact in test.artifacts) {
-                                                tr {
-                                                    td artifact.name + '.' + artifact.extension
-                                                    td {
-                                                        a(href: artifact.url, 'Download File')
-                                                    }
-                                                    td(style: "padding:10px") {
-                                                        mkp.yieldUnescaped('&nbsp;')
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        writer.toString()
-    }
-
-    @NonCPS
-    private static mobileFabricContent(binding) {
-        Writer writer = new StringWriter()
-        MarkupBuilder htmlBuilder = new MarkupBuilder(writer)
-
-        htmlBuilder.table(style: "width:100%") {
-            tr {
-                td(style: "text-align:center", class: "text-color") {
-                    h2 binding.notificationHeader
-                }
-            }
-
-            tr {
-                td(style: "text-align:left", class: "text-color") {
-                    h4 "AppID: ${binding.projectName}"
-                }
-            }
-
-            tr {
-                td {
-                    table(style: "width:100%;text-align:left", class: "text-color table-border") {
-                        thead {
-                            tr {
-                                th 'Input Params'
-                                th 'Value'
-                            }
-                        }
-                        tbody {
-                            if (binding.triggeredBy) {
-                                tr {
-                                    td 'Triggered by'
-                                    td(class: "table-value", binding.triggeredBy)
-                                }
-                            }
-                            if (binding.gitURL) {
-                                tr {
-                                    td 'Repository URL'
-                                    td {
-                                        a(href: binding.gitURL, "${binding.gitURL}")
-                                    }
-                                }
-                            }
-                            if (binding.gitBranch) {
-                                tr {
-                                    td 'Repository Branch'
-                                    td(class: "table-value", binding.gitBranch)
-                                }
-                            }
-                            if (binding.commitAuthor) {
-                                tr {
-                                    td 'Author'
-                                    td(class: "table-value", binding.commitAuthor)
-                                }
-                            }
-                            if (binding.authorEmail) {
-                                tr {
-                                    td 'Author Email'
-                                    td {
-                                        a(href: "mailto:${binding.authorEmail}", "${binding.authorEmail}")
-                                    }
-                                }
-                            }
-                            if (binding.commitMessage) {
-                                tr {
-                                    td 'Message'
-                                    td(class: "table-value", binding.commitMessage)
-                                }
-                            }
-                            if (binding.gitTagID) {
-                                tr {
-                                    td 'Repository tag'
-                                    td(class: "table-value", binding.gitTagID)
-                                }
-                            }
-                            if (binding.overwriteExisting) {
-                                tr {
-                                    td 'Overwrite Existing'
-                                    td(class: "table-value", binding.overwriteExisting)
-                                }
-                            }
-                            if (binding.publishApp) {
-                                tr {
-                                    td 'Enable Publish'
-                                    td(class: "table-value", binding.publishApp)
-                                }
-                            }
-                            if (binding.mfEnv) {
-                                tr {
-                                    td 'Environment'
-                                    td(class: "table-value", binding.mfEnv)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            tr {
-                td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
-                    h4(style: "margin-bottom:0", "${binding.commandName} Details")
-                    p {
-                        mkp.yield "${binding.commandName} of Mobile Fabric app ${binding.projectName} is: "
-                        strong binding.build.result
-                        mkp.yield '.'
-                    }
-                }
-            }
-        }
-
-        writer.toString()
+        (template) ? template.toString() : null
     }
 }

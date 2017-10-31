@@ -1,0 +1,7 @@
+Runs shell depending on slave's OS.<br>
+<b>Options: </b>
+<ul>
+    <li><b><i>String</i></b> <u>shellScript</u>, String with the script to run.</li>
+    <li><b><i>Boolean</i></b> <u>isUnixNode</u> <b>(optional)</b>, This flag is used for determining shell type depending on OS type, by <b>default Bourne shell</b> will chosen.</li>
+    <li><b><i>Map</i></b> <u>args</u> <b>(optional)</b>, Optional field for different shell types. Currently only <b>returnStatus</b> and <b>returnStdout</b> are supported.</li>
+</ul>

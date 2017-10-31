@@ -1,7 +1,7 @@
 def call(String resourcePath) {
-    def resource
+    String resource
 
-    catchErrorCustom('FAILED to load resource') {
+    catchErrorCustom('Failed to load resource') {
         resource = libraryResource resourcePath
     }
 
