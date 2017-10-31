@@ -372,4 +372,35 @@ class BuildHelper implements Serializable {
         dependencies
     }
     /* ---------------------------------------------------- END ---------------------------------------------------- */
+
+    protected final static void fixRunShScript (script, filePath, fileName) {
+        /* Check required arguments */
+        (filePath) ?: script.error("filePath argument can't be null!")
+        (fileName) ?: script.error("fileName argument can't be null!")
+
+        script.dir(filePath) {
+            if (script.fileExists(fileName)) {
+                def updatedFileContent
+                /* Missing statement */
+                String statementToAdd = 'export PATH="$PATH:/usr/local/bin"'
+                def listOfFileContentLines = script.readFile(fileName)?.trim()?.readLines()
+
+                /* Check if file has missing statement */
+                if (listOfFileContentLines?.contains(statementToAdd)) {
+                    /* If statement already exists skipping fix */
+                    updatedFileContent = listOfFileContentLines
+                } else {
+                    /* If not that injecting missing statement after existing export statement */
+                    def exportStatementPosition = listOfFileContentLines?.
+                            findIndexOf { it =~ 'export PATH="\\$PATH:\\$5"' }
+                    updatedFileContent = listOfFileContentLines.plus(exportStatementPosition + 1, statementToAdd)
+                }
+
+                /* Collect updated string lines and inject new line character after 'exit $?' */
+                String fileContent = updatedFileContent.join('\n')?.plus('\n')
+
+                script.writeFile file: fileName, text: fileContent, encoding: 'UTF-8'
+            }
+        }
+    }
 }
