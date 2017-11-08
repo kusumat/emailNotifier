@@ -272,12 +272,11 @@ class BuildHelper implements Serializable {
             script.httpRequest url: dependenciesURL, acceptType: 'APPLICATION_ZIP', contentType: 'APPLICATION_ZIP',
                     outputFile: dependenciesArchiveFileName, validResponseCodes: '200'
         }
-
         script.catchErrorCustom('Failed to unzip Visualizer dependencies file!') {
             /* Unarchive dependencies file */
             dependenciesArchive = script.unzip zipFile: dependenciesArchiveFileName, read: true
+            script.unzip zipFile: dependenciesArchiveFileName
         }
-
         /* Return the content of the dependencies file */
         dependenciesArchive?."$dependenciesFileName"
     }
@@ -329,7 +328,6 @@ class BuildHelper implements Serializable {
         def getToolPath = {
             script.tool([it.name, it.version].join('-'))
         }
-
         /*
             Iterate over dependencies, filter required one, get installation path for them on slave,
             switch dependency and  generate dependency object.
@@ -338,27 +336,34 @@ class BuildHelper implements Serializable {
             switch (dependency.name) {
                 case 'gradle':
                     def installationPath = getInstallationPath([dependency.name])
-                    switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
-                    dependencies.add(createDependencyObject('GRADLE_HOME', installationPath))
+                    script.env.CIBUILD ?: switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
+                    dependencies.add(createDependencyObject('GRADLE_HOME', getToolPath(dependency)))
                     break
                 case 'ant':
                     def installationPath = getInstallationPath(['Ant'])
                     switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
-                    dependencies.add(createDependencyObject('ANT_HOME', installationPath))
+                    dependencies.add(createDependencyObject('ANT_HOME', getToolPath(dependency)))
                     break
                 case 'java':
                     def installationPath
 
                     if (isUnixNode) {
-                        script.shellCustom(['mkdir -p', getInstallationPath(
+                        script.env.CIBUILD ?: script.shellCustom(['mkdir -p', getInstallationPath(
                                 ["jdk${dependency.version}.jdk", 'Contents'])].join(' '), isUnixNode
                         )
                         installationPath = getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home'])
                     } else {
                         installationPath = getInstallationPath(['Java', "jdk${dependency.version}"])
                     }
-                    switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
-                    dependencies.add(createDependencyObject('JAVA_HOME', installationPath))
+                    script.env.CIBUILD ?: switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
+                    dependencies.add(createDependencyObject('JAVA_HOME', getToolPath(dependency)))
+                    break
+                case 'node':
+                    if (isUnixNode) {
+                        script.env.NODE_HOME = [getToolPath(dependency),'bin'].join(separator)
+                    } else {
+                        script.env.NODE_HOME = getToolPath(dependency)
+                    }
                     break
                 case 'android build tools':
                     def installationPath = [script.env.ANDROID_HOME, 'build-tools', dependency.version].join(separator)
