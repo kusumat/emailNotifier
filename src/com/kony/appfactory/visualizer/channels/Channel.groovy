@@ -35,6 +35,7 @@ class Channel implements Serializable {
         if PUBLISH_FABRIC_APP build parameter set to true.
      */
     protected fabric
+    protected fabricEnvName
     /*
         Flag stores slave OS type, mostly used in shellCustom step,
         or set environment dependent variables, or run OS dependent steps
@@ -158,8 +159,11 @@ class Channel implements Serializable {
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
         /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
-        script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: '_'
-        s3ArtifactPath = ['Builds', script.env.FABRIC_ENV_NAME, channelPath].join('/')
+        
+        /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */ 
+        fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
+
+        s3ArtifactPath = ['Builds', fabricEnvName, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.error('Artifacts base path is missing!')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
@@ -583,7 +587,7 @@ class Channel implements Serializable {
      */
     protected final void setBuildDescription() {
         String EnvironmentDescription = ""
-        if (script.env.FABRIC_ENV_NAME != '_') {
+        if(script.env.FABRIC_ENV_NAME) {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
         script.currentBuild.description = """\
