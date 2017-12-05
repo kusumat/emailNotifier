@@ -45,9 +45,12 @@ class AndroidChannel extends Channel {
     private final void signArtifacts(buildArtifacts) {
         String errorMessage = 'Failed to sign artifact'
         String signer = libraryProperties.'android.signer.name'
-        String androidBuildToolsPath = (
+        String androidBuildToolsPath = script.env.CIBUILD ? [script.env.ANDROID_HOME, 'build-tools', libraryProperties.'android.build-tools.zipalign.version'].join(separator) : (
                 visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath
         ) ?: script.error('Android build tools path is missing!')
+
+        script.echo "androidBuildToolsPath is $androidBuildToolsPath "
+
         String javaBinPath = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
                 script.error('Java binaries path is missing!')
 

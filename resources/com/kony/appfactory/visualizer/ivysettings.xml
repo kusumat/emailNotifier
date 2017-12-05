@@ -10,6 +10,9 @@
             <url name="WWW">
                 <artifact pattern="http://download.kony.com/studio/70/plugins/[artifact]_[revision].[ext]" />
             </url>
+            <url name="V8">
+                <artifact pattern="http://download.kony.com/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
+            </url>
         </chain>
     </resolvers>
     <settings defaultResolver="my-resolver-chain"/>

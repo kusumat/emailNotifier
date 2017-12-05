@@ -218,7 +218,7 @@ class Channel implements Serializable {
             )
         }
 
-        script.withEnv(["PATH+TOOLS=${toolBinPath}"]) {
+        script.withEnv(["PATH+TOOLS=${script.env.NODE_HOME}${pathSeparator}${toolBinPath}"]) {
             script.withCredentials(credentialsTypeList) {
                 closure()
             }
@@ -230,7 +230,7 @@ class Channel implements Serializable {
      */
     protected final void build() {
         /* List of required build resources */
-        def requiredResources = ['property.xml', 'ivysettings.xml']
+        def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
 
         /* Populate Fabric configuration to appfactory.js file */
         populateFabricAppConfig()
@@ -252,10 +252,28 @@ class Channel implements Serializable {
 
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
-                    /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
-                    script.shellCustom('ant -buildfile property.xml', isUnixNode)
-                    /* Build project */
-                    script.shellCustom('ant', isUnixNode)
+                    if (getVisualizerPackVersion(visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ci.build.support.base.version')){
+                        /* Build project using CI tool" */
+                        /* Set a property for a reference to check current build is CI or not by any other module */
+                        script.env.CIBUILD = "true"
+                        script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
+                        /* Run npm install */
+                        script.catchErrorCustom('Something wrong, FAILED to run "npm install" on this project') {
+                                def npmBuildScript = "npm install"
+                                script.shellCustom(npmBuildScript, isUnixNode)
+                        }
+                        /* Run node build.js */
+                        script.catchErrorCustom('CI build failed for this project') {
+                                def nodeBuildScript = 'node build.js'
+                                script.shellCustom(nodeBuildScript, isUnixNode)
+                        }
+                    }
+                    else {
+                        /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
+                        script.shellCustom('ant -buildfile property.xml', isUnixNode)
+                        /* Build project using headless build tool*/
+                        script.shellCustom('ant', isUnixNode)
+                    }
                 }
             }
         }
@@ -289,6 +307,16 @@ class Channel implements Serializable {
         }
 
         visualizerVersion
+    }
+
+    /**
+     * Get visualizer version in Number Format
+     *
+     * @param visualizerVersion  ( with Dots eg. 8.0.0 )
+     * @return Visualizer Fix Pack version  (without dots eg. 800)
+     */
+    protected final getVisualizerPackVersion(visualizerVersion) {
+        return visualizerVersion.replace(".", "")
     }
 
     /**
@@ -565,4 +593,18 @@ class Channel implements Serializable {
         </div>\
         """.stripIndent()
     }
+
+    /**
+     * @params Absolute or relative path of a Folder or file
+     * Set execute permissions to all shell files
+     */
+    protected final void setExecutePermissions(source,isDir) {
+        if(script.fileExists(source)){
+            isDir ? script.shellCustom("chmod -R 755 $source/*.sh",isUnixNode): script.shellCustom("chmod 755 $source",isUnixNode)
+        } else{
+            script.echo("File or Directory doesn't exist : $source")
+        }
+    }
 }
+
+

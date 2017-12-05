@@ -109,7 +109,8 @@ class IosChannel extends Channel {
     private final void createIPA() {
         String successMessage = 'IPA file created successfully'
         String errorMessage = 'Failed to create IPA file'
-        String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
+        /* Point Dropins folder based on Headless build and CI build to location where kony plugins are stored */
+        String visualizerDropinsPath = script.env.CIBUILD ? [projectWorkspacePath, 'kony-plugins'].join(separator) : [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
         String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
         String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
         String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithKonylib'].join(separator)
@@ -120,8 +121,13 @@ class IosChannel extends Channel {
             script.dir(iosDummyProjectBasePath) {
                 script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
                 script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
-                def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/iOS-GA-*.zip')
+                def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/*.zip')
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
+            }
+
+            script.dir(iosDummyProjectGenPath){
+                setExecutePermissions("nativebinding",true)
+                setExecutePermissions("crypt",false)
             }
 
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
