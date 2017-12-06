@@ -194,6 +194,10 @@ class Channel implements Serializable {
     protected final void visualizerEnvWrapper(closure) {
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
+        if (getVisualizerPackVersion(visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ci.build.support.base.version')) {
+            /* Set a property for a reference to check current build is CI or not for any other module */
+            script.env.isCIBUILD = "true"
+        }
         /* Get Visualizer dependencies */
         visualizerDependencies = (
                 BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerHome,
@@ -256,10 +260,8 @@ class Channel implements Serializable {
 
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
-                    if (getVisualizerPackVersion(visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ci.build.support.base.version')){
+                    if (script.env.isCIBUILD){
                         /* Build project using CI tool" */
-                        /* Set a property for a reference to check current build is CI or not by any other module */
-                        script.env.CIBUILD = "true"
                         script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
                         /* Run npm install */
                         script.catchErrorCustom('Something wrong, FAILED to run "npm install" on this project') {

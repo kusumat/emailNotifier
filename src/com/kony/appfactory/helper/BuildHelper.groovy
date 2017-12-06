@@ -336,7 +336,7 @@ class BuildHelper implements Serializable {
             switch (dependency.name) {
                 case 'gradle':
                     def installationPath = getInstallationPath([dependency.name])
-                    script.env.CIBUILD ?: switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
+                    script.env.isCIBUILD ?: switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('GRADLE_HOME', getToolPath(dependency)))
                     break
                 case 'ant':
@@ -348,14 +348,14 @@ class BuildHelper implements Serializable {
                     def installationPath
 
                     if (isUnixNode) {
-                        script.env.CIBUILD ?: script.shellCustom(['mkdir -p', getInstallationPath(
+                        script.env.isCIBUILD ?: script.shellCustom(['mkdir -p', getInstallationPath(
                                 ["jdk${dependency.version}.jdk", 'Contents'])].join(' '), isUnixNode
                         )
                         installationPath = getInstallationPath(["jdk${dependency.version}.jdk", 'Contents', 'Home'])
                     } else {
                         installationPath = getInstallationPath(['Java', "jdk${dependency.version}"])
                     }
-                    script.env.CIBUILD ?: switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
+                    script.env.isCIBUILD ?: switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('JAVA_HOME', getToolPath(dependency)))
                     break
                 case 'node':
