@@ -157,7 +157,9 @@ class IosChannel extends Channel {
                             "GYM_OUTPUT_NAME=${projectName}",
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
-                            "MATCH_TYPE=${iosDistributionType}"
+                            "MATCH_TYPE=${iosDistributionType}",
+                            "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
+                            "PROJECT_WORKSPACE=${iosDummyProjectBasePath}"
                     ]) {
                         script.dir('fastlane') {
                             script.unstash name: fastlaneConfigStashName
