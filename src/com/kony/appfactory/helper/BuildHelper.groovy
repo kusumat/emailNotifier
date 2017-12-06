@@ -341,7 +341,7 @@ class BuildHelper implements Serializable {
                     break
                 case 'ant':
                     def installationPath = getInstallationPath(['Ant'])
-                    switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
+                    script.env.isCIBUILD ?: switchDependencies(script, isUnixNode, getToolPath(dependency), installationPath)
                     dependencies.add(createDependencyObject('ANT_HOME', getToolPath(dependency)))
                     break
                 case 'java':
