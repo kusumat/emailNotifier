@@ -134,10 +134,13 @@ class AndroidChannel extends Channel {
                     script.cleanWs deleteDirs: true
 
                     script.stage('Check build-node environment') {
-                        ValidationHelper.checkBuildConfiguration(script,
-                                ['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME',
-                                 'PROJECT_WORKSPACE', 'FABRIC_ENV_NAME']
-                        )
+
+                        def parametersToValidate =['VISUALIZER_HOME', 'ANDROID_HOME', channelVariableName, 'ANDROID_PACKAGE_NAME',
+                                 'PROJECT_WORKSPACE']
+                        if (script.env.FABRIC_ENV_NAME) {
+                            parametersToValidate << 'FABRIC_ENV_NAME'
+                        }
+                        ValidationHelper.checkBuildConfiguration(script, parametersToValidate)
                     }
 
                     script.stage('Checkout') {
