@@ -1,4 +1,6 @@
 package com.kony.appfactory.helper
+import org.jenkins.plugins.lockableresources.LockableResources
+import jenkins.model.Jenkins
 
 /**
  * Implements logic related to channel build process.
@@ -407,5 +409,63 @@ class BuildHelper implements Serializable {
                 script.writeFile file: fileName, text: fileContent, encoding: 'UTF-8'
             }
         }
+    }
+
+    /**
+     * Fetch lockable resources list from Jenkins
+     *
+     * @returns resouces : [['name':ResouceName,'status':state]]
+     */
+    protected final static getResoursesList(){
+        def resources = []
+        def resourceList = new  LockableResources().resources
+        resourceList.each { resource ->
+            resources << ['name': resource.getName(),'status':resource.isLocked()]
+        }
+        return resources
+    }
+
+    /**
+     * Main function to determine node label for build
+     *
+     * @params ResoucesStatus with name and lock status
+     *              [['name':ResouceName,'status':state]]
+     * @return NodeLabel
+    */
+    protected final static getAvailableNode(resoucesStatus,libraryProperties){
+        def ios = libraryProperties.'ios.node.label'
+        def win = libraryProperties.'windows.node.label'
+
+
+        /* return win if no Node in Label 'ios' is alive  */
+        if(!isLabelActive(ios)) return win
+        /* return ios if no Node in Label 'win' is alive  */
+        if(!isLabelActive(win)) return ios
+
+        def winResourceStatus
+        def macResourceStatus
+
+        resoucesStatus.each{
+            if(it.name == libraryProperties.'window.lockable.resource.name') winResourceStatus=it.status
+            if(it.name==libraryProperties.'ios.lockable.resource.name') macResourceStatus=it.status
+        }
+
+        if(winResourceStatus == true && macResourceStatus == false){
+            return ios
+        } else if(winResourceStatus == false && macResourceStatus == true){
+            return win
+        } else {
+            return ios + " || " + win
+        }
+    }
+
+    protected final static isLabelActive(label){
+        Jenkins instance = Jenkins.getInstance()
+        instance.getLabel(label).getNodes().each { node->
+            if(node.toComputer()?.isOnline()){
+                return true
+            }
+        }
+        return false
     }
 }

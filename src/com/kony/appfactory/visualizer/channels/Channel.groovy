@@ -275,10 +275,16 @@ class Channel implements Serializable {
                         }
                     }
                     else {
-                        /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
-                        script.shellCustom('ant -buildfile property.xml', isUnixNode)
-                        /* Build project using headless build tool*/
-                        script.shellCustom('ant', isUnixNode)
+                        def windowsResource = libraryProperties.'window.lockable.resource.name'
+                        def iosResource = libraryProperties.'ios.lockable.resource.name'
+
+                        def slave= isUnixNode ? iosResource : windowsResource
+                        script.lock(slave) {
+                            /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
+                            script.shellCustom('ant -buildfile property.xml', isUnixNode)
+                            /* Build project using headless build tool*/
+                            script.shellCustom('ant', isUnixNode)
+                        }
                     }
                 }
             }
