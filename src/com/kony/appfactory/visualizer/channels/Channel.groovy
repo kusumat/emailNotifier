@@ -380,7 +380,7 @@ class Channel implements Serializable {
                 String artifactExtension = artifact.extension
                 String artifactTargetName = projectName + '_' +
                         getArtifactArchitecture([artifactPath, artifactName].join(separator)) +
-                        jobBuildNumber + '.' + artifactExtension
+                        jobBuildNumber + '_' + i + '.' + artifactExtension
                 String command = [shellCommand, artifactName, artifactTargetName].join(' ')
 
                 /*
