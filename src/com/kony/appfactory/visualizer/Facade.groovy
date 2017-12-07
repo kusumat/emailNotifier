@@ -445,7 +445,7 @@ class Facade implements Serializable {
                         androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
                     }
 
-                    if (keystoreFileID || keystorePasswordID || privateKeyPassword || keystoreAlias) {
+                    if (buildMode == 'release') {
                         androidMandatoryParams.addAll([
                                 'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
                                 'ANDROID_KEY_ALIAS'

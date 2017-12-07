@@ -121,7 +121,7 @@ class AndroidChannel extends Channel {
                 channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
                         mandatoryParameters.add('ANDROID_TABLET_APP_ID')
 
-                if (keystoreFileId || keystorePasswordId || privateKeyPassword || keystoreAlias) {
+                if (buildMode == 'release') {
                     mandatoryParameters.addAll([
                             'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
                             'ANDROID_KEY_ALIAS'
