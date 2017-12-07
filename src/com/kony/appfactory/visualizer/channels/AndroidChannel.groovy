@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
+
 /**
  * Implements logic for Android channel builds.
  */
@@ -19,6 +20,11 @@ class AndroidChannel extends Channel {
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
     private final androidPackageName = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
             androidMobileAppId : androidTabletAppId
+
+    /* resourceList contains list of locks and their status */
+    private resourceList
+    /* nodeLabel store slave label */
+    private nodeLabel
 
     /**
      * Class constructor.
@@ -43,6 +49,7 @@ class AndroidChannel extends Channel {
      * @param buildArtifacts build artifacts list.
      */
     private final void signArtifacts(buildArtifacts) {
+
         String errorMessage = 'Failed to sign artifact'
         String signer = libraryProperties.'android.signer.name'
         String androidBuildToolsPath = script.env.isCIBUILD ? [script.env.ANDROID_HOME, 'build-tools', libraryProperties.'android.build-tools.zipalign.version'].join(separator) : (
@@ -123,9 +130,16 @@ class AndroidChannel extends Channel {
 
                 ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
             }
+            script.stage('Check Available Resources') {
+                /*
+                    To restrict Headless Builds to run in parallel, this workaround implemented
+                 */
+                resourceList = BuildHelper.getResoursesList()
 
+                nodeLabel = BuildHelper.getAvailableNode(resourceList,libraryProperties)
+            }
             /* Allocate a slave for the run */
-            script.node(libraryProperties.'android.node.label') {
+            script.node(nodeLabel) {
                 pipelineWrapper {
                     /*
                         Clean workspace, to be sure that we have not any items from previous build,
