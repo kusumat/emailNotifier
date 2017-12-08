@@ -8,10 +8,10 @@
                 <artifact pattern="https://s3-eu-west-1.amazonaws.com/konyappfactorydev-ci0001-storage1/visualizer/plugins/[artifact]_[revision].[ext]" />
             </url>
             <url name="WWW">
-                <artifact pattern="http://download.kony.com/studio/70/plugins/[artifact]_[revision].[ext]" />
+                <artifact pattern="http://download.[CLOUD_DOMAIN]/studio/70/plugins/[artifact]_[revision].[ext]" />
             </url>
             <url name="V8">
-                <artifact pattern="http://download.kony.com/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
+                <artifact pattern="http://download.[CLOUD_DOMAIN]/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>
         </chain>
     </resolvers>
