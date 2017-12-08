@@ -265,7 +265,10 @@ class BuildHelper implements Serializable {
         def dependenciesArchive = null
         def dependenciesArchiveFileName = dependenciesArchiveFilePrefix + visualizerVersion +
                 dependenciesArchiveFileExtension
-        /* Composing URL for fetch */
+        
+		dependenciesBaseUrl = dependenciesBaseUrl.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
+		
+		/* Composing URL for fetch */
         def dependenciesURL = [
                 dependenciesBaseUrl, visualizerVersion, dependenciesArchiveFileName
         ].join('/')

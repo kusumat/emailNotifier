@@ -119,6 +119,7 @@ class Channel implements Serializable {
         fabric = new Fabric(this.script)
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
+		this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: ''
     }
 
     /**
@@ -248,6 +249,11 @@ class Channel implements Serializable {
                 /* Load required resources and store them in project folder */
                 for (int i=0; i < requiredResources.size(); i++) {
                     String resource = script.loadLibraryResource(resourceBasePath + requiredResources[i])
+				
+					if(requiredResources[i] == 'ivysettings.xml'){
+						// Replace the environment domain to the correct domain i.e. qa-kony.com or sit2-kony.com
+						resource = resource.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
+					}
                     script.writeFile file: requiredResources[i], text: resource
                 }
 
