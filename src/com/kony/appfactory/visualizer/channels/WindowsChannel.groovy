@@ -82,8 +82,10 @@ class WindowsChannel extends Channel {
                                 String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                         sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
 
+                                String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script);
+
                                 channelArtifacts.add([
-                                        channelPath: channelPath, name: artifactName, url: artifactUrl
+                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl
                                 ])
                             }
 

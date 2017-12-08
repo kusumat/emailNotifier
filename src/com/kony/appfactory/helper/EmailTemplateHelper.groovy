@@ -103,7 +103,7 @@ class EmailTemplateHelper implements Serializable {
                                             td(artifact.channelPath.replaceAll('/', ' '))
                                             td {
                                                 if (artifact.name) {
-                                                    a(href: artifact.url, artifact.name)
+                                                    a(href: artifact.authurl, target:'_blank', artifact.name)
                                                 } else {
                                                     mkp.yield 'Build failed'
                                                 }
@@ -294,7 +294,7 @@ class EmailTemplateHelper implements Serializable {
                                                     tr {
                                                         td artifact.name + '.' + artifact.extension
                                                         td {
-                                                            a(href: artifact.url, 'Download File')
+                                                            a(href: artifact.authurl, target:'_blank', 'Download File')
                                                         }
                                                         td(style: "padding:10px") {
                                                             mkp.yieldUnescaped('&nbsp;')
