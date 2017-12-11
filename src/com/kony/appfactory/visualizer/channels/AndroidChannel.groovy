@@ -136,7 +136,7 @@ class AndroidChannel extends Channel {
                  */
                 resourceList = BuildHelper.getResoursesList()
 
-                nodeLabel = BuildHelper.getAvailableNode(resourceList,libraryProperties)
+                nodeLabel = BuildHelper.getAvailableNode(resourceList,libraryProperties,script)
             }
             /* Allocate a slave for the run */
             script.node(nodeLabel) {

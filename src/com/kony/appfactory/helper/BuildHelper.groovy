@@ -431,44 +431,60 @@ class BuildHelper implements Serializable {
     /**
      * Main function to determine node label for build
      *
-     * @params ResoucesStatus with name and lock status
-     *              [['name':ResouceName,'status':state]]
+     * @params ResoucesStatus with name and lock status [['name':ResouceName,'status':state]]
+     * @params common Library properties object
+     * @params Script build instance to log print statements
+     *
      * @return NodeLabel
     */
-    protected final static getAvailableNode(resoucesStatus,libraryProperties){
-        def ios = libraryProperties.'ios.node.label'
-        def win = libraryProperties.'windows.node.label'
+    protected final static getAvailableNode(resoucesStatus,libraryProperties,script){
+        def iosNodeLabel = libraryProperties.'ios.node.label'
+        def winNodeLabel = libraryProperties.'windows.node.label'
 
 
         /* return win if no Node in Label 'ios' is alive  */
-        if(!isLabelActive(ios)) return win
+        if(!isLabelActive(iosNodeLabel, script)){
+            script.echo "All the MAC slaves are down currently. Starting on Windows"
+            return winNodeLabel
+        }
         /* return ios if no Node in Label 'win' is alive  */
-        if(!isLabelActive(win)) return ios
+        if(!isLabelActive(winNodeLabel, script)) {
+            script.echo "All the Windows slaves are down currently. Starting on Mac"
+            return iosNodeLabel
+        }
 
         def winResourceStatus
         def macResourceStatus
 
         resoucesStatus.each{
             if(it.name == libraryProperties.'window.lockable.resource.name') winResourceStatus=it.status
-            if(it.name==libraryProperties.'ios.lockable.resource.name') macResourceStatus=it.status
+            if(it.name == libraryProperties.'ios.lockable.resource.name') macResourceStatus=it.status
         }
 
+        script.echo "Win Resource Status : $winResourceStatus"
+        script.echo "Mac Resource Status : $macResourceStatus"
+
         if(winResourceStatus == true && macResourceStatus == false){
-            return ios
+            return iosNodeLabel
         } else if(winResourceStatus == false && macResourceStatus == true){
-            return win
+            return winNodeLabel
         } else {
-            return ios + " || " + win
+            return iosNodeLabel + " || " + winNodeLabel
         }
     }
 
-    protected final static isLabelActive(label){
+    protected final static isLabelActive(label,script){
+        def isActiveNodeAvailable = false
+
         Jenkins instance = Jenkins.getInstance()
         instance.getLabel(label).getNodes().each { node->
             if(node.toComputer()?.isOnline()){
-                return true
+                def nodeName = node.toComputer().getDisplayName()
+                def isNodeOnline = node.toComputer().isOnline()
+                script.echo "Node name : $nodeName and isOnline = $isNodeOnline"
+                isActiveNodeAvailable=true
             }
         }
-        return false
+        return isActiveNodeAvailable
     }
 }
