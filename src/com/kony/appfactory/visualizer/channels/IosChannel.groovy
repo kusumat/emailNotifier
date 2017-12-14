@@ -78,29 +78,60 @@ class IosChannel extends Channel {
     }
 
     /**
-     * Updates projectprop.xml file with user provided Bundle ID.
+     * Updates projectprop.xml and projectProperties.json file with user provided Bundle ID.
      */
     private final void updateIosBundleId() {
-        String projectPropFileName = libraryProperties.'ios.propject.props.file.name'
-        String successMessage = 'Bundle ID updated successfully.'
-        String errorMessage = 'Failed to update ' + projectPropFileName + ' file with provided Bundle ID!'
 
-        script.catchErrorCustom(errorMessage, successMessage) {
-            script.dir(projectFullPath) {
-                if (script.fileExists(projectPropFileName)) {
-                    String projectPropFileContent = script.readFile file: projectPropFileName
+            def projectPropFileName = [
+                    libraryProperties.'ios.project.props.xml.file.name',
+                    libraryProperties.'ios.project.props.json.file.name'
+            ]
+        projectPropFileName.each { propertyFileName ->
 
-                    String updatedProjectPropFileContent = projectPropFileContent.replaceAll(
-                            '<attributes name="iphonebundleidentifierkey".*',
-                            '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
-                    )
+            String successMessage = 'Bundle ID updated successfully in ' + propertyFileName + '.'
+            String errorMessage = 'Failed to update ' + propertyFileName + ' file with provided Bundle ID!'
 
-                    script.writeFile file: projectPropFileName, text: updatedProjectPropFileContent
-                } else {
-                    script.error("Failed to find $projectPropFileName file to update Bundle ID!")
+            /* Store property file content*/
+            def propertyFileContent
+
+            script.catchErrorCustom(errorMessage, successMessage) {
+                script.dir(projectFullPath) {
+                    if (script.fileExists(propertyFileName)) {
+                        if (propertyFileName.endsWith('.xml')){
+                            /* Reading xml from Workspace */
+                            propertyFileContent = script.readFile file: propertyFileName
+
+                            /*
+                            *  In projectprop.xml visualizer ensure this property is present
+                            *  So we just need to replace it
+                            */
+                            String updatedProjectPropFileContent = propertyFileContent.replaceAll(
+                                    '<attributes name="iphonebundleidentifierkey".*',
+                                    '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
+                            )
+
+                            script.writeFile file: propertyFileName, text: updatedProjectPropFileContent
+                        }
+                        if (propertyFileName.endsWith('.json')){
+                            /* Reading Json from Workspace */
+                            propertyFileContent = script.readJSON file: propertyFileName
+
+                            /*
+                            *  projectProperties.json may or may not contain this key
+                            *  So we have to inject below key if key is not present otherwise update existing key
+                            */
+                            propertyFileContent['iphonebundleidentifierkey'] = iosBundleId
+
+                            script.writeJSON file: propertyFileName, json: propertyFileContent
+                        }
+
+                    } else {
+                        script.error("Failed to find $projectPropFileName file to update Bundle ID!")
+                    }
                 }
             }
         }
+
     }
 
     /**
