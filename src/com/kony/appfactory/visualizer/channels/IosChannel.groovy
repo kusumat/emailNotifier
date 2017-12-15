@@ -179,6 +179,7 @@ class IosChannel extends Channel {
                         usernameVariable: 'MATCH_USERNAME'
                     )
                 ]) {
+                    def ProjectBuildMode = buildMode.capitalize()
                     script.withEnv([
                             "FASTLANE_DONT_STORE_PASSWORD=true",
                             "MATCH_APP_IDENTIFIER=${iosBundleId}",
@@ -190,13 +191,22 @@ class IosChannel extends Channel {
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
                             "MATCH_TYPE=${iosDistributionType}",
                             "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
-                            "PROJECT_WORKSPACE=${iosDummyProjectBasePath}"
+                            "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
+                            "PROJECT_BUILDMODE=${ProjectBuildMode}"
                     ]) {
                         script.dir('fastlane') {
                             script.unstash name: fastlaneConfigStashName
                         }
                         script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
-                            script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode, true)
+                            /* set iOS build configuration to debug/release based on Visualizer version,
+                            * note that, in 8.1.0 and above versions, to build debug mode binary, set the build configuration of KRelease as debug.
+                            */
+                            if (getVisualizerPackVersion(script.env.visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ios.schema.buildconfig.changed.version')) {
+                                script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_build', true)
+                            }
+                            else {
+                                script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode, true)
+                            }
                         }
                     }
                 }
