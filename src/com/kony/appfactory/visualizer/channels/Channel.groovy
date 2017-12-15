@@ -196,6 +196,7 @@ class Channel implements Serializable {
     protected final void visualizerEnvWrapper(closure) {
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
+        script.env.visualizerVersion = visualizerVersion
         if (getVisualizerPackVersion(visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ci.build.support.base.version')) {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
