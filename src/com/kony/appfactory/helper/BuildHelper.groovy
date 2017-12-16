@@ -469,7 +469,7 @@ class BuildHelper implements Serializable {
         } else if(winResourceStatus == false && macResourceStatus == true){
             return winNodeLabel
         } else {
-            return iosNodeLabel + " || " + winNodeLabel
+            return winNodeLabel + " || " + iosNodeLabel
         }
     }
 
