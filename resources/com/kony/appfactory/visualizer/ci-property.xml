@@ -210,14 +210,12 @@
         <replace file="ivy.xml">
             <replacetoken><![CDATA[<plugins>]]></replacetoken>
             <replacevalue><![CDATA[<ivy-module version="2.4">
-    <info organisation="com.kony.PROJECTNAME" module="AppFactory-BUILDNUMBER"/>
+    <info organisation="com.kony" module="AppFactory"/>
     <dependencies>]]></replacevalue>
         </replace>
         <replace file="ivy.xml" token="pluginInfo" value="dependency"/>
         <replace file="ivy.xml" token="plugin-id" value="name"/>
         <replace file="ivy.xml" token="version-no" value="rev"/>
-        <replace file="ivy.xml" token="BUILDNUMBER" value="${env.BUILD_NUMBER}"/>
-        <replace file="ivy.xml" token="PROJECTNAME" value="${env.PROJECT_NAME}"/>
         <replaceregexp file="ivy.xml" match="plugin-name.*$" replace="/>" flags="gm"/>
         <replace file="ivy.xml"> 
             <replacetoken><![CDATA[</plugins>]]></replacetoken>
