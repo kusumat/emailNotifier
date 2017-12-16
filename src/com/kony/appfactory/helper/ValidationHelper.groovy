@@ -41,6 +41,10 @@ class ValidationHelper implements Serializable {
             String errorMessage = (
                     ['Please provide valid values for following parameters:'] + notValidPrams.keySet()
             ).join('\n')
+            /* Defining a suggestion message containing error message for each invalid parameter */
+            String suggestionMessage = constructSuggestionMessage(notValidPrams)
+            /* Forming final error message by adding suggestion message */
+            errorMessage = errorMessage + '\n' + suggestionMessage
             /* Break the build and print all not valid parameters */
             script.error(errorMessage)
         }
@@ -104,5 +108,46 @@ class ValidationHelper implements Serializable {
 
             !(item.value ==~ regex)
         }
+    }
+
+
+    /**
+     * Constructs Suggestion message for invalid parameters.
+     *
+     * @param items invalid parameters to create message for.
+     * @return suggestion message to be added.
+     */
+
+    private static constructSuggestionMessage(items) {
+        String message  = "Please refer the following suggestions : \n"
+        items.each {
+            String parameter_message
+            switch(it.key) {
+                case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID']:
+                    parameter_message = it.key + ' : ' + 'Expecting something like <domain_name>.<org_name>.<app_name>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> Android -> Package Name".' + '\n' + 'For Example : com.konyappfactory.KitchenSink'
+                    break
+                case ['IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID']:
+                    parameter_message = it.key + ' : ' + 'Expecting something like <domain_name>.<org_name>.<app_name>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> iPhone/iPad/Watch -> Bundle Identifier".' + '\n' + 'For Example : com.konyappfactory.KitchenSink'
+                    break
+                case ['ANDROID_APP_VERSION', 'SPA_APP_VERSION', 'APP_VERSION']:
+                    parameter_message = it.key + ' : ' + 'Expecting standard versioning format like <major>.<minor>.<patch>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Application -> Version".' + '\n' + 'For Example : 1.0.1 '
+                    break
+                case ['IOS_BUNDLE_VERSION']:
+                    parameter_message = it.key + ' : ' + 'Expecting standard versioning format like <major>.<minor>.<patch>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> iPhone/iPad/Watch -> Bundle Version".' + '\n' + 'For Example : 1.0.1 '
+                    break
+                case 'ANDROID_VERSION_CODE':
+                    parameter_message = it.key + ' : ' + 'Expecting an <integer_value>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> Android -> Version Code".' + '\n' + 'For Example : 1'
+                    break
+                case 'CLOUD_ACCOUNT_ID':
+                    parameter_message = it.key + ' : ' + 'You can find this value by logging in to Fabric Cloud. Expecting a nine digit <integer_value>' + '\n' + 'For Example : 100000011 '
+                    break
+                default:
+                    parameter_message = parameter_message = it.key + ' : ' + 'The parameter expects a string value.'
+                    break
+            }
+
+            message = message + parameter_message + '\n'
+        }
+        return message
     }
 }
