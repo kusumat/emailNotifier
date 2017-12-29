@@ -286,7 +286,8 @@ class Facade implements Serializable {
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                         value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'TESTS_BINARY_URL', value: ''),
-                script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}")
+                script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}"),
+                script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
         ]
     }
 
