@@ -315,7 +315,7 @@ class IosChannel extends Channel {
 
                     script.stage("Publish IPA artifact to S3") {
                         ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script, true
+                                sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
                     }
 
                     script.stage("Generate PLIST file") {
@@ -327,9 +327,9 @@ class IosChannel extends Channel {
                         String artifactName = plistArtifact.name
                         String artifactPath = plistArtifact.path
                         String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: artifactName, sourceFilePath: artifactPath, script, true
+                                sourceFileName: artifactName, sourceFilePath: artifactPath, script
 								
-						String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script);
+						String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
 
                         artifacts.add([
                                 channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl

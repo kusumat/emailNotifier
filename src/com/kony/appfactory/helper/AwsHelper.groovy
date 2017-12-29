@@ -61,7 +61,7 @@ class AwsHelper implements Serializable {
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
                 script.step([$class                              : 'S3BucketPublisher',
-                             consoleLogLevel                     : 'INFO',
+                             consoleLogLevel                     : 'WARNING',
                              dontWaitForConcurrentBuildCompletion: false,
                              entries                             : [
                                      [bucket           : fullBucketPath,

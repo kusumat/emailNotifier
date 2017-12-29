@@ -488,20 +488,24 @@ class BuildHelper implements Serializable {
         return isActiveNodeAvailable
     }
 	
-	protected final static createAuthUrl(artifactUrl, script) {
+    protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false) {
 		
-		def authArtifactUrl = "";
+        def authArtifactUrl = "";
 		
-		if (script.env['CLOUD_ENVIRONMENT_GUID'] != "" && script.env['CLOUD_DOMAIN'] != ""){
-			artifactUrl = artifactUrl.substring(artifactUrl.indexOf(script.env.PROJECT_NAME));
-			authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + artifactUrl
-		}
-		else {
-			script.echo("Failed to generate the authenticated URLs. " +
-					"Unable to find the cloud environment guid. ")
-			authArtifactUrl = artifactUrl 
-		}
+        if (script.env['CLOUD_ENVIRONMENT_GUID'] != "" && script.env['CLOUD_DOMAIN'] != ""){
+            artifactUrl = artifactUrl.substring(artifactUrl.indexOf(script.env.PROJECT_NAME));
+            authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + artifactUrl
+        }
+        else {
+            script.echo("Failed to generate the authenticated URLs. " +
+                    "Unable to find the cloud environment guid. ")
+            authArtifactUrl = artifactUrl
+        }
 		
-		authArtifactUrl
-	}
+        if (exposeUrl) {
+            script.echo "Artifact URL: ${authArtifactUrl}"
+        }
+		
+        authArtifactUrl
+    }
 }
