@@ -238,9 +238,10 @@ class BuildHelper implements Serializable {
                     isUnixNode
             )
         } else {
-            script.shellCustom(['(' + 'if exist', installationPath + '\\', 'rmdir /s /q', installationPath + ')', '&&',
-                                'mklink /J', installationPath, dependencyPath].join(' '), isUnixNode
-            )
+            script.shellCustom(['(if exist',installationPath + '\\','fsutil reparsepoint query ' + installationPath,
+                                '| ' + 'findstr /C:\"Print Name:\" | find \"' + dependencyPath + '\"  >nul && ' +
+                                'echo symbolic link found ) || rmdir /s /q',installationPath,'&&',
+                                'mklink /J', installationPath, dependencyPath].join(' '), isUnixNode)
         }
     }
 
