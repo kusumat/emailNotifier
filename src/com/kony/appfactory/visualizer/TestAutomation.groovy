@@ -134,12 +134,12 @@ class TestAutomation implements Serializable {
         if (appBinaryUrlParameters) {
             /* Validate application binaries URLs */
             for (parameter in UrlParameters) {
-                if (!parameter.value.contains('//') || !isValidUrl(parameter.value)) {
-                    script.error "Build parameter ${parameter.key} value is not valid URL!"
+                if (parameter.value.contains('//') && isValidUrl(parameter.value)) {
+                    parameter.value=parameter.value.replace(" ", "%20")
                 }
                 else
                 {
-                    parameter.value=parameter.value.replace(" ", "%20")
+                    script.error "Build parameter ${parameter.key} value is not valid URL!"
                 }
             }
 
