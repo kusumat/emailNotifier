@@ -25,7 +25,7 @@ class AwsDeviceFarmHelper implements Serializable {
     protected final void fetchArtifact(String artifactName, String artifactUrl) {
         String successMessage = 'Artifact ' + artifactName + ' fetched successfully'
         String errorMessage = 'Failed to fetch artifact ' + artifactName
-
+        artifactUrl = artifactUrl.replace(' ', '%20')
         script.catchErrorCustom(errorMessage, successMessage) {
             script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactUrl}\'", true)
         }
