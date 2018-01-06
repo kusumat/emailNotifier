@@ -192,7 +192,9 @@ class IosChannel extends Channel {
                             "MATCH_TYPE=${iosDistributionType}",
                             "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
                             "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
-                            "PROJECT_BUILDMODE=${ProjectBuildMode}"
+                            "PROJECT_BUILDMODE=${ProjectBuildMode}",
+                            "FASTLANE_TEAM_ID=${script.env.APPLE_DEVELOPER_TEAM_ID}",
+                            "FASTLANE_SKIP_UPDATE_CHECK=1"
                     ]) {
                         script.dir('fastlane') {
                             script.unstash name: fastlaneConfigStashName
