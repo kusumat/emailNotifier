@@ -3,7 +3,11 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import hudson.model.Job
 import jenkins.model.Jenkins
+import com.cloudbees.hudson.plugins.folder.Folder
+import org.jenkinsci.plugins.configfiles.custom.CustomConfig
+import hudson.plugins.sectioned_view.SectionedView;
 
 /**
  * Implements logic for buildVisualizerApp job.
@@ -22,6 +26,8 @@ class Facade implements Serializable {
     private libraryProperties
     /* List of steps for parallel run */
     private runList = [:]
+    /* List of Pre Build Hooks */
+    private preBuildHookList= [:]
     /* List of channels to build */
     private channelsToRun
     /*
@@ -172,6 +178,11 @@ class Facade implements Serializable {
         }
 
         channelsBaseFolder + '/' + 'build' + (channelType) ?: script.error('Unknown channel type!')
+    }
+    private final getHookJobName(String hookName, String hookType) {
+        String hookBaseFolder = 'CustomHook'
+
+        hookBaseFolder + '/' + hookType + '/' + hookName ?: script.error('Unknown Hook Type specified in Function call')
     }
 
     /**
@@ -329,34 +340,100 @@ class Facade implements Serializable {
         }
     }
 
-    void getJobsInsideFolder(String folderName, Jenkins instance){
-        instance.getAllItems().each { item ->
-            if (item instanceof com.cloudbees.hudson.plugins.folder.Folder && item.getFullDisplayName() == folderName) {
-                //getObjectInfo(item)
-                println(item.getFullDisplayName())
-                println(item.getRootDir())
-                item.getItems().each{
-                    if(it instanceof Folder){
-                        processFolder(it)
-                    }else{
-                        processJob(it)
-                    }
+    @NonCPS
+    def runCustomHooks(String folderName, String hookStage){
+        script.echo("Executing ${hookStage} hook stage. ")
+
+//        def hookList = []
+//        Jenkins instance = Jenkins.instance
+//        Folder buildFolder = instance
+//                .getItem(folderName)
+//                .getItem("Visualizer")
+//                .getItem("Builds")
+//                .getItem("CustomHook")
+//                .getItem(hookStage)
+
+
+//        instance.getItem(folderName)
+//            .getItem("Visualizer")
+//            .getItem("Builds")
+//            .getItem("CustomHook").getViews().each{ views->
+//                if(views instanceof hudson.plugins.sectioned_view.SectionedView){
+//                    views.getSections().each { m->
+//                        script.echo("Updated HookList ->"+m.getCustomHookPreBuildList())
+//
+//                        def hookJ = m.getCustomHookPreBuildList()
+//                        hookList = hookJ.split(",");
+//                    }
+//                }
+//            }
+
+//        buildFolder.getAllJobs().each { job ->
+//            job.buildable ? hookList.add(job.getDisplayName()) : script.echo("Skiping disabled hook : ${job.getDisplayName()}")
+//        }
+
+
+            /* Execute available hooks */
+        triggerHooks(hookStage)
+
+    }
+
+    def getConfigFileInWorkspace(fileId){
+        /* Get hook configuration files in workspace */
+        script.configFileProvider([script.configFile(fileId: fileId, targetLocation: "${fileId}.json")]) {
+        }
+    }
+    def getHookList(hookStage, jsonContent){
+        def stageContent = jsonContent[hookStage]
+        String[] hookList = new String[2]
+//        hookList[0] = "Muksh"
+        stageContent.each{
+            if((it["status"]).equals("enabled")){
+                hookList[(it['index']).toInteger()] = it['hookName']
+            }
+        }
+        script.echo("Indexing "+ hookList.toString())
+        def updatedIndexHookList = [];
+        hookList.each{
+            if(it){
+                updatedIndexHookList.push(it)
+            }
+        }
+        script.echo("Indexing2 "+ updatedIndexHookList.toString())
+        return updatedIndexHookList;
+    }
+    def isHookBlocking(hookName, hookStage, jsonContent){
+        def isBlocking = null
+        def stageContent = jsonContent[hookStage]
+        stageContent.each{
+            if((it["hookName"]).equals(hookName)){
+                isBlocking =  it['isBlocking']
+            }
+        }
+
+        return isBlocking
+    }
+
+    def triggerHooks(hookStage){
+        getConfigFileInWorkspace(projectName)
+        def hookProperties = script.readJSON file:"${projectName}.json"
+        def hookList = getHookList(hookStage, hookProperties)
+
+        script.stage(hookStage){
+            for (hookName in hookList){
+
+                def isBlocking = isHookBlocking(hookName, hookStage, hookProperties)
+
+                def hookJobName = getHookJobName(hookName, hookStage)
+                if(isBlocking){
+                    script.build job: hookJobName, propagate: true, wait: true
                 }
+                else{
+                    script.build job: hookJobName, propagate: false, wait: false
+                }
+
             }
         }
-    }
-    void processFolder(Item folder) {
-        folder.getItems().each{
-            if(it instanceof Folder){
-                processFolder(it)
-            }else{
-                processJob(it)
-            }
-        }
-    }
-    void processJob(Item job){
-        script.echo(job.getFullDisplayName())
-        script.echo(job.getDisplayName())
     }
 
 
@@ -365,8 +442,6 @@ class Facade implements Serializable {
      */
 
     private final void prepareRun() {
-
-        getJobsInsideFolder(projectName, Jenkins.instance)
         /* Filter Native channels */
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
         /* Filter SPA channels */
@@ -402,6 +477,7 @@ class Facade implements Serializable {
                 }
             }
         }
+
 
         /* If SPA channels been set */
         if (spaChannelsToRun) {
@@ -541,8 +617,16 @@ class Facade implements Serializable {
                                     script.error("Fabric environment value can't be null")
                         }
                     }
+
+
+
+                    /* Run Pre Builds Hooks First */
+                    runCustomHooks(projectName, "PRE_BUILD")
+
                     /* Run channel builds in parallel */
                     script.parallel(runList)
+
+                    runCustomHooks(projectName, "POST_BUILD")
 
                     /* If test pool been provided, prepare build parameters and trigger runTests job */
                     if (availableTestPools) {
@@ -570,6 +654,12 @@ class Facade implements Serializable {
                                 script.echo "Status of the runTests job: ${testAutomationJobResult}"
                             }
                         }
+                    }
+                    if(availableTestPools){
+                        runCustomHooks(projectName, "POST_TEST")
+                    }
+                    else {
+                        script.echo("Skipping POST_TEST hooks (if available) as Tests are't running")
                     }
 
                     /* Check if there are failed or unstable or aborted jobs */
