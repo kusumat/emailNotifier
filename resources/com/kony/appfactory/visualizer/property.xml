@@ -133,6 +133,9 @@
         <condition property="cloudAccountId" value="${env.CLOUD_ACCOUNT_ID}" else="">
             <isset property="env.CLOUD_ACCOUNT_ID"/>
         </condition>
+        <condition property="domainParam" value="${env.domainParam}" else="">
+            <isset property="env.domainParam"/>
+        </condition>
     	<condition property="fabricUrl" value="https://manage.${env.CLOUD_DOMAIN}" else="https://manage.kony.com">
     	     <isset property="env.CLOUD_DOMAIN"/>
     	</condition>
@@ -172,7 +175,7 @@
             <entry key="cloud.username" value="${cloudUsername}"/>
             <entry key="cloud.password" value="${cloudPassword}"/>
             <entry key="account.id" value="${cloudAccountId}"/>
-            <entry key="cloud.environment" value=""/>
+            <entry key="cloud.environment" value="${domainParam}"/>
             <entry key="mobilefabric.url" value="${fabricUrl}"/>
             <entry key="environment.name" value="${fabricEnvironmentName}"/>
             <entry key="mf.appname" value="${fabricAppName}"/>

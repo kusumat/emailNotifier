@@ -78,6 +78,8 @@ class Channel implements Serializable {
     protected s3ArtifactPath
     /* Library configuration */
     protected libraryProperties
+	/* Domain Param to be used for the SPA channel deployment on non prod environments */
+	protected domainParam
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
@@ -121,6 +123,10 @@ class Channel implements Serializable {
         this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
+
+        if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0 ){
+            this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-kony.com"))
+        }
     }
 
     /**

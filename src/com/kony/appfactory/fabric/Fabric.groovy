@@ -64,6 +64,7 @@ class Fabric implements Serializable {
         fabricCliVersion = libraryProperties.'fabric.cli.version'
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         nodeLabel = libraryProperties.'fabric.node.label'
+        this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
     }
 
     /**
@@ -106,6 +107,12 @@ class Fabric implements Serializable {
                      passwordVariable: 'fabricPassword',
                      usernameVariable: 'fabricUsername']
             ]) {
+
+                // Adding the cloud type if the domain contains other than kony.com
+                if (script.env.CLOUD_DOMAIN && script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0 ){
+                    def domainParam = script.env.CLOUD_DOMAIN.substring(0, script.env.CLOUD_DOMAIN.indexOf("-kony.com")+1)
+                    fabricCommandOptions['--cloud-type'] = "\"${domainParam}\""
+                }
                 /* Collect Fabric command options */
                 String options = fabricCommandOptions?.collect { option, value ->
                     [option, value].join(' ')

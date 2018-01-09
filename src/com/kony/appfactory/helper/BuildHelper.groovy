@@ -506,7 +506,7 @@ class BuildHelper implements Serializable {
         if (exposeUrl) {
             script.echo "Artifact URL: ${authArtifactUrl}"
         }
-		
+
         authArtifactUrl
     }
 }
