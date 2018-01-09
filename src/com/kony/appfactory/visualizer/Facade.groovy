@@ -3,6 +3,7 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import jenkins.model.Jenkins
 
 /**
  * Implements logic for buildVisualizerApp job.
@@ -31,6 +32,7 @@ class Facade implements Serializable {
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
     /* Common build parameters */
+    private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     private final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
@@ -327,10 +329,44 @@ class Facade implements Serializable {
         }
     }
 
+    void getJobsInsideFolder(String folderName, Jenkins instance){
+        instance.getAllItems().each { item ->
+            if (item instanceof com.cloudbees.hudson.plugins.folder.Folder && item.getFullDisplayName() == folderName) {
+                //getObjectInfo(item)
+                println(item.getFullDisplayName())
+                println(item.getRootDir())
+                item.getItems().each{
+                    if(it instanceof Folder){
+                        processFolder(it)
+                    }else{
+                        processJob(it)
+                    }
+                }
+            }
+        }
+    }
+    void processFolder(Item folder) {
+        folder.getItems().each{
+            if(it instanceof Folder){
+                processFolder(it)
+            }else{
+                processJob(it)
+            }
+        }
+    }
+    void processJob(Item job){
+        script.echo(job.getFullDisplayName())
+        script.echo(job.getDisplayName())
+    }
+
+
     /**
      * Prepares run steps for triggering channel jobs in parallel.
      */
+
     private final void prepareRun() {
+
+        getJobsInsideFolder(projectName, Jenkins.instance)
         /* Filter Native channels */
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
         /* Filter SPA channels */
