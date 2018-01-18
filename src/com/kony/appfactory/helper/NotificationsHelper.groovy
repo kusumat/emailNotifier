@@ -2,7 +2,7 @@ package com.kony.appfactory.helper
 
 import groovy.json.JsonOutput
 import groovy.text.SimpleTemplateEngine
-
+import groovy.json.JsonSlurper
 /**
  * Implements logic required for sending notifications.
  */
@@ -20,6 +20,15 @@ class NotificationsHelper implements Serializable {
         (script) ?: script.error("script argument can't be null")
         (templateType) ?: script.error("templateType argument can't be null")
 
+        /* If storeBody is true , expecting the tests results from AWS and using them to set build result. */
+        if (storeBody && templateData.runs) {
+            /* Get test results and set build result accordingly */
+            def jsonSlurper = new JsonSlurper()
+            String testResultsToText = JsonOutput.toJson(templateData.runs)
+            def testResultsToJson = jsonSlurper.parseText(testResultsToText)
+            setbuildResult(script, testResultsToJson)
+        }
+
         /* Get data for e-mail notification */
         Map emailData = getEmailData(script, templateType, templateData)
 
@@ -35,6 +44,35 @@ class NotificationsHelper implements Serializable {
     }
 
     /**
+     * Modifies build result and set it for runtests.
+     *
+     * @param Json Output of the test results.
+     * @param Script pipeline object.
+     */
+    private static setbuildResult(script, testResultsJson) {
+        if ( testResultsJson ) {
+            script.echo("Results from AWS Device Farm say: ${testResultsJson[0].result}")
+            switch (testResultsJson[0].result) {
+                case "FAILED":
+                    script.currentBuild.result = "UNSTABLE"
+                    break
+                case "SUCCESS":
+                    script.currentBuild.result = "SUCCESS"
+                    break
+                default:
+                    script.echo("This will cause build failure.")
+                    script.echo("Please check the build notification mail for more details.")
+                    script.currentBuild.result = "FAILURE"
+                    break
+            }
+        }
+        else {
+            script.currentBuild.result = "FAILURE"
+            script.error("Received unexpected or no data from AWS!")
+        }
+    }
+
+    /**
      * Generates data for e-mail notification.
      *
      * @param script pipeline object.
@@ -46,11 +84,11 @@ class NotificationsHelper implements Serializable {
         /* Check required arguments */
         (script) ?: script.error("script argument can't be null")
         (templateType) ?: script.error("templateType argument can't be null")
-
         /* Location of the base template */
         String templatesFolder = 'com/kony/appfactory/email/templates'
         /* Name of the base template */
         String baseTemplateName = 'KonyBase.template'
+
         /*
             Recipients list, by default will be used values from RECIPIENTS_LIST build parameter,
             if it's empty, than DEFAULT_RECIPIENTS value from global Jenkins configuration will be used.
@@ -117,7 +155,6 @@ class NotificationsHelper implements Serializable {
      */
     private static String getBuildResultForTestConsole(buildResult) {
         String buildResultForTestConsole
-
         switch (buildResult) {
             case 'SUCCESS':
                 buildResultForTestConsole = '-PASS'
@@ -132,7 +169,6 @@ class NotificationsHelper implements Serializable {
                 buildResultForTestConsole = ''
                 break
         }
-
         buildResultForTestConsole
     }
 
@@ -150,7 +186,7 @@ class NotificationsHelper implements Serializable {
         List filesToStore = []
         /* Get build result suffix for test console */
         String buildResultForTestConsole = getBuildResultForTestConsole(buildResult)
-
+		
         switch (templateType) {
             case 'buildVisualizerApp':
                 filesToStore.add([name: 'buildResults' + buildResultForTestConsole + '.html', data: body])
@@ -169,9 +205,9 @@ class NotificationsHelper implements Serializable {
                 filesToStore
                 break
         }
-
         filesToStore
     }
+
 
     /**
      * Generates template content depending on a templateType (job name).
