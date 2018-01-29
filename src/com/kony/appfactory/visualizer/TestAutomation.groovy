@@ -352,7 +352,7 @@ class TestAutomation implements Serializable {
             /* Depending on artifact name we need to chose appropriate pool for the run */
             def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
                     (devicePoolArns.phones) ?: script.error("Artifacts provided " +
-                            "for tablets, but TABLET devices were provided") :
+                            "for phones, but TABLET devices were provided") :
                     (devicePoolArns.tablets ?: script.error("Artifacts provided for " +
                             "tablets, but PHONE devices were provided"))
 
