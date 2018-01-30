@@ -24,6 +24,7 @@ class IosChannel extends Channel {
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
+    private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
 
     /**
      * Class constructor.
@@ -339,8 +340,9 @@ class IosChannel extends Channel {
                     }
 
                     script.stage("Generate PLIST file") {
+                        String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
                         /* Get plist artifact */
-                        plistArtifact = createPlist(ipaArtifactUrl)
+                        plistArtifact = createPlist(authenticatedIPAArtifactUrl)
                     }
 
                     script.stage("Publish PLIST artifact to S3") {
@@ -350,9 +352,10 @@ class IosChannel extends Channel {
                                 sourceFileName: artifactName, sourceFilePath: artifactPath, script
 								
 						String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+						String plistArtifactOTAUrl = iosOTAPrefix + authenticatedArtifactUrl
 
                         artifacts.add([
-                                channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl
+                                channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, otaurl: plistArtifactOTAUrl
                         ])
                     }
 

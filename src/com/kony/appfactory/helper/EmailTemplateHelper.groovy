@@ -102,7 +102,9 @@ class EmailTemplateHelper implements Serializable {
                                         tr {
                                             td(artifact.channelPath.replaceAll('/', ' '))
                                             td {
-                                                if (artifact.name) {
+                                                if (artifact.name && artifact.otaurl) {
+                                                    a(href: artifact.otaurl, target:'_blank', artifact.name)
+                                                }else if (artifact.name) {
                                                     a(href: artifact.authurl, target:'_blank', artifact.name)
                                                 } else {
                                                     mkp.yield 'Build failed'
