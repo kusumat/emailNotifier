@@ -169,6 +169,23 @@ class IosChannel extends Channel {
                 """, true)
             }
 
+            /* Set Export Method for Fastlane according to iosDistributionType
+             * NOTE : For adhoc distribution type export method should be ad-hoc
+             *   For appstore distribution type export method should be app-store
+             */
+            def iOSExportMethod;
+            switch (iosDistributionType) {
+                case 'adhoc':
+                    iOSExportMethod="ad-hoc"
+                    break
+                case 'appstore':
+                    iOSExportMethod="app-store"
+                    break
+                default:
+                    iOSExportMethod=iosDistributionType
+                    break
+            }
+
             /* Build project and export IPA using fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
                 /* Inject required environment variables */
@@ -190,6 +207,7 @@ class IosChannel extends Channel {
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
                             "MATCH_TYPE=${iosDistributionType}",
+                            "EXPORT_METHOD=${iOSExportMethod}",
                             "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
                             "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
                             "PROJECT_BUILDMODE=${ProjectBuildMode}",
