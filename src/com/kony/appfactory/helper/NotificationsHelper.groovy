@@ -101,7 +101,8 @@ class NotificationsHelper implements Serializable {
             Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name
             and result status of the job.
          */
-        String subject = "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}"
+	 String modifiedBuildTag = modifySubjectOfMail(script, templateType);
+	 String subject = modifiedBuildTag + "-${script.currentBuild.currentResult}"
 
         /* Load base e-mail template from library resources */
         String baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
@@ -220,8 +221,9 @@ class NotificationsHelper implements Serializable {
     private static String getTemplateContent(script, templateType, templateData = [:]) {
         String templateContent
         /* Common properties for content */
+	 String modifiedBuildTag = modifySubjectOfMail(script, templateType);
         Map commonBinding = [
-                notificationHeader: "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}",
+                notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
                 projectName       : script.env.PROJECT_NAME,
                 build             : [
@@ -271,4 +273,31 @@ class NotificationsHelper implements Serializable {
 
         (template) ? template.toString() : null
     }
-}
+	
+    private static String modifySubjectOfMail(script, templateType) {
+	String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
+	switch (templateType) {
+            case 'buildVisualizerApp':
+	        modifiedBuildTag = (((modifiedBuildTag.minus("-Visualizer")).minus("s-buildVisualizerApp")).minus("s-Channels")).minus("build")
+		if(modifiedBuildTag.contains("Android"))
+		    return modifiedBuildTag.replace("Android","Android-$script.env.FORM_FACTOR")
+		if(modifiedBuildTag.contains("Ios"))
+		    return modifiedBuildTag.replace("Ios","Ios-${script.env.FORM_FACTOR}")
+	            break
+	    case 'buildTests':
+		modifiedBuildTag = ((((modifiedBuildTag).minus("-Visualizer")).minus("s-Channels")).minus("build")).minus("-runTests")
+		break
+	    case 'runTests':
+		modifiedBuildTag = (modifiedBuildTag.minus("-Visualizer")).minus("-runTests")
+		break
+	    case 'Export':
+	    case 'Import':
+	    case 'Publish':
+		break
+	    default:
+	        modifiedBuildTag = ''
+		break
+	    }
+	    return modifiedBuildTag
+       }
+}     
