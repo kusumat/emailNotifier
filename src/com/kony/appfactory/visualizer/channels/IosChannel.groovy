@@ -343,6 +343,10 @@ class IosChannel extends Channel {
                         String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
                         /* Get plist artifact */
                         plistArtifact = createPlist(authenticatedIPAArtifactUrl)
+                        /* Temporary fix to display ipa file in the mail notification (instead of plist) */
+                        artifacts.add([
+                                channelPath: channelPath, name: ipaArtifact.name, url: ipaArtifactUrl, authurl: authenticatedIPAArtifactUrl, otaurl: authenticatedIPAArtifactUrl
+                        ])
                     }
 
                     script.stage("Publish PLIST artifact to S3") {
@@ -354,9 +358,9 @@ class IosChannel extends Channel {
 						String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
 						String plistArtifactOTAUrl = iosOTAPrefix + authenticatedArtifactUrl
 
-                        artifacts.add([
-                                channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, otaurl: plistArtifactOTAUrl
-                        ])
+                        /*artifacts.add([
+                                channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedIPAArtifactUrl, otaurl: plistArtifactOTAUrl
+                        ])*/
                     }
 
                     script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
