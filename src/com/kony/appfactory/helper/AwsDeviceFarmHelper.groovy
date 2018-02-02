@@ -17,7 +17,7 @@ class AwsDeviceFarmHelper implements Serializable {
     }
 
     /**
-     * Fetches artifact via provided URL.
+     * Fetches artifact via provided URL. Checks if URL contains S3 bucket path, then simply fetches from S3.
      *
      * @param artifactName artifact name.
      * @param artifactUrl artifact URL.
@@ -27,7 +27,20 @@ class AwsDeviceFarmHelper implements Serializable {
         String errorMessage = 'Failed to fetch artifact ' + artifactName
         artifactUrl = artifactUrl.replace(' ', '%20')
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactUrl}\'", true)
+
+            /* We need to check artifactUrl link is containing S3 bucket name that appfactory instance is pointing, if so instead of downloading through https URL we can simply copy directly from S3.
+             * This eliminates unnecessary burden of processing signed URLs for downloading artifact passed by Facade job.
+             * */
+            artifactUrl = (artifactUrl && artifactUrl.startsWith("http://") || artifactUrl.startsWith("https://")) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ? artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com', 's3://'+script.env.S3_BUCKET_NAME) :
+                    artifactUrl) : ''
+            if (artifactUrl.startsWith('http://') || artifactUrl.startsWith('https://')) {
+                script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactUrl}\'", true)
+            }
+            else {
+                /* copy from S3 bucket without printing expansion of command on console */
+                script.shellCustom("set +x;aws s3 cp ${artifactUrl} ${artifactName} --only-show-errors", true)
+            }
+
         }
     }
 
@@ -506,7 +519,7 @@ class AwsDeviceFarmHelper implements Serializable {
                             /* Publish to S3 and update run artifact URL */
                             artifact.url = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: artifactFullName,
                                     sourceFilePath: script.pwd(), script
-							artifact.authurl = BuildHelper.createAuthUrl(artifact.url, script, true)
+                            artifact.authurl = BuildHelper.createAuthUrl(artifact.url, script, true)
                         }
                     }
                 }
