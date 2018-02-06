@@ -17,8 +17,8 @@ class NotificationsHelper implements Serializable {
      */
     protected static final void sendEmail(script, templateType, templateData = [:], storeBody = false) {
         /* Check required arguments */
-        (script) ?: script.error("script argument can't be null")
-        (templateType) ?: script.error("templateType argument can't be null")
+        (script) ?: script.echoCustom("script argument can't be null",'ERROR')
+        (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
 
         /* If storeBody is true , expecting the tests results from AWS and using them to set build result. */
         if (storeBody && templateData.runs) {
@@ -51,7 +51,7 @@ class NotificationsHelper implements Serializable {
      */
     private static setbuildResult(script, testResultsJson) {
         if ( testResultsJson ) {
-            script.echo("Results from AWS Device Farm say: ${testResultsJson[0].result}")
+            script.echoCustom("Artifact URL: Results from AWS Device Farm say: ${testResultsJson[0].result}")
             switch (testResultsJson[0].result) {
                 case "FAILED":
                     script.currentBuild.result = "UNSTABLE"
@@ -60,15 +60,14 @@ class NotificationsHelper implements Serializable {
                     script.currentBuild.result = "SUCCESS"
                     break
                 default:
-                    script.echo("This will cause build failure.")
-                    script.echo("Please check the build notification mail for more details.")
+                    script.echoCustom("This will cause build failure. Please check the build notification mail for more details.",'WARN')
                     script.currentBuild.result = "FAILURE"
                     break
             }
         }
         else {
             script.currentBuild.result = "FAILURE"
-            script.error("Received unexpected or no data from AWS!")
+            script.echoCustom("Received unexpected or no data from AWS!",'WARN')
         }
     }
 
@@ -82,8 +81,8 @@ class NotificationsHelper implements Serializable {
      */
     private static Map getEmailData(script, templateType, templateData) {
         /* Check required arguments */
-        (script) ?: script.error("script argument can't be null")
-        (templateType) ?: script.error("templateType argument can't be null")
+        (script) ?: script.echoCustom("script argument can't be null",'ERROR')
+        (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
         /* Location of the base template */
         String templatesFolder = 'com/kony/appfactory/email/templates'
         /* Name of the base template */
@@ -125,9 +124,9 @@ class NotificationsHelper implements Serializable {
      */
     private static void storeEmailBody(script, body, templateType, templateData) {
         /* Check required arguments */
-        (script) ?: script.error("script argument can't be null")
-        (body) ?: script.error("body argument can't be null")
-        (templateType) ?: script.error("templateType argument can't be null")
+        (script) ?: script.echoCustom("script argument can't be null",'ERROR')
+        (body) ?: script.echoCustom("body argument can't be null",'ERROR')
+        (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
 
         String buildResult = script.currentBuild.currentResult
         List filesToStore = getFilesToStore(body, buildResult, templateType, templateData)
