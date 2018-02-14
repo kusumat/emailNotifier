@@ -200,8 +200,8 @@ class AwsDeviceFarmHelper implements Serializable {
         def devicePoolJsons = [:]
         String successMessage = 'Device pools created successfully'
         String errorMessage = 'Failed to create device pools'
-        def deviceNames = (getDevicesInPool(devicePoolName)) ?: script.error('Device list is empty!')
-        def deviceArns = (getDeviceArns(deviceNames)) ?: script.error('Device ARNs list is empty!')
+        def deviceNames = (getDevicesInPool(devicePoolName)) ?: script.echoCustom('Device list is empty!','ERROR')
+        def deviceArns = (getDeviceArns(deviceNames)) ?: script.echoCustom('Device ARNs list is empty!','ERROR')
 
         script.catchErrorCustom(errorMessage, successMessage) {
             String generateSkeletonScript = "aws devicefarm create-device-pool --generate-cli-skeleton"
@@ -292,7 +292,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 String uploadMetadata = getUploadJSON.upload.metadata
 
                 if (uploadStatus == 'FAILED') {
-                    script.error uploadMetadata
+                    script.echoCustom(uploadMetadata,'ERROR')
                 }
 
                 uploadStatus == 'SUCCEEDED'
@@ -462,10 +462,10 @@ class AwsDeviceFarmHelper implements Serializable {
                         resultStructure.add(queryResultStructure)
                     }
                 } else {
-                    script.echo 'Failed to find query property!'
+                    script.echoCustom("Failed to find query property!",'WARN')
                 }
             } else {
-                script.echo 'Failed to query Device Farm!'
+                script.echoCustom("Failed to query Device Farm!",'WARN')
             }
         }
 

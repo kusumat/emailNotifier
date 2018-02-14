@@ -127,7 +127,7 @@ class IosChannel extends Channel {
                         }
 
                     } else {
-                        script.error("Failed to find $projectPropFileName file to update Bundle ID!")
+                        script.echoCustom("Failed to find $projectPropFileName file to update Bundle ID!",'ERROR')
                     }
                 }
             }
@@ -241,7 +241,7 @@ class IosChannel extends Channel {
      * @return PLIST file object, format: {name: <NameOfPlistFile>, path: <PlistFilePath>}.
      */
     private final createPlist(String ipaArtifactUrl) {
-        (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
+        (ipaArtifactUrl) ?: script.echoCustom("ipaArtifactUrl argument can't be null!",'ERROR')
 
         String successMessage = 'PLIST file created successfully.'
         String errorMessage = 'Failed to create PLIST file'
@@ -272,94 +272,97 @@ class IosChannel extends Channel {
      */
     protected final void createPipeline() {
         script.timestamps {
-            script.stage('Check provided parameters') {
-                ValidationHelper.checkBuildConfiguration(script)
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                script.stage('Check provided parameters') {
+                    ValidationHelper.checkBuildConfiguration(script)
 
-                def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
+                    def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
 
-                channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
-                        mandatoryParameters.add('IOS_TABLET_APP_ID')
+                    channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
+                            mandatoryParameters.add('IOS_TABLET_APP_ID')
 
-                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
-            }
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+                }
 
-            /* Allocate a slave for the run */
-            script.node(libraryProperties.'ios.node.label') {
-                /* Get and expose configuration file for fastlane */
-                fetchFastlaneConfig()
+                /* Allocate a slave for the run */
+                script.node(libraryProperties.'ios.node.label') {
+                    /* Get and expose configuration file for fastlane */
+                    fetchFastlaneConfig()
 
-                pipelineWrapper {
-                    /*
+                    pipelineWrapper {
+                        /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
                      */
-                    script.cleanWs deleteDirs: true
+                        script.cleanWs deleteDirs: true
 
-                    script.stage('Check build-node environment') {
-                    /*
+                        script.stage('Check build-node environment') {
+                            /*
                         FABRIC_ENV_NAME is optional parameter which should be validated only if 
                         if user entered some values
                     */
-                        def parametersToValidate = ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE']
-                        if (script.env.FABRIC_ENV_NAME) {
-                            parametersToValidate << 'FABRIC_ENV_NAME'
+                            def parametersToValidate = ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE']
+                            if (script.env.FABRIC_ENV_NAME) {
+                                parametersToValidate << 'FABRIC_ENV_NAME'
+                            }
+                            ValidationHelper.checkBuildConfiguration(script, parametersToValidate)
                         }
-                        ValidationHelper.checkBuildConfiguration(script, parametersToValidate)
+
+                        script.stage('Checkout') {
+                            BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: checkoutRelativeTargetFolder,
+                                    scmBranch: scmBranch,
+                                    scmCredentialsId: scmCredentialsId,
+                                    scmUrl: scmUrl
+                        }
+
+                        script.stage('Update Bundle ID') {
+                            updateIosBundleId()
+                        }
+
+                        script.stage('Build') {
+                            build()
+                            /* Search for build artifacts */
+                            karArtifact = getArtifactLocations(artifactExtension).first() ?:
+                                    script.echoCustom('Build artifacts were not found!','ERROR')
+                        }
+
+                        script.stage('Generate IPA file') {
+                            createIPA()
+                            /* Get ipa file name and path */
+                            def foundArtifacts = getArtifactLocations('ipa')
+                            /* Rename artifacts for publishing */
+                            ipaArtifact = renameArtifacts(foundArtifacts).first()
+                        }
+
+                        script.stage("Publish IPA artifact to S3") {
+                            ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                    sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
+                        }
+
+                        script.stage("Generate PLIST file") {
+                            String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
+                            /* Get plist artifact */
+                            plistArtifact = createPlist(authenticatedIPAArtifactUrl)
+                        }
+
+                        script.stage("Publish PLIST artifact to S3") {
+                            String artifactName = plistArtifact.name
+                            String artifactPath = plistArtifact.path
+                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script
+
+                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                            String plistArtifactOTAUrl = iosOTAPrefix + authenticatedArtifactUrl
+
+                            artifacts.add([
+                                    channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, otaurl: plistArtifactOTAUrl
+                            ])
+                        }
+
+                        script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                     }
-
-                    script.stage('Checkout') {
-                        BuildHelper.checkoutProject script: script,
-                                projectRelativePath: checkoutRelativeTargetFolder,
-                                scmBranch: scmBranch,
-                                scmCredentialsId: scmCredentialsId,
-                                scmUrl: scmUrl
-                    }
-
-                    script.stage('Update Bundle ID') {
-                        updateIosBundleId()
-                    }
-
-                    script.stage('Build') {
-                        build()
-                        /* Search for build artifacts */
-                        karArtifact = getArtifactLocations(artifactExtension).first() ?:
-                                script.error('Build artifacts were not found!')
-                    }
-
-                    script.stage('Generate IPA file') {
-                        createIPA()
-                        /* Get ipa file name and path */
-                        def foundArtifacts = getArtifactLocations('ipa')
-                        /* Rename artifacts for publishing */
-                        ipaArtifact = renameArtifacts(foundArtifacts).first()
-                    }
-
-                    script.stage("Publish IPA artifact to S3") {
-                        ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
-                    }
-
-                    script.stage("Generate PLIST file") {
-                        String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
-                        /* Get plist artifact */
-                        plistArtifact = createPlist(authenticatedIPAArtifactUrl)
-                    }
-
-                    script.stage("Publish PLIST artifact to S3") {
-                        String artifactName = plistArtifact.name
-                        String artifactPath = plistArtifact.path
-                        String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: artifactName, sourceFilePath: artifactPath, script
-								
-						String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
-						String plistArtifactOTAUrl = iosOTAPrefix + authenticatedArtifactUrl
-
-                        artifacts.add([
-                                channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, otaurl: plistArtifactOTAUrl
-                        ])
-                    }
-
-                    script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                 }
             }
         }
