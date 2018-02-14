@@ -56,7 +56,7 @@ class NotificationsHelper implements Serializable {
                 case "FAILED":
                     script.currentBuild.result = "UNSTABLE"
                     break
-                case "SUCCESS":
+                case "PASSED":
                     script.currentBuild.result = "SUCCESS"
                     break
                 default:
