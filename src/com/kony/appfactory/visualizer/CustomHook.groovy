@@ -6,11 +6,11 @@ import com.cloudbees.hudson.plugins.folder.Folder
 import com.kony.appfactory.helper.AwsHelper
 import org.jenkinsci.plugins.configfiles.custom.CustomConfig
 import org.jenkinsci.plugins.configfiles.folder.FolderConfigFileProperty
+import com.kony.appfactory.helper.ValidationHelper
 
 class CustomHook implements Serializable {
     /* Pipeline object */
     private final script
-
 
     /* Library configuration */
     private libraryProperties
@@ -55,10 +55,11 @@ class CustomHook implements Serializable {
      */
     protected final createPipeline() {
         script.timestamps {
-            script.stage('Check provided parameters') {
-                script.echo("Logic not yet implemented")
-                script.echo(hookName + buildStep + buildAction)
-                script.echo(script.env.toString())
+            script.stage('Validate Parameters') {
+
+                def mandatoryParameters = ['HOOK_NAME', 'BUILD_STEP', 'BUILD_ACTION','HOOK_ARCHIVE_FILE']
+
+                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
             }
             script.node(libraryProperties.'test.automation.node.label') {
                 script.cleanWs deleteDirs: true
