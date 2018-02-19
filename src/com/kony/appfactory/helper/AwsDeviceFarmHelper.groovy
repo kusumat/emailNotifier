@@ -1,6 +1,7 @@
 package com.kony.appfactory.helper
 
 import groovy.json.JsonOutput
+import java.net.URLDecoder
 
 /**
  * Implements Device Farm logic.
@@ -40,7 +41,10 @@ class AwsDeviceFarmHelper implements Serializable {
             }
             else {
                 /* copy from S3 bucket without printing expansion of command on console */
-                String cpS3Cmd="set +x;aws s3 cp \"${artifactUrl}\" \"${artifactName}\" --only-show-errors"
+                String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
+                String artifactNameDecoded = URLDecoder.decode(artifactName, "UTF-8")
+
+                String cpS3Cmd="set +x;aws s3 cp \"${artifactUrlDecoded}\" \"${artifactNameDecoded}\" --only-show-errors"
                 script.shellCustom(cpS3Cmd, true)
             }
 
