@@ -341,20 +341,29 @@ class IosChannel extends Channel {
                                     sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
                         }
 
-                        script.stage("Generate PLIST file") {
-                            String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
-                            /* Get plist artifact */
-                            plistArtifact = createPlist(authenticatedIPAArtifactUrl)
-                        }
+                    script.stage("Generate PLIST file") {
+                        String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
+                        /* Get plist artifact */
+                        plistArtifact = createPlist(authenticatedIPAArtifactUrl)
+                        /* Temporary fix to display ipa file in the mail notification (instead of plist) */
+                        artifacts.add([
+                                channelPath: channelPath, name: ipaArtifact.name, url: ipaArtifactUrl, authurl: authenticatedIPAArtifactUrl, otaurl: authenticatedIPAArtifactUrl
+                        ])
+                    }
 
-                        script.stage("Publish PLIST artifact to S3") {
-                            String artifactName = plistArtifact.name
-                            String artifactPath = plistArtifact.path
-                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script
+                    script.stage("Publish PLIST artifact to S3") {
+                        String artifactName = plistArtifact.name
+                        String artifactPath = plistArtifact.path
+                        String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                sourceFileName: artifactName, sourceFilePath: artifactPath, script
+								
+						String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+						String plistArtifactOTAUrl = iosOTAPrefix + authenticatedArtifactUrl
 
-                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
-                            String plistArtifactOTAUrl = iosOTAPrefix + authenticatedArtifactUrl
+                        /*artifacts.add([
+                                channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedIPAArtifactUrl, otaurl: plistArtifactOTAUrl
+                        ])*/
+                    }
 
                             artifacts.add([
                                     channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, otaurl: plistArtifactOTAUrl

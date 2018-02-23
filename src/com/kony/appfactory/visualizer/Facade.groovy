@@ -313,7 +313,7 @@ class Facade implements Serializable {
     private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
         buildJobArtifacts.findResults { artifact ->
             /* Filter Android and iOS channels */
-            String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|apk)\$")) ? artifact.name : ''
+            String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|ipa|apk)\$")) ? artifact.name : ''
             /*
                 Workaround to get ipa URL for iOS, just switching extension in URL to ipa,
                 because ipa file should be places nearby plist file on S3.
