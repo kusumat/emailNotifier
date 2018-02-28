@@ -370,6 +370,10 @@ class AwsDeviceFarmHelper implements Serializable {
             script.waitUntil {
                 String runResultScript = "aws devicefarm get-run --arn ${testRunArn}"
                 String runResultOutput = script.shellCustom(runResultScript, true, [returnStdout: true]).trim()
+				
+				script.echo "Output received from AWS Device Farm : "
+				script.echo runResultOutput
+				
                 def runResultJSON = script.readJSON text: runResultOutput
                 testRunStatus = runResultJSON.run.status
                 testRunResult = runResultJSON.run.result
@@ -433,6 +437,9 @@ class AwsDeviceFarmHelper implements Serializable {
             def queryOutput = script.readJSON text: script.shellCustom(
                     queryParameters.queryScript, true, [returnStdout: true]).trim()
 
+			script.echo "Output received from AWS Device Farm : "
+			script.echo queryOutput.toString()
+					
             /* If we do have result */
             if (queryOutput) {
                 def queryProperty = queryParameters.queryProperty
