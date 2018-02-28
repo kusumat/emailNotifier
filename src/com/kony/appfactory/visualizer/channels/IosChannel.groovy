@@ -294,7 +294,7 @@ class IosChannel extends Channel {
                         /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
-                     */
+                        */
                         script.cleanWs deleteDirs: true
 
                         script.stage('Check build-node environment') {
@@ -341,7 +341,7 @@ class IosChannel extends Channel {
                                     sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
                         }
 
-                    script.stage("Generate PLIST file") {
+                        script.stage("Generate PLIST file") {
                         String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
                         /* Get plist artifact */
                         plistArtifact = createPlist(authenticatedIPAArtifactUrl)
@@ -351,7 +351,7 @@ class IosChannel extends Channel {
                         ])
                     }
 
-                    script.stage("Publish PLIST artifact to S3") {
+                        script.stage("Publish PLIST artifact to S3") {
                         String artifactName = plistArtifact.name
                         String artifactPath = plistArtifact.path
                         String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
@@ -368,10 +368,9 @@ class IosChannel extends Channel {
                             artifacts.add([
                                     channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, otaurl: plistArtifactOTAUrl
                             ])
-                        }
+                    }
 
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
-                    }
                 }
             }
         }
