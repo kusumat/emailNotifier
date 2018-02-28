@@ -325,6 +325,7 @@ class IosChannel extends Channel {
                             /* Search for build artifacts */
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
                                     script.echoCustom('Build artifacts were not found!','ERROR')
+                            mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
                         }
 
                         script.stage('Generate IPA file') {
@@ -333,6 +334,7 @@ class IosChannel extends Channel {
                             def foundArtifacts = getArtifactLocations('ipa')
                             /* Rename artifacts for publishing */
                             ipaArtifact = renameArtifacts(foundArtifacts).first()
+                            mustHaveArtifacts.add([name: ipaArtifact.name, path: ipaArtifact.path])
                         }
 
                         script.stage("Publish IPA artifact to S3") {
@@ -348,6 +350,7 @@ class IosChannel extends Channel {
                             artifacts.add([
                                     channelPath: channelPath, name: ipaArtifact.name, url: ipaArtifactUrl, authurl: authenticatedIPAArtifactUrl, otaurl: authenticatedIPAArtifactUrl
                             ])
+                            mustHaveArtifacts.add([name: plistArtifact.name, path: plistArtifact.path])
                         }
 
                         script.stage("Publish PLIST artifact to S3") {

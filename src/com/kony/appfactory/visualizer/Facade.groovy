@@ -3,6 +3,8 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.helper.AwsHelper
+import com.kony.AppFactory.plugin.AppFactoryVersions
 
 /**
  * Implements logic for buildVisualizerApp job.
@@ -28,6 +30,7 @@ class Facade implements Serializable {
             [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
      */
     private artifacts = []
+	private mustHaveArtifacts = []
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
     /* Common build parameters */
@@ -358,6 +361,9 @@ class Facade implements Serializable {
 
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
+					
+					/* Collect must have artifacts */
+					mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
 
                     /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
@@ -389,6 +395,9 @@ class Facade implements Serializable {
 
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
+					
+					/* Collect must have artifacts */
+					mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
 
                     /* Notify user that SPA channel build failed */
                     if (channelJob.currentResult != 'SUCCESS') {
@@ -403,8 +412,9 @@ class Facade implements Serializable {
     /**
      * Sets build description at the end of the build.
      */
-    private final void setBuildDescription() {
+    private final void setBuildDescription(s3MustHaveAuthUrl) {
         String EnvironmentDescription = ""
+		String mustHavesDescription = ""
         if (script.env.FABRIC_ENV_NAME && script.env.FABRIC_ENV_NAME != '_') {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
@@ -416,8 +426,74 @@ class Facade implements Serializable {
                 <img src="/static/b33030df/images/24x24/clock.png"
                 style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
                 class="icon-clock icon-md"></a></p>
+                <p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>
             </div>\
             """.stripIndent()
+    }
+
+    /**
+     * Get the AppFactory version information (appfactory plugin version, core plugins versions, Kony Libarary branch information )
+     */
+    private final String getYourAppFactoryVersions() {
+        def apver = new AppFactoryVersions()
+		
+        def versionInfo = StringBuilder.newInstance()
+		
+        versionInfo.append "PipeLine Version : " + apver.getPipelineVersion() 
+        versionInfo.append "\nDSL Job Version : " + apver.getDSLJobVersion()
+        versionInfo.append "\nAppFactory Plugin Version : " + apver.getAppFactoryPluginVersion()
+		
+        def corePlugInVersionInfo = apver.getCorePluginVersions()
+		
+        corePlugInVersionInfo.each { pluginName, pluginVersion ->
+            versionInfo.append "\n$pluginName : $pluginVersion"
+        }
+		
+        versionInfo.toString()
+    }
+	
+	/**
+	 * Prepare must haves for the debugging
+	 */
+	private final String PrepareMustHaves() {
+        String s3MustHaveAuthUrl
+        String separator = script.isUnix() ? '/' : '\\'
+        String mustHaveFolderPath = [script.env.WORKSPACE, "ParentMustHaves"].join(separator)
+        String MustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
+        String mustHaveFilePath = [script.env.WORKSPACE, MustHaveFile].join(separator)
+        String buildlogText = BuildHelper.getBuildLogText(script)
+        String delCommand = script.isUnix() ? "rm -Rf \"${mustHaveFolderPath}\"" : "del \"${mustHaveFolderPath}\""
+        script.shellCustom(delCommand, script.isUnix())
+        script.dir(mustHaveFolderPath){
+            script.writeFile file: "vizbuildlog.log", text: buildlogText
+            script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
+
+            mustHaveArtifacts.each{
+                String artifactUrl = it.url.replace(' ', '%20')
+                artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
+                                                artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com',
+                                                's3://'+script.env.S3_BUCKET_NAME) : artifactUrl) : ''
+                /* copy from S3 bucket without printing expansion of command on console */
+                String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
+
+                String cpS3Cmd="set +x;aws s3 mv \"${artifactUrlDecoded}\" \"${it.name}\" --only-show-errors"
+				script.echo "Command is : " + cpS3Cmd
+                script.shellCustom(cpS3Cmd, true)
+            }
+        }
+
+        script.dir(script.env.WORKSPACE){
+        	script.zip dir:"ParentMustHaves", zipFile: MustHaveFile
+        	script.catchErrorCustom("Failed to create the Zip file") {
+                if(script.fileExists(mustHaveFilePath)){
+                    String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
+                    s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: MustHaveFile,
+                                        sourceFilePath: script.env.WORKSPACE, script
+                    s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveAuthUrl, script)
+                }
+		    }
+        }
+        s3MustHaveAuthUrl
     }
 
     /**
@@ -540,24 +616,25 @@ class Facade implements Serializable {
                             }
                         }
 
-                        /* Check if there are failed or unstable or aborted jobs */
-                        if (jobResultList.contains('FAILURE') ||
-                                jobResultList.contains('UNSTABLE') ||
-                                jobResultList.contains('ABORTED')
-                        ) {
-                            /* Set job result to 'UNSTABLE' if above check is true */
-                            script.currentBuild.result = 'UNSTABLE'
-                        } else {
-                            /* Set job result to 'SUCCESS' if above check is false */
-                            script.currentBuild.result = 'SUCCESS'
-                        }
-                    } catch (Exception e) {
-                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                        script.echoCustom(exceptionMessage, 'WARN')
-                        script.currentBuild.result = 'FAILURE'
-                    } finally {
-                        setBuildDescription()
-                        /*
+                    /* Check if there are failed or unstable or aborted jobs */
+                    if (jobResultList.contains('FAILURE') ||
+                            jobResultList.contains('UNSTABLE') ||
+                            jobResultList.contains('ABORTED')
+                    ) {
+                        /* Set job result to 'UNSTABLE' if above check is true */
+                        script.currentBuild.result = 'UNSTABLE'
+                    } else {
+                        /* Set job result to 'SUCCESS' if above check is false */
+                        script.currentBuild.result = 'SUCCESS'
+                    }
+                } catch (Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                    script.echo "ERROR: $exceptionMessage"
+                    script.currentBuild.result = 'FAILURE'
+                } finally {
+					String s3MustHaveAuthUrl = PrepareMustHaves()
+					setBuildDescription(s3MustHaveAuthUrl)
+                    /*
                         Been agreed to send notification from buildVisualizerApp job only
                         if result not equals 'FAILURE', all notification with failed channel builds
                         will be sent directly from channel job.
