@@ -103,7 +103,7 @@ class CustomHook implements Serializable {
                 script.stage('Process DSL') {
 
                     script.withEnv(["ARTIFACT_URL=${artifactUrl}"]) {
-                        script.echo("Downlaod url (inside) : ${script.env.ARTIFACT_URL}" )
+                        script.echo("Download url (inside) : ${script.env.ARTIFACT_URL}" )
                         script.jobDsl  targets: "${checkoutTo}/${dslScriptName}"
                     }
                 }
@@ -112,28 +112,54 @@ class CustomHook implements Serializable {
     }
 
     protected final void processPipeline(){
-        def outputFile = "Hook.zip"
-        script.node(libraryProperties.'test.automation.node.label'){
-            script.stage("Clean"){
-                script.cleanWs deleteDirs: true
-            }
-            script.stage("Download Hook Scripts"){
-                script.httpRequest url: script.params.BUILD_SCRIPT, outputFile: outputFile, validResponseCodes: '200'
-            }
-            script.stage("Extract Hook"){
-                script.sh "mkdir Hook"
-                script.unzip zipFile:"Hook.zip"
-            }
 
-            script.stage("Run Script"){
-                if(script.params.BUILD_ACTION == "Execute Ant"){
-                    script.sh "/home/jenkins/apache-ant-1.9.9/bin/ant -f build.xml ${scriptArguments}"
+        def outputFile = "Hook.zip"
+        String hookDir = projectName + "/Hook"
+
+        script.node('mac') {
+            script.ws([script.params.UPSTREAM_JOB_WORKSPACE, libraryProperties.'project.workspace.folder.name'].join('/')) {
+
+                script.stage("Download Hook Scripts") {
+                    script.dir(hookDir){
+                        script.deleteDir()
+                    }
+                    script.sh "set +e; mkdir -p $projectName/Hook";
+                    script.dir(hookDir){
+                        script.httpRequest url: script.params.BUILD_SCRIPT, outputFile: outputFile, validResponseCodes: '200'
+                    }
                 }
-                else if(script.params.BUILD_ACTION == "Execute Maven"){
-                    script.sh "mvn ${scriptArguments}"
+                script.stage("Extract Hook") {
+                    script.dir(hookDir){
+                        script.unzip zipFile: "Hook.zip"
+                    }
                 }
-                else{
-                    script.echo("unknown build script ")
+
+                script.stage('Change permissions'){
+                    script.sh 'pwd'
+                    script.sh 'chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
+                    script.sh 'find vis_ws -type f -exec chmod -R +a "hookslave read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \;'
+                    script.sh 'chmod 710 ../../buildAndroid'
+                }
+            }
+        }
+
+        script.node('machooks'){
+            script.ws([script.params.UPSTREAM_JOB_WORKSPACE, libraryProperties.'project.workspace.folder.name'].join('/')) {
+                script.stage("Run Script") {
+                    script.dir(hookDir) {
+                        if (script.params.BUILD_ACTION == "Execute Ant") {
+                            script.sh "export JAVA_HOME='/Appfactory/Jenkins/tools/jdk1.8.0_112.jdk' && /Appfactory/Jenkins/tools/ant-1.8.2/bin/ant -f build.xml ${scriptArguments}"
+                        } else if (script.params.BUILD_ACTION == "Execute Maven") {
+                            script.sh "mvn ${scriptArguments}"
+                        } else {
+                            script.echo("unknown build script ")
+                        }
+                    }
+
+                    script.dir(hookDir){
+                        script.sh 'set +e && find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
+                    }
+
                 }
             }
         }

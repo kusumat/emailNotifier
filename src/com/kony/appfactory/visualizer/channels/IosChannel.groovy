@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 
 /**
@@ -24,6 +25,8 @@ class IosChannel extends Channel {
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
+    /* CustomHooks build Parameters*/
+    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
 
     /**
      * Class constructor.
@@ -169,6 +172,17 @@ class IosChannel extends Channel {
                 """, true)
             }
 
+
+            if(runCustomHook){
+                /* Run Pre Builds Hooks First */
+                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_IPA_STAGE')
+            }
+            else{
+                script.echo("Custom Hooks execution skipped by User.")
+            }
+
+
+
             /* Build project and export IPA using fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
                 /* Inject required environment variables */
@@ -295,6 +309,16 @@ class IosChannel extends Channel {
                                 scmCredentialsId: scmCredentialsId,
                                 scmUrl: scmUrl
                     }
+                    script.stage('PreBuild CustomHooks'){
+
+                        /* Run Pre Builds Hooks First */
+                        if(runCustomHook){
+                            CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_STAGE')
+                        }
+                        else{
+                            script.echo("Custom Hooks execution skipped by User.")
+                        }
+                    }
 
                     script.stage('Update Bundle ID') {
                         updateIosBundleId()
@@ -339,6 +363,14 @@ class IosChannel extends Channel {
                     }
 
                     script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
+                }
+                script.stage('PostBuild CustomHooks'){
+                    if(runCustomHook) {
+                        CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'IOS_STAGE')
+                    }
+                    else{
+                        script.echo("Custom Hooks execution skipped by User.")
+                    }
                 }
             }
         }

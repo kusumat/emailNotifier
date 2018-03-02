@@ -535,6 +535,10 @@ class TestAutomation implements Serializable {
                                 script.stage('Get Test Results') {
                                     fetchTestResults()
                                 }
+
+                                script.stage('PostTest CustomHooks'){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", 'IOS_STAGE')
+                                }
                             }
                         }
                     } catch (Exception e) {

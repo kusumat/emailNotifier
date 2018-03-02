@@ -3,6 +3,7 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import hudson.model.Job
 import jenkins.model.Jenkins
 import com.cloudbees.hudson.plugins.folder.Folder
@@ -68,7 +69,8 @@ class Facade implements Serializable {
     private final spaAppVersion = script.params.SPA_APP_VERSION
     /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
-
+    /* CustomHooks build Parameters*/
+    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     /**
      * Class constructor.
      *
@@ -94,7 +96,7 @@ class Facade implements Serializable {
     @NonCPS
     private static getSelectedChannels(buildParameters) {
         buildParameters.findAll {
-            it.value instanceof Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
+            it.value instanceof Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value && it.key != 'RUN_CUSTOM_HOOKS'
         }.keySet().collect()
     }
 
@@ -222,7 +224,8 @@ class Facade implements Serializable {
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
                 script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
-                script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
+                script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
+                script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook)
         ]
     }
 
@@ -337,102 +340,6 @@ class Facade implements Serializable {
 
             /* Create build parameter for Test Automation job */
             artifactName ? script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
-        }
-    }
-
-    @NonCPS
-    def runCustomHooks(String folderName, String hookStage){
-        script.echo("Executing ${hookStage} hook stage. ")
-
-//        def hookList = []
-//        Jenkins instance = Jenkins.instance
-//        Folder buildFolder = instance
-//                .getItem(folderName)
-//                .getItem("Visualizer")
-//                .getItem("Builds")
-//                .getItem("CustomHook")
-//                .getItem(hookStage)
-
-
-//        instance.getItem(folderName)
-//            .getItem("Visualizer")
-//            .getItem("Builds")
-//            .getItem("CustomHook").getViews().each{ views->
-//                if(views instanceof hudson.plugins.sectioned_view.SectionedView){
-//                    views.getSections().each { m->
-//                        script.echo("Updated HookList ->"+m.getCustomHookPreBuildList())
-//
-//                        def hookJ = m.getCustomHookPreBuildList()
-//                        hookList = hookJ.split(",");
-//                    }
-//                }
-//            }
-
-//        buildFolder.getAllJobs().each { job ->
-//            job.buildable ? hookList.add(job.getDisplayName()) : script.echo("Skiping disabled hook : ${job.getDisplayName()}")
-//        }
-
-
-            /* Execute available hooks */
-        triggerHooks(hookStage)
-
-    }
-
-    def getConfigFileInWorkspace(fileId){
-        /* Get hook configuration files in workspace */
-        script.configFileProvider([script.configFile(fileId: fileId, targetLocation: "${fileId}.json")]) {
-        }
-    }
-    def getHookList(hookStage, jsonContent){
-        def stageContent = jsonContent[hookStage]
-        String[] hookList = new String[2]
-//        hookList[0] = "Muksh"
-        stageContent.each{
-            if((it["status"]).equals("enabled")){
-                hookList[(it['index']).toInteger()] = it['hookName']
-            }
-        }
-        script.echo("Indexing "+ hookList.toString())
-        def updatedIndexHookList = [];
-        hookList.each{
-            if(it){
-                updatedIndexHookList.push(it)
-            }
-        }
-        script.echo("Indexing2 "+ updatedIndexHookList.toString())
-        return updatedIndexHookList;
-    }
-    def isHookBlocking(hookName, hookStage, jsonContent){
-        def isBlocking = null
-        def stageContent = jsonContent[hookStage]
-        stageContent.each{
-            if((it["hookName"]).equals(hookName)){
-                isBlocking =  it['isBlocking']
-            }
-        }
-
-        return isBlocking
-    }
-
-    def triggerHooks(hookStage){
-        getConfigFileInWorkspace(projectName)
-        def hookProperties = script.readJSON file:"${projectName}.json"
-        def hookList = getHookList(hookStage, hookProperties)
-
-        script.stage(hookStage){
-            for (hookName in hookList){
-
-                def isBlocking = isHookBlocking(hookName, hookStage, hookProperties)
-
-                def hookJobName = getHookJobName(hookName, hookStage)
-                if(isBlocking){
-                    script.build job: hookJobName, propagate: true, wait: true
-                }
-                else{
-                    script.build job: hookJobName, propagate: false, wait: false
-                }
-
-            }
         }
     }
 
@@ -620,13 +527,12 @@ class Facade implements Serializable {
 
 
 
-                    /* Run Pre Builds Hooks First */
-                    runCustomHooks(projectName, "PRE_BUILD")
+
 
                     /* Run channel builds in parallel */
                     script.parallel(runList)
 
-                    runCustomHooks(projectName, "POST_BUILD")
+
 
                     /* If test pool been provided, prepare build parameters and trigger runTests job */
                     if (availableTestPools) {
@@ -656,7 +562,7 @@ class Facade implements Serializable {
                         }
                     }
                     if(availableTestPools){
-                        runCustomHooks(projectName, "POST_TEST")
+//                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST")
                     }
                     else {
                         script.echo("Skipping POST_TEST hooks (if available) as Tests are't running")
