@@ -310,7 +310,6 @@ class IosChannel extends Channel {
                                 scmUrl: scmUrl
                     }
                     script.stage('PreBuild CustomHooks'){
-
                         /* Run Pre Builds Hooks First */
                         if(runCustomHook){
                             CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_STAGE')
@@ -365,6 +364,7 @@ class IosChannel extends Channel {
                     script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                 }
                 script.stage('PostBuild CustomHooks'){
+
                     if(runCustomHook) {
                         CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'IOS_STAGE')
                     }

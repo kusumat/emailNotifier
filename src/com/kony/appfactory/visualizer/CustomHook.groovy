@@ -33,6 +33,8 @@ class CustomHook implements Serializable {
     protected final buildScript = script.params.BUILD_SCRIPT
     protected final scriptArguments = script.params.SCRIPT_ARGUMENTS
     protected final blocking = script.params.BLOCKING
+    protected final hookSlave = script.params.HOOK_SLAVE
+    protected final buildSlave =script.params.BUILD_SLAVE
 
     def projectWorkspaceFolderName
     def isUnixNode
@@ -116,7 +118,10 @@ class CustomHook implements Serializable {
         def outputFile = "Hook.zip"
         String hookDir = projectName + "/Hook"
 
-        script.node('mac') {
+        String upstreamJobName = getUpstreamJobName(script)
+
+
+        script.node(buildSlave) {
             script.ws([script.params.UPSTREAM_JOB_WORKSPACE, libraryProperties.'project.workspace.folder.name'].join('/')) {
 
                 script.stage("Download Hook Scripts") {
@@ -137,13 +142,14 @@ class CustomHook implements Serializable {
                 script.stage('Change permissions'){
                     script.sh 'pwd'
                     script.sh 'chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
-                    script.sh 'find vis_ws -type f -exec chmod -R +a "hookslave read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \;'
-                    script.sh 'chmod 710 ../../buildAndroid'
+                    //script.sh 'find vis_ws -type f -exec chmod -R +a "hookslave read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} ;'
+                    /*This is to get change permission for upstream folder which will be same as Jenkins job name*/
+                    script.sh "chmod 710 ../../$upstreamJobName"
                 }
             }
         }
 
-        script.node('machooks'){
+        script.node(hookSlave){
             script.ws([script.params.UPSTREAM_JOB_WORKSPACE, libraryProperties.'project.workspace.folder.name'].join('/')) {
                 script.stage("Run Script") {
                     script.dir(hookDir) {
@@ -236,6 +242,19 @@ class CustomHook implements Serializable {
             folderConfigFilesObject.save(new CustomConfig(hookName, hookName, newConfigComments, blocking))
             println "Pool ${hookName} has been created successfully"
         }
+    }
+    def getUpstreamJobName(script){
+        String upstreamJobName = null
+        script.currentBuild.rawBuild.actions.each { action ->
+            if(action.hasProperty("causes")) {
+                action.causes.each { cause ->
+                    if(cause instanceof hudson.model.Cause$UpstreamCause && cause.hasProperty("shortDescription") && cause.shortDescription.contains("Started by upstream project")) {
+                        upstreamJobName = cause.upstreamRun.getEnvironment(TaskListener.NULL).get("JOB_BASE_NAME")
+                    }
+                }
+            }
+        }
+        upstreamJobName
     }
 //
 ///* Remove already existing device pool */
