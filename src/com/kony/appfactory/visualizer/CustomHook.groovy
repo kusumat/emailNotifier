@@ -142,7 +142,7 @@ class CustomHook implements Serializable {
                 script.stage('Change permissions'){
                     script.sh 'pwd'
                     script.sh 'chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
-                    //script.sh 'find vis_ws -type f -exec chmod -R +a "hookslave read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} ;'
+                    //script.sh 'find vis_ws -type f -exec chmod -R +a "hookslave read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\ ;'
                     /*This is to get change permission for upstream folder which will be same as Jenkins job name*/
                     script.sh "chmod 710 ../../$upstreamJobName"
                 }
@@ -171,7 +171,8 @@ class CustomHook implements Serializable {
         }
     }
     def createConfigFile() {
-        def folderObject = getFolderObject(projectName)
+        def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHook"
+        def folderObject = getFolderObject(customhooksConfigFolder)
         def folderConfigFilesObject = getConfigPropertyObject(folderObject)
         def availableConfigs = getAvailableConfigs(folderConfigFilesObject)
 
@@ -228,7 +229,7 @@ class CustomHook implements Serializable {
         availableConfigs
     }
 
-/* Create Config File object of CustomConfig type for provided device list */
+/* Create Config File object of CustomConfig type for provided customhooks */
     def createConfig(hookName, blocking, folderConfigFilesObject, availableConfigs) {
         def unique = true
         def creationDate = new Date().format("yyyyMMdd_HH-mm-ss-SSS", TimeZone.getTimeZone('UTC'))
