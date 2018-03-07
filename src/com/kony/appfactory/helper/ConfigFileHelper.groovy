@@ -20,7 +20,7 @@ class ConfigFileHelper {
         createConfig(fileId, content, folderConfigFilesObject, availableConfigs)
     }
 
-    def getOlderContent(folderName, fileId){
+    def getOlderContent(String folderName, String fileId){
         def folderObject = getFolderObject(folderName)
         FolderConfigFileProperty folderConfigFilesObject = getConfigPropertyObject(folderObject)
         Collection<Config> availableConfigs = getAvailableConfigs(folderConfigFilesObject)
