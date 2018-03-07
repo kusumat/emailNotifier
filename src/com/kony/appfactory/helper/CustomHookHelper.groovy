@@ -51,7 +51,7 @@ class CustomHookHelper implements Serializable {
     protected static triggerHooks(script, projectName, hookStage, pipelineBuildStage){
 
         def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHook" + projectName
-        getConfigFileInWorkspace(script, customhooksConfigFolder)
+        getConfigFileInWorkspace(script, projectName)
         def hookProperties = script.readJSON file:"${projectName}.json"
 
         String currentComputer = "${script.env.NODE_NAME}"
