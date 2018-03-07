@@ -78,6 +78,8 @@ class Facade implements Serializable {
         /* Checking if at least one channel been selected */
         channelsToRun = (getSelectedChannels(this.script.params)) ?:
                 script.echoCustom('Please select at least one channel to build!','ERROR')
+        this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
+        this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
     }
 
     /**
@@ -419,6 +421,9 @@ class Facade implements Serializable {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
 
+		if(s3MustHaveAuthUrl)
+			mustHavesDescription = "<p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>"
+
         script.currentBuild.description = """\
             <div id="build-description">
                 ${EnvironmentDescription}
@@ -426,7 +431,7 @@ class Facade implements Serializable {
                 <img src="/static/b33030df/images/24x24/clock.png"
                 style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
                 class="icon-clock icon-md"></a></p>
-                <p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>
+                ${mustHavesDescription}
             </div>\
             """.stripIndent()
     }
@@ -458,32 +463,36 @@ class Facade implements Serializable {
 	private final String PrepareMustHaves() {
         String s3MustHaveAuthUrl
         String separator = script.isUnix() ? '/' : '\\'
-        String mustHaveFolderPath = [script.env.WORKSPACE, "ParentMustHaves"].join(separator)
+        String mustHaveFolderPath = [script.env.WORKSPACE, "vizMustHaves"].join(separator)
         String MustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
         String mustHaveFilePath = [script.env.WORKSPACE, MustHaveFile].join(separator)
-        String buildlogText = BuildHelper.getBuildLogText(script)
+        // Cleanup previously generated musthaves.
         String delCommand = script.isUnix() ? "rm -Rf \"${mustHaveFolderPath}\"" : "del \"${mustHaveFolderPath}\""
         script.shellCustom(delCommand, script.isUnix())
+		
         script.dir(mustHaveFolderPath){
-            script.writeFile file: "vizbuildlog.log", text: buildlogText
+            script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script)
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
+            script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
+            script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
 
             mustHaveArtifacts.each{
-                String artifactUrl = it.url.replace(' ', '%20')
-                artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
+                if(it.url.trim().length() > 0){
+                    String artifactUrl = it.url.replace(' ', '%20')
+				    // Converting the https url into s3 url to download the musthaves for the channel jobs
+                    artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
                                                 artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com',
                                                 's3://'+script.env.S3_BUCKET_NAME) : artifactUrl) : ''
-                /* copy from S3 bucket without printing expansion of command on console */
-                String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
+                    String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
 
-                String cpS3Cmd="set +x;aws s3 mv \"${artifactUrlDecoded}\" \"${it.name}\" --only-show-errors"
-				script.echo "Command is : " + cpS3Cmd
-                script.shellCustom(cpS3Cmd, true)
+                    String cpS3Cmd="set +x;aws s3 mv \"${artifactUrlDecoded}\" \"${it.name}\" --only-show-errors"
+                    script.shellCustom(cpS3Cmd, true)
+				}
             }
         }
 
         script.dir(script.env.WORKSPACE){
-        	script.zip dir:"ParentMustHaves", zipFile: MustHaveFile
+        	script.zip dir:"vizMustHaves", zipFile: MustHaveFile
         	script.catchErrorCustom("Failed to create the Zip file") {
                 if(script.fileExists(mustHaveFilePath)){
                     String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
@@ -608,6 +617,8 @@ class Facade implements Serializable {
 
                                 /* Collect job result */
                                 jobResultList.add(testAutomationJobResult)
+								
+								mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
 
                                 /* Notify user that runTests job build failed */
                                 if (testAutomationJobResult != 'SUCCESS') {
@@ -616,25 +627,28 @@ class Facade implements Serializable {
                             }
                         }
 
-                    /* Check if there are failed or unstable or aborted jobs */
-                    if (jobResultList.contains('FAILURE') ||
-                            jobResultList.contains('UNSTABLE') ||
-                            jobResultList.contains('ABORTED')
-                    ) {
-                        /* Set job result to 'UNSTABLE' if above check is true */
-                        script.currentBuild.result = 'UNSTABLE'
-                    } else {
-                        /* Set job result to 'SUCCESS' if above check is false */
-                        script.currentBuild.result = 'SUCCESS'
-                    }
-                } catch (Exception e) {
-                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                    script.echo "ERROR: $exceptionMessage"
-                    script.currentBuild.result = 'FAILURE'
-                } finally {
-					String s3MustHaveAuthUrl = PrepareMustHaves()
-					setBuildDescription(s3MustHaveAuthUrl)
-                    /*
+                        /* Check if there are failed or unstable or aborted jobs */
+                        if (jobResultList.contains('FAILURE') ||
+                                jobResultList.contains('UNSTABLE') ||
+                                jobResultList.contains('ABORTED')
+                        ) {
+                            /* Set job result to 'UNSTABLE' if above check is true */
+                            script.currentBuild.result = 'UNSTABLE'
+                        } else {
+                            /* Set job result to 'SUCCESS' if above check is false */
+                            script.currentBuild.result = 'SUCCESS'
+                        }
+                    } catch (Exception e) {
+                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                        script.echoCustom(exceptionMessage, 'WARN')
+                        script.currentBuild.result = 'FAILURE'
+                    } finally {
+						String s3MustHaveAuthUrl
+						if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+							s3MustHaveAuthUrl = PrepareMustHaves()
+						}
+                        setBuildDescription(s3MustHaveAuthUrl)
+                        /*
                         Been agreed to send notification from buildVisualizerApp job only
                         if result not equals 'FAILURE', all notification with failed channel builds
                         will be sent directly from channel job.

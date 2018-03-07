@@ -506,6 +506,21 @@ class BuildHelper implements Serializable {
         return isActiveNodeAvailable
     }
 	
+	protected final static getEnvironmentInfo(script){
+        String cmd = script.isUnix() ? "env" : "set"
+        String environmentInfo = script.shellCustom(cmd, script.isUnix(),[returnStdout: true]).trim()
+
+		return environmentInfo
+	}
+	
+	protected final static getInputParamsAsString(script){
+        def paramsInfo = StringBuilder.newInstance()
+        script.params.each{
+            paramsInfo.append "${it.key} = ${it.value}\n"
+        }
+		return paramsInfo.toString()
+	}
+	
     protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false) {
 		
         def authArtifactUrl = "";
