@@ -1,12 +1,14 @@
 package com.kony.appfactory.helper
 
 import hudson.model.Computer
+import hudson.plugins.sectioned_view.ConfigFileHelper
 import jenkins.model.Jenkins
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.DescribableList;
+import com.kony.appfactory.helper.ConfigFileHelper
 
 /**
  * Implements logic related to customHooks execution process.
@@ -51,7 +53,7 @@ class CustomHookHelper implements Serializable {
     protected static triggerHooks(script, projectName, hookStage, pipelineBuildStage){
 
         def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHook/" + projectName
-        getConfigFileInWorkspace(script, customhooksConfigFolder)
+        getConfigFileInWorkspace(script, customhooksConfigFolder, projectName)
         def hookProperties = script.readJSON file:"${projectName}.json"
 
         String currentComputer = "${script.env.NODE_NAME}"
@@ -124,10 +126,13 @@ class CustomHookHelper implements Serializable {
     }
 
 
-    protected static getConfigFileInWorkspace(script, fileId){
+    protected static getConfigFileInWorkspace(script, folderFullName, fileId){
         /* Get hook configuration files in workspace */
-        script.configFileProvider([script.configFile(fileId: fileId, targetLocation: "${fileId}.json")]) {
-        }
+        /*Params Folder Name and Fileid*/
+        def content = ConfigFileHelper.getOlderContent(folderFullName, fileId)
+        script.writeFile file: fileId.json, text: content
+        //script.configFileProvider([script.configFile(fileId: fileId, targetLocation: "${fileId}.json")]) {
+        //}
     }
 
     protected static getHookSlaveForCurrentBuildSlave(currentComputer){
