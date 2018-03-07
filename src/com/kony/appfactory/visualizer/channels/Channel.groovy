@@ -1,10 +1,11 @@
 package com.kony.appfactory.visualizer.channels
 
+import java.util.regex.Matcher
+
 import com.kony.appfactory.fabric.Fabric
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
-import java.util.regex.Matcher
 
 /**
  * Implements logic for building channels. Contains common methods that are used during the channel build.
@@ -17,13 +18,12 @@ class Channel implements Serializable {
             [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
      */
     protected artifacts = []
-	protected karArtifactUrl
-	/*
-	 List of artifacts to be captured for the must haves to debug
+    /*
+     List of artifacts to be captured for the must haves to debug
     */
     protected mustHaveArtifacts = []
-	protected mustHaves = []
-	protected mustHavePath
+    protected mustHaves = []
+    protected mustHavePath
     /*
         Platform dependent default name-separator character as String.
         For windows, it's '\' and for unix it's '/'.
@@ -192,9 +192,11 @@ class Channel implements Serializable {
             script.echoCustom(exceptionMessage,'WARN')
             script.currentBuild.result = 'FAILURE'
         } finally {
-			mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
-            PrepareMustHaves()
-			setBuildDescription()
+            mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
+            if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                PrepareMustHaves()
+            }
+            setBuildDescription()
 
             /* Been agreed to send notification from channel job only if result equals 'FAILURE' */
             if (script.currentBuild.result == 'FAILURE') {
@@ -264,8 +266,8 @@ class Channel implements Serializable {
 
         script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
-				script.echo "Adding the musthaves information"
-				mustHaveArtifacts.add([name: "HeadlessBuild.properties", path: projectFullPath])
+                mustHaveArtifacts.add([name: "HeadlessBuild.properties", path: projectFullPath])
+                mustHaveArtifacts.add([name: ".log", path: [workspace, '.metadata'].join(separator)])
                 /* Load required resources and store them in project folder */
                 for (int i=0; i < requiredResources.size(); i++) {
                     String resource = script.loadLibraryResource(resourceBasePath + requiredResources[i])
@@ -643,51 +645,73 @@ class Channel implements Serializable {
             script.echoCustom("File or Directory doesn't exist : ${source}",'WARN')
         }
     }
-	protected final void collectAllInformation() {
-		String buildLog = "JenkinsBuild.log"
-		script.dir(mustHavePath){
-			def paramsInfo = StringBuilder.newInstance()
-			script.params.each{
-				paramsInfo.append "${it.key} = ${it.value}\n"
-			}
-			String cmd = isUnixNode ? "env" : "set"
-			String buildlogText = script.shellCustom(cmd, isUnixNode,[returnStdout: true]).trim()
-			script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script)
-			script.writeFile file: "environmentInfo.txt", text: buildlogText
-			script.writeFile file: "ParamInputs.txt", text: paramsInfo.toString()
-			if(mustHaveArtifacts.size() > 0){
-				mustHaveArtifacts.each{
-					script.shellCustom("cp -f \"${it.path}${separator}${it.name}\" \"${mustHavePath}\"", isUnixNode)
-				}
-			}
-		}
-	}
-	/**
-	 * Prepares all the information for the debugging any build failures.
-	 * Zips all the files into a single zip file and upload into S3 and give the S3 URL
-	 * in a map so that Viz job copies later from S3 to create single zip for all builds.
-	 */
-	protected final void PrepareMustHaves() {
-		String MustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
-		String mustHaveFilePath = [projectFullPath, MustHaveFile].join(separator)
-		script.catchErrorCustom("Error while preparing must haves"){
-			collectAllInformation()
-			script.dir(projectFullPath){
-				script.echo "Zipping the files..............."
-				script.zip dir:mustHavePath, zipFile: MustHaveFile
-				script.catchErrorCustom("Failed to create the Zip file") {
-					if(script.fileExists(mustHaveFilePath)){
-						String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: MustHaveFile,
+
+    /**
+     * Collect all the information for the musthaves.
+     * Copies all the required files from the workspace.
+     * Also collected the information about the environment, Input Params, Build Log
+    */
+    protected final void sanitizeFiles() {
+        def sanitizableResources = ['HeadlessBuild.properties']
+        script.dir(mustHavePath){
+            sanitizableResources.each { propertyFileName ->
+                if (script.fileExists(propertyFileName)) {
+                    String fileContent = script.readFile file: propertyFileName
+                    fileContent = fileContent.replaceAll('\\.password=.*','.password=********')
+                    script.writeFile file: propertyFileName, text: fileContent
+                }
+            }
+        }
+    }
+
+    /**
+     * Collect all the information for the musthaves.
+     * Copies all the required files from the workspace.
+     * Also collected the information about the environment, Input Params, Build Log
+    */
+    protected final void collectAllInformation() {
+        String buildLog = "JenkinsBuild.log"
+        script.dir(mustHavePath){
+            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script)
+            script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
+            script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
+            if(mustHaveArtifacts.size() > 0){
+                mustHaveArtifacts.each{
+                    String sourceFile = [it.path, it.name].join(separator)
+                    script.echo "Source File is : ${sourceFile}"
+                    if(script.fileExists(sourceFile)){
+                        script.shellCustom("cp -f \"${sourceFile}\" \"${mustHavePath}\"", isUnixNode)
+                    }
+                }
+            }
+        }
+        sanitizeFiles()
+    }
+    /**
+     * Prepares all the information for the debugging any build failures.
+     * Zips all the files into a single zip file and upload into S3 and give the S3 URL
+     * in a map so that Viz job copies later from S3 to create single zip for all builds.
+     */
+    protected final void PrepareMustHaves() {
+        String MustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
+        String mustHaveFilePath = [projectFullPath, MustHaveFile].join(separator)
+        script.catchErrorCustom("Error while preparing must haves"){
+            collectAllInformation()
+            script.dir(projectFullPath){
+                script.zip dir:mustHavePath, zipFile: MustHaveFile
+                script.catchErrorCustom("Failed to create the Zip file") {
+                    if(script.fileExists(mustHaveFilePath)){
+                        String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: MustHaveFile,
 	                                    sourceFilePath: projectFullPath, script, true // true to print the url, but it has to be removed later
-						mustHaves.add([
+                        mustHaves.add([
                                 channelVariableName: channelVariableName, name: MustHaveFile, url: s3MustHaveAuthUrl
                         ])
-						script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
-					}
-				}
-			}
-		}
-	}
+                        script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
+                    }
+                }
+            }
+        }
+    }
 
 }
 

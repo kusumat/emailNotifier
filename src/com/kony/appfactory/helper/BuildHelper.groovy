@@ -140,26 +140,26 @@ class BuildHelper implements Serializable {
         causedBy
     }
 
-	/**
-	 * Get the build log for a build of a job
-	 */
-	@NonCPS
-	protected static String getBuildLogText(script) {
-		String buildLogText
-		Jenkins.instance.getAllItems().each{ item->
-			Job job = item instanceof com.cloudbees.hudson.plugins.folder.Folder ? null : item
-			if(job){
-				if(job.getFullName() == script.env.JOB_NAME){
-					Run currentBuild = job.getBuild(script.env.BUILD_ID)
-					if(currentBuild){
-						File file = currentBuild.getLogFile()
-						buildLogText = file.getText()
-					}
-				}
-			}
-		}
-		buildLogText
-	}
+    /**
+     * Get the build log for a build of a job
+     */
+    @NonCPS
+    protected static String getBuildLogText(script) {
+        String buildLogText
+        Jenkins.instance.getAllItems().each{ item->
+            Job job = item instanceof com.cloudbees.hudson.plugins.folder.Folder ? null : item
+            if(job){
+                if(job.getFullName() == script.env.JOB_NAME){
+                    Run currentBuild = job.getBuild(script.env.BUILD_ID)
+                    if(currentBuild){
+                        File file = currentBuild.getLogFile()
+                        buildLogText = file.getText()
+                    }
+                }
+            }
+        }
+        buildLogText
+    }
 	
     /**
      * Wraps code with Fabric environment variables.
@@ -504,6 +504,21 @@ class BuildHelper implements Serializable {
             }
         }
         return isActiveNodeAvailable
+    }
+	
+    protected final static getEnvironmentInfo(script){
+        String cmd = script.isUnix() ? "env" : "set"
+        String environmentInfo = script.shellCustom(cmd, script.isUnix(),[returnStdout: true]).trim()
+
+        return environmentInfo
+    }
+
+    protected final static getInputParamsAsString(script){
+        def paramsInfo = StringBuilder.newInstance()
+        script.params.each{
+            paramsInfo.append "${it.key} = ${it.value}\n"
+        }
+        return paramsInfo.toString()
     }
 	
     protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false) {
