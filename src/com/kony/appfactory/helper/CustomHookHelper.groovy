@@ -1,7 +1,6 @@
 package com.kony.appfactory.helper
 
 import hudson.model.Computer
-import hudson.plugins.sectioned_view.ConfigFileHelper
 import jenkins.model.Jenkins
 import hudson.EnvVars;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
@@ -17,6 +16,14 @@ class CustomHookHelper implements Serializable {
 
     String projectName
 
+    /*
+    * Extract hook list to run from Config File Content
+    * @param script
+    * @param hookStage
+    * @param pipelineBuildStage
+    * @param jsonContent
+    * @return hookList
+    */
     protected static getHookList(script, hookStage, pipelineBuildStage, jsonContent){
         def stageContent = jsonContent[hookStage]
 
@@ -38,6 +45,12 @@ class CustomHookHelper implements Serializable {
         return updatedIndexHookList;
     }
 
+    /*Get boolean isPropagate status of a hook
+    * @param hookName
+    * @param hookStage
+    * @param jsonContent
+    * @return isPropagateBuildResult
+    */
     protected static isPropagateBuildStatus(hookName, hookStage, jsonContent){
         def isPropagateBuildResult = null
         def stageContent = jsonContent[hookStage]
@@ -46,73 +59,89 @@ class CustomHookHelper implements Serializable {
                 isPropagateBuildResult =  it['propagateBuildStatus']
             }
         }
-
         return isPropagateBuildResult
     }
 
+    /* Trigger hook
+    * @param script
+    * @param projectName
+    * @param hookStage
+    * @param pipelineBuildStage
+    */
     protected static triggerHooks(script, projectName, hookStage, pipelineBuildStage){
 
-        def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHook/" + projectName
-        getConfigFileInWorkspace(script, customhooksConfigFolder, projectName)
-        def hookProperties = script.readJSON file:"${projectName}.json"
+        def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHook/"
 
-        String currentComputer = "${script.env.NODE_NAME}"
+        def content = ConfigFileHelper.getOlderContent(customhooksConfigFolder, projectName)
 
-        String hookSlave = getHookSlaveForCurrentBuildSlave(currentComputer)
+        if(content) {
+
+            //getConfigFileInWorkspace(script, customhooksConfigFolder, projectName)
+
+            script.writeFile file: "${projectName}.json", text: content
+
+            def hookProperties = script.readJSON file: "${projectName}.json"
+
+            String currentComputer = "${script.env.NODE_NAME}"
+
+            String hookSlave = getHookSlaveForCurrentBuildSlave(currentComputer)
 
 
-        hookSlave ?: script.error("Not able to find hookSlave to run Custom Hooks");
-        script.echo("Initilize hook agent $hookSlave ")
+            hookSlave ?: script.error("Not able to find hookSlave to run Custom Hooks");
+            script.echo("Initilize hook agent $hookSlave ")
 
-        def hookList = getHookList(script, hookStage, pipelineBuildStage,  hookProperties)
-        hookList ?: script.echo("Hooks not defined in $hookStage")
+            def hookList = getHookList(script, hookStage, pipelineBuildStage, hookProperties)
+            hookList ?: script.echo("Hooks not defined in $hookStage")
 
-        script.stage(hookStage){
-            for (hookName in hookList){
+            script.stage(hookStage) {
+                for (hookName in hookList) {
 
-                def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
-                script.echo(isPropagateBuildResult.toString() + hookName)
+                    def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
+                    script.echo(isPropagateBuildResult.toString() + hookName)
 
-                def hookJobName = getHookJobName(script, projectName, hookName, hookStage)
-                if(Boolean.valueOf(isPropagateBuildResult)){
-                    script.build job: hookJobName,
-                            propagate: true, wait: true,
-                            parameters: [[$class: 'WHideParameterValue',
-                                          name: 'UPSTREAM_JOB_WORKSPACE',
-                                          value: "$script.env.WORKSPACE"],
+                    def hookJobName = getHookJobName(projectName, hookName, hookStage)
+                    if (Boolean.valueOf(isPropagateBuildResult)) {
+                        script.build job: hookJobName,
+                                propagate: true, wait: true,
+                                parameters: [[$class: 'WHideParameterValue',
+                                              name  : 'UPSTREAM_JOB_WORKSPACE',
+                                              value : "$script.env.WORKSPACE"],
 
-                                         [$class: 'WHideParameterValue',
-                                          name: 'HOOK_SLAVE',
-                                          value: "$hookSlave"],
+                                             [$class: 'WHideParameterValue',
+                                              name  : 'HOOK_SLAVE',
+                                              value : "$hookSlave"],
 
-                                         [$class: 'WHideParameterValue',
-                                          name: 'BUILD_SLAVE',
-                                          value: "$currentComputer"]]
-                }
-                else{
-                    script.build job: hookJobName,
-                            propagate: false,
-                            wait: true,
-                            parameters: [[$class: 'WHideParameterValue',
-                                          name: 'UPSTREAM_JOB_WORKSPACE',
-                                          value: "$script.env.WORKSPACE"],
+                                             [$class: 'WHideParameterValue',
+                                              name  : 'BUILD_SLAVE',
+                                              value : "$currentComputer"]]
+                    } else {
+                        script.build job: hookJobName,
+                                propagate: false,
+                                wait: true,
+                                parameters: [[$class: 'WHideParameterValue',
+                                              name  : 'UPSTREAM_JOB_WORKSPACE',
+                                              value : "$script.env.WORKSPACE"],
 
-                                         [$class: 'WHideParameterValue',
-                                          name: 'HOOK_SLAVE',
-                                          value: "$hookSlave"],
+                                             [$class: 'WHideParameterValue',
+                                              name  : 'HOOK_SLAVE',
+                                              value : "$hookSlave"],
 
-                                         [$class: 'WHideParameterValue',
-                                          name: 'BUILD_SLAVE',
-                                          value: "$currentComputer"]]
+                                             [$class: 'WHideParameterValue',
+                                              name  : 'BUILD_SLAVE',
+                                              value : "$currentComputer"]]
+                    }
                 }
             }
         }
+        else{
+            script.echo("Hooks not defined in $hookStage");
+        }
     }
 
-    protected static final getHookJobName(script, String projectName, String hookName, String hookType) {
-        String hookBaseFolder = 'CustomHook'
-
-        projectName + '/Visualizer/Builds/' + hookBaseFolder + '/' + hookType + '/' + hookName ?: script.error('Unknown Hook Type specified in Function call')
+    /* return hook full path */
+    protected static final getHookJobName(projectName, hookName, hookType) {
+        def hookFullName = [projectName, 'Visualizer', 'Builds', 'CustomHook', hookType, hookName].join('/')
+        hookFullName
     }
 
 
@@ -125,16 +154,7 @@ class CustomHookHelper implements Serializable {
 
     }
 
-
-    protected static getConfigFileInWorkspace(script, folderFullName, fileId){
-        /* Get hook configuration files in workspace */
-        /*Params Folder Name and Fileid*/
-        def content = ConfigFileHelper.getOlderContent(folderFullName, fileId)
-        script.writeFile file: fileId.json, text: content
-        //script.configFileProvider([script.configFile(fileId: fileId, targetLocation: "${fileId}.json")]) {
-        //}
-    }
-
+    /* Return HookSlave for Current MacSlave*/
     protected static getHookSlaveForCurrentBuildSlave(currentComputer){
         //String currentComputer = Computer.currentComputer().getDisplayName();
         String hookSlaveForCurrentComputer = null;

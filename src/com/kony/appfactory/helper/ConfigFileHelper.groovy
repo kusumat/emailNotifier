@@ -11,23 +11,23 @@ import org.jenkinsci.plugins.configfiles.custom.CustomConfig
 import org.jenkinsci.plugins.configfiles.folder.FolderConfigFileProperty
 
 
-class ConfigFileHelper {
+class ConfigFileHelper implements Serializable {
 
-    def createConfigFile(folderName, fileId, content) {
+    static createConfigFile(folderName, fileId, content) {
         def folderObject = getFolderObject(folderName)
-        FolderConfigFileProperty folderConfigFilesObject = getConfigPropertyObject(folderObject)
-        Collection<Config> availableConfigs = getAvailableConfigs(folderConfigFilesObject)
+        def folderConfigFilesObject = getConfigPropertyObject(folderObject)
+        def availableConfigs = getAvailableConfigs(folderConfigFilesObject)
         createConfig(fileId, content, folderConfigFilesObject, availableConfigs)
     }
 
-    def getOlderContent(String folderName, String fileId){
+    static getOlderContent(folderName, fileId){
         def folderObject = getFolderObject(folderName)
-        FolderConfigFileProperty folderConfigFilesObject = getConfigPropertyObject(folderObject)
-        Collection<Config> availableConfigs = getAvailableConfigs(folderConfigFilesObject)
+        def folderConfigFilesObject = getConfigPropertyObject(folderObject)
+        def availableConfigs = getAvailableConfigs(folderConfigFilesObject)
         def olderContent = getConfigFileContent(fileId, availableConfigs);
         return olderContent
     }
-    String getConfigFileContent(String configFileName, Collection<Config> availableConfigs) throws IOException {
+    static getConfigFileContent(configFileName, availableConfigs) throws IOException {
         String olderContent = "";
 
         for(Config config : availableConfigs){
@@ -43,18 +43,16 @@ class ConfigFileHelper {
         }
         return olderContent;
     }
-    /*
-    To be able to store devices for the test with Config File Provider,
-    we need to get Folder object where we want to store devices list first.
-    */
-    def getFolderObject(folderName) {
+
+
+    static getFolderObject(folderName) {
         def folderObject = null
         folderObject = Jenkins.instance.getItemByFullName(folderName);
         folderObject
     }
 
     /* Get Config File Provider property in provided project Folder for storing devices list */
-    def getConfigPropertyObject(folderObject) {
+    static getConfigPropertyObject(folderObject) {
         def folderConfigFilesObject = null
         def folderProperties
 
@@ -70,7 +68,7 @@ class ConfigFileHelper {
     }
 
     /* Get all device pools that been created before, for remove step */
-    def getAvailableConfigs(folderConfigFilesObject) {
+    public static getAvailableConfigs(folderConfigFilesObject) {
         def availableConfigs = null
 
         if (folderConfigFilesObject) {
@@ -81,7 +79,7 @@ class ConfigFileHelper {
     }
 
     /* Create Config File object of CustomConfig type for provided device list */
-    def createConfig(configFileName, content, folderConfigFilesObject, availableConfigs) {
+    public static createConfig(configFileName, content, folderConfigFilesObject, availableConfigs) {
         def unique = true
         def creationDate = new Date().format("yyyyMMdd_HH-mm-ss-SSS", TimeZone.getTimeZone('UTC'))
         def newConfigComments = "This config created at ${creationDate} for hook ${configFileName}"
