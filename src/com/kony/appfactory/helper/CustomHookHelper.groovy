@@ -71,6 +71,8 @@ class CustomHookHelper implements Serializable {
     protected static triggerHooks(script, projectName, hookStage, pipelineBuildStage){
 
         def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHook/"
+        getConfigFileInWorkspace(script, customhooksConfigFolder, projectName)
+        def hookProperties = script.readJSON file:"${projectName}.json"
 
         def content = ConfigFileHelper.getOlderContent(customhooksConfigFolder, projectName)
 
@@ -154,7 +156,15 @@ class CustomHookHelper implements Serializable {
 
     }
 
-    /* Return HookSlave for Current MacSlave*/
+    protected static getConfigFileInWorkspace(script, folderFullName, fileId){
+        /* Get hook configuration files in workspace */
+        /*Params Folder Name and Fileid*/
+        def content = ConfigFileHelper.getOlderContent(folderFullName, fileId)
+        script.writeFile file: "${fileId}.json", text: content
+        //script.configFileProvider([script.configFile(fileId: fileId, targetLocation: "${fileId}.json")]) {
+        //}
+    }
+    
     protected static getHookSlaveForCurrentBuildSlave(currentComputer){
         //String currentComputer = Computer.currentComputer().getDisplayName();
         String hookSlaveForCurrentComputer = null;
