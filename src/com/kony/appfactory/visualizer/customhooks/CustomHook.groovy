@@ -65,7 +65,6 @@ class CustomHook implements Serializable {
                 }
 
                 script.stage('Prepare Environment for Run'){
-                    def command =
                     script.sh 'pwd'
                     script.sh 'chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
                     //script.sh 'find vis_ws -type f -exec chmod -R +a "hookslave read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\ ;'
@@ -78,19 +77,27 @@ class CustomHook implements Serializable {
         script.node(hookSlave){
             script.ws([upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')) {
 
-                script.stage("Running CustomHook") {
-                    script.dir(hookDir) {
-                        if (buildAction == "Execute Ant") {
-                            script.sh "export JAVA_HOME='/Appfactory/Jenkins/tools/jdk1.8.0_112.jdk' && /Appfactory/Jenkins/tools/ant-1.8.2/bin/ant -f build.xml ${scriptArguments}"
-                        } else if (buildAction == "Execute Maven") {
-                            script.sh "mvn ${scriptArguments}"
-                        } else {
-                            script.echo("unknown build script ")
-                        }
-                    }
+                def javaHome = script.env.JDK_1_8_0_112_HOME
+                def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
 
-                    script.dir(hookDir){
-                        script.sh 'set +e && find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
+                def pathSeparator = script.isUnix() ? ':' : ';'
+
+                script.withEnv(["JAVA_HOME=${javaHome}", "PATH+TOOLS=${javaHome}${pathSeparator}${antBinPath}"]) {
+                    script.stage("Running CustomHook") {
+                        script.dir(hookDir) {
+                            if (buildAction == "Execute Ant") {
+                                //script.sh "export JAVA_HOME='/Appfactory/Jenkins/tools/jdk1.8.0_112.jdk' && /Appfactory/Jenkins/tools/ant-1.8.2/bin/ant -f build.xml ${scriptArguments}"
+                                script.sh "ant -f build.xml ${scriptArguments}"
+                            } else if (buildAction == "Execute Maven") {
+                                script.sh "mvn ${scriptArguments}"
+                            } else {
+                                script.echo("unknown build script ")
+                            }
+                        }
+
+                        script.dir(hookDir) {
+                            script.sh 'set +e && find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
+                        }
                     }
                 }
             }
