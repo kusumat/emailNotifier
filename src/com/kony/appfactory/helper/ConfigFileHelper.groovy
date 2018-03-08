@@ -1,16 +1,24 @@
 package com.kony.appfactory.helper
 
+/* Required to get folder object */
+import jenkins.model.Jenkins
+
+/* Required to extract content from from ConfigFiles*/
 import hudson.FilePath
 import hudson.model.Run
 import hudson.model.TaskListener
-import jenkins.model.Jenkins
-import com.cloudbees.hudson.plugins.folder.Folder
+
+/* Config File Provider Plugin classes to manipulate config files  */
 import org.jenkinsci.lib.configprovider.ConfigProvider
 import org.jenkinsci.lib.configprovider.model.Config
 import org.jenkinsci.plugins.configfiles.custom.CustomConfig
 import org.jenkinsci.plugins.configfiles.folder.FolderConfigFileProperty
 
 
+/* There are many cases, when we want to use config files. Existing pipeline steps for configs files
+*  has lot of disadvantages.
+*  This class provides static function to create files, get content etc.
+* */
 class ConfigFileHelper implements Serializable {
 
     static createConfigFile(folderName, fileId, content) {
@@ -68,7 +76,7 @@ class ConfigFileHelper implements Serializable {
     }
 
     /* Get all device pools that been created before, for remove step */
-    public static getAvailableConfigs(folderConfigFilesObject) {
+    static getAvailableConfigs(folderConfigFilesObject) {
         def availableConfigs = null
 
         if (folderConfigFilesObject) {
@@ -79,7 +87,7 @@ class ConfigFileHelper implements Serializable {
     }
 
     /* Create Config File object of CustomConfig type for provided device list */
-    public static createConfig(configFileName, content, folderConfigFilesObject, availableConfigs) {
+    static createConfig(configFileName, content, folderConfigFilesObject, availableConfigs) {
         def unique = true
         def creationDate = new Date().format("yyyyMMdd_HH-mm-ss-SSS", TimeZone.getTimeZone('UTC'))
         def newConfigComments = "This config created at ${creationDate} for hook ${configFileName}"

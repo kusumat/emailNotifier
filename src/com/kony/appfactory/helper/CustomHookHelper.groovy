@@ -1,13 +1,9 @@
 package com.kony.appfactory.helper
 
-import hudson.model.Computer
-import jenkins.model.Jenkins
-import hudson.EnvVars;
-import hudson.slaves.EnvironmentVariablesNodeProperty;
-import hudson.slaves.NodeProperty;
-import hudson.slaves.NodePropertyDescriptor;
-import hudson.util.DescribableList;
 import com.kony.appfactory.helper.ConfigFileHelper
+import jenkins.model.Jenkins
+import hudson.slaves.EnvironmentVariablesNodeProperty;
+
 
 /**
  * Implements logic related to customHooks execution process.
@@ -166,7 +162,7 @@ class CustomHookHelper implements Serializable {
     }
     
     protected static getHookSlaveForCurrentBuildSlave(currentComputer){
-        //String currentComputer = Computer.currentComputer().getDisplayName();
+
         String hookSlaveForCurrentComputer = null;
         Jenkins instance = Jenkins.getInstance()
 
