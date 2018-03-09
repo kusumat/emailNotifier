@@ -1,0 +1,6 @@
+Prints on console with ansi color format.<br>
+<b>Options: </b>
+<ul>
+    <li><b><i>String</i></b> <u>print message</u></li>
+    <li><b><i>String</i></b> <u>echoType [INFO/WARN/ERROR]</u> <b>INFO by default</b>, This argument is used for determining color type for different type of console messages labelled with INFO/WARN/ERROR. If any other argument is passed, that will printed with no color font.</li>
+</ul>

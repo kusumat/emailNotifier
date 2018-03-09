@@ -139,7 +139,7 @@ class TestAutomation implements Serializable {
                 }
                 else
                 {
-                    script.error "Build parameter ${parameter.key} value is not valid URL!"
+                    script.echoCustom("Build parameter ${parameter.key} value is not valid URL!",'ERROR')
                 }
             }
 
@@ -152,20 +152,20 @@ class TestAutomation implements Serializable {
             fail build if both options provided.
          */
         if (testBinaryUrlParameter && scmParameters) {
-            script.error("Please provide only one option for the source of test scripts: GIT or URL")
+            script.echoCustom("Please provide only one option for the source of test scripts: GIT or URL",'ERROR')
         }
         /* Same if none of the options provided */
         else if (!testBinaryUrlParameter && !scmParameters) {
-            script.error "Please provide at least one source of test binaries"
+            script.echoCustom("Please provide at least one source of test binaries",'ERROR')
         }
 
         /* Fail build if testBinaryUrlParameter been provided without appBinaryUrlParameters */
         if (!appBinaryUrlParameters && testBinaryUrlParameter) {
-            script.error "Please provide at least one of application binaries URL"
+            script.echoCustom("Please provide at least one of application binaries URL",'ERROR')
         }
         /* Fail build if appBinaryUrlParameters been provided without test pool */
         else if (!poolNameParameter && appBinaryUrlParameters) {
-            script.error "Please provide pool to test on"
+            script.echoCustom("Please provide pool to test on",'ERROR')
         }
     }
 
@@ -225,7 +225,7 @@ class TestAutomation implements Serializable {
 
                 stepsToRun.put("${stageName}${artifactName}", step)
             } else {
-                script.echo "${artifactName.replaceAll('_', ' ')} binary was not provided!"
+                script.echoCustom("${artifactName.replaceAll('_', ' ')} binary was not provided!",'WARN')
             }
         }
 
@@ -316,9 +316,7 @@ class TestAutomation implements Serializable {
                 }
                 /* else notify user that result value is empty */
                 else {
-                    script.echo(
-                            "Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!"
-                    )
+                    script.echoCustom("Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!",'WARN')
                 }
             }
         }
@@ -351,10 +349,10 @@ class TestAutomation implements Serializable {
 
             /* Depending on artifact name we need to chose appropriate pool for the run */
             def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
-                    (devicePoolArns.phones) ?: script.error("Artifacts provided " +
-                            "for tablets, but TABLET devices were provided") :
-                    (devicePoolArns.tablets ?: script.error("Artifacts provided for " +
-                            "tablets, but PHONE devices were provided"))
+                    (devicePoolArns.phones) ?: script.echoCustom("Artifacts provided " +
+                            "for phones, but TABLET devices were provided",'ERROR') :
+                    (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
+                            "tablets, but PHONE devices were provided",'ERROR'))
 
             /* If we have application binaries and test binaries, schedule the run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
@@ -364,13 +362,13 @@ class TestAutomation implements Serializable {
                 deviceFarmTestRunArns["$artifactName"] = runArn
                 /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
             } else {
-                script.echo "Failed to get uploadArn"
+                script.echoCustom("Failed to get uploadArn",'WARN')
             }
         }
 
         /* Prepare parallel steps */
         def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
-                script.error("No artifacts to upload and run!")
+                script.echoCustom("No artifacts to upload and run!",'ERROR')
 
         /* Run prepared step in parallel */
         if (stepsToRun) {
@@ -395,7 +393,7 @@ class TestAutomation implements Serializable {
         }
         def stepsToRun = prepareParallelSteps(
                 testPackage << projectArtifacts, 'fetch_', step
-        ) ?: script.error("No artifacts to fetch!")
+        ) ?: script.echoCustom("No artifacts to fetch!",'ERROR')
 
         /* Run prepared step in parallel */
         if (stepsToRun) {
@@ -429,132 +427,135 @@ class TestAutomation implements Serializable {
     protected final void createPipeline() {
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
-            script.stage('Check provided parameters') {
-                validateBuildParameters(script.params)
-            }
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                script.stage('Check provided parameters') {
+                    validateBuildParameters(script.params)
+                }
 
-            /* Allocate a slave for the run */
-            script.node(libraryProperties.'test.automation.node.label') {
-                /* Set environment-dependent variables */
-                workspace = script.env.WORKSPACE
-                checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
-                projectWorkspacePath = (projectRoot) ?
-                        ([workspace, checkoutRelativeTargetFolder] + projectRoot.dropRight(1))?.join(separator) :
-                        [workspace, projectWorkspaceFolderName]?.join(separator)
-                projectFullPath = [
-                        workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
-                ].findAll().join(separator)
-                testFolder = [projectFullPath, libraryProperties.'test.automation.scripts.path'].join(separator)
-                deviceFarmWorkingFolder = [
-                        projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'
-                ].join(separator)
+                /* Allocate a slave for the run */
+                script.node(libraryProperties.'test.automation.node.label') {
+                    /* Set environment-dependent variables */
+                    workspace = script.env.WORKSPACE
+                    checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
+                    projectWorkspacePath = (projectRoot) ?
+                            ([workspace, checkoutRelativeTargetFolder] + projectRoot.dropRight(1))?.join(separator) :
+                            [workspace, projectWorkspaceFolderName]?.join(separator)
+                    projectFullPath = [
+                            workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
+                    ].findAll().join(separator)
+                    testFolder = [projectFullPath, libraryProperties.'test.automation.scripts.path'].join(separator)
+                    deviceFarmWorkingFolder = [
+                            projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'
+                    ].join(separator)
 
-                try {
-                    /*
+                    try {
+                        /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
                      */
-                    script.cleanWs deleteDirs: true
+                        script.cleanWs deleteDirs: true
 
-                    /* Build test automation scripts if URL with test binaries was not provided */
-                    if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
-                        script.stage('Checkout') {
-                            BuildHelper.checkoutProject script: script,
-                                    projectRelativePath: checkoutRelativeTargetFolder   ,
-                                    scmBranch: scmBranch,
-                                    scmCredentialsId: scmCredentialsId,
-                                    scmUrl: scmUrl
-                        }
+                        /* Build test automation scripts if URL with test binaries was not provided */
+                        if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
+                            script.stage('Checkout') {
+                                BuildHelper.checkoutProject script: script,
+                                        projectRelativePath: checkoutRelativeTargetFolder,
+                                        scmBranch: scmBranch,
+                                        scmCredentialsId: scmCredentialsId,
+                                        scmUrl: scmUrl
+                            }
 
-                        script.stage('Build') {
-                            /* Build Test Automation scripts */
-                            build()
-                        }
+                            script.stage('Build') {
+                                /* Build Test Automation scripts */
+                                build()
+                            }
 
-                        script.stage('Publish test automation scripts build result to S3') {
-                            if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
-                                AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
-                                        bucketPath: [
-                                                'Tests',
-                                                script.env.JOB_BASE_NAME,
-                                                script.env.BUILD_NUMBER
-                                        ].join('/'),
-                                        sourceFilePath: "${testFolder}/target", script, true
-                            } else {
-                                script.error 'Failed to find build result artifact!'
+                            script.stage('Publish test automation scripts build result to S3') {
+                                if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
+                                    AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
+                                            bucketPath: [
+                                                    'Tests',
+                                                    script.env.JOB_BASE_NAME,
+                                                    script.env.BUILD_NUMBER
+                                            ].join('/'),
+                                            sourceFilePath: "${testFolder}/target", script, true
+                                } else {
+                                    script.echoCustom('Failed to find build result artifact!','ERROR')
+                                }
                             }
                         }
+                    } catch (Exception e) {
+                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                        script.echoCustom(exceptionMessage,'WARN')
+                        script.currentBuild.result = 'FAILURE'
+                    } finally {
+                        NotificationsHelper.sendEmail(script, 'buildTests')
+                        /* Exit in case of test binaries failed, throw error to build console. */
+                        if (script.currentBuild.result == 'FAILURE') {
+                            script.echoCustom("Something went wrong... Unable to build Test binary!",'WARN')
+                        }
                     }
-                } catch (Exception e) {
-                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                    script.echo "ERROR: $exceptionMessage"
-                    script.currentBuild.result = 'FAILURE'
-                } finally {
-                    NotificationsHelper.sendEmail(script, 'buildTests')
-                    /* Exit in case of test binaries failed, throw error to build console. */
-                    if (script.currentBuild.result == 'FAILURE') {
-                        script.error("Something went wrong... Unable to build Test binary!")
-                    }
-                }
 
-                /* Run tests on provided binaries */
-                if (runTests) {
-                    try {
-                        script.dir(deviceFarmWorkingFolder) {
-                            /* Providing AWS region for Device Farm, currently it is available in us-west-2 */
-                            script.withAWS(region: awsRegion) {
-                                script.stage('Fetch binaries') {
-                                    fetchBinaries()
-                                }
+                    /* Run tests on provided binaries */
+                    if (runTests) {
+                        try {
+                            script.dir(deviceFarmWorkingFolder) {
+                                /* Providing AWS region for Device Farm, currently it is available in us-west-2 */
+                                script.withAWS(region: awsRegion) {
+                                    script.stage('Fetch binaries') {
+                                        fetchBinaries()
+                                    }
 
-                                script.stage('Create Device Farm Project') {
-                                    /* Check if project already exists */
-                                    deviceFarmProjectArn = (deviceFarm.getProject(projectName)) ?:
-                                            /*
+                                    script.stage('Create Device Farm Project') {
+                                        /* Check if project already exists */
+                                        deviceFarmProjectArn = (deviceFarm.getProject(projectName)) ?:
+                                                /*
                                                 If not, create new project and return ARN or break the build,
                                                 if ARN equals null
                                              */
-                                            deviceFarm.createProject(projectName) ?:
-                                                    script.error("Project ARN is empty!")
-                                }
+                                                deviceFarm.createProject(projectName) ?:
+                                                        script.echoCustom("Project ARN is empty!",'ERROR')
+                                    }
 
-                                script.stage('Create Device Pools') {
-                                    devicePoolArns = deviceFarm.createDevicePools(
-                                            deviceFarmProjectArn, devicePoolName
-                                    ) ?: script.error("Device pool ARN list is empty!")
-                                }
+                                    script.stage('Create Device Pools') {
+                                        devicePoolArns = deviceFarm.createDevicePools(
+                                                deviceFarmProjectArn, devicePoolName
+                                        ) ?: script.echoCustom("Device pool ARN list is empty!",'ERROR')
+                                    }
 
-                                script.stage('Upload test package') {
-                                    uploadTestBinaries()
-                                }
+                                    script.stage('Upload test package') {
+                                        uploadTestBinaries()
+                                    }
 
-                                script.stage('Upload application binaries and schedule run') {
-                                    uploadAndRun()
-                                }
+                                    script.stage('Upload application binaries and schedule run') {
+                                        uploadAndRun()
+                                    }
 
-                                script.stage('Get Test Results') {
-                                    fetchTestResults()
+                                    script.stage('Get Test Results') {
+                                        fetchTestResults()
+                                    }
                                 }
 
                                 script.stage('PostTest CustomHooks'){
                                     CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", 'IOS_STAGE')
                                 }
                             }
-                        }
-                    } catch (Exception e) {
-                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                        script.echo "ERROR: $exceptionMessage"
-                        script.currentBuild.result = 'FAILURE'
-                    } finally {
-                        NotificationsHelper.sendEmail(script, 'runTests', [
-                                runs          : deviceFarmTestRunResults,
-                                devicePoolName: devicePoolName,
-                                binaryName    : getBinaryNameForEmail(projectArtifacts),
-                                missingDevices: script.env.MISSING_DEVICES
-                        ], true)
+                        } catch (Exception e) {
+                            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                            script.echoCustom(exceptionMessage,'WARN')
+                            script.currentBuild.result = 'FAILURE'
+                        } finally {
+                            NotificationsHelper.sendEmail(script, 'runTests', [
+                                    runs          : deviceFarmTestRunResults,
+                                    devicePoolName: devicePoolName,
+                                    binaryName    : getBinaryNameForEmail(projectArtifacts),
+                                    missingDevices: script.env.MISSING_DEVICES
+                            ], true)
 
-                        /* Cleanup created pools and uploads */
-                        cleanup(deviceFarmUploadArns, devicePoolArns)
+                            /* Cleanup created pools and uploads */
+                            cleanup(deviceFarmUploadArns, devicePoolArns)
+                        }
                     }
                 }
             }

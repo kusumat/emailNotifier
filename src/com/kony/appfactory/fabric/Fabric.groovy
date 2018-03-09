@@ -95,8 +95,8 @@ class Fabric implements Serializable {
      */
     protected final void fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCommandOptions = [:]) {
         /* Check required arguments */
-        (fabricCommand) ?: script.error("fabricCommand argument can't be null")
-        (cloudCredentialsID) ?: script.error("cloudCredentialsID argument can't be null")
+        (fabricCommand) ?: script.echoCustom("fabricCommand argument can't be null",'ERROR')
+        (cloudCredentialsID) ?: script.echoCustom("cloudCredentialsID argument can't be null",'ERROR')
 
         String errorMessage = ['Failed to run', fabricCommand, 'command'].join(' ')
 
@@ -449,7 +449,7 @@ class Fabric implements Serializable {
             closure()
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-            script.echo "ERROR: $exceptionMessage"
+            script.echoCustom(exceptionMessage,'WARN')
             script.currentBuild.result = 'FAILURE'
         } finally {
             setBuildDescription(buildDescriptionItems)
@@ -464,108 +464,111 @@ class Fabric implements Serializable {
     protected final void exportApp() {
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
-            fabricCommand = 'export'
-            /* Data for e-mail notification */
-            emailData = [
-                    projectName           : fabricAppName,
-                    exportRepositoryUrl   : exportRepositoryUrl,
-                    exportRepositoryBranch: exportRepositoryBranch,
-                    commitAuthor          : commitAuthor,
-                    commitMessage         : commitMessage,
-                    authorEmail           : authorEmail,
-                    commandName           : fabricCommand.capitalize()
-            ]
-            buildDescriptionItems = [
-                    'Application name': fabricAppName
-            ]
-            boolean appChanged
-            /* Folder name for storing exported application */
-            String exportFolder = fabricCommand
-            String projectName = getGitProjectName(exportRepositoryUrl) ?:
-                    script.echo("projectName property can't be null!")
-
-            script.stage('Check provided parameters') {
-                def mandatoryParameters = [
-                        'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_EXPORT_REPOSITORY_URL',
-                        'PROJECT_EXPORT_BRANCH', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID', 'AUTHOR_EMAIL'
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                fabricCommand = 'export'
+                /* Data for e-mail notification */
+                emailData = [
+                        projectName           : fabricAppName,
+                        exportRepositoryUrl   : exportRepositoryUrl,
+                        exportRepositoryBranch: exportRepositoryBranch,
+                        commitAuthor          : commitAuthor,
+                        commitMessage         : commitMessage,
+                        authorEmail           : authorEmail,
+                        commandName           : fabricCommand.capitalize()
                 ]
+                buildDescriptionItems = [
+                        'Application name': fabricAppName
+                ]
+                boolean appChanged
+                /* Folder name for storing exported application */
+                String exportFolder = fabricCommand
+                String projectName = getGitProjectName(exportRepositoryUrl) ?:
+                        script.echoCustom("projectName property can't be null!",'WARN')
 
-                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
-            }
+                script.stage('Check provided parameters') {
+                    def mandatoryParameters = [
+                            'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_EXPORT_REPOSITORY_URL',
+                            'PROJECT_EXPORT_BRANCH', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID', 'AUTHOR_EMAIL'
+                    ]
 
-            pipelineWrapper {
-                /* Allocate a slave for the run */
-                script.node(nodeLabel) {
-                    isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
-                    script.stage('Prepare build-node environment') {
-                        /*
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+                }
+
+                pipelineWrapper {
+                    /* Allocate a slave for the run */
+                    script.node(nodeLabel) {
+                        isUnixNode = (script.isUnix()) ?: script.echoCustom("Slave's OS type for this run is not supported!",'ERROR')
+                        script.stage('Prepare build-node environment') {
+                            /*
                             Clean workspace, to be sure that we have not any items from previous build,
                             and build environment completely new, but exclude zip file with exported
                             application from previous run.
                          */
-                        script.cleanWs deleteDirs: true,
-                                patterns: [[pattern: "**/${projectName}_PREV.zip", type: 'EXCLUDE']]
-                        fetchFabricCli(fabricCliVersion)
-                    }
+                            script.cleanWs deleteDirs: true,
+                                    patterns: [[pattern: "**/${projectName}_PREV.zip", type: 'EXCLUDE']]
+                            fetchFabricCli(fabricCliVersion)
+                        }
 
-                    script.stage('Export project from Fabric') {
-                        def fabricCliOptions = [
-                                '-t': "\"$cloudAccountId\"",
-                                '-a': "\"$fabricAppName\"",
-                                '-f': "\"${projectName}.zip\""
-                        ]
+                        script.stage('Export project from Fabric') {
+                            def fabricCliOptions = [
+                                    '-t': "\"$cloudAccountId\"",
+                                    '-a': "\"$fabricAppName\"",
+                                    '-f': "\"${projectName}.zip\""
+                            ]
 
-                        fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
-                    }
+                            fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
+                        }
 
-                    script.stage('Check if there were changes') {
-                        appChanged = fabricAppChanged(
-                                previousPath: "${projectName}_PREV.zip",
-                                currentPath: "${projectName}.zip"
-                        )
+                        script.stage('Check if there were changes') {
+                            appChanged = fabricAppChanged(
+                                    previousPath: "${projectName}_PREV.zip",
+                                    currentPath: "${projectName}.zip"
+                            )
+
+                            if (appChanged) {
+                                script.echoCustom("There were some changes from previous run, proceeding...")
+                                script.unzip zipFile: "${projectName}.zip", dir: exportFolder
+                            } else {
+                                script.echoCustom("There were no changes from previous run")
+                            }
+                        }
 
                         if (appChanged) {
-                            script.echo 'There were some changes from previous run, proceeding...'
-                            script.unzip zipFile: "${projectName}.zip", dir: exportFolder
-                        } else {
-                            script.echo 'There were no changes from previous run'
-                        }
-                    }
-
-                    if (appChanged) {
-                        script.stage('Fetch project from remote git repository') {
-                            BuildHelper.checkoutProject script: script,
-                                    projectRelativePath: projectName,
-                                    scmBranch: exportRepositoryBranch,
-                                    scmCredentialsId: exportRepositoryCredentialsId,
-                                    scmUrl: exportRepositoryUrl
-                        }
-
-                        script.stage('Prettify exported JSON files') {
-                            def JSonFilesList = findJsonFiles folderToSearchIn: exportFolder
-                            if (JSonFilesList) {
-                                prettifyJsonFiles rootFolder: exportFolder, files: JSonFilesList
-                                overwriteFilesInGit exportFolder: exportFolder, projectPath: projectName
-                            } else {
-                                script.error 'JSON files were not found'
+                            script.stage('Fetch project from remote git repository') {
+                                BuildHelper.checkoutProject script: script,
+                                        projectRelativePath: projectName,
+                                        scmBranch: exportRepositoryBranch,
+                                        scmCredentialsId: exportRepositoryCredentialsId,
+                                        scmUrl: exportRepositoryUrl
                             }
-                        }
 
-                        script.stage('Push changes to remote git repository') {
-                            script.dir(projectName) {
-                                if (isGitCodeChanged()) {
-                                    gitCredentialsWrapper {
-                                        configureLocalGitAccount()
-                                        pushChanges()
-                                    }
+                            script.stage('Prettify exported JSON files') {
+                                def JSonFilesList = findJsonFiles folderToSearchIn: exportFolder
+                                if (JSonFilesList) {
+                                    prettifyJsonFiles rootFolder: exportFolder, files: JSonFilesList
+                                    overwriteFilesInGit exportFolder: exportFolder, projectPath: projectName
                                 } else {
-                                    script.echo 'There were no any changes in local git repository'
+                                    script.echoCustom('JSON files were not found','ERROR')
                                 }
                             }
-                        }
 
-                        script.stage("Store exported project on workspace") {
-                            storeArtifacts(projectName)
+                            script.stage('Push changes to remote git repository') {
+                                script.dir(projectName) {
+                                    if (isGitCodeChanged()) {
+                                        gitCredentialsWrapper {
+                                            configureLocalGitAccount()
+                                            pushChanges()
+                                        }
+                                    } else {
+                                        script.echoCustom("There were no any changes in local git repository")
+                                    }
+                                }
+                            }
+
+                            script.stage("Store exported project on workspace") {
+                                storeArtifacts(projectName)
+                            }
                         }
                     }
                 }
@@ -580,84 +583,87 @@ class Fabric implements Serializable {
     protected final void importApp() {
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
-            fabricCommand = 'import'
-            /* Data for e-mail notification */
-            emailData = [
-                    projectName           : fabricAppName,
-                    exportRepositoryUrl   : exportRepositoryUrl,
-                    exportRepositoryBranch: exportRepositoryBranch,
-                    overwriteExisting     : overwriteExisting,
-                    publishApp            : enablePublish,
-                    commandName           : fabricCommand.capitalize(),
-                    fabricEnvironmentName : fabricEnvironmentName
-            ]
-            buildDescriptionItems = [
-                    'Application name': fabricAppName,
-                    'Published'       : (enablePublish) ? 'yes' : 'no',
-                    'Environment'     : (enablePublish) ? fabricEnvironmentName : null
-            ]
-            String projectName = getGitProjectName(exportRepositoryUrl) ?:
-                    script.echo("projectName property can't be null!")
-
-            script.stage('Check provided parameters') {
-                def mandatoryParameters = [
-                        'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_EXPORT_REPOSITORY_URL',
-                        'PROJECT_EXPORT_BRANCH', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                fabricCommand = 'import'
+                /* Data for e-mail notification */
+                emailData = [
+                        projectName           : fabricAppName,
+                        exportRepositoryUrl   : exportRepositoryUrl,
+                        exportRepositoryBranch: exportRepositoryBranch,
+                        overwriteExisting     : overwriteExisting,
+                        publishApp            : enablePublish,
+                        commandName           : fabricCommand.capitalize(),
+                        fabricEnvironmentName : fabricEnvironmentName
                 ]
+                buildDescriptionItems = [
+                        'Application name': fabricAppName,
+                        'Published'       : (enablePublish) ? 'yes' : 'no',
+                        'Environment'     : (enablePublish) ? fabricEnvironmentName : null
+                ]
+                String projectName = getGitProjectName(exportRepositoryUrl) ?:
+                        script.echoCustom("projectName property can't be null!",'WARN')
 
-                if (enablePublish) {
-                    mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
+                script.stage('Check provided parameters') {
+                    def mandatoryParameters = [
+                            'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_EXPORT_REPOSITORY_URL',
+                            'PROJECT_EXPORT_BRANCH', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'
+                    ]
+
+                    if (enablePublish) {
+                        mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
+                    }
+
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
-                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
-            }
-
-            pipelineWrapper {
-                /* Allocate a slave for the run */
-                script.node(nodeLabel) {
-                    isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
-                    /*
+                pipelineWrapper {
+                    /* Allocate a slave for the run */
+                    script.node(nodeLabel) {
+                        isUnixNode = (script.isUnix()) ?: script.echoCustom("Slave's OS type for this run is not supported!",'ERROR')
+                        /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
                      */
-                    script.cleanWs deleteDirs: true
+                        script.cleanWs deleteDirs: true
 
-                    script.stage('Prepare build-node environment') {
-                        fetchFabricCli(fabricCliVersion)
-                    }
+                        script.stage('Prepare build-node environment') {
+                            fetchFabricCli(fabricCliVersion)
+                        }
 
-                    script.stage('Fetch project from remote git repository') {
-                        BuildHelper.checkoutProject script: script,
-                                projectRelativePath: projectName,
-                                scmBranch: exportRepositoryBranch,
-                                scmCredentialsId: exportRepositoryCredentialsId,
-                                scmUrl: exportRepositoryUrl
-                    }
+                        script.stage('Fetch project from remote git repository') {
+                            BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: projectName,
+                                    scmBranch: exportRepositoryBranch,
+                                    scmCredentialsId: exportRepositoryCredentialsId,
+                                    scmUrl: exportRepositoryUrl
+                        }
 
-                    script.stage("Create zip archive of the project") {
-                        zipProject(projectName, fabricAppName)
-                    }
+                        script.stage("Create zip archive of the project") {
+                            zipProject(projectName, fabricAppName)
+                        }
 
-                    script.stage('Import project to Fabric') {
-                        def commonOptions = [
-                                '-t': "\"$cloudAccountId\"",
-                                '-f': "\"${fabricAppName}.zip\""
-                        ]
-                        def fabricCliOptions = (overwriteExisting) ? commonOptions + ['-a': "\"$fabricAppName\""] :
-                                commonOptions
-
-                        fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
-                    }
-
-                    if (enablePublish) {
-                        script.stage('Trigger Publish job') {
-                            script.build job: "Publish", parameters: [
-                                    script.string(name: 'CLOUD_CREDENTIALS_ID', value: cloudCredentialsID),
-                                    script.string(name: 'CLOUD_ACCOUNT_ID', value: cloudAccountId),
-                                    script.string(name: 'FABRIC_APP_NAME', value: fabricAppName),
-                                    script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: fabricEnvironmentName),
-                                    script.string(name: 'RECIPIENTS_LIST', value: recipientsList)
+                        script.stage('Import project to Fabric') {
+                            def commonOptions = [
+                                    '-t': "\"$cloudAccountId\"",
+                                    '-f': "\"${fabricAppName}.zip\""
                             ]
+                            def fabricCliOptions = (overwriteExisting) ? commonOptions + ['-a': "\"$fabricAppName\""] :
+                                    commonOptions
+
+                            fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
+                        }
+
+                        if (enablePublish) {
+                            script.stage('Trigger Publish job') {
+                                script.build job: "Publish", parameters: [
+                                        script.string(name: 'CLOUD_CREDENTIALS_ID', value: cloudCredentialsID),
+                                        script.string(name: 'CLOUD_ACCOUNT_ID', value: cloudAccountId),
+                                        script.string(name: 'FABRIC_APP_NAME', value: fabricAppName),
+                                        script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: fabricEnvironmentName),
+                                        script.string(name: 'RECIPIENTS_LIST', value: recipientsList)
+                                ]
+                            }
                         }
                     }
                 }
@@ -672,48 +678,51 @@ class Fabric implements Serializable {
     protected final void publishApp() {
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
-            fabricCommand = 'publish'
-            /* Data for e-mail notification */
-            emailData = [
-                    projectName          : fabricAppName,
-                    fabricEnvironmentName: fabricEnvironmentName,
-                    commandName          : fabricCommand.capitalize()
-            ]
-            buildDescriptionItems = [
-                    'Application name': fabricAppName,
-                    'Environment'     : fabricEnvironmentName
-            ]
-
-            script.stage('Check provided parameters') {
-                def mandatoryParameters = [
-                        'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'FABRIC_ENVIRONMENT_NAME'
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                fabricCommand = 'publish'
+                /* Data for e-mail notification */
+                emailData = [
+                        projectName          : fabricAppName,
+                        fabricEnvironmentName: fabricEnvironmentName,
+                        commandName          : fabricCommand.capitalize()
+                ]
+                buildDescriptionItems = [
+                        'Application name': fabricAppName,
+                        'Environment'     : fabricEnvironmentName
                 ]
 
-                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
-            }
+                script.stage('Check provided parameters') {
+                    def mandatoryParameters = [
+                            'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'FABRIC_ENVIRONMENT_NAME'
+                    ]
 
-            pipelineWrapper {
-                /* Allocate a slave for the run */
-                script.node(nodeLabel) {
-                    isUnixNode = (script.isUnix()) ?: script.error("Slave's OS type for this run is not supported!")
-                    /*
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+                }
+
+                pipelineWrapper {
+                    /* Allocate a slave for the run */
+                    script.node(nodeLabel) {
+                        isUnixNode = (script.isUnix()) ?: script.echoCustom("Slave's OS type for this run is not supported!",'ERROR')
+                        /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
                      */
-                    script.cleanWs deleteDirs: true
+                        script.cleanWs deleteDirs: true
 
-                    script.stage('Prepare build-node environment') {
-                        fetchFabricCli(fabricCliVersion)
-                    }
+                        script.stage('Prepare build-node environment') {
+                            fetchFabricCli(fabricCliVersion)
+                        }
 
-                    script.stage('Publish project on Fabric') {
-                        def fabricCliOptions = [
-                                '-t': "\"$cloudAccountId\"",
-                                '-a': "\"$fabricAppName\"",
-                                '-e': "\"$fabricEnvironmentName\""
-                        ]
+                        script.stage('Publish project on Fabric') {
+                            def fabricCliOptions = [
+                                    '-t': "\"$cloudAccountId\"",
+                                    '-a': "\"$fabricAppName\"",
+                                    '-e': "\"$fabricEnvironmentName\""
+                            ]
 
-                        fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
+                            fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
+                        }
                     }
                 }
             }

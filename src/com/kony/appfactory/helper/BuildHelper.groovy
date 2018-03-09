@@ -204,7 +204,7 @@ class BuildHelper implements Serializable {
      */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
         /* Check required arguments */
-        (dependenciesFileContent) ?: script.error("File content string can't be null")
+        (dependenciesFileContent) ?: script.echoCustom("File content string can't be null",'ERROR')
 
         def requiredDependencies = null
 
@@ -229,8 +229,8 @@ class BuildHelper implements Serializable {
      */
     private final static void switchDependencies(script, isUnixNode, dependencyPath, installationPath) {
         /* Check required arguments */
-        (dependencyPath) ?: script.error("Dependency path can't be null!")
-        (installationPath) ?: script.error("Installation path can't be null!")
+        (dependencyPath) ?: script.echoCustom("Dependency path can't be null!",'ERROR')
+        (installationPath) ?: script.echoCustom("Installation path can't be null!",'ERROR')
 
         if (isUnixNode) {
             script.shellCustom(
@@ -261,7 +261,7 @@ class BuildHelper implements Serializable {
             dependenciesArchiveFileExtension
     ) {
         /* Check required arguments */
-        (visualizerVersion) ?: script.error("Visualizer version couldn't be null!")
+        (visualizerVersion) ?: script.echoCustom("Visualizer version couldn't be null!",'ERROR')
 
         def dependenciesArchive = null
         def dependenciesArchiveFileName = dependenciesArchiveFilePrefix + visualizerVersion +
@@ -309,19 +309,19 @@ class BuildHelper implements Serializable {
             dependenciesArchiveFilePrefix, dependenciesArchiveFileExtension
     ) {
         /* Check required arguments */
-        (separator) ?: script.error("separator argument can't be null!")
-        (visualizerHome) ?: script.error("visualizerHome argument can't be null!")
-        (visualizerVersion) ?: script.error("visualizerVersion argument can't be null!")
-        (dependenciesFileName) ?: script.error("dependenciesFileName argument can't be null!")
-        (dependenciesBaseUrl) ?: script.error("dependenciesBaseUrl argument can't be null!")
-        (dependenciesArchiveFilePrefix) ?: script.error("dependenciesArchiveFilePrefix argument can't be null!")
-        (dependenciesArchiveFileExtension) ?: script.error("dependenciesArchiveFileExtension argument can't be null!")
+        (separator) ?: script.echoCustom("separator argument can't be null!",'ERROR')
+        (visualizerHome) ?: script.echoCustom("visualizerHome argument can't be null!",'ERROR')
+        (visualizerVersion) ?: script.echoCustom("visualizerVersion argument can't be null!",'ERROR')
+        (dependenciesFileName) ?: script.echoCustom("dependenciesFileName argument can't be null!",'ERROR')
+        (dependenciesBaseUrl) ?: script.echoCustom("dependenciesBaseUrl argument can't be null!",'ERROR')
+        (dependenciesArchiveFilePrefix) ?: script.echoCustom("dependenciesArchiveFilePrefix argument can't be null!",'ERROR')
+        (dependenciesArchiveFileExtension) ?: script.echoCustom("dependenciesArchiveFileExtension argument can't be null!",'ERROR')
 
         def dependencies = []
         def dependenciesFileContent = fetchRequiredDependencies(script, visualizerVersion, dependenciesFileName,
                 dependenciesBaseUrl, dependenciesArchiveFilePrefix, dependenciesArchiveFileExtension)
         def visualizerDependencies = (parseDependenciesFileContent(script, dependenciesFileContent)) ?:
-                script.error("Visualizer dependencies object can't be null!")
+                script.echoCustom("Visualizer dependencies object can't be null!",'ERROR')
         /* Construct installation path */
         def getInstallationPath = { toolPath ->
             ([visualizerHome] + toolPath).join(separator)
@@ -386,8 +386,8 @@ class BuildHelper implements Serializable {
 
     protected final static void fixRunShScript (script, filePath, fileName) {
         /* Check required arguments */
-        (filePath) ?: script.error("filePath argument can't be null!")
-        (fileName) ?: script.error("fileName argument can't be null!")
+        (filePath) ?: script.echoCustom("filePath argument can't be null!",'ERROR')
+        (fileName) ?: script.echoCustom("fileName argument can't be null!",'ERROR')
 
         script.dir(filePath) {
             if (script.fileExists(fileName)) {
@@ -450,12 +450,12 @@ class BuildHelper implements Serializable {
 
         /* return win if no Node in Label 'ios' is alive  */
         if(!isLabelActive(iosNodeLabel, script)){
-            script.echo "All the MAC slaves are down currently. Starting on Windows"
+            script.echoCustom("All the MAC slaves are down currently. Starting on Windows")
             return winNodeLabel
         }
         /* return ios if no Node in Label 'win' is alive  */
         if(!isLabelActive(winNodeLabel, script)) {
-            script.echo "All the Windows slaves are down currently. Starting on Mac"
+            script.echoCustom("All the Windows slaves are down currently. Starting on Mac")
             return iosNodeLabel
         }
 
@@ -466,9 +466,6 @@ class BuildHelper implements Serializable {
             if(it.name == libraryProperties.'window.lockable.resource.name') winResourceStatus=it.status
             if(it.name == libraryProperties.'ios.lockable.resource.name') macResourceStatus=it.status
         }
-
-        script.echo "Win Resource Status : $winResourceStatus"
-        script.echo "Mac Resource Status : $macResourceStatus"
 
         if(winResourceStatus == true && macResourceStatus == false){
             return iosNodeLabel
@@ -487,7 +484,6 @@ class BuildHelper implements Serializable {
             if(node.toComputer()?.isOnline()){
                 def nodeName = node.toComputer().getDisplayName()
                 def isNodeOnline = node.toComputer().isOnline()
-                script.echo "Node name : $nodeName and isOnline = $isNodeOnline"
                 isActiveNodeAvailable=true
             }
         }
@@ -503,13 +499,13 @@ class BuildHelper implements Serializable {
             authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + artifactUrl
         }
         else {
-            script.echo("Failed to generate the authenticated URLs. " +
-                    "Unable to find the cloud environment guid. ")
+            script.echoCustom("Failed to generate the authenticated URLs. " +
+                    "Unable to find the cloud environment guid. ",'WARN')
             authArtifactUrl = artifactUrl
         }
 		
         if (exposeUrl) {
-            script.echo "Artifact URL: ${authArtifactUrl}"
+            script.echoCustom("Artifact URL: ${authArtifactUrl}")
         }
 
         authArtifactUrl

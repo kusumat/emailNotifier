@@ -173,15 +173,15 @@ class Channel implements Serializable {
 
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
-                script.error('Artifacts base path is missing!')
+                script.echoCustom('Artifacts base path is missing!','ERROR')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
-                script.error('Artifacts extension is missing!')
+                script.echoCustom('Artifacts extension is missing!','ERROR')
 
         try {
             closure()
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-            script.echo "ERROR: $exceptionMessage"
+            script.echoCustom(exceptionMessage,'WARN')
             script.currentBuild.result = 'FAILURE'
         } finally {
             setBuildDescription()
@@ -214,7 +214,7 @@ class Channel implements Serializable {
                         libraryProperties.'visualizer.dependencies.base.url',
                         libraryProperties.'visualizer.dependencies.archive.file.prefix',
                         libraryProperties.'visualizer.dependencies.archive.file.extension')
-        ) ?: script.error('Missing Visualizer dependencies!')
+        ) ?: script.echoCustom('Missing Visualizer dependencies!','ERROR')
         /* Expose tool installation path as environment variable */
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath
@@ -267,8 +267,7 @@ class Channel implements Serializable {
 
                 /* Workaround for run.sh files */
                 if (isUnixNode) {
-                    script.echo "Applying fix for run.sh file..."
-
+                    script.echoCustom("Applying fix for run.sh file...")
                     BuildHelper.fixRunShScript(script, script.pwd() ,'run.sh')
                 }
 
@@ -323,12 +322,13 @@ class Channel implements Serializable {
 
         plugins.find { pluginName, pluginSearchPattern ->
             if (konyPluginsXmlFileContent =~ pluginSearchPattern) {
-                script.echo "Found $pluginName plugin!"
                 visualizerVersion = Matcher.lastMatcher[0][1]
+                script.echoCustom("Found ${pluginName} plugin!")
                 /* Return true to break the find loop, if at least one much been found */
                 return true
             } else {
-                script.echo "Could not find $pluginName plugin entry... Switching to the next plugin to search..."
+                script.echoCustom("Could not find ${pluginName} plugin entry... " +
+                        "Switching to the next plugin to search...")
             }
         }
 
@@ -353,7 +353,7 @@ class Channel implements Serializable {
      */
     protected final getArtifactLocations(artifactExtension) {
         /* Check required arguments */
-        (artifactExtension) ?: script.error("artifactExtension argument can't be null")
+        (artifactExtension) ?: script.echoCustom("artifactExtension argument can't be null",'ERROR')
 
         def files = null
         def artifactLocations = []
@@ -394,7 +394,7 @@ class Channel implements Serializable {
                 String artifactExtension = artifact.extension
                 String artifactTargetName = projectName + '_' +
                         getArtifactArchitecture([artifactPath, artifactName].join(separator)) +
-                        jobBuildNumber + '_' + i + '.' + artifactExtension
+                        jobBuildNumber + '.' + artifactExtension
                 String command = [shellCommand, artifactName, artifactTargetName].join(' ')
 
                 /*
@@ -430,7 +430,7 @@ class Channel implements Serializable {
                     /* Check if appfactory.js file exists */
                     if (script.fileExists(configFileName)) {
                         String config = (script.readFile(configFileName)) ?:
-                                script.error("$configFileName content is empty!")
+                                script.echoCustom("$configFileName content is empty!",'ERROR')
                         String successMessage = 'Fabric app key, secret and service URL were successfully populated'
                         String errorMessage = 'Failed to populate Fabric app key, secret and service URL'
 
@@ -446,14 +446,14 @@ class Channel implements Serializable {
                             }
                         }
                     } else {
-                        script.echo "Skipping population of Fabric app key, secret and service URL, " +
-                                "$configFileName was not found in the project modules folder!"
+                        script.echoCustom("Skipping population of Fabric app key, secret and service URL, " +
+                                "${configFileName} was not found in the project modules folder!")
                     }
                 }
             }
         } else {
-            script.echo "Skipping population of Fabric app key, secret and service URL, " +
-                    "credentials parameter was not provided!"
+            script.echoCustom("Skipping population of Fabric app key, secret and service URL, " +
+                    "credentials parameter was not provided!")
         }
     }
 
@@ -628,7 +628,7 @@ class Channel implements Serializable {
         if(script.fileExists(source)){
             isDir ? script.shellCustom("chmod -R 755 $source/*.sh",isUnixNode): script.shellCustom("chmod 755 $source",isUnixNode)
         } else{
-            script.echo("File or Directory doesn't exist : $source")
+            script.echoCustom("File or Directory doesn't exist : ${source}",'WARN')
         }
     }
 }

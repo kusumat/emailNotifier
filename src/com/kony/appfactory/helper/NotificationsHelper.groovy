@@ -2,7 +2,7 @@ package com.kony.appfactory.helper
 
 import groovy.json.JsonOutput
 import groovy.text.SimpleTemplateEngine
-
+import groovy.json.JsonSlurper
 /**
  * Implements logic required for sending notifications.
  */
@@ -17,8 +17,17 @@ class NotificationsHelper implements Serializable {
      */
     protected static final void sendEmail(script, templateType, templateData = [:], storeBody = false) {
         /* Check required arguments */
-        (script) ?: script.error("script argument can't be null")
-        (templateType) ?: script.error("templateType argument can't be null")
+        (script) ?: script.echoCustom("script argument can't be null",'ERROR')
+        (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
+
+        /* If storeBody is true , expecting the tests results from AWS and using them to set build result. */
+        if (storeBody && templateData.runs) {
+            /* Get test results and set build result accordingly */
+            def jsonSlurper = new JsonSlurper()
+            String testResultsToText = JsonOutput.toJson(templateData.runs)
+            def testResultsToJson = jsonSlurper.parseText(testResultsToText)
+            setbuildResult(script, testResultsToJson)
+        }
 
         /* Get data for e-mail notification */
         Map emailData = getEmailData(script, templateType, templateData)
@@ -35,6 +44,34 @@ class NotificationsHelper implements Serializable {
     }
 
     /**
+     * Modifies build result and set it for runtests.
+     *
+     * @param Json Output of the test results.
+     * @param Script pipeline object.
+     */
+    private static setbuildResult(script, testResultsJson) {
+        if ( testResultsJson ) {
+            script.echoCustom("Artifact URL: Results from AWS Device Farm say: ${testResultsJson[0].result}")
+            switch (testResultsJson[0].result) {
+                case "FAILED":
+                    script.currentBuild.result = "UNSTABLE"
+                    break
+                case "SUCCESS":
+                    script.currentBuild.result = "SUCCESS"
+                    break
+                default:
+                    script.echoCustom("This will cause build failure. Please check the build notification mail for more details.",'WARN')
+                    script.currentBuild.result = "FAILURE"
+                    break
+            }
+        }
+        else {
+            script.currentBuild.result = "FAILURE"
+            script.echoCustom("Received unexpected or no data from AWS!",'WARN')
+        }
+    }
+
+    /**
      * Generates data for e-mail notification.
      *
      * @param script pipeline object.
@@ -44,13 +81,13 @@ class NotificationsHelper implements Serializable {
      */
     private static Map getEmailData(script, templateType, templateData) {
         /* Check required arguments */
-        (script) ?: script.error("script argument can't be null")
-        (templateType) ?: script.error("templateType argument can't be null")
-
+        (script) ?: script.echoCustom("script argument can't be null",'ERROR')
+        (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
         /* Location of the base template */
         String templatesFolder = 'com/kony/appfactory/email/templates'
         /* Name of the base template */
         String baseTemplateName = 'KonyBase.template'
+
         /*
             Recipients list, by default will be used values from RECIPIENTS_LIST build parameter,
             if it's empty, than DEFAULT_RECIPIENTS value from global Jenkins configuration will be used.
@@ -63,7 +100,8 @@ class NotificationsHelper implements Serializable {
             Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name
             and result status of the job.
          */
-        String subject = "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}"
+	 String modifiedBuildTag = modifySubjectOfMail(script, templateType);
+	 String subject = modifiedBuildTag + "-${script.currentBuild.currentResult}"
 
         /* Load base e-mail template from library resources */
         String baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
@@ -86,9 +124,9 @@ class NotificationsHelper implements Serializable {
      */
     private static void storeEmailBody(script, body, templateType, templateData) {
         /* Check required arguments */
-        (script) ?: script.error("script argument can't be null")
-        (body) ?: script.error("body argument can't be null")
-        (templateType) ?: script.error("templateType argument can't be null")
+        (script) ?: script.echoCustom("script argument can't be null",'ERROR')
+        (body) ?: script.echoCustom("body argument can't be null",'ERROR')
+        (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
 
         String buildResult = script.currentBuild.currentResult
         List filesToStore = getFilesToStore(body, buildResult, templateType, templateData)
@@ -117,7 +155,6 @@ class NotificationsHelper implements Serializable {
      */
     private static String getBuildResultForTestConsole(buildResult) {
         String buildResultForTestConsole
-
         switch (buildResult) {
             case 'SUCCESS':
                 buildResultForTestConsole = '-PASS'
@@ -132,7 +169,6 @@ class NotificationsHelper implements Serializable {
                 buildResultForTestConsole = ''
                 break
         }
-
         buildResultForTestConsole
     }
 
@@ -150,7 +186,7 @@ class NotificationsHelper implements Serializable {
         List filesToStore = []
         /* Get build result suffix for test console */
         String buildResultForTestConsole = getBuildResultForTestConsole(buildResult)
-
+		
         switch (templateType) {
             case 'buildVisualizerApp':
                 filesToStore.add([name: 'buildResults' + buildResultForTestConsole + '.html', data: body])
@@ -169,9 +205,9 @@ class NotificationsHelper implements Serializable {
                 filesToStore
                 break
         }
-
         filesToStore
     }
+
 
     /**
      * Generates template content depending on a templateType (job name).
@@ -184,8 +220,9 @@ class NotificationsHelper implements Serializable {
     private static String getTemplateContent(script, templateType, templateData = [:]) {
         String templateContent
         /* Common properties for content */
+	 String modifiedBuildTag = modifySubjectOfMail(script, templateType);
         Map commonBinding = [
-                notificationHeader: "${script.env.BUILD_TAG}-${script.currentBuild.currentResult}",
+                notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
                 projectName       : script.env.PROJECT_NAME,
                 build             : [
@@ -235,4 +272,31 @@ class NotificationsHelper implements Serializable {
 
         (template) ? template.toString() : null
     }
-}
+	
+    private static String modifySubjectOfMail(script, templateType) {
+	String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
+	switch (templateType) {
+            case 'buildVisualizerApp':
+	        modifiedBuildTag = (((modifiedBuildTag.minus("-Visualizer")).minus("s-buildVisualizerApp")).minus("s-Channels")).minus("build")
+		if(modifiedBuildTag.contains("Android"))
+		    return modifiedBuildTag.replace("Android","Android-$script.env.FORM_FACTOR")
+		if(modifiedBuildTag.contains("Ios"))
+		    return modifiedBuildTag.replace("Ios","Ios-${script.env.FORM_FACTOR}")
+	            break
+	    case 'buildTests':
+		modifiedBuildTag = ((((modifiedBuildTag).minus("-Visualizer")).minus("s-Channels")).minus("build")).minus("-runTests")
+		break
+	    case 'runTests':
+		modifiedBuildTag = (modifiedBuildTag.minus("-Visualizer")).minus("-runTests")
+		break
+	    case 'Export':
+	    case 'Import':
+	    case 'Publish':
+		break
+	    default:
+	        modifiedBuildTag = ''
+		break
+	    }
+	    return modifiedBuildTag
+       }
+}     

@@ -84,7 +84,7 @@ class Facade implements Serializable {
         )
         /* Checking if at least one channel been selected */
         channelsToRun = (getSelectedChannels(this.script.params)) ?:
-                script.error('Please select at least one channel to build!')
+                script.echoCustom('Please select at least one channel to build!','ERROR')
     }
 
     /**
@@ -179,7 +179,7 @@ class Facade implements Serializable {
                 break
         }
 
-        channelsBaseFolder + '/' + 'build' + (channelType) ?: script.error('Unknown channel type!')
+        channelsBaseFolder + '/' + 'build' + (channelType) ?: script.echoCustom('Unknown channel type!','ERROR')
     }
     private final getHookJobName(String hookName, String hookType) {
         String hookBaseFolder = 'CustomHook'
@@ -329,7 +329,7 @@ class Facade implements Serializable {
     private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
         buildJobArtifacts.findResults { artifact ->
             /* Filter Android and iOS channels */
-            String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|apk)\$")) ? artifact.name : ''
+            String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|ipa|apk)\$")) ? artifact.name : ''
             /*
                 Workaround to get ipa URL for iOS, just switching extension in URL to ipa,
                 because ipa file should be places nearby plist file on S3.
@@ -357,13 +357,13 @@ class Facade implements Serializable {
         for (item in nativeChannelsToRun) {
             def channelName = item
             def channelJobName = (getChannelJobName(channelName)) ?:
-                    script.error("Channel job name can't be null")
+                    script.echoCustom("Channel job name can't be null",'ERROR')
             def channelOs = getChannelOs(channelName)
             def channelFormFactor = (getChannelFormFactor(channelName)) ?:
-                    script.error("Channel form factor can't be null")
+                    script.echoCustom("Channel form factor can't be null",'ERROR')
             def channelJobBuildParameters = (
                     getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)
-            ) ?: script.error("Channel job build parameters list can't be null")
+            ) ?: script.echoCustom("Channel job build parameters list can't be null",'ERROR')
             def channelPath = getChannelPath(channelName)
 
             runList[channelName] = {
@@ -379,7 +379,8 @@ class Facade implements Serializable {
 
                     /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
-                        script.echo("Status of the channel ${channelName} build is: ${channelJob.currentResult}")
+                        script.echoCustom("Status of the channel ${channelName} " +
+                                "build is: ${channelJob.currentResult}",'WARN')
                     }
                 }
             }
@@ -390,11 +391,11 @@ class Facade implements Serializable {
         if (spaChannelsToRun) {
             def channelName = 'SPA'
             def channelJobName = (getChannelJobName(channelName)) ?:
-                    script.error("Channel job name can't be null")
+                    script.echoCustom("Channel job name can't be null",'ERROR')
             /* Convert selected SPA channels to build parameters for SPA job */
             def spaChannelsToBuildJobParameters = convertSpaChannelsToBuildParameters(spaChannelsToRun)
             def channelJobBuildParameters = (getSpaChannelJobBuildParameters(spaChannelsToBuildJobParameters)) ?:
-                    script.error("Channel job build parameters list can't be null")
+                    script.echoCustom("Channel job build parameters list can't be null",'ERROR')
             def channelPath = getChannelPath(channelName)
 
             runList[channelName] = {
@@ -410,7 +411,8 @@ class Facade implements Serializable {
 
                     /* Notify user that SPA channel build failed */
                     if (channelJob.currentResult != 'SUCCESS') {
-                        script.echo("Status of the channel ${channelName} build is: ${channelJob.currentResult}")
+                        script.echoCustom("Status of the channel ${channelName} " +
+                                "build is: ${channelJob.currentResult}",'WARN')
                     }
                 }
             }
@@ -444,154 +446,149 @@ class Facade implements Serializable {
     protected final void createPipeline() {
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
-            script.stage('Check provided parameters') {
-                /* Check common params */
-                ValidationHelper.checkBuildConfiguration(script)
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                script.stage('Check provided parameters') {
+                    /* Check common params */
+                    ValidationHelper.checkBuildConfiguration(script)
 
-                /* List of required parameters */
-                def checkParams = []
+                    /* List of required parameters */
+                    def checkParams = []
 
-                /* Collect Android channel parameters to check */
-                def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
+                    /* Collect Android channel parameters to check */
+                    def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
 
-                if (androidChannels) {
-                    def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
+                    if (androidChannels) {
+                        def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
 
-                    if (androidChannels.findAll { it.contains('MOBILE') }) {
-                        androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
+                        if (androidChannels.findAll { it.contains('MOBILE') }) {
+                            androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
+                        }
+
+                        if (androidChannels.findAll { it.contains('TABLET') }) {
+                            androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                        }
+
+                        if (buildMode == 'release') {
+                            androidMandatoryParams.addAll([
+                                    'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
+                                    'ANDROID_KEY_ALIAS'
+                            ])
+                        }
+
+                        checkParams.addAll(androidMandatoryParams)
                     }
 
-                    if (androidChannels.findAll { it.contains('TABLET') }) {
-                        androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                    /* Collect iOS channel parameters to check */
+                    def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
+
+                    if (iosChannels) {
+                        def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+
+                        if (iosChannels.findAll { it.contains('MOBILE') }) {
+                            iosMandatoryParams.add('IOS_MOBILE_APP_ID')
+                        }
+
+                        if (iosChannels.findAll { it.contains('TABLET') }) {
+                            iosMandatoryParams.add('IOS_TABLET_APP_ID')
+                        }
+
+                        checkParams.addAll(iosMandatoryParams)
                     }
 
-                    if (buildMode == 'release') {
-                        androidMandatoryParams.addAll([
-                                'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
-                                'ANDROID_KEY_ALIAS'
-                        ])
+                    /* Collect SPA channel parameters to check */
+                    def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
+
+                    if (spaChannels) {
+                        def spaMandatoryParams = ['SPA_APP_VERSION', 'FABRIC_APP_CONFIG']
+
+                        checkParams.addAll(spaMandatoryParams)
                     }
 
-                    checkParams.addAll(androidMandatoryParams)
+                    /* Check all required parameters depending on user input */
+                    ValidationHelper.checkBuildConfiguration(script, checkParams)
                 }
 
-                /* Collect iOS channel parameters to check */
-                def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
+                /* Allocate a slave for the run */
+                script.node(libraryProperties.'facade.node.label') {
+                    prepareRun()
 
-                if (iosChannels) {
-                    def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
-
-                    if (iosChannels.findAll { it.contains('MOBILE') }) {
-                        iosMandatoryParams.add('IOS_MOBILE_APP_ID')
-                    }
-
-                    if (iosChannels.findAll { it.contains('TABLET') }) {
-                        iosMandatoryParams.add('IOS_TABLET_APP_ID')
-                    }
-
-                    checkParams.addAll(iosMandatoryParams)
-                }
-
-                /* Collect SPA channel parameters to check */
-                def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
-
-                if (spaChannels) {
-                    def spaMandatoryParams = ['SPA_APP_VERSION', 'FABRIC_APP_CONFIG']
-
-                    checkParams.addAll(spaMandatoryParams)
-                }
-
-                /* Check all required parameters depending on user input */
-                ValidationHelper.checkBuildConfiguration(script, checkParams)
-            }
-
-            /* Allocate a slave for the run */
-            script.node(libraryProperties.'facade.node.label') {
-                prepareRun()
-
-                try {
-                    /* Expose Fabric configuration */
-                    if (fabricAppConfig) {
-                        BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-                            /*
+                    try {
+                        /* Expose Fabric configuration */
+                        if (fabricAppConfig) {
+                            BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                                /*
                                 Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                                 to not mask required values during the build we simply need redefine parameter values.
                                 Also, because of the case, when user didn't provide some not mandatory values we can get
                                 null value and script.env object returns only String values,
                                 been added elvis operator for assigning variable value as ''(empty).
                             */
-                            script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
-                                    script.error("Fabric environment value can't be null")
-                        }
-                    }
-
-
-
-
-
-                    /* Run channel builds in parallel */
-                    script.parallel(runList)
-
-
-
-                    /* If test pool been provided, prepare build parameters and trigger runTests job */
-                    if (availableTestPools) {
-                        script.stage('TESTS') {
-                            def testAutomationJobParameters = getTestAutomationJobParameters() ?:
-                                    script.error("runTests job parameters are missing!")
-                            def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
-                                    script.error("runTests job binary URL parameters are missing!")
-                            String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
-                                    "${script.env.JOB_BASE_NAME}" -
-                                    'Builds/'
-                            String testAutomationJobName = "${testAutomationJobBasePath}Tests/runTests"
-
-                            /* Trigger runTests job to test build binaries */
-                            def testAutomationJob = script.build job: testAutomationJobName,
-                                    parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
-                                    propagate: false
-                            def testAutomationJobResult = testAutomationJob.currentResult
-
-                            /* Collect job result */
-                            jobResultList.add(testAutomationJobResult)
-
-                            /* Notify user that runTests job build failed */
-                            if (testAutomationJobResult != 'SUCCESS') {
-                                script.echo "Status of the runTests job: ${testAutomationJobResult}"
+                                script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
+                                        script.echoCustom("Fabric environment value can't be null", 'ERROR')
                             }
                         }
-                    }
-                    if(availableTestPools){
-//                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST")
-                    }
-                    else {
-                        script.echo("Skipping POST_TEST hooks (if available) as Tests are't running")
-                    }
+                        /* Run channel builds in parallel */
+                        script.parallel(runList)
 
-                    /* Check if there are failed or unstable or aborted jobs */
-                    if (jobResultList.contains('FAILURE') ||
-                            jobResultList.contains('UNSTABLE') ||
-                            jobResultList.contains('ABORTED')
-                    ) {
-                        /* Set job result to 'UNSTABLE' if above check is true */
-                        script.currentBuild.result = 'UNSTABLE'
-                    } else {
-                        /* Set job result to 'SUCCESS' if above check is false */
-                        script.currentBuild.result = 'SUCCESS'
-                    }
-                } catch (Exception e) {
-                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                    script.echo "ERROR: $exceptionMessage"
-                    script.currentBuild.result = 'FAILURE'
-                } finally {
-                    setBuildDescription()
-                    /*
-                        Been agreed to send notification from buildVisualizerApp job only
-                        if result not equals 'FAILURE', all notification with failed channel builds
-                        will be sent directly from channel job.
-                     */
-                    if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                        NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                        /* If test pool been provided, prepare build parameters and trigger runTests job */
+                        if (availableTestPools) {
+                            script.stage('TESTS') {
+                                def testAutomationJobParameters = getTestAutomationJobParameters() ?:
+                                        script.echoCustom("runTests job parameters are missing!", 'ERROR')
+                                def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
+                                        script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
+                                String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
+                                        "${script.env.JOB_BASE_NAME}" -
+                                        'Builds/'
+                                String testAutomationJobName = "${testAutomationJobBasePath}Tests/runTests"
+
+                                /* Trigger runTests job to test build binaries */
+                                def testAutomationJob = script.build job: testAutomationJobName,
+                                        parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
+                                        propagate: false
+                                def testAutomationJobResult = testAutomationJob.currentResult
+
+                                /* Collect job result */
+                                jobResultList.add(testAutomationJobResult)
+
+                                /* Notify user that runTests job build failed */
+                                if (testAutomationJobResult != 'SUCCESS') {
+                                    script.echoCustom("Status of the runTests job: ${testAutomationJobResult}", 'WARN')
+                                }
+                            }
+                        }
+                        if(availableTestPools){
+                            // CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST")
+                        }
+                        else {
+                            script.echo("Skipping POST_TEST hooks (if available) as Tests are't running")
+                        }
+                        /* Check if there are failed or unstable or aborted jobs */
+                        if (jobResultList.contains('FAILURE') ||
+                                jobResultList.contains('UNSTABLE') ||
+                                jobResultList.contains('ABORTED')
+                        ) {
+                            /* Set job result to 'UNSTABLE' if above check is true */
+                            script.currentBuild.result = 'UNSTABLE'
+                        } else {
+                            /* Set job result to 'SUCCESS' if above check is false */
+                            script.currentBuild.result = 'SUCCESS'
+                        }
+                    } catch (Exception e) {
+                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                        script.echoCustom(exceptionMessage, 'WARN')
+                        script.currentBuild.result = 'FAILURE'
+                    } finally {
+                        setBuildDescription()
+                        /*
+                            Been agreed to send notification from buildVisualizerApp job only
+                            if result not equals 'FAILURE', all notification with failed channel builds
+                            will be sent directly from channel job.
+                        */
+                        if (channelsToRun && script.currentBuild.result != 'FAILURE') {
+                            NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                        }
                     }
                 }
             }

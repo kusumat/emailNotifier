@@ -27,6 +27,7 @@ class IosChannel extends Channel {
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
 
     /**
      * Class constructor.
@@ -85,10 +86,10 @@ class IosChannel extends Channel {
      */
     private final void updateIosBundleId() {
 
-            def projectPropFileName = [
-                    libraryProperties.'ios.project.props.xml.file.name',
-                    libraryProperties.'ios.project.props.json.file.name'
-            ]
+        def projectPropFileName = [
+                libraryProperties.'ios.project.props.xml.file.name',
+                libraryProperties.'ios.project.props.json.file.name'
+        ]
         projectPropFileName.each { propertyFileName ->
 
             String successMessage = 'Bundle ID updated successfully in ' + propertyFileName + '.'
@@ -100,7 +101,7 @@ class IosChannel extends Channel {
             script.catchErrorCustom(errorMessage, successMessage) {
                 script.dir(projectFullPath) {
                     if (script.fileExists(propertyFileName)) {
-                        if (propertyFileName.endsWith('.xml')){
+                        if (propertyFileName.endsWith('.xml')) {
                             /* Reading xml from Workspace */
                             propertyFileContent = script.readFile file: propertyFileName
 
@@ -115,7 +116,7 @@ class IosChannel extends Channel {
 
                             script.writeFile file: propertyFileName, text: updatedProjectPropFileContent
                         }
-                        if (propertyFileName.endsWith('.json')){
+                        if (propertyFileName.endsWith('.json')) {
                             /* Reading Json from Workspace */
                             propertyFileContent = script.readJSON file: propertyFileName
 
@@ -129,7 +130,7 @@ class IosChannel extends Channel {
                         }
 
                     } else {
-                        script.error("Failed to find $projectPropFileName file to update Bundle ID!")
+                        script.echoCustom("Failed to find $projectPropFileName file to update Bundle ID!", 'ERROR')
                     }
                 }
             }
@@ -159,9 +160,9 @@ class IosChannel extends Channel {
                 script.unzip zipFile: "${dummyProjectArchive[0].path}"
             }
 
-            script.dir(iosDummyProjectGenPath){
-                setExecutePermissions("nativebinding",true)
-                setExecutePermissions("crypt",false)
+            script.dir(iosDummyProjectGenPath) {
+                setExecutePermissions("nativebinding", true)
+                setExecutePermissions("crypt", false)
             }
 
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
@@ -172,7 +173,6 @@ class IosChannel extends Channel {
                 """, true)
             }
 
-
             if(runCustomHook){
                 /* Run Pre Builds Hooks First */
                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_IPA_STAGE')
@@ -181,17 +181,32 @@ class IosChannel extends Channel {
                 script.echo("Custom Hooks execution skipped by User.")
             }
 
-
+            /* Set Export Method for Fastlane according to iosDistributionType
+             * NOTE : For adhoc distribution type export method should be ad-hoc
+             *   For appstore distribution type export method should be app-store
+             */
+            def iOSExportMethod;
+            switch (iosDistributionType) {
+                case 'adhoc':
+                    iOSExportMethod = "ad-hoc"
+                    break
+                case 'appstore':
+                    iOSExportMethod = "app-store"
+                    break
+                default:
+                    iOSExportMethod = iosDistributionType
+                    break
+            }
 
             /* Build project and export IPA using fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
                 /* Inject required environment variables */
                 script.withCredentials([
-                    script.usernamePassword(
-                        credentialsId: "${appleID}",
-                        passwordVariable: 'FASTLANE_PASSWORD',
-                        usernameVariable: 'MATCH_USERNAME'
-                    )
+                        script.usernamePassword(
+                                credentialsId: "${appleID}",
+                                passwordVariable: 'FASTLANE_PASSWORD',
+                                usernameVariable: 'MATCH_USERNAME'
+                        )
                 ]) {
                     def ProjectBuildMode = buildMode.capitalize()
                     script.withEnv([
@@ -204,6 +219,7 @@ class IosChannel extends Channel {
                             "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
                             "MATCH_TYPE=${iosDistributionType}",
+                            "EXPORT_METHOD=${iOSExportMethod}",
                             "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
                             "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
                             "PROJECT_BUILDMODE=${ProjectBuildMode}",
@@ -213,14 +229,13 @@ class IosChannel extends Channel {
                         script.dir('fastlane') {
                             script.unstash name: fastlaneConfigStashName
                         }
-                        script.sshagent (credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
+                        script.sshagent(credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
                             /* set iOS build configuration to debug/release based on Visualizer version,
                             * note that, in 8.1.0 and above versions, to build debug mode binary, set the build configuration of KRelease as debug.
                             */
                             if (getVisualizerPackVersion(script.env.visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ios.schema.buildconfig.changed.version')) {
                                 script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_build', true)
-                            }
-                            else {
+                            } else {
                                 script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode, true)
                             }
                         }
@@ -236,7 +251,7 @@ class IosChannel extends Channel {
      * @return PLIST file object, format: {name: <NameOfPlistFile>, path: <PlistFilePath>}.
      */
     private final createPlist(String ipaArtifactUrl) {
-        (ipaArtifactUrl) ?: script.error("ipaArtifactUrl argument can't be null!")
+        (ipaArtifactUrl) ?: script.echoCustom("ipaArtifactUrl argument can't be null!", 'ERROR')
 
         String successMessage = 'PLIST file created successfully.'
         String errorMessage = 'Failed to create PLIST file'
@@ -267,101 +282,111 @@ class IosChannel extends Channel {
      */
     protected final void createPipeline() {
         script.timestamps {
-            script.stage('Check provided parameters') {
-                ValidationHelper.checkBuildConfiguration(script)
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                script.stage('Check provided parameters') {
+                    ValidationHelper.checkBuildConfiguration(script)
 
-                def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
+                    def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
 
-                channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
-                        mandatoryParameters.add('IOS_TABLET_APP_ID')
+                    channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
+                            mandatoryParameters.add('IOS_TABLET_APP_ID')
 
-                ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
-            }
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+                }
 
-            /* Allocate a slave for the run */
-            script.node(libraryProperties.'ios.node.label') {
-                /* Get and expose configuration file for fastlane */
-                fetchFastlaneConfig()
+                /* Allocate a slave for the run */
+                script.node(libraryProperties.'ios.node.label') {
+                    /* Get and expose configuration file for fastlane */
+                    fetchFastlaneConfig()
 
-                pipelineWrapper {
-                    /*
-                        Clean workspace, to be sure that we have not any items from previous build,
-                        and build environment completely new.
-                     */
-                    script.cleanWs deleteDirs: true
+                    pipelineWrapper {
+                        /**
+                         * Clean workspace, to be sure that we have not any items from previous build,
+                         * and build environment completely new.
+                         */
+                        script.cleanWs deleteDirs: true
 
-                    script.stage('Check build-node environment') {
-                    /*
-                        FABRIC_ENV_NAME is optional parameter which should be validated only if 
-                        if user entered some values
-                    */
-                        def parametersToValidate = ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE']
-                        if (script.env.FABRIC_ENV_NAME) {
-                            parametersToValidate << 'FABRIC_ENV_NAME'
+                        script.stage('Check build-node environment') {
+                            /**
+                             * FABRIC_ENV_NAME is optional parameter which should be validated only if
+                             * if user entered some values
+                             */
+                            def parametersToValidate = ['VISUALIZER_HOME', channelVariableName, 'IOS_BUNDLE_ID', 'PROJECT_WORKSPACE']
+                            if (script.env.FABRIC_ENV_NAME) {
+                                parametersToValidate << 'FABRIC_ENV_NAME'
+                            }
+                            ValidationHelper.checkBuildConfiguration(script, parametersToValidate)
                         }
-                        ValidationHelper.checkBuildConfiguration(script, parametersToValidate)
-                    }
 
-                    script.stage('Checkout') {
-                        BuildHelper.checkoutProject script: script,
-                                projectRelativePath: checkoutRelativeTargetFolder,
-                                scmBranch: scmBranch,
-                                scmCredentialsId: scmCredentialsId,
-                                scmUrl: scmUrl
-                    }
-                    script.stage('PreBuild CustomHooks'){
-                        /* Run Pre Builds Hooks First */
-                        if(runCustomHook){
-                            CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_STAGE')
+                        script.stage('Checkout') {
+                            BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: checkoutRelativeTargetFolder,
+                                    scmBranch: scmBranch,
+                                    scmCredentialsId: scmCredentialsId,
+                                    scmUrl: scmUrl
                         }
-                        else{
-                            script.echo("Custom Hooks execution skipped by User.")
+
+                        script.stage('PreBuild CustomHooks'){
+                            /* Run Pre Builds Hooks First */
+                            if(runCustomHook){
+                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_STAGE')
+                            }
+                            else{
+                                script.echo("Custom Hooks execution skipped by User.")
+                            }
                         }
+
+                        script.stage('Update Bundle ID') {
+                            updateIosBundleId()
+                        }
+
+                        script.stage('Build') {
+                            build()
+                            /* Search for build artifacts */
+                            karArtifact = getArtifactLocations(artifactExtension).first() ?:
+                                    script.echoCustom('Build artifacts were not found!','ERROR')
+                        }
+
+                        script.stage('Generate IPA file') {
+                            createIPA()
+                            /* Get ipa file name and path */
+                            def foundArtifacts = getArtifactLocations('ipa')
+                            /* Rename artifacts for publishing */
+                            ipaArtifact = renameArtifacts(foundArtifacts).first()
+                        }
+
+                        script.stage("Publish IPA artifact to S3") {
+                            ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                    sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
+                        }
+
+                        script.stage("Generate PLIST file") {
+                            String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
+                            /* Get plist artifact */
+                            plistArtifact = createPlist(authenticatedIPAArtifactUrl)
+                            /* Temporary fix to display ipa file in the mail notification (instead of plist) */
+                            artifacts.add([
+                                    channelPath: channelPath, name: ipaArtifact.name, url: ipaArtifactUrl, authurl: authenticatedIPAArtifactUrl, otaurl: authenticatedIPAArtifactUrl
+                            ])
+                        }
+
+                        script.stage("Publish PLIST artifact to S3") {
+                            String artifactName = plistArtifact.name
+                            String artifactPath = plistArtifact.path
+                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script
+
+                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                            String plistArtifactOTAUrl = iosOTAPrefix + authenticatedArtifactUrl
+
+                            artifacts.add([
+                                    channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, otaurl: plistArtifactOTAUrl
+                            ])
+                        }
+
+                        script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                     }
-
-                    script.stage('Update Bundle ID') {
-                        updateIosBundleId()
-                    }
-
-                    script.stage('Build') {
-                        build()
-                        /* Search for build artifacts */
-                        karArtifact = getArtifactLocations(artifactExtension).first() ?:
-                                script.error('Build artifacts were not found!')
-                    }
-
-                    script.stage('Generate IPA file') {
-                        createIPA()
-                        /* Get ipa file name and path */
-                        def foundArtifacts = getArtifactLocations('ipa')
-                        /* Rename artifacts for publishing */
-                        ipaArtifact = renameArtifacts(foundArtifacts).first()
-                    }
-
-                    script.stage("Publish IPA artifact to S3") {
-                        ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
-                    }
-
-                    script.stage("Generate PLIST file") {
-                        /* Get plist artifact */
-                        plistArtifact = createPlist(ipaArtifactUrl)
-                    }
-
-                    script.stage("Publish PLIST artifact to S3") {
-                        String artifactName = plistArtifact.name
-                        String artifactPath = plistArtifact.path
-                        String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                sourceFileName: artifactName, sourceFilePath: artifactPath, script
-								
-						String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
-
-                        artifacts.add([
-                                channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl
-                        ])
-                    }
-
-                    script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                 }
                 script.stage('PostBuild CustomHooks'){
 

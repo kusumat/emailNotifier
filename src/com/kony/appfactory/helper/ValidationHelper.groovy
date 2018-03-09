@@ -31,7 +31,7 @@ class ValidationHelper implements Serializable {
             String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
             String errorMessage = [emptyParams.keySet().join(', '), message, "can't be null!"].join(' ')
             /* Break the build and print all empty parameters */
-            script.error(errorMessage)
+            script.echoCustom(errorMessage,'ERROR')
         }
 
         /* Validate required parameters */
@@ -46,7 +46,7 @@ class ValidationHelper implements Serializable {
             /* Forming final error message by adding suggestion message */
             errorMessage = errorMessage + '\n' + suggestionMessage
             /* Break the build and print all not valid parameters */
-            script.error(errorMessage)
+            script.echoCustom(errorMessage,'ERROR')
         }
     }
 
