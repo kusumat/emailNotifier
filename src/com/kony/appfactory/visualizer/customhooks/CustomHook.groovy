@@ -66,11 +66,11 @@ class CustomHook implements Serializable {
 
                 script.stage('Prepare Environment for Run'){
                     script.sh 'pwd'
-                    script.sh 'chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
-                    script.sh 'find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+                    script.sh 'set +x;chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
+                    script.sh 'set +x;find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
 
                     /*This is to get change permission for upstream folder which will be same as Jenkins job name*/
-                    script.sh "chmod 710 ../../$upstreamJobName"
+                    script.sh "set +x;chmod 710 ../../$upstreamJobName"
                 }
             }
         }
@@ -97,7 +97,7 @@ class CustomHook implements Serializable {
                         }
 
                         script.dir(hookDir) {
-                            script.sh 'set +e && find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
+                            script.sh 'set +e;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
                         }
                     }
                 }

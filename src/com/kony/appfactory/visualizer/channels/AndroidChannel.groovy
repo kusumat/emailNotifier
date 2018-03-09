@@ -172,7 +172,7 @@ class AndroidChannel extends Channel {
 
                         script.stage('PreBuild CustomHooks'){
                             if(runCustomHook){
-                                /* Run Pre Builds Hooks First */
+                                /* Run Pre Build Android Hooks */
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'ANDROID_STAGE')
                             }
                             else{
@@ -221,12 +221,14 @@ class AndroidChannel extends Channel {
                         }
                     }
 
-                    script.stage('PostBuild CustomHooks'){
-                        if(runCustomHook) {
-                            CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'ANDROID_STAGE')
-                        }
-                        else{
-                            script.echo("Custom Hooks execution skipped by User.")
+                    /* Run Post Build Android Hooks */
+                    if (script.currentBuild.result == 'SUCCESS') {
+                        script.stage('PostBuild CustomHooks') {
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'ANDROID_STAGE')
+                            } else {
+                                script.echo("Custom Hooks execution skipped by User.")
+                            }
                         }
                     }
                 }

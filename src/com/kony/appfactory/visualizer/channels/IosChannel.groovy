@@ -174,7 +174,7 @@ class IosChannel extends Channel {
             }
 
             if(runCustomHook){
-                /* Run Pre Builds Hooks First */
+                /* Run Pre Build iOS IPA stage Hooks */
                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_IPA_STAGE')
             }
             else{
@@ -328,7 +328,7 @@ class IosChannel extends Channel {
                         }
 
                         script.stage('PreBuild CustomHooks'){
-                            /* Run Pre Builds Hooks First */
+                            /* Run Pre Build iOS Hooks */
                             if(runCustomHook){
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_STAGE')
                             }
@@ -387,14 +387,16 @@ class IosChannel extends Channel {
 
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                     }
-                }
-                script.stage('PostBuild CustomHooks'){
 
-                    if(runCustomHook) {
-                        CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'IOS_STAGE')
-                    }
-                    else{
-                        script.echo("Custom Hooks execution skipped by User.")
+                    /* Run Post Build iOS Hooks */
+                    if (script.currentBuild.result == 'SUCCESS') {
+                        script.stage('PostBuild CustomHooks') {
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'IOS_STAGE')
+                            } else {
+                                script.echo("Custom Hooks execution skipped by User.")
+                            }
+                        }
                     }
                 }
             }

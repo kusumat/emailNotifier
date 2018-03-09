@@ -37,7 +37,10 @@ class CustomHookHelper implements Serializable {
                 updatedIndexHookList.push(it)
             }
         }
-        script.echo("Hooks Available: "+ updatedIndexHookList.toString())
+        if(updatedIndexHookList){
+            script.echo("Hooks found in $hookStage stage for $pipelineBuildStage channel. List: " + updatedIndexHookList.toString())
+        }
+
         return updatedIndexHookList;
     }
 
@@ -86,10 +89,9 @@ class CustomHookHelper implements Serializable {
 
 
             hookSlave ?: script.error("Not able to find hookSlave to run Custom Hooks");
-            script.echo("Initilize hook agent $hookSlave ")
 
             def hookList = getHookList(script, hookStage, pipelineBuildStage, hookProperties)
-            hookList ?: script.echo("Hooks not defined in $hookStage")
+            hookList ?: script.echo("Hooks are not defined in $hookStage stage for $pipelineBuildStage channel.")
 
             script.stage(hookStage) {
                 for (hookName in hookList) {
@@ -99,7 +101,7 @@ class CustomHookHelper implements Serializable {
 
                     def hookJobName = getHookJobName(projectName, hookName, hookStage)
                     if (Boolean.valueOf(isPropagateBuildResult)) {
-                        script.build job: hookJobName,
+                        def hookJob = script.build job: hookJobName,
                                 propagate: true, wait: true,
                                 parameters: [[$class: 'WHideParameterValue',
                                               name  : 'UPSTREAM_JOB_WORKSPACE',
@@ -112,8 +114,12 @@ class CustomHookHelper implements Serializable {
                                              [$class: 'WHideParameterValue',
                                               name  : 'BUILD_SLAVE',
                                               value : "$currentComputer"]]
+                        script.echo("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult")
+                        if (hookJob.currentResult == 'SUCCESS') {
+                            script.echoCustom("Hook execution is SUCCESS, continuing with next build step..",'INFO')
+                        }
                     } else {
-                        script.build job: hookJobName,
+                        def hookJob = script.build job: hookJobName,
                                 propagate: false,
                                 wait: true,
                                 parameters: [[$class: 'WHideParameterValue',
@@ -127,7 +133,13 @@ class CustomHookHelper implements Serializable {
                                              [$class: 'WHideParameterValue',
                                               name  : 'BUILD_SLAVE',
                                               value : "$currentComputer"]]
+                        script.echo("Build is completed for the Hook $hookJobName. Status of the Hook build: $hookJob.currentResult")
+                        if (hookJob.currentResult != 'SUCCESS') {
+                            script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as false, " +
+                                    "continuing with next build step..",'INFO')
+                        }
                     }
+
                 }
             }
         }
@@ -145,7 +157,7 @@ class CustomHookHelper implements Serializable {
 
     @NonCPS
     protected static runCustomHooks(script, String folderName, String hookBuildStage, String pipelineBuildStage){
-        script.echo("Executing ${hookBuildStage} - ${pipelineBuildStage} hooks. ")
+        script.echo("Fetching ${hookBuildStage} - ${pipelineBuildStage} hooks. ")
 
        /* Execute available hooks */
         triggerHooks(script, folderName, hookBuildStage, pipelineBuildStage)

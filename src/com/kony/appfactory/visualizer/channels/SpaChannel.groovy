@@ -92,7 +92,7 @@ class SpaChannel extends Channel {
 
                         script.stage('PreBuild CustomHooks'){
                             if(runCustomHook){
-                                /* Run Pre Builds Hooks First */
+                                /* Run Pre Build SPA Hooks */
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'SPA_STAGE')
                             }
                             else{
@@ -146,12 +146,15 @@ class SpaChannel extends Channel {
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                         }
                     }
-                    script.stage('PostBuild CustomHooks'){
-                        if(runCustomHook){
-                            CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_STAGE')
-                        }
-                        else{
-                            script.echo("Custom Hooks execution skipped by User.")
+
+                    /* Run Post Build SPA Hooks */
+                    if (script.currentBuild.result == 'SUCCESS') {
+                        script.stage('PostBuild CustomHooks') {
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_STAGE')
+                            } else {
+                                script.echo("Custom Hooks execution skipped by User.")
+                            }
                         }
                     }
                 }
