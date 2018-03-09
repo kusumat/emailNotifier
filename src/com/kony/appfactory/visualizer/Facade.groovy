@@ -4,11 +4,6 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.CustomHookHelper
-import hudson.model.Job
-import jenkins.model.Jenkins
-import com.cloudbees.hudson.plugins.folder.Folder
-import org.jenkinsci.plugins.configfiles.custom.CustomConfig
-import hudson.plugins.sectioned_view.SectionedView;
 
 /**
  * Implements logic for buildVisualizerApp job.
