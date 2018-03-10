@@ -363,9 +363,9 @@ class Facade implements Serializable {
 
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
-					
-					/* Collect must have artifacts */
-					mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
+                    /* Collect must have artifacts */
+                    mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
 
                     /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
@@ -397,9 +397,9 @@ class Facade implements Serializable {
 
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
-					
-					/* Collect must have artifacts */
-					mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
+                    /* Collect must have artifacts */
+                    mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
 
                     /* Notify user that SPA channel build failed */
                     if (channelJob.currentResult != 'SUCCESS') {
@@ -421,8 +421,8 @@ class Facade implements Serializable {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
 
-		if(s3MustHaveAuthUrl)
-			mustHavesDescription = "<p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>"
+        if(s3MustHaveAuthUrl)
+            mustHavesDescription = "<p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>"
 
         script.currentBuild.description = """\
             <div id="build-description">
@@ -617,8 +617,8 @@ class Facade implements Serializable {
 
                                 /* Collect job result */
                                 jobResultList.add(testAutomationJobResult)
-								
-								mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
+                                mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
 
                                 /* Notify user that runTests job build failed */
                                 if (testAutomationJobResult != 'SUCCESS') {
@@ -643,10 +643,10 @@ class Facade implements Serializable {
                         script.echoCustom(exceptionMessage, 'WARN')
                         script.currentBuild.result = 'FAILURE'
                     } finally {
-						String s3MustHaveAuthUrl
-						if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-							s3MustHaveAuthUrl = PrepareMustHaves()
-						}
+                        String s3MustHaveAuthUrl
+                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                            s3MustHaveAuthUrl = PrepareMustHaves()
+                        }
                         setBuildDescription(s3MustHaveAuthUrl)
                         /*
                         Been agreed to send notification from buildVisualizerApp job only

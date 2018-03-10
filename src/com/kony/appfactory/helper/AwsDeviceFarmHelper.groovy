@@ -370,7 +370,6 @@ class AwsDeviceFarmHelper implements Serializable {
             script.waitUntil {
                 String runResultScript = "aws devicefarm get-run --arn ${testRunArn}"
                 String runResultOutput = script.shellCustom(runResultScript, true, [returnStdout: true]).trim()
-				
                 def runResultJSON = script.readJSON text: runResultOutput
                 testRunStatus = runResultJSON.run.status
                 testRunResult = runResultJSON.run.result
