@@ -6,7 +6,7 @@ import hudson.slaves.EnvironmentVariablesNodeProperty;
 
 
 /**
- * Implements logic related to customHooks execution process.
+ * Implements logic related to CustomHooks execution process.
  */
 class CustomHookHelper implements Serializable {
 
@@ -69,9 +69,7 @@ class CustomHookHelper implements Serializable {
     */
     protected static triggerHooks(script, projectName, hookStage, pipelineBuildStage){
 
-        def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHook/"
-        getConfigFileInWorkspace(script, customhooksConfigFolder, projectName)
-        def hookProperties = script.readJSON file:"${projectName}.json"
+        def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHooks/"
 
         def content = ConfigFileHelper.getOlderContent(customhooksConfigFolder, projectName)
 
@@ -88,7 +86,7 @@ class CustomHookHelper implements Serializable {
             String hookSlave = getHookSlaveForCurrentBuildSlave(currentComputer)
 
 
-            hookSlave ?: script.error("Not able to find hookSlave to run Custom Hooks");
+            hookSlave ?: script.error("Not able to find hookSlave to run CustomHooks");
 
             def hookList = getHookList(script, hookStage, pipelineBuildStage, hookProperties)
             hookList ?: script.echo("Hooks are not defined in $hookStage stage for $pipelineBuildStage channel.")
@@ -150,7 +148,7 @@ class CustomHookHelper implements Serializable {
 
     /* return hook full path */
     protected static final getHookJobName(projectName, hookName, hookType) {
-        def hookFullName = [projectName, 'Visualizer', 'Builds', 'CustomHook', hookType, hookName].join('/')
+        def hookFullName = [projectName, 'Visualizer', 'Builds', 'CustomHooks', hookType, hookName].join('/')
         hookFullName
     }
 

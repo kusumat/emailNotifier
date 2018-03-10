@@ -442,7 +442,7 @@ class BuildHelper implements Serializable {
         def iosNodeLabel = libraryProperties.'ios.node.label'
         def winNodeLabel = libraryProperties.'windows.node.label'
 
-        /*If we need to run customHooks, then Run Android Job always in mac */
+        /*If we need to run CustomHooks, then Run Android Job always in mac */
         if(runCustomHook){
             script.echo "Running in Mac Agent to run CustomHooks "
             return iosNodeLabel

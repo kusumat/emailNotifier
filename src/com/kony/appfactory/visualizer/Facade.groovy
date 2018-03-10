@@ -177,7 +177,7 @@ class Facade implements Serializable {
         channelsBaseFolder + '/' + 'build' + (channelType) ?: script.echoCustom('Unknown channel type!','ERROR')
     }
     private final getHookJobName(String hookName, String hookType) {
-        String hookBaseFolder = 'CustomHook'
+        String hookBaseFolder = 'CustomHooks'
 
         hookBaseFolder + '/' + hookType + '/' + hookName ?: script.error('Unknown Hook Type specified in Function call')
     }

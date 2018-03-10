@@ -36,7 +36,7 @@ class CustomHook implements Serializable {
         )
     }
 
-    /* customHooks pipeline, each hook follows same execution process */
+    /* CustomHooks pipeline, each hook follows same execution process */
     protected final void processPipeline(){
 
         String upstreamJobName = getUpstreamJobName(script)

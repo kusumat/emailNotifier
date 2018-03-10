@@ -176,7 +176,7 @@ class AndroidChannel extends Channel {
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'ANDROID_STAGE')
                             }
                             else{
-                                script.echoCustom('Custom Hooks execution skipped by User.','INFO')
+                                script.echoCustom('CustomHooks execution skipped by User.','INFO')
                             }
 
                         }
@@ -227,7 +227,7 @@ class AndroidChannel extends Channel {
                             if (runCustomHook) {
                                 CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'ANDROID_STAGE')
                             } else {
-                                script.echo("Custom Hooks execution skipped by User.")
+                                script.echo("CustomHooks execution skipped by User.")
                             }
                         }
                     }

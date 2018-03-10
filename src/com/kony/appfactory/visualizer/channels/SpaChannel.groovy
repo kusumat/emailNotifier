@@ -96,7 +96,7 @@ class SpaChannel extends Channel {
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'SPA_STAGE')
                             }
                             else{
-                                script.echo("Custom Hooks execution skipped by User.")
+                                script.echo("CustomHooks execution skipped by User.")
                             }
                         }
 
@@ -153,7 +153,7 @@ class SpaChannel extends Channel {
                             if (runCustomHook) {
                                 CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_STAGE')
                             } else {
-                                script.echo("Custom Hooks execution skipped by User.")
+                                script.echo("CustomHooks execution skipped by User.")
                             }
                         }
                     }
