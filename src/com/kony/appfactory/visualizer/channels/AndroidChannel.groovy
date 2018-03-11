@@ -28,7 +28,7 @@ class AndroidChannel extends Channel {
     private nodeLabel
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
-
+    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "ANDROID_MOBILE_STAGE" : "ANDROID_TABLET_STAGE";
 
     /**
      * Class constructor.
@@ -173,7 +173,7 @@ class AndroidChannel extends Channel {
                         script.stage('PreBuild CustomHooks'){
                             if(runCustomHook){
                                 /* Run Pre Build Android Hooks */
-                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'ANDROID_STAGE')
+                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
                             }
                             else{
                                 script.echoCustom('CustomHooks execution skipped by User.','INFO')
@@ -225,7 +225,7 @@ class AndroidChannel extends Channel {
                     if (script.currentBuild.result == 'SUCCESS') {
                         script.stage('PostBuild CustomHooks') {
                             if (runCustomHook) {
-                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'ANDROID_STAGE')
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
                             } else {
                                 script.echo("CustomHooks execution skipped by User.")
                             }

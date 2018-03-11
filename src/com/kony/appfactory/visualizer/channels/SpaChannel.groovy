@@ -38,7 +38,7 @@ class SpaChannel extends Channel {
     @NonCPS
     private static getSelectedSpaChannels(buildParameters) {
         buildParameters.findAll {
-            it.value instanceof  Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
+            it.value instanceof  Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.key != 'RUN_CUSTOM_HOOKS' && it.value
         }.keySet().collect()
     }
 
@@ -92,8 +92,18 @@ class SpaChannel extends Channel {
 
                         script.stage('PreBuild CustomHooks'){
                             if(runCustomHook){
-                                /* Run Pre Build SPA Hooks */
-                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'SPA_STAGE')
+                                if(selectedSpaChannels.contains('ANDROID_MOBILE_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'SPA_ANDROID_MOBILE_STAGE')
+                                }
+                                if(selectedSpaChannels.contains('ANDROID_TABLET_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'SPA_ANDROID_TABLET_STAGE')
+                                }
+                                if(selectedSpaChannels.contains('IOS_MOBILE_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'SPA_IOS_MOBILE_STAGE')
+                                }
+                                if(selectedSpaChannels.contains('IOS_TABLET_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'SPA_IOS_TABLET_STAGE')
+                                }
                             }
                             else{
                                 script.echo("CustomHooks execution skipped by User.")
@@ -150,9 +160,22 @@ class SpaChannel extends Channel {
                     /* Run Post Build SPA Hooks */
                     if (script.currentBuild.result == 'SUCCESS') {
                         script.stage('PostBuild CustomHooks') {
-                            if (runCustomHook) {
-                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_STAGE')
-                            } else {
+                            if(runCustomHook){
+                                if(selectedSpaChannels.contains('ANDROID_MOBILE_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_ANDROID_MOBILE_STAGE')
+                                }
+                                if(selectedSpaChannels.contains('ANDROID_TABLET_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_ANDROID_TABLET_STAGE')
+                                }
+                                if(selectedSpaChannels.contains('IOS_MOBILE_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_IOS_MOBILE_STAGE')
+                                }
+                                if(selectedSpaChannels.contains('IOS_TABLET_SPA')){
+                                    CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'SPA_IOS_TABLET_STAGE')
+                                }
+
+                            }
+                            else{
                                 script.echo("CustomHooks execution skipped by User.")
                             }
                         }

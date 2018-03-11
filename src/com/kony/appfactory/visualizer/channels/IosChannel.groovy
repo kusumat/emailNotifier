@@ -27,6 +27,7 @@ class IosChannel extends Channel {
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_STAGE" : "IOS_TABLET_STAGE";
     private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
 
     /**
@@ -175,7 +176,7 @@ class IosChannel extends Channel {
 
             if(runCustomHook){
                 /* Run Pre Build iOS IPA stage Hooks */
-                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_IPA_STAGE')
+                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
             }
             else{
                 script.echo("CustomHooks execution skipped by User.")
@@ -330,7 +331,7 @@ class IosChannel extends Channel {
                         script.stage('PreBuild CustomHooks'){
                             /* Run Pre Build iOS Hooks */
                             if(runCustomHook){
-                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", 'IOS_STAGE')
+                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
                             }
                             else{
                                 script.echo("CustomHooks execution skipped by User.")
