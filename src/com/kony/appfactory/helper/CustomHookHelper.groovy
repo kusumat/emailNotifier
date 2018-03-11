@@ -85,7 +85,6 @@ class CustomHookHelper implements Serializable {
 
             String hookSlave = getHookSlaveForCurrentBuildSlave(currentComputer)
 
-
             hookSlave ?: script.error("Not able to find hookSlave to run CustomHooks");
 
             def hookList = getHookList(script, hookStage, pipelineBuildStage, hookProperties)
@@ -93,51 +92,29 @@ class CustomHookHelper implements Serializable {
 
             script.stage(hookStage) {
                 for (hookName in hookList) {
-
                     def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
-                    script.echo(isPropagateBuildResult.toString() + hookName)
-
                     def hookJobName = getHookJobName(projectName, hookName, hookStage)
-                    if (Boolean.valueOf(isPropagateBuildResult)) {
-                        def hookJob = script.build job: hookJobName,
-                                propagate: true, wait: true,
-                                parameters: [[$class: 'WHideParameterValue',
-                                              name  : 'UPSTREAM_JOB_WORKSPACE',
-                                              value : "$script.env.WORKSPACE"],
+                    def hookJob = script.build job: hookJobName,
+                            propagate: Boolean.valueOf(isPropagateBuildResult), wait: true,
+                            parameters: [[$class: 'WHideParameterValue',
+                                          name  : 'UPSTREAM_JOB_WORKSPACE',
+                                          value : "$script.env.WORKSPACE"],
 
-                                             [$class: 'WHideParameterValue',
-                                              name  : 'HOOK_SLAVE',
-                                              value : "$hookSlave"],
+                                         [$class: 'WHideParameterValue',
+                                          name  : 'HOOK_SLAVE',
+                                          value : "$hookSlave"],
 
-                                             [$class: 'WHideParameterValue',
-                                              name  : 'BUILD_SLAVE',
-                                              value : "$currentComputer"]]
-                        script.echo("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult")
-                        if (hookJob.currentResult == 'SUCCESS') {
-                            script.echoCustom("Hook execution is SUCCESS, continuing with next build step..",'INFO')
-                        }
-                    } else {
-                        def hookJob = script.build job: hookJobName,
-                                propagate: false,
-                                wait: true,
-                                parameters: [[$class: 'WHideParameterValue',
-                                              name  : 'UPSTREAM_JOB_WORKSPACE',
-                                              value : "$script.env.WORKSPACE"],
-
-                                             [$class: 'WHideParameterValue',
-                                              name  : 'HOOK_SLAVE',
-                                              value : "$hookSlave"],
-
-                                             [$class: 'WHideParameterValue',
-                                              name  : 'BUILD_SLAVE',
-                                              value : "$currentComputer"]]
-                        script.echo("Build is completed for the Hook $hookJobName. Status of the Hook build: $hookJob.currentResult")
-                        if (hookJob.currentResult != 'SUCCESS') {
-                            script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as false, " +
-                                    "continuing with next build step..",'INFO')
-                        }
+                                         [$class: 'WHideParameterValue',
+                                          name  : 'BUILD_SLAVE',
+                                          value : "$currentComputer"]]
+                    script.echo("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult")
+                    if (hookJob.currentResult == 'SUCCESS') {
+                        script.echoCustom("Hook execution is SUCCESS, continuing with next build step..",'INFO')
                     }
-
+                    else {
+                        script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as false, " +
+                                "continuing with next build step..",'INFO')
+                    }
                 }
             }
         }
