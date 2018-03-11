@@ -43,7 +43,7 @@ class ConfigFileHelper implements Serializable {
             FilePath workspace= null;
             ConfigProvider provider = config.getDescriptor();
             List<String> tempFiles = new ArrayList<>();
-            tempFiles.add("Mukesh");
+            tempFiles.add("dummyentry");
             System.out.println("Hooks Config File Are  : "+config.name+ "And Param " + configFileName);
             if((config.name).equals(configFileName)){
                 olderContent = config.getDescriptor().supplyContent(config, build, workspace, TaskListener.NULL,tempFiles);

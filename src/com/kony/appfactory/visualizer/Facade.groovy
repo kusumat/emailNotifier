@@ -557,7 +557,7 @@ class Facade implements Serializable {
                             // CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST")
                         }
                         else {
-                            script.echo("Skipping POST_TEST hooks (if available) as Tests are't running")
+                            script.echoCustom('Skipping POST_TEST hooks (if available) as Tests are\'t running')
                         }
                         /* Check if there are failed or unstable or aborted jobs */
                         if (jobResultList.contains('FAILURE') ||

@@ -38,7 +38,7 @@ class CustomHookHelper implements Serializable {
             }
         }
         if(updatedIndexHookList){
-            script.echo("Hooks found in $hookStage stage for $pipelineBuildStage channel. List: " + updatedIndexHookList.toString())
+            script.echoCustom("Hooks found in $hookStage stage for $pipelineBuildStage channel. List: " + updatedIndexHookList.toString())
         }
 
         return updatedIndexHookList;
@@ -88,7 +88,7 @@ class CustomHookHelper implements Serializable {
             hookSlave ?: script.error("Not able to find hookSlave to run CustomHooks");
 
             def hookList = getHookList(script, hookStage, pipelineBuildStage, hookProperties)
-            hookList ?: script.echo("Hooks are not defined in $hookStage stage for $pipelineBuildStage channel.")
+            hookList ?: script.echoCustom("Hooks are not defined in $hookStage stage for $pipelineBuildStage channel.")
 
             script.stage(hookStage) {
                 for (hookName in hookList) {
@@ -119,7 +119,7 @@ class CustomHookHelper implements Serializable {
             }
         }
         else{
-            script.echo("Hooks not defined in $hookStage");
+            script.echoCustom("Hooks are not defined in $hookStage");
         }
     }
 
@@ -130,9 +130,10 @@ class CustomHookHelper implements Serializable {
     }
 
 
-    @NonCPS
+  //  @NonCPS
     protected static runCustomHooks(script, String folderName, String hookBuildStage, String pipelineBuildStage){
-        script.echo("Fetching ${hookBuildStage} - ${pipelineBuildStage} hooks. ")
+        //script.echo("Fetching ${hookBuildStage} - ${pipelineBuildStage} hooks. ")
+        script.echoCustom("Fetching $hookBuildStage $pipelineBuildStage hooks. ")
 
        /* Execute available hooks */
         triggerHooks(script, folderName, hookBuildStage, pipelineBuildStage)

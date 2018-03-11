@@ -42,62 +42,90 @@ class CustomHook implements Serializable {
         String upstreamJobName = getUpstreamJobName(script)
         String visWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
 
-        script.node(buildSlave) {
-            script.ws(visWorkspace) {
+        /* Wrapper for injecting timestamp to the build console output */
+        script.timestamps {
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                script.node(buildSlave) {
+                    script.ws(visWorkspace) {
 
-                script.stage('Clean Environment'){
-                    script.dir(hookDir){
-                        script.deleteDir()
-                    }
-                    script.sh "set +e; mkdir -p $projectName/Hook";
-                }
+                        script.stage('Clean Environment') {
+                            script.dir(hookDir) {
+                                script.deleteDir()
+                            }
+                            script.shellCustom("set +e; mkdir -p $projectName/Hook", true)
+                        }
 
-                script.stage("Download Hook Scripts") {
-                    script.dir(hookDir){
-                        script.httpRequest url: buildScript, outputFile: outputFile, validResponseCodes: '200'
-                    }
-                }
-
-                script.stage("Extract Hook Archive") {
-                    script.dir(hookDir){
-                        script.unzip zipFile: "Hook.zip"
-                    }
-                }
-
-                script.stage('Prepare Environment for Run'){
-                    script.sh 'pwd'
-                    script.sh 'set +x;chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
-                    script.sh 'set +x;find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
-
-                    /*This is to get change permission for upstream folder which will be same as Jenkins job name*/
-                    script.sh "set +x;chmod 710 ../../$upstreamJobName"
-                }
-            }
-        }
-
-        script.node(hookSlave){
-            script.ws([upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')) {
-
-                def javaHome = script.env.JDK_1_8_0_112_HOME
-                def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
-
-                def pathSeparator = script.isUnix() ? ':' : ';'
-
-                script.withEnv(["JAVA_HOME=${javaHome}", "PATH+TOOLS=${javaHome}${pathSeparator}${antBinPath}"]) {
-                    script.stage("Running CustomHook") {
-                        script.dir(hookDir) {
-                            if (buildAction == "Execute Ant") {
-                                //script.sh "export JAVA_HOME='/Appfactory/Jenkins/tools/jdk1.8.0_112.jdk' && /Appfactory/Jenkins/tools/ant-1.8.2/bin/ant -f build.xml ${scriptArguments}"
-                                script.sh "ant -f build.xml ${scriptArguments}"
-                            } else if (buildAction == "Execute Maven") {
-                                script.sh "mvn ${scriptArguments}"
-                            } else {
-                                script.echo("unknown build script ")
+                        script.stage("Download Hook Scripts") {
+                            script.dir(hookDir) {
+                                script.httpRequest url: buildScript, outputFile: outputFile, validResponseCodes: '200'
                             }
                         }
 
-                        script.dir(hookDir) {
-                            script.sh 'set +e;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
+                        script.stage("Extract Hook Archive") {
+                            script.dir(hookDir) {
+                                script.unzip zipFile: "Hook.zip"
+                            }
+                        }
+
+                        script.stage('Prepare Environment for Run') {
+                            script.shellCustom('pwd', true)
+
+                            def hookSlaveACLapply_fordirs = 'set +x && chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
+                            def hookSlaveACLapply_forfiles = 'set +x && find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+
+                            //script.sh 'set +x;chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
+                            //script.sh 'set +x;find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+
+                            script.shellCustom("$hookSlaveACLapply_fordirs", true)
+                            script.shellCustom("$hookSlaveACLapply_forfiles", true)
+
+                            /*This is to get change permission for upstream folder which will be same as Jenkins job name*/
+                            //script.sh "set +x;chmod 710 ../../$upstreamJobName"
+                            script.shellCustom("set +x && chmod 710 ../../$upstreamJobName",true)
+                        }
+                    }
+                }
+
+                script.node(hookSlave) {
+                    script.ws([upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')) {
+
+                        def javaHome = script.env.JDK_1_8_0_112_HOME
+                        def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
+
+                        def pathSeparator = script.isUnix() ? ':' : ';'
+
+                        script.echoCustom("Running CustomHook")
+                        script.withEnv(["JAVA_HOME=${javaHome}", "PATH+TOOLS=${javaHome}${pathSeparator}${antBinPath}"]) {
+                            script.stage("Running CustomHook") {
+                                script.dir(hookDir) {
+                                    if (buildAction == "Execute Ant") {
+                                        //script.sh "export JAVA_HOME='/Appfactory/Jenkins/tools/jdk1.8.0_112.jdk' && /Appfactory/Jenkins/tools/ant-1.8.2/bin/ant -f build.xml ${scriptArguments}"
+                                        //script.sh "ant -f build.xml ${scriptArguments}"
+                                        script.shellCustom("ant -f build.xml ${scriptArguments}", true)
+                                    } else if (buildAction == "Execute Maven") {
+                                        //script.sh "mvn ${scriptArguments}"
+                                        script.shellCustom("mvn ${scriptArguments}", true)
+                                    } else {
+                                        //script.echo("unknown build script ")
+                                        script.echoCustom("unknown build script",'ERROR')
+                                    }
+                                }
+
+                                script.stage('Prepare Environment for actual Build Run') {
+                                    def buildSlaveACLapply_fordirs = 'set +x && chmod -R +a "buildslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" .'
+                                    def buildSlaveACLapply_forfiles = 'set +x && find . -type f -exec chmod -R +a "buildslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+
+                                    //script.shellCustom("$buildSlaveACLapply_fordirs", true)
+                                    //script.shellCustom("$buildSlaveACLapply_forfiles", true)
+
+                                    script.dir(hookDir) {
+                                        //script.sh 'set +e;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
+                                        def buildSlaveACLapply_inhookDir = 'set +x;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\+'
+                                        script.shellCustom("$buildSlaveACLapply_inhookDir", true)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

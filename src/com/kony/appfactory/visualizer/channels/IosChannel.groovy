@@ -179,7 +179,7 @@ class IosChannel extends Channel {
                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
             }
             else{
-                script.echo("CustomHooks execution skipped by User.")
+                script.echoCustom('CustomHooks execution skipped by User.','WARN')
             }
 
             /* Set Export Method for Fastlane according to iosDistributionType
@@ -334,7 +334,7 @@ class IosChannel extends Channel {
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
                             }
                             else{
-                                script.echo("CustomHooks execution skipped by User.")
+                                script.echoCustom('CustomHooks execution skipped by User.','WARN')
                             }
                         }
 
@@ -390,13 +390,11 @@ class IosChannel extends Channel {
                     }
 
                     /* Run Post Build iOS Hooks */
-                    if (script.currentBuild.result == 'SUCCESS') {
-                        script.stage('PostBuild CustomHooks') {
-                            if (runCustomHook) {
-                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'IOS_STAGE')
-                            } else {
-                                script.echo("CustomHooks execution skipped by User.")
-                            }
+                    script.stage('PostBuild CustomHooks') {
+                        if (runCustomHook) {
+                            CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'IOS_STAGE')
+                        } else {
+                            script.echoCustom('CustomHooks execution skipped by User.','WARN')
                         }
                     }
                 }
