@@ -68,7 +68,7 @@ class AwsHelper implements Serializable {
                                       flatten          : true,
                                       keepForever      : true,
                                       managedArtifacts : false,
-                                      noUploadOnFailure: true,
+                                      noUploadOnFailure: false,
                                       selectedRegion   : bucketRegion,
                                       sourceFile       : fileName]
                              ],

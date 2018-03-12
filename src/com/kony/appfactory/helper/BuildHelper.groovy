@@ -141,6 +141,22 @@ class BuildHelper implements Serializable {
     }
 
     /**
+     * Get the build log for a build of a job
+     */
+    @NonCPS
+    protected static String getBuildLogText(script) {
+        String buildLogText
+        Jenkins.instance.getItemByFullName(script.env.JOB_NAME).each{ item->
+            Run currentBuild = ((Job)item).getBuild(script.env.BUILD_ID)
+            if(currentBuild){
+                File file = currentBuild.getLogFile()
+                buildLogText = file.getText()
+            }
+        }
+        buildLogText
+    }
+	
+    /**
      * Wraps code with Fabric environment variables.
      *
      * @param script pipeline object.
@@ -483,6 +499,21 @@ class BuildHelper implements Serializable {
             }
         }
         return isActiveNodeAvailable
+    }
+	
+    protected final static getEnvironmentInfo(script){
+        String cmd = script.isUnix() ? "env" : "set"
+        String environmentInfo = script.shellCustom(cmd, script.isUnix(),[returnStdout: true]).trim()
+
+        return environmentInfo
+    }
+
+    protected final static getInputParamsAsString(script){
+        def paramsInfo = StringBuilder.newInstance()
+        script.params.each{
+            paramsInfo.append "${it.key} = ${it.value}\n"
+        }
+        return paramsInfo.toString()
     }
 	
     protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false) {

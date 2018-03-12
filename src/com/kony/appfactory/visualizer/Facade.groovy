@@ -3,6 +3,8 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.helper.AwsHelper
+import com.kony.AppFactory.plugin.AppFactoryVersions
 
 /**
  * Implements logic for buildVisualizerApp job.
@@ -28,6 +30,7 @@ class Facade implements Serializable {
             [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
      */
     private artifacts = []
+	private mustHaveArtifacts = []
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
     /* Common build parameters */
@@ -75,6 +78,8 @@ class Facade implements Serializable {
         /* Checking if at least one channel been selected */
         channelsToRun = (getSelectedChannels(this.script.params)) ?:
                 script.echoCustom('Please select at least one channel to build!','ERROR')
+        this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
+        this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
     }
 
     /**
@@ -359,6 +364,9 @@ class Facade implements Serializable {
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
 
+                    /* Collect must have artifacts */
+                    mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
                     /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echoCustom("Status of the channel ${channelName} " +
@@ -390,6 +398,9 @@ class Facade implements Serializable {
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
 
+                    /* Collect must have artifacts */
+                    mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
                     /* Notify user that SPA channel build failed */
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echoCustom("Status of the channel ${channelName} " +
@@ -403,11 +414,15 @@ class Facade implements Serializable {
     /**
      * Sets build description at the end of the build.
      */
-    private final void setBuildDescription() {
+    private final void setBuildDescription(s3MustHaveAuthUrl) {
         String EnvironmentDescription = ""
+        String mustHavesDescription = ""
         if (script.env.FABRIC_ENV_NAME && script.env.FABRIC_ENV_NAME != '_') {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
+
+        if(s3MustHaveAuthUrl)
+            mustHavesDescription = "<p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>"
 
         script.currentBuild.description = """\
             <div id="build-description">
@@ -416,8 +431,76 @@ class Facade implements Serializable {
                 <img src="/static/b33030df/images/24x24/clock.png"
                 style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
                 class="icon-clock icon-md"></a></p>
+                ${mustHavesDescription}
             </div>\
             """.stripIndent()
+    }
+
+    /**
+     * Get the AppFactory version information (appfactory plugin version, core plugins versions, Kony Libarary branch information )
+     */
+    private final String getYourAppFactoryVersions() {
+        def apver = new AppFactoryVersions()
+		
+        def versionInfo = StringBuilder.newInstance()
+		
+        versionInfo.append "PipeLine Version : " + apver.getPipelineVersion() 
+        versionInfo.append "\nDSL Job Version : " + apver.getDSLJobVersion()
+        versionInfo.append "\nAppFactory Plugin Version : " + apver.getAppFactoryPluginVersion()
+		
+        def corePlugInVersionInfo = apver.getCorePluginVersions()
+		
+        corePlugInVersionInfo.each { pluginName, pluginVersion ->
+            versionInfo.append "\n$pluginName : $pluginVersion"
+        }
+		
+        versionInfo.toString()
+    }
+	
+	/**
+	 * Prepare must haves for the debugging
+	 */
+	private final String PrepareMustHaves() {
+        String s3MustHaveAuthUrl
+        String separator = script.isUnix() ? '/' : '\\'
+        String mustHaveFolderPath = [script.env.WORKSPACE, "vizMustHaves"].join(separator)
+        String mustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
+        String mustHaveFilePath = [script.env.WORKSPACE, mustHaveFile].join(separator)
+        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: 'vizMustHaves', type: 'INCLUDE']]
+
+        script.dir(mustHaveFolderPath){
+            script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script)
+            script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
+            script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
+            script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
+
+            mustHaveArtifacts.each{
+                if(it.url.trim().length() > 0){
+                    String artifactUrl = it.url.replace(' ', '%20')
+				    // Converting the https url into s3 url to download the musthaves for the channel jobs
+                    artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
+                                                artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com',
+                                                's3://'+script.env.S3_BUCKET_NAME) : artifactUrl) : ''
+                    String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
+
+                    String cpS3Cmd="set +x;aws s3 mv \"${artifactUrlDecoded}\" \"${it.name}\" --only-show-errors"
+                    script.shellCustom(cpS3Cmd, true)
+				}
+            }
+        }
+
+        script.dir(script.env.WORKSPACE){
+        	script.zip dir:"vizMustHaves", zipFile: mustHaveFile
+        	script.catchErrorCustom("Failed to create the Zip file") {
+                if(script.fileExists(mustHaveFilePath)){
+                    String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
+                    s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
+                                        sourceFilePath: script.env.WORKSPACE, script
+                    s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveAuthUrl, script)
+                }
+		    }
+        }
+        s3MustHaveAuthUrl
     }
 
     /**
@@ -533,6 +616,8 @@ class Facade implements Serializable {
                                 /* Collect job result */
                                 jobResultList.add(testAutomationJobResult)
 
+                                mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
                                 /* Notify user that runTests job build failed */
                                 if (testAutomationJobResult != 'SUCCESS') {
                                     script.echoCustom("Status of the runTests job: ${testAutomationJobResult}", 'WARN')
@@ -556,7 +641,11 @@ class Facade implements Serializable {
                         script.echoCustom(exceptionMessage, 'WARN')
                         script.currentBuild.result = 'FAILURE'
                     } finally {
-                        setBuildDescription()
+                        String s3MustHaveAuthUrl
+                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                            s3MustHaveAuthUrl = PrepareMustHaves()
+                        }
+                        setBuildDescription(s3MustHaveAuthUrl)
                         /*
                         Been agreed to send notification from buildVisualizerApp job only
                         if result not equals 'FAILURE', all notification with failed channel builds

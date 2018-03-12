@@ -325,6 +325,7 @@ class IosChannel extends Channel {
                             /* Search for build artifacts */
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
                                     script.echoCustom('Build artifacts were not found!','ERROR')
+                            mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
                         }
 
                         script.stage('Generate IPA file') {

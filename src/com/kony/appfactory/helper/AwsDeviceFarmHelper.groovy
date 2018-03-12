@@ -526,7 +526,7 @@ class AwsDeviceFarmHelper implements Serializable {
                             /* Publish to S3 and update run artifact URL */
                             artifact.url = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: artifactFullName,
                                     sourceFilePath: script.pwd(), script
-                                                        artifact.authurl = BuildHelper.createAuthUrl(artifact.url, script, true)
+                            artifact.authurl = BuildHelper.createAuthUrl(artifact.url, script, true)
                         }
                     }
                 }
