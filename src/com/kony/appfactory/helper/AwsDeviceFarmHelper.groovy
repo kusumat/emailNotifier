@@ -63,7 +63,7 @@ class AwsDeviceFarmHelper implements Serializable {
         String errorMessage = 'Failed to create project ' + name
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            String getProjectScript = "aws devicefarm list-projects --no-paginate --query \'projects[?name==" +
+            String getProjectScript = "set +x;aws devicefarm list-projects --no-paginate --query \'projects[?name==" +
                     '`' + name + '`' + "]\'"
             String getProjectScriptOutput = script.shellCustom(getProjectScript, true, [returnStdout: true]).trim()
             def getProjectScriptOutputJSON = script.readJSON(text: getProjectScriptOutput)
@@ -86,7 +86,7 @@ class AwsDeviceFarmHelper implements Serializable {
         String errorMessage = 'Failed to create project ' + name
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            String createProjectScript = "aws devicefarm create-project --name \'" + name + "\'" +
+            String createProjectScript = "set +x;aws devicefarm create-project --name \'" + name + "\'" +
                     ' --query project.arn'
             def createProjectOutput = script.shellCustom(createProjectScript, true, [returnStdout: true]).trim()
 
@@ -155,7 +155,7 @@ class AwsDeviceFarmHelper implements Serializable {
         String errorMessage = 'Failed to find device ARNs'
 
         script.catchErrorCustom(errorMessage) {
-            String getDeviceArnsScript = "aws devicefarm list-devices"
+            String getDeviceArnsScript = "set +x;aws devicefarm list-devices"
             String getDeviceArnsScriptOutput = script.shellCustom(
                     getDeviceArnsScript, true, [returnStdout: true]
             ).trim()
@@ -224,7 +224,7 @@ class AwsDeviceFarmHelper implements Serializable {
         def deviceArns = (getDeviceArns(deviceNames)) ?: script.echoCustom('Device ARNs list is empty!','ERROR')
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            String generateSkeletonScript = "aws devicefarm create-device-pool --generate-cli-skeleton"
+            String generateSkeletonScript = "set +x;aws devicefarm create-device-pool --generate-cli-skeleton"
             String generateSkeletonScriptResult = script.shellCustom(
                     generateSkeletonScript, true, [returnStdout: true]
             ).trim()
@@ -259,7 +259,7 @@ class AwsDeviceFarmHelper implements Serializable {
             def poolNames = devicePoolJsons.keySet().toArray()
             /* Workaround to iterate over map keys in c++ style for loop */
             for (int i = 0; i < poolNames.size(); ++i) {
-                String createDevicePoolScript = 'aws devicefarm create-device-pool --cli-input-json' +
+                String createDevicePoolScript = 'set +x;aws devicefarm create-device-pool --cli-input-json' +
                         " '${devicePoolJsons.get(poolNames[i])}' --query devicePool.arn"
                 String createDevicePoolScriptOutput = script.shellCustom(
                         createDevicePoolScript, true, [returnStdout: true]
@@ -287,7 +287,7 @@ class AwsDeviceFarmHelper implements Serializable {
         String errorMessage = "Failed to upload ${uploadFileName} artifact"
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            String createUploadScript = "aws devicefarm create-upload --project-arn ${projectArn}" +
+            String createUploadScript = "set +x;aws devicefarm create-upload --project-arn ${projectArn}" +
                     " --name ${uploadFileName}" + " --type ${uploadType}"
             /*
                 To bee able to upload artifacts to Device Farm we need create upload "request"
@@ -305,7 +305,7 @@ class AwsDeviceFarmHelper implements Serializable {
 
             /* Check status of upload */
             script.waitUntil {
-                String getUploadScript = "aws devicefarm get-upload --arn ${uploadArn}"
+                String getUploadScript = "set +x;aws devicefarm get-upload --arn ${uploadArn}"
                 String getUploadOutput = script.shellCustom(getUploadScript, true, [returnStdout: true]).trim()
                 def getUploadJSON = script.readJSON text: getUploadOutput
                 String uploadStatus = getUploadJSON.upload.status
@@ -336,22 +336,32 @@ class AwsDeviceFarmHelper implements Serializable {
             String projectArn, String devicePoolArn, String runType, String uploadArtifactArn, String testPackageArn
     ) {
         def runArn
-        String successMessage = 'Run scheduled successfully'
-        String errorMessage = 'Failed to schedule run'
+        String getDevicePoolScript = "set +x;aws devicefarm get-device-pool --arn ${devicePoolArn}"
+        String getDevicePoolOutput = script.shellCustom(getDevicePoolScript, true, [returnStdout: true]).trim()
+        def getDevicePoolJSON = script.readJSON text: getDevicePoolOutput
+        def list = getDevicePoolJSON.devicePool.rules[0].value.tokenize(",")
+        for(def i=0; i <list.size(); i++){
+            def deviceArn = list[i].minus('[').minus(']')
+            String getDeviceScript = "set +x;aws devicefarm get-device --arn ${deviceArn}"
+            String getDeviceOutput = script.shellCustom(getDeviceScript, true, [returnStdout: true]).trim()
+            def getDeviceJSON = script.readJSON text: getDeviceOutput
+        
+            String successMessage = "Test run is scheduled successfully on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
+            String errorMessage = "Failed to schedule run on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
 
-        script.catchErrorCustom(errorMessage, successMessage) {
-            String runScript = [
-                    'aws devicefarm schedule-run',
-                    "--project-arn ${projectArn}",
-                    "--app-arn ${uploadArtifactArn}",
-                    "--device-pool-arn ${devicePoolArn}",
-                    "--test type=${runType},testPackageArn=${testPackageArn}",
-                    "--query run.arn"
-            ].join(' ')
-            /* Schedule the run */
-            runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim() ?: null
-        }
-
+            script.catchErrorCustom(errorMessage, successMessage) {
+                String runScript = [
+                        'set +x;aws devicefarm schedule-run',
+                        "--project-arn ${projectArn}",
+                        "--app-arn ${uploadArtifactArn}",
+                        "--device-pool-arn ${devicePoolArn}",
+                        "--test type=${runType},testPackageArn=${testPackageArn}",
+                        "--query run.arn"
+                ].join(' ')
+                /* Schedule the run */
+                runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim() ?: null
+            }
+	}
         runArn
     }
 
@@ -363,22 +373,116 @@ class AwsDeviceFarmHelper implements Serializable {
      */
     protected final getTestRunResult(testRunArn) {
         String testRunStatus, testRunResult
+        def listJobsArrayList
         String successMessage = 'Test run results fetched successfully'
         String errorMessage = 'Failed to fetch test run results'
+        def completedRunDevicesList = []
+        def summaryMap = [:]
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.waitUntil {
-                String runResultScript = "aws devicefarm get-run --arn ${testRunArn}"
+                String runResultScript = "set +x;aws devicefarm get-run --arn ${testRunArn}"
                 String runResultOutput = script.shellCustom(runResultScript, true, [returnStdout: true]).trim()
                 def runResultJSON = script.readJSON text: runResultOutput
                 testRunStatus = runResultJSON.run.status
                 testRunResult = runResultJSON.run.result
-
-                testRunStatus == 'COMPLETED'
+                
+                String listJobsScript = "set +x;aws devicefarm list-jobs --arn ${testRunArn} --no-paginate"
+                String listJobsOutput = script.shellCustom(listJobsScript, true, [returnStdout: true]).trim()
+                def listJobsJSON = script.readJSON text: listJobsOutput
+               
+                if(listJobsJSON.jobs.size()){
+                    for(def i=0; i< listJobsJSON.jobs.size(); i++){
+                        listJobsArrayList = listJobsJSON.jobs[i]
+			if(completedRunDevicesList.contains(listJobsArrayList.arn))
+			    continue
+                        switch (listJobsArrayList.status) {
+                            case 'PENDING':
+			         script.echoCustom("Tests are initiated, execution is yet to start on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+		                 break
+		             case 'PENDING_DEVICE':
+			         script.echoCustom("Tests Execution is pending, trying to get the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+		                 break
+		             case 'PROCESSING':
+		    	         script.echoCustom("Processing the tests on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+		                 break
+		             case 'SCHEDULING':
+		    	         script.echoCustom("Scheduling the tests on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+		                 break
+		             case 'PREPARING':
+			         script.echoCustom("Preparing to run the tests on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+		                 break
+		             case 'STOPPING':
+			         script.echoCustom("Tests execution is being stopped on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+		                 break
+		             case 'RUNNING':
+		    	         script.echoCustom("Tests are running on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os 
+		    	             + "\'... will fetch final results once the execution is completed.", 'INFO')
+		                 break
+		             case 'PENDING_CONCURRENCY':
+		    	         script.echoCustom("Tests execution is in PENDING_CONCURRENCY state on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+			         break
+		             default:
+			         break
+		         }
+		         switch (listJobsArrayList.result) {
+			     case 'PASSED':
+			         script.echoCustom("Test Execution is completed on \'"+ listJobsArrayList.name + " " + listJobsArrayList.device.os 
+	                             + "\' and over all test result is PASSED", 'INFO')
+	                         def keys = listJobsArrayList.counters.keySet()
+			         def counterValues = ""
+			         for(def j = 0; j < keys.size()-1; j++){
+			             if(listJobsArrayList.counters.get(keys[j])){
+			                 counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
+			             }
+	                         }
+				 counterValues += "total tests: " + listJobsArrayList.counters.get('total')
+				 summaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
+	                         completedRunDevicesList[i] = listJobsArrayList.arn
+			         break
+			     case 'WARNED':
+			         script.echoCustom("Build is warned for unknown reason on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'WARN')
+			         break
+			     case 'SKIPPED':
+			         script.echoCustom("Test Execution is skipped on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+			         break
+			     case 'STOPPED':
+			     case 'ERRORED':
+			     case 'FAILED':
+			         script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os 
+			             + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
+			         def keys = listJobsArrayList.counters.keySet()
+			         def counterValues = ""
+			         for(def j = 0; j < keys.size()-1; j++){
+			             if(listJobsArrayList.counters.get(keys[j])){
+			                  script.echoCustom("Number of " + keys[j] +" test cases :: " + listJobsArrayList.counters.get(keys[j]), 'INFO')
+			                  counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
+			             }
+				 }
+				 script.echoCustom("Total number of test cases :: " + listJobsArrayList.counters.get('total') + "\n\n", 'INFO')
+				 counterValues += "total tests: " + listJobsArrayList.counters.get('total')
+				 summaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
+				 completedRunDevicesList[i] = listJobsArrayList.arn
+			         break
+			     default:
+			         break
+	                 }    
+	                  
+                     }
+                     if(testRunStatus == 'COMPLETED'){
+	                 script.echoCustom("Test execution is completed for all the devices in device pool and overall result is " + testRunResult, 'INFO' )
+	                 script.echoCustom("Summary of Test Results : ",'INFO')
+	                 summaryMap.each{
+                             script.echoCustom("On " + it.key + ":: " + it.value,'INFO')
+                         }
+    		     }
+    		}   
+		else
+    		    script.echoCustom("Run status is " + testRunStatus + " and run result is " + testRunResult, 'ERROR', false)
+		testRunStatus == 'COMPLETED'
             }
-        }
-
-        testRunResult
+        }   
+	testRunResult
     }
 
     /**
@@ -395,7 +499,7 @@ class AwsDeviceFarmHelper implements Serializable {
         switch (arn) {
             case ~/^.*run.*$/:
                 queryParameters = [
-                        queryScript                : "aws devicefarm list-jobs --arn ${arn} --no-paginate",
+                        queryScript                : "set +x;aws devicefarm list-jobs --arn ${arn} --no-paginate",
                         queryProperty              : 'jobs',
                         resultStructure            : ['result', 'device', 'totalSuites'],
                         resultStructureNextProperty: 'suites'
@@ -403,7 +507,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 break
             case ~/^.*job.*$/:
                 queryParameters = [
-                        queryScript                : "aws devicefarm list-suites --arn ${arn} --no-paginate",
+                        queryScript                : "set +x;aws devicefarm list-suites --arn ${arn} --no-paginate",
                         queryProperty              : 'suites',
                         resultStructure            : ['name', 'totalTests'],
                         resultStructureNextProperty: 'tests'
@@ -411,7 +515,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 break
             case ~/^.*suite.*$/:
                 queryParameters = [
-                        queryScript                : "aws devicefarm list-tests --arn ${arn} --no-paginate",
+                        queryScript                : "set +x;aws devicefarm list-tests --arn ${arn} --no-paginate",
                         queryProperty              : 'tests',
                         resultStructure            : ['name', 'result'],
                         resultStructureNextProperty: 'artifacts'
@@ -419,7 +523,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 break
             case ~/^.*test.*$/:
                 queryParameters = [
-                        queryScript    : "aws devicefarm list-artifacts --arn ${arn} --no-paginate --type FILE",
+                        queryScript    : "set +x;aws devicefarm list-artifacts --arn ${arn} --no-paginate --type FILE",
                         queryProperty  : 'artifacts',
                         resultStructure: ['name', 'url', 'extension']
                 ]
@@ -543,7 +647,7 @@ class AwsDeviceFarmHelper implements Serializable {
      */
     protected final void deleteUploadedArtifact(String artifactArn) {
         script.catchErrorCustom('Failed to delete artifact') {
-            script.shellCustom("aws devicefarm delete-upload --arn ${artifactArn}", true)
+            script.shellCustom("set +x;aws devicefarm delete-upload --arn ${artifactArn}", true)
         }
     }
 
@@ -554,7 +658,7 @@ class AwsDeviceFarmHelper implements Serializable {
      */
     protected final void deleteDevicePool(devicePoolArn) {
         script.catchErrorCustom('Failed to delete device pool') {
-            script.shellCustom("aws devicefarm delete-device-pool --arn ${devicePoolArn}", true)
+            script.shellCustom("set +x;aws devicefarm delete-device-pool --arn ${devicePoolArn}", true)
         }
     }
 }
