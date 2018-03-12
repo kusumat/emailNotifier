@@ -95,7 +95,8 @@ class SpaChannel extends Channel {
 
                                 ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
                                     def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-                                    selectedSpaChannels.contains(project) ? CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", projectStage) :
+                                    if(selectedSpaChannels.contains(project))
+                                        CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", projectStage)
                                 }
 
                             }
@@ -158,7 +159,8 @@ class SpaChannel extends Channel {
 
                                 ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
                                     def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-                                    selectedSpaChannels.contains(project) ? CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", projectStage):
+                                    if(selectedSpaChannels.contains(project))
+                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", projectStage)
 
                                 }
                             } else {
