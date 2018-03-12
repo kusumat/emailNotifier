@@ -538,19 +538,10 @@ class TestAutomation implements Serializable {
                                 }
 
                                 script.stage('PostTest CustomHooks'){
-                                    if(projectArtifacts.'Android_Mobile'.'binaryName'){
-                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", 'ANDROID_MOBILE_STAGE')
+                                    ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
+                                        projectArtifacts."$project".'binaryName' ?
+                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE"):
                                     }
-                                    if(projectArtifacts.'Android_Tablet'.'binaryName'){
-                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", 'ANDROID_TABLET_STAGE')
-                                    }
-                                    if(projectArtifacts.'iOS_Mobile'.'binaryName'){
-                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", 'IOS_MOBILE_STAGE')
-                                    }
-                                    if(projectArtifacts.'iOS_Tablet'.'binaryName'){
-                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", 'IOS_TABLET_STAGE')
-                                    }
-
                                 }
                             }
                         } catch (Exception e) {

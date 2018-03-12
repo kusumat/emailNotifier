@@ -444,7 +444,6 @@ class BuildHelper implements Serializable {
 
         /*If we need to run CustomHooks, then Run Android Job always in mac */
         if(runCustomHook){
-            script.echo "Running in Mac Agent to run CustomHooks "
             return iosNodeLabel
         }
 

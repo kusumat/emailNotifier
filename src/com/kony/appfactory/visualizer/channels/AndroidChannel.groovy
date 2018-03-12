@@ -142,7 +142,7 @@ class AndroidChannel extends Channel {
                     To restrict Headless Builds to run in parallel, this workaround implemented
                     */
                     resourceList = BuildHelper.getResoursesList()
-                    nodeLabel = BuildHelper.getAvailableNode(runCustomHook, resourceList,libraryProperties,script)
+                    nodeLabel = BuildHelper.getAvailableNode(runCustomHook, resourceList, libraryProperties, script)
                 }
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
@@ -177,9 +177,8 @@ class AndroidChannel extends Channel {
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
                             }
                             else{
-                                script.echoCustom('CustomHooks execution skipped by User.','WARN')
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
                             }
-
                         }
 
                         script.stage('Build') {
@@ -228,11 +227,11 @@ class AndroidChannel extends Channel {
                             if (runCustomHook) {
                                 CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
                             } else {
-                                script.echoCustom('CustomHooks execution skipped by User.', 'WARN')
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                             }
                         }
                         else{
-                            script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
+                            script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
                         }
                     }
                 }

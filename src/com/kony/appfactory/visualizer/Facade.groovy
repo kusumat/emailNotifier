@@ -176,11 +176,6 @@ class Facade implements Serializable {
 
         channelsBaseFolder + '/' + 'build' + (channelType) ?: script.echoCustom('Unknown channel type!','ERROR')
     }
-    private final getHookJobName(String hookName, String hookType) {
-        String hookBaseFolder = 'CustomHooks'
-
-        hookBaseFolder + '/' + hookType + '/' + hookName ?: script.error('Unknown Hook Type specified in Function call')
-    }
 
     /**
      * Returns relative channel path on S3.
@@ -552,13 +547,6 @@ class Facade implements Serializable {
                                     script.echoCustom("Status of the runTests job: ${testAutomationJobResult}", 'WARN')
                                 }
                             }
-                        }
-
-                        if(availableTestPools){
-                            // CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST")
-                        }
-                        else {
-                            script.echoCustom('Skipping POST_TEST hooks (if available) as Tests are\'t running')
                         }
 
                         /* Check if there are failed or unstable or aborted jobs */

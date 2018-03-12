@@ -84,8 +84,7 @@ class CustomHook implements Serializable {
                 }
 
                 script.node(hookSlave) {
-                    script.ws([upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')) {
-
+                    script.ws(visWorkspace) {
                         def javaHome = script.env.JDK_1_8_0_112_HOME
                         def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
 

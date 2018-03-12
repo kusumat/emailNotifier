@@ -28,7 +28,7 @@ class ConfigFileHelper implements Serializable {
         createConfig(fileId, content, folderConfigFilesObject, availableConfigs)
     }
 
-    static getOlderContent(folderName, fileId){
+    static getContent(folderName, fileId){
         def folderObject = getFolderObject(folderName)
         def folderConfigFilesObject = getConfigPropertyObject(folderObject)
         def availableConfigs = getAvailableConfigs(folderConfigFilesObject)
@@ -44,9 +44,8 @@ class ConfigFileHelper implements Serializable {
             ConfigProvider provider = config.getDescriptor();
             List<String> tempFiles = new ArrayList<>();
             tempFiles.add("dummyentry");
-            System.out.println("Hooks Config File Are  : "+config.name+ "And Param " + configFileName);
             if((config.name).equals(configFileName)){
-                olderContent = config.getDescriptor().supplyContent(config, build, workspace, TaskListener.NULL,tempFiles);
+                olderContent = config.getDescriptor().supplyContent(config, build, workspace, TaskListener.NULL, tempFiles);
             }
         }
         return olderContent;
@@ -88,20 +87,12 @@ class ConfigFileHelper implements Serializable {
 
     /* Create Config File object of CustomConfig type for provided device list */
     static createConfig(configFileName, content, folderConfigFilesObject, availableConfigs) {
-        def unique = true
-        def creationDate = new Date().format("yyyyMMdd_HH-mm-ss-SSS", TimeZone.getTimeZone('UTC'))
+
+        def creationDate = new Date().format("yyyyMMdd_HH-mm-ss-SSS")
         def newConfigComments = "This config created at ${creationDate} for hook ${configFileName}"
 
-        if (availableConfigs) {
-            unique = (availableConfigs.find { config -> config.id == configFileName }) ? false : true
-        }
-        if (unique) {
-            folderConfigFilesObject.save(new CustomConfig(configFileName, configFileName, newConfigComments, content))
-            println "CustomFile ${configFileName} has been created successfully"
-        }
-        else{
-            folderConfigFilesObject.save(new CustomConfig(configFileName, configFileName, newConfigComments, content))
-            println "CustomFile ${configFileName} has been created successfully"
-        }
+        folderConfigFilesObject.save(new CustomConfig(configFileName, configFileName, newConfigComments, content))
+        println "CustomFile ${configFileName} has been created successfully"
+
     }
 }
