@@ -406,8 +406,8 @@ class TestAutomation implements Serializable {
      */
     private final void PrepareMustHaves(isBuildTestsPassed) {
         String mustHaveFolderPath = [projectFullPath, "RunTestsMustHaves"].join(separator)
-        String MustHaveFile = ["MustHaves", script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join("_") + ".zip"
-        String mustHaveFilePath = [projectFullPath, MustHaveFile].join(separator)
+        String mustHaveFile = ["MustHaves", script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join("_") + ".zip"
+        String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
         String s3ArtifactPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
         String buildlogText = BuildHelper.getBuildLogText(script)
         def mustHaves = []
@@ -418,13 +418,13 @@ class TestAutomation implements Serializable {
         }
 
         script.dir(projectFullPath){
-            script.zip dir:mustHaveFolderPath, zipFile: MustHaveFile
+            script.zip dir:mustHaveFolderPath, zipFile: mustHaveFile
             script.catchErrorCustom("Failed to create the Zip file") {
                 if(script.fileExists(mustHaveFilePath)){
-                    String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: MustHaveFile,
+                    String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
                                     sourceFilePath: projectFullPath, script, true // true to print the url, but it has to be removed later
                     mustHaves.add([
-                        channelVariableName: "Tests", name: MustHaveFile, url: s3MustHaveAuthUrl
+                        channelVariableName: "Tests", name: mustHaveFile, url: s3MustHaveAuthUrl
                     ])
                     script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
                 }
