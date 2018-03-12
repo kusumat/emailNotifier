@@ -175,6 +175,7 @@ class SpaChannel extends Channel {
                         }
                         else{
                             script.echoCustom('CustomHooks execution skipped by User.','WARN')
+
                         }
                     }
                 }

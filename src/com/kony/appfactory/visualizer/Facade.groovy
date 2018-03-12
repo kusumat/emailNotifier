@@ -553,12 +553,14 @@ class Facade implements Serializable {
                                 }
                             }
                         }
+
                         if(availableTestPools){
                             // CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST")
                         }
                         else {
                             script.echoCustom('Skipping POST_TEST hooks (if available) as Tests are\'t running')
                         }
+
                         /* Check if there are failed or unstable or aborted jobs */
                         if (jobResultList.contains('FAILURE') ||
                                 jobResultList.contains('UNSTABLE') ||
@@ -581,6 +583,7 @@ class Facade implements Serializable {
                             if result not equals 'FAILURE', all notification with failed channel builds
                             will be sent directly from channel job.
                         */
+
                         if (channelsToRun && script.currentBuild.result != 'FAILURE') {
                             NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
                         }

@@ -146,10 +146,10 @@ class AndroidChannel extends Channel {
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     pipelineWrapper {
-                    /*
+                        /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
-                     */
+                        */
                         script.cleanWs deleteDirs: true
 
                         script.stage('Check build-node environment') {
