@@ -53,7 +53,7 @@ class CustomHook implements Serializable {
                             script.dir(hookDir) {
                                 script.deleteDir()
                             }
-                            script.shellCustom("set +e; mkdir -p $projectName/Hook", true)
+                            script.shellCustom("set +e; rm -rf $hookDir; mkdir -p $hookDir", true)
                         }
 
                         script.stage("Download Hook Scripts") {
@@ -71,18 +71,14 @@ class CustomHook implements Serializable {
                         script.stage('Prepare Environment for Run') {
                             script.shellCustom('pwd', true)
 
-                            def hookSlaveACLapply_fordirs = 'set +x && chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
-                            def hookSlaveACLapply_forfiles = 'set +x && find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
-
-                            //script.sh 'set +x;chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
-                            //script.sh 'set +x;find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+                            def hookSlaveACLapply_fordirs = 'set +xe && chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
+                            def hookSlaveACLapply_forfiles = 'set +xe && find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
 
                             script.shellCustom("$hookSlaveACLapply_fordirs", true)
                             script.shellCustom("$hookSlaveACLapply_forfiles", true)
 
                             /*This is to get change permission for upstream folder which will be same as Jenkins job name*/
-                            //script.sh "set +x;chmod 710 ../../$upstreamJobName"
-                            script.shellCustom("set +x && chmod 710 ../../$upstreamJobName",true)
+                            script.shellCustom("set +xe && chmod 710 ../../$upstreamJobName",true)
                         }
                     }
                 }
@@ -100,28 +96,23 @@ class CustomHook implements Serializable {
                             script.stage("Running CustomHook") {
                                 script.dir(hookDir) {
                                     if (buildAction == "Execute Ant") {
-                                        //script.sh "export JAVA_HOME='/Appfactory/Jenkins/tools/jdk1.8.0_112.jdk' && /Appfactory/Jenkins/tools/ant-1.8.2/bin/ant -f build.xml ${scriptArguments}"
-                                        //script.sh "ant -f build.xml ${scriptArguments}"
                                         script.shellCustom("ant -f build.xml ${scriptArguments}", true)
                                     } else if (buildAction == "Execute Maven") {
-                                        //script.sh "mvn ${scriptArguments}"
                                         script.shellCustom("mvn ${scriptArguments}", true)
                                     } else {
-                                        //script.echo("unknown build script ")
                                         script.echoCustom("unknown build script",'ERROR')
                                     }
                                 }
 
                                 script.stage('Prepare Environment for actual Build Run') {
-                                    def buildSlaveACLapply_fordirs = 'set +x && chmod -R +a "buildslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" .'
-                                    def buildSlaveACLapply_forfiles = 'set +x && find . -type f -exec chmod -R +a "buildslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+                                    def buildSlaveACLapply_fordirs = 'set +xe && chmod -R +a "buildslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" .'
+                                    def buildSlaveACLapply_forfiles = 'set +xe && find . -type f -exec chmod -R +a "buildslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
 
                                     //script.shellCustom("$buildSlaveACLapply_fordirs", true)
                                     //script.shellCustom("$buildSlaveACLapply_forfiles", true)
 
                                     script.dir(hookDir) {
-                                        //script.sh 'set +e;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\;'
-                                        def buildSlaveACLapply_inhookDir = 'set +x;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\+'
+                                        def buildSlaveACLapply_inhookDir = 'set +xe;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\+'
                                         script.shellCustom("$buildSlaveACLapply_inhookDir", true)
                                     }
                                 }

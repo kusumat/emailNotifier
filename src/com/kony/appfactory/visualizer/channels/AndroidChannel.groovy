@@ -224,7 +224,7 @@ class AndroidChannel extends Channel {
                     /* Run Post Build Android Hooks */
                     script.stage('PostBuild CustomHooks') {
                         if (runCustomHook) {
-                            CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", 'ANDROID_STAGE')
+                            CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
                         } else {
                             script.echoCustom('CustomHooks execution skipped by User.','WARN')
                         }
