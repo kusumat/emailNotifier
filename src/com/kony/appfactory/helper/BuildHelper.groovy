@@ -454,10 +454,14 @@ class BuildHelper implements Serializable {
      *
      * @return NodeLabel
     */
-    protected final static getAvailableNode(resoucesStatus,libraryProperties,script){
+    protected final static getAvailableNode(runCustomHook, resourcesStatus,libraryProperties,script){
         def iosNodeLabel = libraryProperties.'ios.node.label'
         def winNodeLabel = libraryProperties.'windows.node.label'
 
+        /*If we need to run CustomHooks, then Run Android Job always in mac */
+        if(runCustomHook){
+            return iosNodeLabel
+        }
 
         /* return win if no Node in Label 'ios' is alive  */
         if(!isLabelActive(iosNodeLabel, script)){
@@ -473,7 +477,7 @@ class BuildHelper implements Serializable {
         def winResourceStatus
         def macResourceStatus
 
-        resoucesStatus.each{
+        resourcesStatus.each{
             if(it.name == libraryProperties.'window.lockable.resource.name') winResourceStatus=it.status
             if(it.name == libraryProperties.'ios.lockable.resource.name') macResourceStatus=it.status
         }

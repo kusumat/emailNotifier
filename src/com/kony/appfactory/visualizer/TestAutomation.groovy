@@ -567,6 +567,13 @@ class TestAutomation implements Serializable {
                                         fetchTestResults()
                                     }
                                 }
+
+                                script.stage('PostTest CustomHooks'){
+                                    ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
+                                        projectArtifacts."$project".'binaryName' ?
+                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE"):
+                                    }
+                                }
                             }
                         } catch (Exception e) {
                             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'

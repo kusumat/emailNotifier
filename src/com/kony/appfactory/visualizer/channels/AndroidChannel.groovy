@@ -2,7 +2,9 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
+import hudson.scm.SCM
 
 
 /**
@@ -25,6 +27,9 @@ class AndroidChannel extends Channel {
     private resourceList
     /* nodeLabel store slave label */
     private nodeLabel
+    /* CustomHooks build Parameters*/
+    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "ANDROID_MOBILE_STAGE" : "ANDROID_TABLET_STAGE";
 
     /**
      * Class constructor.
@@ -135,10 +140,9 @@ class AndroidChannel extends Channel {
                 script.stage('Check Available Resources') {
                     /*
                     To restrict Headless Builds to run in parallel, this workaround implemented
-                 */
+                    */
                     resourceList = BuildHelper.getResoursesList()
-
-                    nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script)
+                    nodeLabel = BuildHelper.getAvailableNode(runCustomHook, resourceList, libraryProperties, script)
                 }
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
@@ -146,7 +150,7 @@ class AndroidChannel extends Channel {
                         /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
-                     */
+                        */
                         script.cleanWs deleteDirs: true
 
                         script.stage('Check build-node environment') {
@@ -165,6 +169,16 @@ class AndroidChannel extends Channel {
                                     scmBranch: scmBranch,
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
+                        }
+
+                        script.stage('PreBuild CustomHooks'){
+                            if(runCustomHook){
+                                /* Run Pre Build Android Hooks */
+                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
+                            }
+                            else{
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
+                            }
                         }
 
                         script.stage('Build') {
@@ -206,8 +220,23 @@ class AndroidChannel extends Channel {
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                         }
                     }
+
+                    /* Run Post Build Android Hooks */
+                    script.stage('PostBuild CustomHooks') {
+                        if(script.currentBuild.currentResult == 'SUCCESS') {
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
+                            } else {
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                            }
+                        }
+                        else{
+                            script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
+                        }
+                    }
                 }
             }
+
         }
     }
 }

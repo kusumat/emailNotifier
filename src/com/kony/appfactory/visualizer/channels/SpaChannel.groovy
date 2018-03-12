@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 
 /**
@@ -11,6 +12,9 @@ class SpaChannel extends Channel {
     /* Build parameters */
     private final spaAppVersion = script.params.SPA_APP_VERSION
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    /* CustomHooks build Parameters*/
+    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+
     private final selectedSpaChannels
 
     /**
@@ -34,7 +38,7 @@ class SpaChannel extends Channel {
     @NonCPS
     private static getSelectedSpaChannels(buildParameters) {
         buildParameters.findAll {
-            it.value instanceof  Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
+            it.value instanceof  Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.key != 'RUN_CUSTOM_HOOKS' && it.value
         }.keySet().collect()
     }
 
@@ -86,6 +90,20 @@ class SpaChannel extends Channel {
                                     scmUrl: scmUrl
                         }
 
+                        script.stage('PreBuild CustomHooks'){
+                            if(runCustomHook) {
+
+                                ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
+                                    def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
+                                    selectedSpaChannels.contains(project) ? CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", projectStage) :
+                                }
+
+                            }
+                            else{
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
+                            }
+                        }
+
                         script.stage('Build') {
                             build()
                             /* Search for build artifacts */
@@ -130,6 +148,25 @@ class SpaChannel extends Channel {
                             }
 
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                        }
+                    }
+
+                    /* Run Post Build SPA Hooks */
+                    script.stage('PostBuild CustomHooks') {
+                        if(script.currentBuild.currentResult == 'SUCCESS') {
+                            if (runCustomHook) {
+
+                                ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
+                                    def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
+                                    selectedSpaChannels.contains(project) ? CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", projectStage):
+
+                                }
+                            } else {
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                            }
+                        }
+                        else{
+                            script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
                         }
                     }
                 }

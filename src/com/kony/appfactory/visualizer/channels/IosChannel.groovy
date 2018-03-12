@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 
 /**
@@ -24,6 +25,10 @@ class IosChannel extends Channel {
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
+    /* CustomHooks build Parameters*/
+    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_STAGE" : "IOS_TABLET_STAGE";
+    private final customHookIPAStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_IPA_STAGE" : "IOS_TABLET_IPA_STAGE";
     private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
 
     /**
@@ -168,6 +173,14 @@ class IosChannel extends Channel {
                     cp ${karArtifact.path}/${karArtifact.name} .
                     perl extract.pl ${karArtifact.name}
                 """, true)
+            }
+
+            if(runCustomHook){
+                /* Run Pre Build iOS IPA stage Hooks */
+                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookIPAStage)
+            }
+            else{
+                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
             }
 
             /* Set Export Method for Fastlane according to iosDistributionType
@@ -316,6 +329,15 @@ class IosChannel extends Channel {
                                     scmUrl: scmUrl
                         }
 
+                        script.stage('PreBuild CustomHooks') {
+                            /* Run Pre Build iOS Hooks */
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
+                            } else {
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                            }
+                        }
+
                         script.stage('Update Bundle ID') {
                             updateIosBundleId()
                         }
@@ -324,8 +346,8 @@ class IosChannel extends Channel {
                             build()
                             /* Search for build artifacts */
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
-                                    script.echoCustom('Build artifacts were not found!','ERROR')
-                            mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
+                                    script.echoCustom('Build artifacts were not found!', 'ERROR')
+                                    mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
                         }
 
                         script.stage('Generate IPA file') {
@@ -366,6 +388,20 @@ class IosChannel extends Channel {
                         }
 
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
+                    }
+
+                    /* Run Post Build iOS Hooks */
+                    script.stage('PostBuild CustomHooks') {
+                        if (script.currentBuild.currentResult == 'SUCCESS') {
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
+                            } else {
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                            }
+                        }
+                        else{
+                            script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
+                        }
                     }
                 }
             }

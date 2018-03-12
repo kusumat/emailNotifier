@@ -3,6 +3,7 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.AppFactory.plugin.AppFactoryVersions
 
@@ -23,6 +24,8 @@ class Facade implements Serializable {
     private libraryProperties
     /* List of steps for parallel run */
     private runList = [:]
+    /* List of Pre Build Hooks */
+    private preBuildHookList= [:]
     /* List of channels to build */
     private channelsToRun
     /*
@@ -34,6 +37,7 @@ class Facade implements Serializable {
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
     /* Common build parameters */
+    private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     private final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
@@ -63,7 +67,8 @@ class Facade implements Serializable {
     private final spaAppVersion = script.params.SPA_APP_VERSION
     /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
-
+    /* CustomHooks build Parameters*/
+    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     /**
      * Class constructor.
      *
@@ -91,7 +96,7 @@ class Facade implements Serializable {
     @NonCPS
     private static getSelectedChannels(buildParameters) {
         buildParameters.findAll {
-            it.value instanceof Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value
+            it.value instanceof Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value && it.key != 'RUN_CUSTOM_HOOKS'
         }.keySet().collect()
     }
 
@@ -214,7 +219,8 @@ class Facade implements Serializable {
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
                 script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
-                script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}")
+                script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
+                script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook)
         ]
     }
 
@@ -332,9 +338,11 @@ class Facade implements Serializable {
         }
     }
 
+
     /**
      * Prepares run steps for triggering channel jobs in parallel.
      */
+
     private final void prepareRun() {
         /* Filter Native channels */
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
@@ -375,6 +383,7 @@ class Facade implements Serializable {
                 }
             }
         }
+
 
         /* If SPA channels been set */
         if (spaChannelsToRun) {
@@ -647,10 +656,11 @@ class Facade implements Serializable {
                         }
                         setBuildDescription(s3MustHaveAuthUrl)
                         /*
-                        Been agreed to send notification from buildVisualizerApp job only
-                        if result not equals 'FAILURE', all notification with failed channel builds
-                        will be sent directly from channel job.
-                     */
+                            Been agreed to send notification from buildVisualizerApp job only
+                            if result not equals 'FAILURE', all notification with failed channel builds
+                            will be sent directly from channel job.
+                        */
+
                         if (channelsToRun && script.currentBuild.result != 'FAILURE') {
                             NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
                         }
