@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
+import hudson.scm.SCM
 
 
 /**
@@ -223,10 +224,15 @@ class AndroidChannel extends Channel {
 
                     /* Run Post Build Android Hooks */
                     script.stage('PostBuild CustomHooks') {
-                        if (runCustomHook) {
-                            CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
-                        } else {
-                            script.echoCustom('CustomHooks execution skipped by User.','WARN')
+                        if(script.currentBuild.currentResult == 'SUCCESS') {
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
+                            } else {
+                                script.echoCustom('CustomHooks execution skipped by User.', 'WARN')
+                            }
+                        }
+                        else{
+                            script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
                         }
                     }
                 }

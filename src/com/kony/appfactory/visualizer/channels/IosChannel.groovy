@@ -329,13 +329,12 @@ class IosChannel extends Channel {
                                     scmUrl: scmUrl
                         }
 
-                        script.stage('PreBuild CustomHooks'){
+                        script.stage('PreBuild CustomHooks') {
                             /* Run Pre Build iOS Hooks */
-                            if(runCustomHook){
+                            if (runCustomHook) {
                                 CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
-                            }
-                            else{
-                                script.echoCustom('CustomHooks execution skipped by User.','WARN')
+                            } else {
+                                script.echoCustom('CustomHooks execution skipped by User.', 'WARN')
                             }
                         }
 
@@ -347,7 +346,7 @@ class IosChannel extends Channel {
                             build()
                             /* Search for build artifacts */
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
-                                    script.echoCustom('Build artifacts were not found!','ERROR')
+                                    script.echoCustom('Build artifacts were not found!', 'ERROR')
                         }
 
                         script.stage('Generate IPA file') {
@@ -392,10 +391,15 @@ class IosChannel extends Channel {
 
                     /* Run Post Build iOS Hooks */
                     script.stage('PostBuild CustomHooks') {
-                        if (runCustomHook) {
-                            CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
-                        } else {
-                            script.echoCustom('CustomHooks execution skipped by User.','WARN')
+                        if (script.currentBuild.currentResult == 'SUCCESS') {
+                            if (runCustomHook) {
+                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
+                            } else {
+                                script.echoCustom('CustomHooks execution skipped by User.', 'WARN')
+                            }
+                        }
+                        else{
+                            script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
                         }
                     }
                 }
