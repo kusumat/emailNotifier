@@ -146,16 +146,11 @@ class BuildHelper implements Serializable {
     @NonCPS
     protected static String getBuildLogText(script) {
         String buildLogText
-        Jenkins.instance.getAllItems().each{ item->
-            Job job = item instanceof com.cloudbees.hudson.plugins.folder.Folder ? null : item
-            if(job){
-                if(job.getFullName() == script.env.JOB_NAME){
-                    Run currentBuild = job.getBuild(script.env.BUILD_ID)
-                    if(currentBuild){
-                        File file = currentBuild.getLogFile()
-                        buildLogText = file.getText()
-                    }
-                }
+        Jenkins.instance.getItemByFullName(script.env.JOB_NAME).each{ item->
+            Run currentBuild = ((Job)item).getBuild(script.env.BUILD_ID)
+            if(currentBuild){
+                File file = currentBuild.getLogFile()
+                buildLogText = file.getText()
             }
         }
         buildLogText

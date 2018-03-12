@@ -91,7 +91,6 @@ class SpaChannel extends Channel {
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension) ?:
                                     script.echoCustom('Build artifacts were not found!','ERROR')
-                            mustHaveArtifacts.add([name: buildArtifacts.name, path: buildArtifacts.path])
                         }
 
                         script.stage('Publish to Fabric') {

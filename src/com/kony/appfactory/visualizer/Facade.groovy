@@ -416,7 +416,7 @@ class Facade implements Serializable {
      */
     private final void setBuildDescription(s3MustHaveAuthUrl) {
         String EnvironmentDescription = ""
-		String mustHavesDescription = ""
+        String mustHavesDescription = ""
         if (script.env.FABRIC_ENV_NAME && script.env.FABRIC_ENV_NAME != '_') {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
@@ -464,12 +464,10 @@ class Facade implements Serializable {
         String s3MustHaveAuthUrl
         String separator = script.isUnix() ? '/' : '\\'
         String mustHaveFolderPath = [script.env.WORKSPACE, "vizMustHaves"].join(separator)
-        String MustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
-        String mustHaveFilePath = [script.env.WORKSPACE, MustHaveFile].join(separator)
-        // Cleanup previously generated musthaves.
-        String delCommand = script.isUnix() ? "rm -Rf \"${mustHaveFolderPath}\"" : "del \"${mustHaveFolderPath}\""
-        script.shellCustom(delCommand, script.isUnix())
-		
+        String mustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
+        String mustHaveFilePath = [script.env.WORKSPACE, mustHaveFile].join(separator)
+        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: 'vizMustHaves', type: 'INCLUDE']]
+
         script.dir(mustHaveFolderPath){
             script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script)
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
@@ -492,11 +490,11 @@ class Facade implements Serializable {
         }
 
         script.dir(script.env.WORKSPACE){
-        	script.zip dir:"vizMustHaves", zipFile: MustHaveFile
+        	script.zip dir:"vizMustHaves", zipFile: mustHaveFile
         	script.catchErrorCustom("Failed to create the Zip file") {
                 if(script.fileExists(mustHaveFilePath)){
                     String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
-                    s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: MustHaveFile,
+                    s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
                                         sourceFilePath: script.env.WORKSPACE, script
                     s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveAuthUrl, script)
                 }

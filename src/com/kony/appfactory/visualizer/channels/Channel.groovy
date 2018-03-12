@@ -693,18 +693,18 @@ class Channel implements Serializable {
      * in a map so that Viz job copies later from S3 to create single zip for all builds.
      */
     protected final void PrepareMustHaves() {
-        String MustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
-        String mustHaveFilePath = [projectFullPath, MustHaveFile].join(separator)
+        String mustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
+        String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
         script.catchErrorCustom("Error while preparing must haves"){
             collectAllInformation()
             script.dir(projectFullPath){
-                script.zip dir:mustHavePath, zipFile: MustHaveFile
+                script.zip dir:mustHavePath, zipFile: mustHaveFile
                 script.catchErrorCustom("Failed to create the Zip file") {
                     if(script.fileExists(mustHaveFilePath)){
-                        String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: MustHaveFile,
-	                                    sourceFilePath: projectFullPath, script, true // true to print the url, but it has to be removed later
+                        String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
+	                                    sourceFilePath: projectFullPath, script
                         mustHaves.add([
-                                channelVariableName: channelVariableName, name: MustHaveFile, url: s3MustHaveAuthUrl
+                                channelVariableName: channelVariableName, name: mustHaveFile, url: s3MustHaveAuthUrl
                         ])
                         script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
                     }
