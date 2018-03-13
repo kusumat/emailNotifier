@@ -5,7 +5,7 @@ import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.AwsHelper
-import com.kony.AppFactory.plugin.AppFactoryVersions
+import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
 
 /**
  * Implements logic for buildVisualizerApp job.
@@ -454,7 +454,7 @@ class Facade implements Serializable {
         def versionInfo = StringBuilder.newInstance()
 		
         versionInfo.append "PipeLine Version : " + apver.getPipelineVersion() 
-        versionInfo.append "\nDSL Job Version : " + apver.getDSLJobVersion()
+        versionInfo.append "\nDSL Job Version : " + apver.getJobDslVersion()
         versionInfo.append "\nAppFactory Plugin Version : " + apver.getAppFactoryPluginVersion()
 		
         def corePlugInVersionInfo = apver.getCorePluginVersions()
