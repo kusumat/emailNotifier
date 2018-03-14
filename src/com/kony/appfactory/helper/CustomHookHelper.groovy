@@ -81,7 +81,7 @@ class CustomHookHelper implements Serializable {
             def hookProperties = script.readJSON file: "${projectName}.json"
 
             def hookList = getHookList(script, hookStage, pipelineBuildStage, hookProperties)
-            hookList ?: script.echoCustom("Hooks are either not defined in $hookStage stage for $pipelineBuildStage channel. or ")
+            hookList ?: script.echoCustom("Hooks are either not defined or disabled in $hookStage stage for $pipelineBuildStage channel.")
 
             script.stage(hookStage) {
                 for (hookName in hookList) {
