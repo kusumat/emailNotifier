@@ -570,9 +570,14 @@ class TestAutomation implements Serializable {
                                 }
 
                                 script.stage('PostTest CustomHooks'){
-                                    ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
-                                        if(projectArtifacts."$project".'binaryName' && runCustomHook)
-                                            CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE")
+                                    if(runCustomHook){
+                                        ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
+                                            if(projectArtifacts."$project".'binaryName')
+                                                CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE")
+                                        }
+                                    }
+                                    else{
+                                        script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
                                     }
                                 }
                             }
