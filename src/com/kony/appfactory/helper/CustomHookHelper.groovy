@@ -9,8 +9,27 @@ import hudson.slaves.EnvironmentVariablesNodeProperty;
  * Implements logic related to CustomHooks execution process.
  */
 class CustomHookHelper implements Serializable {
+    /* Pipeline object */
+    private script
 
     String projectName
+    /* Library configuration */
+    protected libraryProperties
+
+    /* customhooks hook definitions */
+    protected hookDir
+    protected final hookScriptFileName
+    protected customhooksFolderSubpath
+
+    protected CustomHookHelper(script) {
+        this.script = script
+        /* Load library configuration */
+        libraryProperties = BuildHelper.loadLibraryProperties(
+                this.script, 'com/kony/appfactory/configurations/common.properties'
+        )
+        customhooksFolderSubpath = libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
+        hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
+    }
 
     /*
     * Extract hook list to run from Config File Content
@@ -20,7 +39,8 @@ class CustomHookHelper implements Serializable {
     * @param jsonContent
     * @return hookList
     */
-    protected static getHookList(script, hookStage, pipelineBuildStage, jsonContent){
+
+    protected getHookList(script, hookStage, pipelineBuildStage, jsonContent){
         def stageContent = jsonContent[hookStage]
 
         String[] hookList = new String[stageContent.size()]
@@ -50,7 +70,7 @@ class CustomHookHelper implements Serializable {
     * @param jsonContent
     * @return isPropagateBuildResult
     */
-    protected static isPropagateBuildStatus(hookName, hookStage, jsonContent){
+    protected isPropagateBuildStatus(hookName, hookStage, jsonContent){
         def isPropagateBuildResult = null
         def stageContent = jsonContent[hookStage]
         stageContent.each{
@@ -61,15 +81,45 @@ class CustomHookHelper implements Serializable {
         return isPropagateBuildResult
     }
 
+    protected getbuildScriptURL(hookName, hookStage, jsonContent){
+        def buildScriptURL = null
+        def stageContent = jsonContent[hookStage]
+        stageContent.each{
+            if((it["hookName"]).equals(hookName)){
+                buildScriptURL =  it['hookUrl']
+            }
+        }
+        return buildScriptURL
+    }
+
+    /**
+     * Fetches Hook.zip file for running it locally from S3.
+     */
+    protected final void fetchHook(buildScriptUrl){
+        def customhookBucketURL = script.env.S3_BUCKET_URL
+        def customhookBucketName = script.env.S3_BUCKET_NAME
+        def customhookBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
+        def awsIAMRole = script.env.AWS_IAM_ROLE
+
+        def hookScriptFileBucketPath = (buildScriptUrl - customhookBucketURL).substring(1)
+
+        script.catchErrorCustom('Failed to fetch fastlane configuration') {
+            script.withAWS(region: customhookBucketRegion, role: awsIAMRole) {
+                script.s3Download bucket: customhookBucketName, file: 'Hook.zip', force: true, path: hookScriptFileBucketPath
+
+            }
+        }
+    }
+
+
     /* Trigger hook
     * @param script
     * @param projectName
     * @param hookStage
     * @param pipelineBuildStage
     */
-    protected static triggerHooks(script, projectName, hookStage, pipelineBuildStage){
-
-        def customhooksConfigFolder = projectName + "/Visualizer/Builds/CustomHooks/"
+    protected triggerHooks(script, projectName, hookStage, pipelineBuildStage){
+        def customhooksConfigFolder = projectName + customhooksFolderSubpath
         def content = ConfigFileHelper.getContent(customhooksConfigFolder, projectName)
 
         if(content) {
@@ -86,7 +136,22 @@ class CustomHookHelper implements Serializable {
             script.stage(hookStage) {
                 for (hookName in hookList) {
                     def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
-                    def hookJobName = getHookJobName(projectName, hookName, hookStage)
+                    def hookJobName = getHookJobName(script, projectName, hookName, hookStage)
+                    def buildScriptUrl = getbuildScriptURL(hookName, hookStage, hookProperties)
+                    hookDir = "vis_ws/" + projectName + "/Hook"
+                    script.stage('Clean Environment') {
+                        script.dir(hookDir) {
+                            script.deleteDir()
+                        }
+                        script.shellCustom("set +e; rm -rf $hookDir; mkdir -p $hookDir", true)
+                    }
+
+                    script.stage("Download Hook Scripts") {
+                        script.dir(hookDir) {
+                            fetchHook(buildScriptUrl)
+                        }
+                    }
+
                     def hookJob = script.build job: hookJobName,
                             propagate: Boolean.valueOf(isPropagateBuildResult), wait: true,
                             parameters: [[$class: 'WHideParameterValue',
@@ -118,14 +183,14 @@ class CustomHookHelper implements Serializable {
     }
 
     /* return hook full path */
-    protected static final getHookJobName(projectName, hookName, hookType) {
-        def hookFullName = [projectName, 'Visualizer', 'Builds', 'CustomHooks', hookType, hookName].join('/')
+    protected final getHookJobName(script, projectName, hookName, hookType) {
+        def hookFullName = [projectName, customhooksFolderSubpath, hookType, hookName].join('/')
         hookFullName
     }
 
 
   //  @NonCPS
-    protected static runCustomHooks(script, String folderName, String hookBuildStage, String pipelineBuildStage){
+    protected runCustomHooks(script, String folderName, String hookBuildStage, String pipelineBuildStage){
         script.echoCustom("Fetching $hookBuildStage $pipelineBuildStage hooks. ")
 
        /* Execute available hooks */
@@ -133,7 +198,7 @@ class CustomHookHelper implements Serializable {
 
     }
     
-    protected static getHookSlaveForCurrentBuildSlave(currentComputer){
+    protected getHookSlaveForCurrentBuildSlave(currentComputer){
 
         String hookSlaveForCurrentComputer = null;
         Jenkins instance = Jenkins.getInstance()

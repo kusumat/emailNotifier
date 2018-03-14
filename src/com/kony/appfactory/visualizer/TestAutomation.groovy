@@ -93,6 +93,9 @@ class TestAutomation implements Serializable {
                                        url       : (script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
     ]
 
+    /* CustomHookHelper object */
+    protected hookHelper
+
     /**
      * Class constructor.
      *
@@ -100,6 +103,7 @@ class TestAutomation implements Serializable {
      */
     TestAutomation(script) {
         this.script = script
+        this.hookHelper = new CustomHookHelper(script)
         /* Initializer Device Farm scrips object */
         deviceFarm = new AwsDeviceFarmHelper(this.script)
         /* Load library configuration */

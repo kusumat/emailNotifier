@@ -17,6 +17,9 @@ class SpaChannel extends Channel {
 
     private final selectedSpaChannels
 
+    /* CustomHookHelper object */
+    protected hookHelper
+
     /**
      * Class constructor.
      *
@@ -24,6 +27,7 @@ class SpaChannel extends Channel {
      */
     SpaChannel(script) {
         super(script)
+        this.hookHelper = new CustomHookHelper(script)
         channelOs = channelFormFactor = channelType = 'SPA'
         selectedSpaChannels = getSelectedSpaChannels(this.script.params)
         /* Expose SPA build parameters to environment variables to use it in HeadlessBuild.properties */
@@ -96,7 +100,7 @@ class SpaChannel extends Channel {
                                 ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
                                     def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
                                     if(selectedSpaChannels.contains(project))
-                                        CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", projectStage)
+                                        hookHelper.runCustomHooks(script, projectName, libraryProperties.'customhooks.prebuild.name', projectStage)
                                 }
 
                             }
@@ -160,7 +164,7 @@ class SpaChannel extends Channel {
                                 ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
                                     def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
                                     if(selectedSpaChannels.contains(project))
-                                        CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", projectStage)
+                                        hookHelper.runCustomHooks(script, projectName, libraryProperties.'customhooks.postbuild.name', projectStage)
 
                                 }
                             } else {

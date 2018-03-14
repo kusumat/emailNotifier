@@ -12,21 +12,20 @@ class CustomHook implements Serializable {
     /* Commons */
     protected final projectName = script.env.PROJECT_NAME
     /* parameters */
-    protected final hookName = script.params.HOOK_NAME
-    protected final buildStep = script.params.BUILD_STEP
     protected final buildAction = script.params.BUILD_ACTION
-    protected final buildScript = script.params.BUILD_SCRIPT
     protected final scriptArguments = script.params.SCRIPT_ARGUMENTS
-    protected final blocking = script.params.BLOCKING
 
-    /*Hidden Parameters*/
+    /* Hidden Parameters */
     protected final hookSlave = script.params.HOOK_SLAVE
     protected final buildSlave = script.params.BUILD_SLAVE
     protected final upstreamJobWorkspace = script.params.UPSTREAM_JOB_WORKSPACE
 
-    /* others */
-    protected final outputFile = "Hook.zip"
-    protected final hookDir = projectName + "/Hook"
+    /* Stash name for fastlane configuration */
+    private fastlaneConfigStashName
+
+    /* customhooks hook definitions */
+    protected final hookDir
+    protected final hookScriptFileName
 
     CustomHook(script) {
         this.script = script
@@ -34,6 +33,37 @@ class CustomHook implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        hookDir = projectName + "/Hook"
+        hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
+        fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
+    }
+
+    /**
+     * Fetches Hook.zip file for running it locally from S3.
+     */
+    protected final void fetchHook(){
+
+        def buildScriptURL = script.params.BUILD_SCRIPT
+        def customhookBucketURL = script.env.S3_BUCKET_URL
+        def customhookBucketName = script.env.S3_CONFIG_BUCKET
+        def customhookBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
+        def awsIAMRole = script.env.AWS_IAM_ROLE
+        def customhookS3BucketURL = 's3://' + script.env.S3_BUCKET_NAME
+
+        def hookScriptFileBucketPath = (buildScriptURL - customhookBucketURL).substring(1)
+
+       // def s3Url = customhookS3BucketURL + (buildScriptURL - customhookBucketURL)
+        //def s3Url = buildScript.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com','s3://'+script.env.S3_BUCKET_NAME)
+
+        //script.shellCustom("aws s3 cp $s3Url .", true)
+
+        script.catchErrorCustom('Failed to fetch fastlane configuration') {
+            script.echoCustom("HookPath for download is $hookScriptFileName and $customhookBucketName and $hookScriptFileBucketPath and $customhookBucketRegion and $awsIAMRole")
+            script.withAWS(region: "us-east-1", role: "afdev04001-RoleJenkins-13GY9T0HYJJR5") {
+                script.s3Download bucket: 'afdev04001-builds', file: 'Hook.zip', force: true, path: 'SriniProject/CustomHooks/PRE_BUILD_STEP/PrebuildHook1/1/Hook.zip'
+
+            }
+        }
     }
 
     /* CustomHooks pipeline, each hook follows same execution process */
@@ -48,26 +78,11 @@ class CustomHook implements Serializable {
             script.ansiColor('xterm') {
                 script.node(buildSlave) {
                     script.ws(visWorkspace) {
-
-                        script.stage('Clean Environment') {
-                            script.dir(hookDir) {
-                                script.deleteDir()
-                            }
-                            script.shellCustom("set +e; rm -rf $hookDir; mkdir -p $hookDir", true)
-                        }
-
-                        script.stage("Download Hook Scripts") {
-                            script.dir(hookDir) {
-                                script.httpRequest url: buildScript, outputFile: outputFile, validResponseCodes: '200'
-                            }
-                        }
-
                         script.stage("Extract Hook Archive") {
                             script.dir(hookDir) {
-                                script.unzip zipFile: "Hook.zip"
+                                script.unzip zipFile: hookScriptFileName
                             }
                         }
-
                         script.stage('Prepare Environment for Run') {
                             script.shellCustom('pwd', true)
 
