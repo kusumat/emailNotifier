@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
+import com.kony.appfactory.helper.CustomHookHelper
 
 /**
  * Implements logic for runTests job.
