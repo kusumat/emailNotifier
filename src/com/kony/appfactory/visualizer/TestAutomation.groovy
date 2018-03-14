@@ -54,6 +54,7 @@ class TestAutomation implements Serializable {
     private projectName = script.env.PROJECT_NAME
     private projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
     private scmUrl = script.env.PROJECT_SOURCE_CODE_URL
+    private runCustomHook = script.params.RUN_CUSTOM_HOOKS
     /* Device Farm properties */
     private runTests = false
     /* Device Farm scripts object */
@@ -570,9 +571,14 @@ class TestAutomation implements Serializable {
                                 }
 
                                 script.stage('PostTest CustomHooks'){
-                                    ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
-                                        if(projectArtifacts."$project".'binaryName')
-                                            CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE")
+                                    if(runCustomHook){
+                                        ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
+                                            if(projectArtifacts."$project".'binaryName')
+                                                CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE")
+                                        }
+                                    }
+                                    else{
+                                        script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
                                     }
                                 }
                             }
