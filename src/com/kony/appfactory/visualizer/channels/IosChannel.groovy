@@ -76,7 +76,11 @@ class IosChannel extends Channel {
                             bucket: configBucketName,
                             path: fastlaneFastfileNameConfigBucketPath,
                             force: true
+                    /* Stash fetch fastlane configuration files to be able to use them during signing */
+                    script.stash name: fastlaneConfigStashName
 
+                    /* Remove fetched fastlane configuration files */
+                    script.deleteDir()
                 }
             }
         }
@@ -176,7 +180,7 @@ class IosChannel extends Channel {
 
             if(runCustomHook){
                 /* Run Pre Build iOS IPA stage Hooks */
-                hookHelper.runCustomHooks(script, projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
+                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
             }
             else{
                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
@@ -331,7 +335,7 @@ class IosChannel extends Channel {
                         script.stage('PreBuild CustomHooks') {
                             /* Run Pre Build iOS Hooks */
                             if (runCustomHook) {
-                                hookHelper.runCustomHooks(script, projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
+                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
                             } else {
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                             }
@@ -393,7 +397,7 @@ class IosChannel extends Channel {
                     script.stage('PostBuild CustomHooks') {
                         if (script.currentBuild.currentResult == 'SUCCESS') {
                             if (runCustomHook) {
-                                hookHelper.runCustomHooks(script, projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
+                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
                             } else {
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                             }

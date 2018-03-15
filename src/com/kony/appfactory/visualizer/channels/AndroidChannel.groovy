@@ -178,7 +178,7 @@ class AndroidChannel extends Channel {
                         script.stage('PreBuild CustomHooks'){
                             if(runCustomHook){
                                 /* Run Pre Build Android Hooks */
-                                hookHelper.runCustomHooks(script, projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
+                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
                             }
                             else{
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
@@ -229,7 +229,7 @@ class AndroidChannel extends Channel {
                     script.stage('PostBuild CustomHooks') {
                         if(script.currentBuild.currentResult == 'SUCCESS') {
                             if (runCustomHook) {
-                                hookHelper.runCustomHooks(script, projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
+                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
                             } else {
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                             }

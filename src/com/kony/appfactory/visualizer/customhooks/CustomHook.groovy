@@ -38,34 +38,6 @@ class CustomHook implements Serializable {
         fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
     }
 
-    /**
-     * Fetches Hook.zip file for running it locally from S3.
-     */
-    protected final void fetchHook(){
-
-        def buildScriptURL = script.params.BUILD_SCRIPT
-        def customhookBucketURL = script.env.S3_BUCKET_URL
-        def customhookBucketName = script.env.S3_CONFIG_BUCKET
-        def customhookBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
-        def awsIAMRole = script.env.AWS_IAM_ROLE
-        def customhookS3BucketURL = 's3://' + script.env.S3_BUCKET_NAME
-
-        def hookScriptFileBucketPath = (buildScriptURL - customhookBucketURL).substring(1)
-
-       // def s3Url = customhookS3BucketURL + (buildScriptURL - customhookBucketURL)
-        //def s3Url = buildScript.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com','s3://'+script.env.S3_BUCKET_NAME)
-
-        //script.shellCustom("aws s3 cp $s3Url .", true)
-
-        script.catchErrorCustom('Failed to fetch fastlane configuration') {
-            script.echoCustom("HookPath for download is $hookScriptFileName and $customhookBucketName and $hookScriptFileBucketPath and $customhookBucketRegion and $awsIAMRole")
-            script.withAWS(region: "us-east-1", role: "afdev04001-RoleJenkins-13GY9T0HYJJR5") {
-                script.s3Download bucket: 'afdev04001-builds', file: 'Hook.zip', force: true, path: 'SriniProject/CustomHooks/PRE_BUILD_STEP/PrebuildHook1/1/Hook.zip'
-
-            }
-        }
-    }
-
     /* CustomHooks pipeline, each hook follows same execution process */
     protected final void processPipeline(){
 
@@ -84,8 +56,7 @@ class CustomHook implements Serializable {
                             }
                         }
                         script.stage('Prepare Environment for Run') {
-                            script.shellCustom('pwd', true)
-
+                            /* Applying ACLs for hookslave user */
                             def hookSlaveACLapply_fordirs = 'set +xe && chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
                             def hookSlaveACLapply_forfiles = 'set +xe && find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
 

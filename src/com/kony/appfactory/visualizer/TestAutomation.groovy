@@ -578,7 +578,7 @@ class TestAutomation implements Serializable {
                                     if(runCustomHook){
                                         ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
                                             if(projectArtifacts."$project".'binaryName')
-                                                CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE")
+                                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase()+"_STAGE")
                                         }
                                     }
                                     else{

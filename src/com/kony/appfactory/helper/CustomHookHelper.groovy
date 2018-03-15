@@ -40,7 +40,7 @@ class CustomHookHelper implements Serializable {
     * @return hookList
     */
 
-    protected getHookList(script, hookStage, pipelineBuildStage, jsonContent){
+    protected getHookList(hookStage, pipelineBuildStage, jsonContent){
         def stageContent = jsonContent[hookStage]
 
         String[] hookList = new String[stageContent.size()]
@@ -93,19 +93,20 @@ class CustomHookHelper implements Serializable {
     }
 
     /**
-     * Fetches Hook.zip file for running it locally from S3.
+     * Fetches Hook zip file for running it locally from S3.
      */
     protected final void fetchHook(buildScriptUrl){
         def customhookBucketURL = script.env.S3_BUCKET_URL
         def customhookBucketName = script.env.S3_BUCKET_NAME
         def customhookBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
         def awsIAMRole = script.env.AWS_IAM_ROLE
+        def hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
 
         def hookScriptFileBucketPath = (buildScriptUrl - customhookBucketURL).substring(1)
 
-        script.catchErrorCustom('Failed to fetch fastlane configuration') {
+        script.catchErrorCustom('Failed to fetch Hook zip file') {
             script.withAWS(region: customhookBucketRegion, role: awsIAMRole) {
-                script.s3Download bucket: customhookBucketName, file: 'Hook.zip', force: true, path: hookScriptFileBucketPath
+                script.s3Download bucket: customhookBucketName, file: hookScriptFileName, force: true, path: hookScriptFileBucketPath
 
             }
         }
@@ -118,7 +119,7 @@ class CustomHookHelper implements Serializable {
     * @param hookStage
     * @param pipelineBuildStage
     */
-    protected triggerHooks(script, projectName, hookStage, pipelineBuildStage){
+    protected triggerHooks(projectName, hookStage, pipelineBuildStage){
         def customhooksConfigFolder = projectName + customhooksFolderSubpath
         def content = ConfigFileHelper.getContent(customhooksConfigFolder, projectName)
 
@@ -130,15 +131,15 @@ class CustomHookHelper implements Serializable {
             script.writeFile file: "${projectName}.json", text: content
             def hookProperties = script.readJSON file: "${projectName}.json"
 
-            def hookList = getHookList(script, hookStage, pipelineBuildStage, hookProperties)
+            def hookList = getHookList(hookStage, pipelineBuildStage, hookProperties)
             hookList ?: script.echoCustom("Hooks are either not defined or disabled in $hookStage stage for $pipelineBuildStage channel.")
 
             script.stage(hookStage) {
                 for (hookName in hookList) {
                     def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
-                    def hookJobName = getHookJobName(script, projectName, hookName, hookStage)
+                    def hookJobName = getHookJobName(projectName, hookName, hookStage)
                     def buildScriptUrl = getbuildScriptURL(hookName, hookStage, hookProperties)
-                    hookDir = "vis_ws/" + projectName + "/Hook"
+                    hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
                     script.stage('Clean Environment') {
                         script.dir(hookDir) {
                             script.deleteDir()
@@ -183,18 +184,18 @@ class CustomHookHelper implements Serializable {
     }
 
     /* return hook full path */
-    protected final getHookJobName(script, projectName, hookName, hookType) {
+    protected final getHookJobName(projectName, hookName, hookType) {
         def hookFullName = [projectName, customhooksFolderSubpath, hookType, hookName].join('/')
         hookFullName
     }
 
 
   //  @NonCPS
-    protected runCustomHooks(script, String folderName, String hookBuildStage, String pipelineBuildStage){
+    protected runCustomHooks(String folderName, String hookBuildStage, String pipelineBuildStage){
         script.echoCustom("Fetching $hookBuildStage $pipelineBuildStage hooks. ")
 
        /* Execute available hooks */
-        triggerHooks(script, folderName, hookBuildStage, pipelineBuildStage)
+        triggerHooks(folderName, hookBuildStage, pipelineBuildStage)
 
     }
     
