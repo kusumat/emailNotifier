@@ -31,6 +31,9 @@ class AndroidChannel extends Channel {
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "ANDROID_MOBILE_STAGE" : "ANDROID_TABLET_STAGE";
 
+    /* CustomHookHelper object */
+    protected hookHelper
+
     /**
      * Class constructor.
      *
@@ -38,6 +41,7 @@ class AndroidChannel extends Channel {
      */
     AndroidChannel(script) {
         super(script)
+        this.hookHelper = new CustomHookHelper(script)
         channelOs = 'Android'
         channelType = 'Native'
         /* Expose Android build parameters to environment variables to use it in HeadlessBuild.properties */
@@ -174,7 +178,7 @@ class AndroidChannel extends Channel {
                         script.stage('PreBuild CustomHooks'){
                             if(runCustomHook){
                                 /* Run Pre Build Android Hooks */
-                                CustomHookHelper.runCustomHooks(script, projectName, "PRE_BUILD", customHookStage)
+                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
                             }
                             else{
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
@@ -225,7 +229,7 @@ class AndroidChannel extends Channel {
                     script.stage('PostBuild CustomHooks') {
                         if(script.currentBuild.currentResult == 'SUCCESS') {
                             if (runCustomHook) {
-                                CustomHookHelper.runCustomHooks(script, projectName, "POST_BUILD", customHookStage)
+                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
                             } else {
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                             }

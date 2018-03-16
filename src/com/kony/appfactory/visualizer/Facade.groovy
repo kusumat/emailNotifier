@@ -3,7 +3,6 @@ package com.kony.appfactory.visualizer
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
-import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
 

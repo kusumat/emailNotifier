@@ -93,6 +93,9 @@ class TestAutomation implements Serializable {
                                        url       : (script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
     ]
 
+    /* CustomHookHelper object */
+    protected hookHelper
+
     /**
      * Class constructor.
      *
@@ -100,6 +103,7 @@ class TestAutomation implements Serializable {
      */
     TestAutomation(script) {
         this.script = script
+        this.hookHelper = new CustomHookHelper(script)
         /* Initializer Device Farm scrips object */
         deviceFarm = new AwsDeviceFarmHelper(this.script)
         /* Load library configuration */
@@ -574,7 +578,7 @@ class TestAutomation implements Serializable {
                                     if(runCustomHook){
                                         ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
                                             if(projectArtifacts."$project".'binaryName')
-                                                CustomHookHelper.runCustomHooks(script, projectName, "POST_TEST", project.toUpperCase()+"_STAGE")
+                                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase()+"_STAGE")
                                         }
                                     }
                                     else{

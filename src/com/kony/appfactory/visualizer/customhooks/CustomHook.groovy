@@ -12,21 +12,20 @@ class CustomHook implements Serializable {
     /* Commons */
     protected final projectName = script.env.PROJECT_NAME
     /* parameters */
-    protected final hookName = script.params.HOOK_NAME
-    protected final buildStep = script.params.BUILD_STEP
     protected final buildAction = script.params.BUILD_ACTION
-    protected final buildScript = script.params.BUILD_SCRIPT
     protected final scriptArguments = script.params.SCRIPT_ARGUMENTS
-    protected final blocking = script.params.BLOCKING
 
-    /*Hidden Parameters*/
+    /* Hidden Parameters */
     protected final hookSlave = script.params.HOOK_SLAVE
     protected final buildSlave = script.params.BUILD_SLAVE
     protected final upstreamJobWorkspace = script.params.UPSTREAM_JOB_WORKSPACE
 
-    /* others */
-    protected final outputFile = "Hook.zip"
-    protected final hookDir = projectName + "/Hook"
+    /* Stash name for fastlane configuration */
+    private fastlaneConfigStashName
+
+    /* customhooks hook definitions */
+    protected final hookDir
+    protected final hookScriptFileName
 
     CustomHook(script) {
         this.script = script
@@ -34,6 +33,9 @@ class CustomHook implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        hookDir = projectName + "/Hook"
+        hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
+        fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
     }
 
     /* CustomHooks pipeline, each hook follows same execution process */
@@ -48,29 +50,13 @@ class CustomHook implements Serializable {
             script.ansiColor('xterm') {
                 script.node(buildSlave) {
                     script.ws(visWorkspace) {
-
-                        script.stage('Clean Environment') {
-                            script.dir(hookDir) {
-                                script.deleteDir()
-                            }
-                            script.shellCustom("set +e; rm -rf $hookDir; mkdir -p $hookDir", true)
-                        }
-
-                        script.stage("Download Hook Scripts") {
-                            script.dir(hookDir) {
-                                script.httpRequest url: buildScript, outputFile: outputFile, validResponseCodes: '200'
-                            }
-                        }
-
                         script.stage("Extract Hook Archive") {
                             script.dir(hookDir) {
-                                script.unzip zipFile: "Hook.zip"
+                                script.unzip zipFile: hookScriptFileName
                             }
                         }
-
                         script.stage('Prepare Environment for Run') {
-                            script.shellCustom('pwd', true)
-
+                            /* Applying ACLs for hookslave user */
                             def hookSlaveACLapply_fordirs = 'set +xe && chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
                             def hookSlaveACLapply_forfiles = 'set +xe && find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
 
