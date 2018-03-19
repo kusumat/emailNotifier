@@ -428,7 +428,7 @@ class TestAutomation implements Serializable {
             script.catchErrorCustom("Failed to create the Zip file") {
                 if(script.fileExists(mustHaveFilePath)){
                     String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
-                                    sourceFilePath: projectFullPath, script, true // true to print the url, but it has to be removed later
+                                    sourceFilePath: projectFullPath, script
                     mustHaves.add([
                         channelVariableName: "Tests", name: mustHaveFile, url: s3MustHaveAuthUrl
                     ])
