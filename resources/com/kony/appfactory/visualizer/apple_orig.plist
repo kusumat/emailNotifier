@@ -21,7 +21,7 @@
                                 <key>kind</key>
                                 <string>software</string>
                                 <key>title</key>
-                                <string></string>
+                                <string>$project</string>
                         </dict>
                 </dict>
         </array>
