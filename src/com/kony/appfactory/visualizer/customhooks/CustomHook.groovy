@@ -57,14 +57,15 @@ class CustomHook implements Serializable {
                         }
                         script.stage('Prepare Environment for Run') {
                             /* Applying ACLs for hookslave user */
-                            def hookSlaveACLapply_fordirs = 'set +xe && chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
-                            def hookSlaveACLapply_forfiles = 'set +xe && find ../vis_ws -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+                            //def hookSlaveACLapply_fordirs = 'set +xe && chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" ../vis_ws'
+                            def hookSlaveACLapply_fordirs = '#!/bin/sh +xe && find . -type d -exec chmod -R +a "hookslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
+                            def hookSlaveACLapply_forfiles = '#!/bin/sh +xe && find . -type f -exec chmod -R +a "hookslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
 
                             script.shellCustom("$hookSlaveACLapply_fordirs", true)
                             script.shellCustom("$hookSlaveACLapply_forfiles", true)
 
                             /*This is to get change permission for upstream folder which will be same as Jenkins job name*/
-                            script.shellCustom("set +xe && chmod 710 ../../$upstreamJobName",true)
+                            script.shellCustom("#!/bin/sh +xe && chmod 710 ../../$upstreamJobName",true)
                         }
                     }
                 }
@@ -90,16 +91,14 @@ class CustomHook implements Serializable {
                                 }
 
                                 script.stage('Prepare Environment for actual Build Run') {
-                                    def buildSlaveACLapply_fordirs = 'set +xe && chmod -R +a "buildslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" .'
-                                    def buildSlaveACLapply_forfiles = 'set +xe && find . -type f -exec chmod -R +a "buildslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+                                    def buildSlaveACLapply_fordirs = '#!/bin/sh +xe && find . -user hookslave -type d -exec chmod -R +a "buildslave allow list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" "{}" \\+'
+                                    def buildSlaveACLapply_forfiles = '#!/bin/sh +xe && find . -user hookslave -type f -exec chmod -R +a "buildslave allow read,write,append,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+                                    script.shellCustom("$buildSlaveACLapply_fordirs", true)
+                                    script.shellCustom("$buildSlaveACLapply_forfiles", true)
 
-                                    //script.shellCustom("$buildSlaveACLapply_fordirs", true)
-                                    //script.shellCustom("$buildSlaveACLapply_forfiles", true)
-
-                                    script.dir(hookDir) {
-                                        def buildSlaveACLapply_inhookDir = 'set +xe;find . -user hookslave -exec chmod -R +a "buildslave allow read,write,delete,list,add_file,search,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" {} \\+'
-                                        script.shellCustom("$buildSlaveACLapply_inhookDir", true)
-                                    }
+                                    /* Clean any @tmp files created after build run */
+                                    def cleanTmpFiles = '#!/bin/sh +xe && find . -user hookslave -type d -name "*@*" -empty -delete'
+                                    script.shellCustom("$cleanTmpFiles", true)
                                 }
                             }
                         }

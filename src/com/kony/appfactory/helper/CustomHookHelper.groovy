@@ -140,6 +140,7 @@ class CustomHookHelper implements Serializable {
                     def hookJobName = getHookJobName(projectName, hookName, hookStage)
                     def buildScriptUrl = getbuildScriptURL(hookName, hookStage, hookProperties)
                     hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
+
                     script.stage('Clean Environment') {
                         script.dir(hookDir) {
                             script.deleteDir()
