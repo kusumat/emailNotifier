@@ -20,6 +20,9 @@ class SpaChannel extends Channel {
     /* CustomHookHelper object */
     protected hookHelper
 
+    /* Build agent resources */
+    def resourceList
+    def nodeLabel
     /**
      * Class constructor.
      *
@@ -64,8 +67,16 @@ class SpaChannel extends Channel {
                     ValidationHelper.checkBuildConfiguration(script, ['SPA_APP_VERSION', 'FABRIC_APP_CONFIG'])
                 }
 
-                /* Allocate a slave for the run */
-                script.node(libraryProperties.'spa.node.label') {
+                /*
+                *  Allocate a slave for the run
+                *  CustomHook always must run in MAC (to use ACLs), However SPA can run in both Windows and MAC
+                *  Due to this, if user need to run Custom Hooks on SPA (runCustomHook is checked) then run SPA
+                *  build on MAC Agent. Otherwise default node strategy will be followed (WIN || MAC)
+                */
+                resourceList = BuildHelper.getResoursesList()
+                nodeLabel = BuildHelper.getAvailableNode(runCustomHook, resourceList, libraryProperties, script)
+
+                script.node(nodeLabel) {
                     pipelineWrapper {
                         /*
                         Clean workspace, to be sure that we have not any items from previous build,
