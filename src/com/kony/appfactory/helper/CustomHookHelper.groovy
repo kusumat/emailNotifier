@@ -193,7 +193,7 @@ class CustomHookHelper implements Serializable {
 
   //  @NonCPS
     protected runCustomHooks(String folderName, String hookBuildStage, String pipelineBuildStage){
-        script.echoCustom("Fetching $hookBuildStage $pipelineBuildStage hooks. ")
+        script.echoCustom("Trying to fetch $hookBuildStage $pipelineBuildStage hooks. ")
 
        /* Execute available hooks */
         triggerHooks(folderName, hookBuildStage, pipelineBuildStage)
