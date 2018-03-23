@@ -139,7 +139,14 @@ class CustomHookHelper implements Serializable {
                     def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
                     def hookJobName = getHookJobName(projectName, hookName, hookStage)
                     def buildScriptUrl = getbuildScriptURL(hookName, hookStage, hookProperties)
-                    hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
+                    String hookLabel = script.env.NODE_LABELS
+
+                    if (hookLabel.contains(libraryProperties.'test.automation.node.label')) {
+                        hookDir = "Hook"
+                    }
+                    else{
+                        hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
+                    }
 
                     script.stage('Clean Environment') {
                         script.dir(hookDir) {
@@ -186,7 +193,7 @@ class CustomHookHelper implements Serializable {
 
     /* return hook full path */
     protected final getHookJobName(projectName, hookName, hookType) {
-        def hookFullName = [projectName, customhooksFolderSubpath, hookType, hookName].join('/')
+        def hookFullName = projectName + [customhooksFolderSubpath, hookType, hookName].join('/')
         hookFullName
     }
 
