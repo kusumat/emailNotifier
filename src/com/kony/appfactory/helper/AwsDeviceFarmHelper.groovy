@@ -478,8 +478,11 @@ class AwsDeviceFarmHelper implements Serializable {
     		     }
     		}   
 		else
-    		    script.echoCustom("Run status is " + testRunStatus + " and run result is " + testRunResult, 'ERROR', false)
-		testRunStatus == 'COMPLETED'
+		    (testRunStatus == 'COMPLETED')?
+		        script.echoCustom("No test jobs were found on one/more of the devices of device farm. Test run status is " + testRunStatus + " and test run result is " + testRunResult, 'ERROR', false):
+		        script.echoCustom("No test jobs were found on one/more of the devices of device farm till now. Test run status is " + testRunStatus + " and test run result is " + testRunResult, 'INFO')
+		
+    		testRunStatus == 'COMPLETED'
             }
         }   
 	testRunResult
