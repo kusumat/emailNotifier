@@ -193,7 +193,7 @@ class Channel implements Serializable {
             script.currentBuild.result = 'FAILURE'
         } finally {
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
-            if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+            if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                 PrepareMustHaves()
             }
             setBuildDescription()

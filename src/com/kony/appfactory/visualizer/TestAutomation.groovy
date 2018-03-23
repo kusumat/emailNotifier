@@ -597,7 +597,7 @@ class TestAutomation implements Serializable {
                                     binaryName    : getBinaryNameForEmail(projectArtifacts),
                                     missingDevices: script.env.MISSING_DEVICES
                             ], true)
-                            if(script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED'){
+                            if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED'){
                                 PrepareMustHaves(true)
                             }
                             /* Cleanup created pools and uploads */
