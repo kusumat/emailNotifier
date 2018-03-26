@@ -540,4 +540,26 @@ class BuildHelper implements Serializable {
 
         authArtifactUrl
     }
+    
+    /* This is required as each build can be trigger from IOS Android or SPA.
+     *  To give permission to channel jobs workspace we need info about Upstream job
+     *
+     *  @param script
+     *  return upstreamJobName
+     * */
+    @NonCPS
+    protected final static getUpstreamJobName(script) {
+         String upstreamJobName = null
+         script.currentBuild.rawBuild.actions.each { action ->
+             if (action.hasProperty("causes")) {
+                 action.causes.each { cause ->
+                     if (cause instanceof hudson.model.Cause$UpstreamCause && cause.hasProperty("shortDescription") && cause.shortDescription.contains("Started by upstream project")) {
+                         upstreamJobName = cause.upstreamRun.getEnvironment(TaskListener.NULL).get("JOB_BASE_NAME")
+                     }
+                 }
+             }
+         }
+         upstreamJobName
+     }
+ 
 }

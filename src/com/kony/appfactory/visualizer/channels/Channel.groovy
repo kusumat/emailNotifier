@@ -24,6 +24,8 @@ class Channel implements Serializable {
     protected mustHaveArtifacts = []
     protected mustHaves = []
     protected mustHavePath
+    protected String upstreamJob = null
+    protected String s3MustHaveAuthUrl
     /*
         Platform dependent default name-separator character as String.
         For windows, it's '\' and for unix it's '/'.
@@ -194,6 +196,7 @@ class Channel implements Serializable {
         } finally {
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
+                upstreamJob = BuildHelper.getUpstreamJobName(script)
                 PrepareMustHaves()
             }
             setBuildDescription()
@@ -623,13 +626,18 @@ class Channel implements Serializable {
      */
     protected final void setBuildDescription() {
         String EnvironmentDescription = ""
+        String mustHavesDescription = ""
         if(script.env.FABRIC_ENV_NAME) {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
+        }
+        if(upstreamJob == null && s3MustHaveAuthUrl != null){
+            mustHavesDescription = "<p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>"
         }
         script.currentBuild.description = """\
         <div id="build-description">
             ${EnvironmentDescription}
             <p>Channel: $channelVariableName</p>
+            ${mustHavesDescription}
         </div>\
         """.stripIndent()
     }
@@ -701,12 +709,18 @@ class Channel implements Serializable {
                 script.zip dir:mustHavePath, zipFile: mustHaveFile
                 script.catchErrorCustom("Failed to create the Zip file") {
                     if(script.fileExists(mustHaveFilePath)){
-                        String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
+                        String s3MustHaveUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
 	                                    sourceFilePath: projectFullPath, script
-                        mustHaves.add([
-                                channelVariableName: channelVariableName, name: mustHaveFile, url: s3MustHaveAuthUrl
-                        ])
-                        script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
+                        s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
+                        /* We will be keeping the s3 url of the must haves into the collection only if the 
+                         * channel job is triggered by the parent job that is buildVisualiser job.
+                         */
+                        if(upstreamJob != null){
+                            mustHaves.add([
+                                    channelVariableName: channelVariableName, name: mustHaveFile, url: s3MustHaveUrl
+                            ])
+                            script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
+                        }
                     }
                 }
             }

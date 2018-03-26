@@ -39,6 +39,9 @@ class TestAutomation implements Serializable {
     protected projectWorkspacePath
     /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     private projectFullPath
+    /* must gathering related variables */
+    protected String upstreamJob = null
+    protected String s3MustHaveAuthUrl
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
@@ -408,6 +411,19 @@ class TestAutomation implements Serializable {
     }
 
     /**
+     * Sets build description at the end of the build.
+     */
+    protected final void setBuildDescription() {
+        if(upstreamJob == null && s3MustHaveAuthUrl != null){
+            script.currentBuild.description = """\
+            <div id="build-description">
+                <p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>
+            </div>\
+        """.stripIndent()
+        }
+    }
+    
+    /**
      * Prepare must haves for the debugging
      */
     private final void PrepareMustHaves(isBuildTestsPassed) {
@@ -427,12 +443,19 @@ class TestAutomation implements Serializable {
             script.zip dir:mustHaveFolderPath, zipFile: mustHaveFile
             script.catchErrorCustom("Failed to create the Zip file") {
                 if(script.fileExists(mustHaveFilePath)){
-                    String s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
+                    String s3MustHaveUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
                                     sourceFilePath: projectFullPath, script
-                    mustHaves.add([
-                        channelVariableName: "Tests", name: mustHaveFile, url: s3MustHaveAuthUrl
-                    ])
-                    script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
+                    upstreamJob = BuildHelper.getUpstreamJobName(script)
+                    s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
+                    /* We will be keeping the s3 url of the must haves into the collection only if the
+                     * channel job is triggered by the parent job that is buildVisualiser job.
+                     */
+                    if(upstreamJob != null){
+                        mustHaves.add([
+                            channelVariableName: "Tests", name: mustHaveFile, url: s3MustHaveUrl
+                        ])
+                        script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
+                    }
                 }
             }
         }
@@ -531,6 +554,7 @@ class TestAutomation implements Serializable {
                         if (script.currentBuild.result == 'FAILURE') {
                             script.echoCustom("Something went wrong... Unable to build Test binary!",'WARN')
                             PrepareMustHaves(false)
+                            setBuildDescription()
                         }
                     }
 
@@ -599,6 +623,7 @@ class TestAutomation implements Serializable {
                             ], true)
                             if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED'){
                                 PrepareMustHaves(true)
+                                setBuildDescription()
                             }
                             /* Cleanup created pools and uploads */
                             cleanup(deviceFarmUploadArns, devicePoolArns)

@@ -37,7 +37,7 @@ class CustomHook implements Serializable {
 
     /* CustomHooks pipeline, each hook follows same execution process */
     protected final void processPipeline(){
-        upstreamJobName = getUpstreamJobName(script)
+        upstreamJobName = BuildHelper.getUpstreamJobName(script)
         String visWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
 
         /* Wrapper for injecting timestamp to the build console output */
