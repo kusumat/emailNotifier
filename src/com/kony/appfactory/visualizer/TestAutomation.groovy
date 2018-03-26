@@ -5,6 +5,8 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
 import com.kony.appfactory.helper.CustomHookHelper
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 
 /**
  * Implements logic for runTests job.
@@ -599,14 +601,20 @@ class TestAutomation implements Serializable {
                                 }
 
                                 script.stage('PostTest CustomHooks'){
-                                    if(runCustomHook){
+                                    deviceFarmTestRunResults ?: echoCustom('Tests results not found. CustomHooks execution failed.','ERROR')
+
+                                    def jsonSlurper = new JsonSlurper()
+                                    def testResultsToText = JsonOutput.toJson(deviceFarmTestRunResults)
+                                    def testResultsToJson = jsonSlurper.parseText(testResultsToText)
+
+                                    if(testResultsToJson[0].result == "PASSED" && runCustomHook){
                                         ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
                                             if(projectArtifacts."$project".'binaryName')
                                                 hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase()+"_STAGE")
                                         }
                                     }
                                     else{
-                                        script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
+                                        script.echoCustom('Either runCustomHook parameter is not selected by the User or tests got failed for one/more devices. Hence CustomHooks execution is skipped.','WARN')
                                     }
                                 }
                             }
