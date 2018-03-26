@@ -75,7 +75,6 @@ class CustomHook implements Serializable {
 
                 script.node(hookSlave) {
                     def hookLabel = script.env.NODE_LABELS
-                    script.echoCustom("hellova $hookLabel")
                     script.ws(visWorkspace) {
                         def javaHome = script.env.JDK_1_8_0_112_HOME
                         def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
