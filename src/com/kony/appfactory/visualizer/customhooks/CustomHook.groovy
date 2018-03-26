@@ -52,7 +52,6 @@ class CustomHook implements Serializable {
                     else{
                         hookDir = visWorkspace + "/" + projectName + "/Hook"
                     }
-                    script.echoCustom("hellova $hookLabel")
                     script.ws(visWorkspace) {
                         script.stage("Extract Hook Archive") {
                             script.dir(hookDir) {
@@ -87,27 +86,31 @@ class CustomHook implements Serializable {
                         script.withEnv(["JAVA_HOME=${javaHome}", "PATH+TOOLS=${javaHome}${pathSeparator}${antBinPath}"]) {
                             script.stage("Running CustomHook") {
                                 script.dir(hookDir) {
-                                    if (buildAction == "Execute Ant") {
-                                        def antCmd = "$antBinPath" + "/ant" + " -f build.xml ${scriptArguments}"
-                                        script.shellCustom("$antCmd", true)
-                                    } else if (buildAction == "Execute Maven") {
-                                        def mvnCmd = "mvn ${scriptArguments}"
-                                        script.shellCustom("$mvnCmd ", true)
-                                    } else {
-                                        script.echoCustom("unknown build script",'ERROR')
-                                    }
-                                }
-
-                                script.stage('Prepare Environment for actual Build Run') {
-                                    /* Applying ACLs, allow buildslave/jenkins user permissions*/
-                                    if (hookLabel.contains(libraryProperties.'visualizer.hooks.node.label')) {
-                                        macACLafterRun()
-                                    }
-                                    else if (hookLabel.contains(libraryProperties.'test.hooks.node.label')) {
-                                        linuxACLafterRun()
-                                    }
-                                    else {
-                                        script.echoCustom("Something went wrong.. unable to run hook", 'ERROR')
+                                    try {
+                                        if (buildAction == "Execute Ant") {
+                                            def antCmd = "$antBinPath" + "/ant" + " -f build.xml ${scriptArguments}"
+                                            script.shellCustom("$antCmd", true)
+                                        } else if (buildAction == "Execute Maven") {
+                                            def mvnCmd = "mvn ${scriptArguments}"
+                                            script.shellCustom("$mvnCmd ", true)
+                                        } else {
+                                            script.echoCustom("unknown build script",'WARN')
+                                        }
+                                    } catch (Exception e) {
+                                        script.echoCustom(e.toString(),'WARN')
+                                    } finally {
+                                        script.stage('Prepare Environment for actual Build Run') {
+                                            /* Applying ACLs, allow buildslave/jenkins user permissions*/
+                                            if (hookLabel.contains(libraryProperties.'visualizer.hooks.node.label')) {
+                                                macACLafterRun()
+                                            }
+                                            else if (hookLabel.contains(libraryProperties.'test.hooks.node.label')) {
+                                                linuxACLafterRun()
+                                            }
+                                            else {
+                                                script.echoCustom("Something went wrong.. unable to run hook", 'ERROR')
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -167,16 +170,16 @@ class CustomHook implements Serializable {
     /* applying ACLs - allow buildslave/jenkins user with read, write permissions on hookslave owned files.*/
     def macACLafterRun()
     {
-        def buildSlaveACLapply_fordirs = 'find . -user hookslave -type d -exec chmod -R +a "buildslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" "{}" \\+'
-        def buildSlaveACLapply_forfiles = 'find . -user hookslave -type f -exec chmod -R +a "buildslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
-        def buildSlaveACLapplygroup_forfiles = 'find . -user hookslave -type d -exec chmod -R 775 {} \\+'
+        def buildSlaveACLapply_fordirs = 'set +xe;find . -user hookslave -type d -exec chmod -R +a "buildslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" "{}" \\+'
+        def buildSlaveACLapply_forfiles = 'set +xe;find . -user hookslave -type f -exec chmod -R +a "buildslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" {} \\+'
+        def buildSlaveACLapplygroup_forfiles = 'set +xe;find . -user hookslave -type d -exec chmod -R 775 {} \\+'
 
         script.shellCustom("$buildSlaveACLapply_fordirs", true)
         script.shellCustom("$buildSlaveACLapply_forfiles", true)
         script.shellCustom("$buildSlaveACLapplygroup_forfiles", true)
 
         /* Clean any @tmp files created after build run */
-        def cleanTmpFiles = 'find . -user hookslave -type d -name "*@tmp" -empty -delete'
+        def cleanTmpFiles = 'set +xe;find . -user hookslave -type d -name "*@tmp" -empty -delete'
         script.shellCustom("$cleanTmpFiles", true)
     }
 
