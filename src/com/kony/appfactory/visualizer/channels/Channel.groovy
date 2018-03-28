@@ -191,7 +191,7 @@ class Channel implements Serializable {
             closure()
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-            script.echoCustom(exceptionMessage,'WARN')
+            script.echoCustom(exceptionMessage,'ERROR',false)
             script.currentBuild.result = 'FAILURE'
         } finally {
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)

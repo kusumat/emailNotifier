@@ -175,7 +175,7 @@ class AndroidChannel extends Channel {
                                     scmUrl: scmUrl
                         }
 
-                        script.stage('PreBuild CustomHooks'){
+                        script.stage('Check PreBuild Hook Points'){
                             if(runCustomHook){
                                 /* Run Pre Build Android Hooks */
                                 def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
@@ -228,7 +228,7 @@ class AndroidChannel extends Channel {
                     }
 
                     /* Run Post Build Android Hooks */
-                    script.stage('PostBuild CustomHooks') {
+                    script.stage('Check PostBuild Hook Points') {
                         if(script.currentBuild.currentResult == 'SUCCESS') {
                             if (runCustomHook) {
                                 def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)

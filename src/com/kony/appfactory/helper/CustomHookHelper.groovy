@@ -135,35 +135,33 @@ class CustomHookHelper implements Serializable {
             def hookList = getHookList(hookStage, pipelineBuildStage, hookProperties)
             hookList ?: script.echoCustom("Hooks are either not defined or disabled in $hookStage stage for $pipelineBuildStage channel.")
 
-            script.stage(hookStage) {
-                for (hookName in hookList) {
-                    def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
-                    def hookJobName = getHookJobName(projectName, hookName, hookStage)
-                    def buildScriptUrl = getbuildScriptURL(hookName, hookStage, hookProperties)
-                    String hookLabel = script.env.NODE_LABELS
+            for (hookName in hookList) {
+                def isPropagateBuildResult = isPropagateBuildStatus(hookName, hookStage, hookProperties)
+                def hookJobName = getHookJobName(projectName, hookName, hookStage)
+                def buildScriptUrl = getbuildScriptURL(hookName, hookStage, hookProperties)
+                String hookLabel = script.env.NODE_LABELS
 
+                script.stage('Clean Hook Environment') {
                     if (hookLabel.contains(libraryProperties.'test.automation.node.label')) {
                         hookDir = "Hook"
-                    }
-                    else{
+                    } else {
                         hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
                     }
-
-                    script.stage('Clean Environment') {
-                        script.dir(hookDir) {
-                            script.deleteDir()
-                        }
-                        script.shellCustom("set +e; rm -rf $hookDir; mkdir -p $hookDir", true)
+                    script.dir(hookDir) {
+                        script.deleteDir()
                     }
+                    script.shellCustom("set +ex; rm -rf $hookDir; mkdir -p $hookDir", true)
+                }
 
-                    script.stage("Download Hook Scripts") {
-                        script.dir(hookDir) {
-                            fetchHook(buildScriptUrl)
-                        }
+                script.stage("Download Hook Script") {
+                    script.dir(hookDir) {
+                        fetchHook(buildScriptUrl)
                     }
+                }
 
+                script.stage("Run " + hookName ) {
                     def hookJob = script.build job: hookJobName,
-                            propagate: false, wait: true,
+                            propagate: false,
                             parameters: [[$class: 'WHideParameterValue',
                                           name  : 'UPSTREAM_JOB_WORKSPACE',
                                           value : "$script.env.WORKSPACE"],
@@ -177,21 +175,19 @@ class CustomHookHelper implements Serializable {
                                           value : "$currentComputer"]]
 
                     if (hookJob.currentResult == 'SUCCESS') {
-                        script.echoCustom("Hook execution for $hookJobName hook is SUCCESS, continuing with next build step..",'INFO')
-                    }
-                    else if (!(Boolean.valueOf(isPropagateBuildResult)) && hookJob.currentResult != 'SUCCESS' ) {
-                        script.echoCustom("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult", 'ERROR', false)
+                        script.echoCustom("Hook execution for $hookJobName hook is SUCCESS, continuing with next build step..", 'INFO')
+                    } else if (!(Boolean.valueOf(isPropagateBuildResult)) && hookJob.currentResult != 'SUCCESS') {
+                        script.echoCustom("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult", 'WARN')
                         script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as false, " +
-                                "continuing with next build step..",'INFO')
-                    }
-                    else if (Boolean.valueOf(isPropagateBuildResult) && hookJob.currentResult != 'SUCCESS' ){
+                                "continuing with next build step..", 'INFO')
+                    } else if (Boolean.valueOf(isPropagateBuildResult) && hookJob.currentResult != 'SUCCESS'){
+                        hookReturnStatus = false
                         script.echoCustom("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult", 'ERROR', false)
                         script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as true, " +
-                            "exiting the build...",'ERROR', false)
-                        hookReturnStatus = false
-                        break
+                            "exiting the build...",'ERROR', true)
                     }
                 }
+
             }
         }
         else{

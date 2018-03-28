@@ -105,7 +105,7 @@ class SpaChannel extends Channel {
                                     scmUrl: scmUrl
                         }
 
-                        script.stage('PreBuild CustomHooks'){
+                        script.stage('Check PreBuild Hook Points'){
                             if(runCustomHook) {
 
                                 ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
@@ -171,7 +171,7 @@ class SpaChannel extends Channel {
                     }
 
                     /* Run Post Build SPA Hooks */
-                    script.stage('PostBuild CustomHooks') {
+                    script.stage('Check PostBuild Hook Points') {
                         if(script.currentBuild.currentResult == 'SUCCESS') {
                             if (runCustomHook) {
 

@@ -179,16 +179,6 @@ class IosChannel extends Channel {
                 """, true)
             }
 
-            if(runCustomHook){
-                /* Run Pre Build iOS IPA stage Hooks */
-                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
-                if(!isSuccess)
-                    throw new Exception("Something went wrong with the Custom hooks execution.")
-            }
-            else{
-                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
-            }
-
             /* Set Export Method for Fastlane according to iosDistributionType
              * NOTE : For adhoc distribution type export method should be ad-hoc
              *   For appstore distribution type export method should be app-store
@@ -336,7 +326,7 @@ class IosChannel extends Channel {
                                     scmUrl: scmUrl
                         }
 
-                        script.stage('PreBuild CustomHooks') {
+                        script.stage('Check PreBuild Hook Points') {
                             /* Run Pre Build iOS Hooks */
                             if (runCustomHook) {
                                 def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
@@ -351,12 +341,23 @@ class IosChannel extends Channel {
                             updateIosBundleId()
                         }
 
-                        script.stage('Build') {
+                        script.stage('KAR Build') {
                             build()
                             /* Search for build artifacts */
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
                                     mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
+                        }
+
+                        script.stage('Check PreBuild IPA Hook Points') {
+                            /* Run Pre Build iOS IPA Hooks */
+                            if(runCustomHook){
+                                /* Run Pre Build iOS IPA stage Hooks */
+                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
+                            }
+                            else{
+                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
+                            }
                         }
 
                         script.stage('Generate IPA file') {
@@ -396,7 +397,7 @@ class IosChannel extends Channel {
                     }
 
                     /* Run Post Build iOS Hooks */
-                    script.stage('PostBuild CustomHooks') {
+                    script.stage('Check PostBuild Hook Points') {
                         if (script.currentBuild.currentResult == 'SUCCESS') {
                             if (runCustomHook) {
                                 def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)

@@ -83,7 +83,7 @@ class CustomHook implements Serializable {
 
                         script.echoCustom("Running CustomHook")
                         script.withEnv(["JAVA_HOME=${javaHome}", "PATH+TOOLS=${javaHome}${pathSeparator}${antBinPath}"]) {
-                            script.stage("Running CustomHook") {
+                            script.stage("Run CustomHook") {
                                 script.dir(hookDir) {
                                     try {
                                         if (buildAction == "Execute Ant") {
@@ -96,8 +96,7 @@ class CustomHook implements Serializable {
                                             script.echoCustom("unknown build script",'WARN')
                                         }
                                     } catch (Exception e) {
-                                        script.echoCustom(e.toString(),'WARN')
-                                        script.currentBuild.result = 'FAILURE'
+                                        script.echoCustom("Hook build execution failed!!",'ERROR')
                                     } finally {
                                         script.stage('Prepare Environment for actual Build Run') {
                                             /* Applying ACLs, allow buildslave/jenkins user permissions*/
