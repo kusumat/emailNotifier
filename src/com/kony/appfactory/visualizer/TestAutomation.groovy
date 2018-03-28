@@ -419,7 +419,7 @@ class TestAutomation implements Serializable {
         if(upstreamJob == null && s3MustHaveAuthUrl != null){
             script.currentBuild.description = """\
             <div id="build-description">
-                <p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>
+                <p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>
             </div>\
         """.stripIndent()
         }

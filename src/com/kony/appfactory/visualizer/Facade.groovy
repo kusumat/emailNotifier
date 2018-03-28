@@ -431,7 +431,7 @@ class Facade implements Serializable {
         }
 
         if(s3MustHaveAuthUrl)
-            mustHavesDescription = "<p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>"
+            mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
 
         script.currentBuild.description = """\
             <div id="build-description">

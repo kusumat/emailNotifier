@@ -631,7 +631,7 @@ class Channel implements Serializable {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
         if(upstreamJob == null && s3MustHaveAuthUrl != null){
-            mustHavesDescription = "<p>Build Logs: <a href='${s3MustHaveAuthUrl}'>Debug logs</a></p>"
+            mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
         }
         script.currentBuild.description = """\
         <div id="build-description">
