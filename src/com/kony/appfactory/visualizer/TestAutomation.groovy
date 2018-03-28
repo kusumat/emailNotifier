@@ -481,6 +481,13 @@ class TestAutomation implements Serializable {
         deviceFarmUploadArns.add(deviceFarmTestUploadArtifactArn)
     }
 
+    @NonCPS
+    protected String getFinalDeviceFarmStatus(deviceFarmTestRunResults){
+        def jsonSlurper = new JsonSlurper()
+        def testResultsToText = JsonOutput.toJson(deviceFarmTestRunResults)
+        def testResultsToJson = jsonSlurper.parseText(testResultsToText)
+        return testResultsToJson[0].result
+    }
     /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
@@ -601,13 +608,11 @@ class TestAutomation implements Serializable {
                                 }
 
                                 script.stage('PostTest CustomHooks'){
-                                    deviceFarmTestRunResults ?: echoCustom('Tests results not found. CustomHooks execution failed.','ERROR')
+                                    deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. CustomHooks execution failed.','ERROR')
+                                    def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
+                                    def status = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
 
-                                    def jsonSlurper = new JsonSlurper()
-                                    def testResultsToText = JsonOutput.toJson(deviceFarmTestRunResults)
-                                    def testResultsToJson = jsonSlurper.parseText(testResultsToText)
-
-                                    if(testResultsToJson[0].result == "PASSED" && runCustomHook){
+                                    if(status && runCustomHook){
                                         ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
                                             if(projectArtifacts."$project".'binaryName')
                                                 hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase()+"_STAGE")
@@ -619,7 +624,7 @@ class TestAutomation implements Serializable {
                                 }
                             }
                         } catch (Exception e) {
-                            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                            String exceptionMessage = (e.toString()) ?: 'Something went wrong...'
                             script.echoCustom(exceptionMessage,'WARN')
                             script.currentBuild.result = 'FAILURE'
                         } finally {
