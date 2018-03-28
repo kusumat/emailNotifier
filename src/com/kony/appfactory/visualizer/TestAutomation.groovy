@@ -433,12 +433,13 @@ class TestAutomation implements Serializable {
         String mustHaveFile = ["MustHaves", script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join("_") + ".zip"
         String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
         String s3ArtifactPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
-        String buildlogText = BuildHelper.getBuildLogText(script)
         def mustHaves = []
+        def chBuildLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
         script.dir(mustHaveFolderPath){
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-            script.writeFile file: "runTestBuildLog.log", text: BuildHelper.getBuildLogText(script)
+            script.writeFile file: "runTestBuildLog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+            script.shellCustom("cp -f \"${chBuildLogs}\"/*.log \"${mustHaveFolderPath}\"", true)
         }
 
         script.dir(projectFullPath){
@@ -614,8 +615,11 @@ class TestAutomation implements Serializable {
 
                                     if(status && runCustomHook){
                                         ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
-                                            if(projectArtifacts."$project".'binaryName')
-                                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase()+"_STAGE")
+                                            if(projectArtifacts."$project".'binaryName'){
+                                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase()+"_STAGE")
+                                                if(!isSuccess)
+                                                    throw new Exception("Something went wrong with the Custom hooks execution.")
+                                            }
                                         }
                                     }
                                     else{

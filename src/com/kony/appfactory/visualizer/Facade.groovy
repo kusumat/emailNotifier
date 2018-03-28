@@ -476,10 +476,10 @@ class Facade implements Serializable {
         String mustHaveFolderPath = [script.env.WORKSPACE, "vizMustHaves"].join(separator)
         String mustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
         String mustHaveFilePath = [script.env.WORKSPACE, mustHaveFile].join(separator)
-        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: 'vizMustHaves', type: 'INCLUDE']]
+        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: 'vizMustHaves*', type: 'INCLUDE']]
 
         script.dir(mustHaveFolderPath){
-            script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script)
+            script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)

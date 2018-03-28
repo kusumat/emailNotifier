@@ -141,13 +141,13 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Get the build log for a build of a job
+     * Get the build log for a specific build of a specific job
      */
     @NonCPS
-    protected static String getBuildLogText(script) {
+    protected static String getBuildLogText(jobFullName, buildNumber) {
         String buildLogText
-        Jenkins.instance.getItemByFullName(script.env.JOB_NAME).each{ item->
-            Run currentBuild = ((Job)item).getBuild(script.env.BUILD_ID)
+        Jenkins.instance.getItemByFullName(jobFullName).each{ item->
+            Run currentBuild = ((Job)item).getBuild(buildNumber)
             if(currentBuild){
                 File file = currentBuild.getLogFile()
                 buildLogText = file.getText()

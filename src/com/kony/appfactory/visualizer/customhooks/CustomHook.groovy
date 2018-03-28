@@ -97,6 +97,7 @@ class CustomHook implements Serializable {
                                         }
                                     } catch (Exception e) {
                                         script.echoCustom(e.toString(),'WARN')
+                                        script.currentBuild.result = 'FAILURE'
                                     } finally {
                                         script.stage('Prepare Environment for actual Build Run') {
                                             /* Applying ACLs, allow buildslave/jenkins user permissions*/
@@ -110,6 +111,13 @@ class CustomHook implements Serializable {
                                                 script.echoCustom("Something went wrong.. unable to run hook", 'ERROR')
                                             }
                                         }
+                                        script.node(buildSlave) {
+                                            def customHooksLogDir = [visWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')
+                                            script.dir(customHooksLogDir){
+                                                def buildLogName = script.env.JOB_NAME.replaceAll("/", "_") + ".log"
+                                                script.writeFile file: buildLogName, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -118,26 +126,6 @@ class CustomHook implements Serializable {
                 }
             }
         }
-    }
-
-    /* This is required as each build can be trigger from IOS Android or SPA.
-    *  To give permission to channel jobs workspace we need into about Upstream job
-    *
-    *  @param script
-    *  return upstreamJobName
-    * */
-    def getUpstreamJobName(script) {
-        String upstreamJobName = null
-        script.currentBuild.rawBuild.actions.each { action ->
-            if (action.hasProperty("causes")) {
-                action.causes.each { cause ->
-                    if (cause instanceof hudson.model.Cause$UpstreamCause && cause.hasProperty("shortDescription") && cause.shortDescription.contains("Started by upstream project")) {
-                        upstreamJobName = cause.upstreamRun.getEnvironment(TaskListener.NULL).get("JOB_BASE_NAME")
-                    }
-                }
-            }
-        }
-        upstreamJobName
     }
 
     /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/

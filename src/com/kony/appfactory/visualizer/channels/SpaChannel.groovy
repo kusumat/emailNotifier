@@ -110,8 +110,11 @@ class SpaChannel extends Channel {
 
                                 ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
                                     def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-                                    if(selectedSpaChannels.contains(project))
-                                        hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', projectStage)
+                                    if(selectedSpaChannels.contains(project)){
+                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', projectStage)
+                                        if(!isSuccess)
+                                            throw new Exception("Something went wrong with the Custom hooks execution.")
+                                    }
                                 }
 
                             }
@@ -174,8 +177,11 @@ class SpaChannel extends Channel {
 
                                 ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
                                     def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-                                    if(selectedSpaChannels.contains(project))
-                                        hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', projectStage)
+                                    if(selectedSpaChannels.contains(project)){
+                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', projectStage)
+                                        if(!isSuccess)
+                                            throw new Exception("Something went wrong with the Custom hooks execution.")
+                                    }
 
                                 }
                             } else {

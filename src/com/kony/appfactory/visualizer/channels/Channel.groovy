@@ -655,9 +655,18 @@ class Channel implements Serializable {
     }
 
     /**
-     * Collect all the information for the musthaves.
-     * Copies all the required files from the workspace.
-     * Also collected the information about the environment, Input Params, Build Log
+     * Copies the custom hooks build logs into must haves folder
+    */
+    protected final void copyCustomHooksBuildLogs() {
+        def chLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
+        script.dir(mustHavePath){
+            script.shellCustom("cp -f \"${chLogs}\"/*.log \"${mustHavePath}\"", isUnixNode)
+        }
+    }
+
+    
+    /**
+     * Sanitizes the sensitive information from the collected information
     */
     protected final void sanitizeFiles() {
         def sanitizableResources = ['HeadlessBuild.properties']
@@ -680,13 +689,13 @@ class Channel implements Serializable {
     protected final void collectAllInformation() {
         String buildLog = "JenkinsBuild.log"
         script.dir(mustHavePath){
-            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script)
+            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
+            copyCustomHooksBuildLogs()
             if(mustHaveArtifacts.size() > 0){
                 mustHaveArtifacts.each{
                     String sourceFile = [it.path, it.name].join(separator)
-                    script.echo "Source File is : ${sourceFile}"
                     if(script.fileExists(sourceFile)){
                         script.shellCustom("cp -f \"${sourceFile}\" \"${mustHavePath}\"", isUnixNode)
                     }

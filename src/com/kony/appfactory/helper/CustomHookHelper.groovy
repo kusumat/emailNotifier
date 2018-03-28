@@ -122,6 +122,7 @@ class CustomHookHelper implements Serializable {
     protected triggerHooks(projectName, hookStage, pipelineBuildStage){
         def customhooksConfigFolder = projectName + customhooksFolderSubpath
         def content = ConfigFileHelper.getContent(customhooksConfigFolder, projectName)
+        def hookReturnStatus = true
 
         if(content) {
             String currentComputer = "${script.env.NODE_NAME}"
@@ -162,7 +163,7 @@ class CustomHookHelper implements Serializable {
                     }
 
                     def hookJob = script.build job: hookJobName,
-                            propagate: Boolean.valueOf(isPropagateBuildResult), wait: true,
+                            propagate: false, wait: true,
                             parameters: [[$class: 'WHideParameterValue',
                                           name  : 'UPSTREAM_JOB_WORKSPACE',
                                           value : "$script.env.WORKSPACE"],
@@ -178,10 +179,17 @@ class CustomHookHelper implements Serializable {
                     if (hookJob.currentResult == 'SUCCESS') {
                         script.echoCustom("Hook execution for $hookJobName hook is SUCCESS, continuing with next build step..",'INFO')
                     }
-                    else {
+                    else if (!(Boolean.valueOf(isPropagateBuildResult)) && hookJob.currentResult != 'SUCCESS' ) {
                         script.echoCustom("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult", 'ERROR', false)
                         script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as false, " +
                                 "continuing with next build step..",'INFO')
+                    }
+                    else if (Boolean.valueOf(isPropagateBuildResult) && hookJob.currentResult != 'SUCCESS' ){
+                        script.echoCustom("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult", 'ERROR', false)
+                        script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as true, " +
+                            "exiting the build...",'ERROR', false)
+                        hookReturnStatus = false
+                        break
                     }
                 }
             }
@@ -189,6 +197,7 @@ class CustomHookHelper implements Serializable {
         else{
             script.echoCustom("Hooks are not defined in $hookStage");
         }
+        return hookReturnStatus
     }
 
     /* return hook full path */
@@ -203,8 +212,9 @@ class CustomHookHelper implements Serializable {
         script.echoCustom("Trying to fetch $hookBuildStage $pipelineBuildStage hooks. ")
 
        /* Execute available hooks */
-        triggerHooks(folderName, hookBuildStage, pipelineBuildStage)
-
+        def executionStatus = triggerHooks(folderName, hookBuildStage, pipelineBuildStage)
+        
+        executionStatus
     }
     
     protected getHookSlaveForCurrentBuildSlave(currentComputer){

@@ -181,7 +181,9 @@ class IosChannel extends Channel {
 
             if(runCustomHook){
                 /* Run Pre Build iOS IPA stage Hooks */
-                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
+                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
+                if(!isSuccess)
+                    throw new Exception("Something went wrong with the Custom hooks execution.")
             }
             else{
                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
@@ -337,7 +339,9 @@ class IosChannel extends Channel {
                         script.stage('PreBuild CustomHooks') {
                             /* Run Pre Build iOS Hooks */
                             if (runCustomHook) {
-                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
+                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
+                                if(!isSuccess)
+                                    throw new Exception("Something went wrong with the Custom hooks execution.")
                             } else {
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                             }
@@ -395,7 +399,9 @@ class IosChannel extends Channel {
                     script.stage('PostBuild CustomHooks') {
                         if (script.currentBuild.currentResult == 'SUCCESS') {
                             if (runCustomHook) {
-                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
+                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
+                                if(!isSuccess)
+                                    throw new Exception("Something went wrong with the Custom hooks execution.")
                             } else {
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                             }
