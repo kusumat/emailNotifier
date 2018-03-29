@@ -361,9 +361,9 @@ class TestAutomation implements Serializable {
             /* Depending on artifact name we need to chose appropriate pool for the run */
             def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
                     (devicePoolArns.phones) ?: script.echoCustom("Artifacts provided " +
-                            "for phones, but TABLET devices were provided",'ERROR') :
+                            "for phones, but no phones were found in the device pool",'ERROR') :
                     (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
-                            "tablets, but PHONE devices were provided",'ERROR'))
+                            "tablets, but no tablets were found in the device pool",'ERROR'))
 
             /* If we have application binaries and test binaries, schedule the run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
