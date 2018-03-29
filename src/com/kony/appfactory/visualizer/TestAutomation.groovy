@@ -610,7 +610,7 @@ class TestAutomation implements Serializable {
 
                                 script.stage('Check PostTest Hook Points'){
                                     if(runCustomHook) {
-                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. CustomHooks execution failed.', 'ERROR')
+                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
                                         def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
                                         def status = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
 
