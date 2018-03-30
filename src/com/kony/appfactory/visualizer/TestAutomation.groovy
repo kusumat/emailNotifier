@@ -613,21 +613,25 @@ class TestAutomation implements Serializable {
                                 }
 
                                 script.stage('Check PostTest Hook Points'){
-                                    deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. CustomHooks execution failed.','ERROR')
-                                    def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
-                                    def status = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
+                                    if(runCustomHook) {
+                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                        def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
+                                        def status = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
 
-                                    if(status && runCustomHook){
-                                        ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
-                                            if(projectArtifacts."$project".'binaryName'){
-                                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase()+"_STAGE")
-                                                if(!isSuccess)
-                                                    throw new Exception("Something went wrong with the Custom hooks execution.")
+                                        if (status) {
+                                            ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
+                                                if (projectArtifacts."$project".'binaryName') {
+                                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
+                                                    if (!isSuccess)
+                                                        throw new Exception("Something went wrong with the Custom hooks execution.")
+                                                }
                                             }
+                                        } else {
+                                            script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
                                         }
                                     }
                                     else{
-                                        script.echoCustom('Either runCustomHook parameter is not selected by the User or tests got failed for one/more devices. Hence CustomHooks execution is skipped.','WARN')
+                                        script.echoCustom('runCustomHook parameter is not selected by the User. Hence CustomHooks execution skipped.', 'INFO')
                                     }
                                 }
                             }
