@@ -439,7 +439,11 @@ class TestAutomation implements Serializable {
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
             script.writeFile file: "runTestBuildLog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
-            script.shellCustom("cp -f \"${chBuildLogs}\"/*.log \"${mustHaveFolderPath}\"", true)
+        }
+        if(runCustomHook){
+            script.dir(chBuildLogs){
+                script.shellCustom("cp -f \"${chBuildLogs}\"/*.log \"${mustHaveFolderPath}\"", true)
+            }
         }
 
         script.dir(projectFullPath){

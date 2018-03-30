@@ -659,7 +659,7 @@ class Channel implements Serializable {
     */
     protected final void copyCustomHooksBuildLogs() {
         def chLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
-        script.dir(mustHavePath){
+        script.dir(chLogs){
             script.shellCustom("cp -f \"${chLogs}\"/*.log \"${mustHavePath}\"", isUnixNode)
         }
     }
@@ -692,7 +692,9 @@ class Channel implements Serializable {
             script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-            copyCustomHooksBuildLogs()
+            if(script.params.RUN_CUSTOM_HOOKS){
+                copyCustomHooksBuildLogs()
+            }
             if(mustHaveArtifacts.size() > 0){
                 mustHaveArtifacts.each{
                     String sourceFile = [it.path, it.name].join(separator)
