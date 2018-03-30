@@ -46,8 +46,8 @@ class CustomHookHelper implements Serializable {
         String[] hookList = new String[stageContent.size()]
         stageContent.each{
             if((it["status"]).equals("enabled")
-                    && (((it['parameter']['PIPELINE_STAGE']).equals(pipelineBuildStage))
-                    || (it['parameter']['PIPELINE_STAGE']).equals("ALL"))){
+                    && (((it['parameter']['HOOK_CHANNEL']).equals(pipelineBuildStage))
+                    || (it['parameter']['HOOK_CHANNEL']).equals("ALL"))){
                 hookList[(it['index']).toInteger()] = it['hookName']
             }
         }
