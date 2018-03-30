@@ -394,21 +394,20 @@ class IosChannel extends Channel {
                         }
 
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
-                    }
 
-                    /* Run Post Build iOS Hooks */
-                    script.stage('Check PostBuild Hook Points') {
-                        if (script.currentBuild.currentResult == 'SUCCESS') {
-                            if (runCustomHook) {
-                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
-                                if(!isSuccess)
-                                    throw new Exception("Something went wrong with the Custom hooks execution.")
+                        /* Run Post Build iOS Hooks */
+                        script.stage('Check PostBuild Hook Points') {
+                            if (script.currentBuild.currentResult == 'SUCCESS') {
+                                if (runCustomHook) {
+                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
+                                    if (!isSuccess)
+                                        throw new Exception("Something went wrong with the Custom hooks execution.")
+                                } else {
+                                    script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                }
                             } else {
-                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
                             }
-                        }
-                        else{
-                            script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
                         }
                     }
                 }

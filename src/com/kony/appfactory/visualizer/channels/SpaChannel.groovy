@@ -168,28 +168,27 @@ class SpaChannel extends Channel {
 
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                         }
-                    }
 
-                    /* Run Post Build SPA Hooks */
-                    script.stage('Check PostBuild Hook Points') {
-                        if(script.currentBuild.currentResult == 'SUCCESS') {
-                            if (runCustomHook) {
+                        /* Run Post Build SPA Hooks */
+                        script.stage('Check PostBuild Hook Points') {
+                            if (script.currentBuild.currentResult == 'SUCCESS') {
+                                if (runCustomHook) {
 
-                                ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
-                                    def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-                                    if(selectedSpaChannels.contains(project)){
-                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', projectStage)
-                                        if(!isSuccess)
-                                            throw new Exception("Something went wrong with the Custom hooks execution.")
+                                    ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
+                                        def projectStage = "SPA_" + project - "_SPA" + "_STAGE"
+                                        if (selectedSpaChannels.contains(project)) {
+                                            def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', projectStage)
+                                            if (!isSuccess)
+                                                throw new Exception("Something went wrong with the Custom hooks execution.")
+                                        }
+
                                     }
-
+                                } else {
+                                    script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
                                 }
                             } else {
-                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
                             }
-                        }
-                        else{
-                            script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
                         }
                     }
                 }
