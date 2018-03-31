@@ -609,6 +609,7 @@ class TestAutomation implements Serializable {
 
                                     script.stage('Get Test Results') {
                                         fetchTestResults()
+                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results are not found as the run result is skipped.', 'ERROR')
                                     }
                                 }
 
