@@ -231,7 +231,7 @@ class NotificationsHelper implements Serializable {
                         result  : script.currentBuild.currentResult,
                         url     : script.env.BUILD_URL,
                         started : script.currentBuild.rawBuild.getTime().toLocaleString(),
-                        log     : script.currentBuild.rawBuild.getLog(50)
+                        log     : script.currentBuild.rawBuild.getLog(100)
                 ]
         ] + templateData
 
