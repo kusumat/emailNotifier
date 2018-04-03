@@ -23,7 +23,6 @@ class CustomHook implements Serializable {
 
     /* customhooks hook definitions */
     protected hookDir
-    protected final hookScriptFileName
     protected upstreamJobName
 
     CustomHook(script) {
@@ -32,7 +31,6 @@ class CustomHook implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
-        hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
     }
 
     /* CustomHooks pipeline, each hook follows same execution process */
@@ -47,37 +45,16 @@ class CustomHook implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.node(buildSlave) {
+                script.node(hookSlave) {
                     def hookLabel = script.env.NODE_LABELS
-                    if (hookLabel.contains(libraryProperties.'test.automation.node.label')) {
+
+                    if (hookLabel.contains(libraryProperties.'test.hooks.node.label')) {
                         hookDir = visWorkspace + "/" + projectName + "/deviceFarm/" + "Hook"
                     }
                     else{
                         hookDir = visWorkspace + "/" + projectName + "/Hook"
                     }
-                    script.ws(visWorkspace) {
-                        script.stage("Extract Hook Archive") {
-                            script.dir(hookDir) {
-                                script.unzip zipFile: hookScriptFileName
-                            }
-                        }
-                        script.stage('Prepare Environment for Run') {
-                            /* Applying ACLs, allow hookslave user permissions */
-                            if(hookLabel.contains(libraryProperties.'ios.node.label')) {
-                                macACLbeforeRun()
-                            }
-                            else if(hookLabel.contains(libraryProperties.'test.automation.node.label')) {
-                                linuxACLbeforeRun()
-                            }
-                            else {
-                                script.echoCustom("Something went wrong.. unable to run hook",'ERROR')
-                            }
-                        }
-                    }
-                }
 
-                script.node(hookSlave) {
-                    def hookLabel = script.env.NODE_LABELS
                     script.ws(visWorkspace) {
                         def javaHome = script.env.JDK_1_8_0_112_HOME
                         def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
@@ -129,32 +106,6 @@ class CustomHook implements Serializable {
                 }
             }
         }
-    }
-
-    /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
-    def macACLbeforeRun()
-    {
-        def hookSlaveACLapply_fordirs = '#!/bin/sh +xe && find . -type d -exec chmod -R +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
-        def hookSlaveACLapply_forfiles = '#!/bin/sh +xe && find . -type f -exec chmod -R +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
-
-        script.shellCustom("$hookSlaveACLapply_fordirs", true)
-        script.shellCustom("$hookSlaveACLapply_forfiles", true)
-
-        /* This is to get change permission for upstream folder which will be same as Jenkins job name */
-        script.shellCustom("#!/bin/sh +xe && chmod 710 ../../$upstreamJobName", true)
-    }
-
-    /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
-    def linuxACLbeforeRun()
-    {
-        def cleanTmpFiles = 'set +xe && find . -type d -name "*@tmp" -empty -delete'
-        def hookSlaveACLapply = 'set +xe && setfacl -R -m u:hookslave:rwx ../../runTests'
-
-        script.shellCustom("$cleanTmpFiles", true)
-        script.shellCustom("$hookSlaveACLapply", true)
-
-        /* This is to get change permission for upstream folder which will be same as Jenkins job name */
-        script.shellCustom("set +xe && chmod 710 ../../$upstreamJobName", true)
     }
 
     /* applying ACLs - allow buildslave/jenkins user with read, write permissions on hookslave owned files.*/
