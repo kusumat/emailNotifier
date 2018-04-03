@@ -94,7 +94,7 @@ class CustomHook implements Serializable {
                                             def antCmd = "$antBinPath" + "/ant" + " -f build.xml ${scriptArguments}"
                                             script.shellCustom("$antCmd", true)
                                         } else if (buildAction == "Execute Maven") {
-                                            def mvnCmd = "$mavenBinPath" + "/mvn" + ${scriptArguments}
+                                            def mvnCmd = "$mavenBinPath" + "/mvn" + " ${scriptArguments}"
                                             script.shellCustom("$mvnCmd ", true)
                                         } else {
                                             script.echoCustom("unknown build script",'WARN')
