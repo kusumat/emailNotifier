@@ -37,6 +37,9 @@ class CustomHook implements Serializable {
 
     /* CustomHooks pipeline, each hook follows same execution process */
     protected final void processPipeline(){
+        script.ansiColor('xterm') {
+            upstreamJobWorkspace && buildSlave && hookSlave ?: script.echoCustom("CustomHooks aren't supposed to be triggered directly. CustomHooks will only be triggered as part of the Visualizer jobs.", 'ERROR')
+        }
         upstreamJobName = BuildHelper.getUpstreamJobName(script)
         String visWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
 
