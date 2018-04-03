@@ -660,7 +660,7 @@ class Channel implements Serializable {
     protected final void copyCustomHooksBuildLogs() {
         def chLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
         script.dir(chLogs){
-            script.shellCustom("cp -f \"${chLogs}\"/*.log \"${mustHavePath}\"", isUnixNode)
+            script.shellCustom("find \"${chLogs}\" -name \"*.log\" -exec cp -f {} \"${mustHavePath}\" \\;", isUnixNode)
         }
     }
 

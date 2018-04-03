@@ -442,7 +442,7 @@ class TestAutomation implements Serializable {
         }
         if(runCustomHook){
             script.dir(chBuildLogs){
-                script.shellCustom("cp -f \"${chBuildLogs}\"/*.log \"${mustHaveFolderPath}\"", true)
+                script.shellCustom("find \"${chBuildLogs}\" -name \"*.log\" -exec cp -f {} \"${mustHaveFolderPath}\" \\;", true)
             }
         }
 
