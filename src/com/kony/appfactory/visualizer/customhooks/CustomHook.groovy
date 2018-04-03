@@ -81,6 +81,7 @@ class CustomHook implements Serializable {
                     script.ws(visWorkspace) {
                         def javaHome = script.env.JDK_1_8_0_112_HOME
                         def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
+                        def mavenBinPath = script.env.MAVEN_3_5_2_HOME + '/bin'
 
                         def pathSeparator = script.isUnix() ? ':' : ';'
 
@@ -93,7 +94,7 @@ class CustomHook implements Serializable {
                                             def antCmd = "$antBinPath" + "/ant" + " -f build.xml ${scriptArguments}"
                                             script.shellCustom("$antCmd", true)
                                         } else if (buildAction == "Execute Maven") {
-                                            def mvnCmd = "mvn ${scriptArguments}"
+                                            def mvnCmd = "$mavenBinPath" + "/mvn" + ${scriptArguments}
                                             script.shellCustom("$mvnCmd ", true)
                                         } else {
                                             script.echoCustom("unknown build script",'WARN')
