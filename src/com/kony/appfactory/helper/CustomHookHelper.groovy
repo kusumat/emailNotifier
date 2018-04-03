@@ -143,7 +143,7 @@ class CustomHookHelper implements Serializable {
 
                 script.stage('Clean Hook Environment') {
                     if (hookLabel.contains(libraryProperties.'test.automation.node.label')) {
-                        hookDir = "Hook"
+                        hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/deviceFarm/" + "Hook"
                     } else {
                         hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
                     }
@@ -156,6 +156,25 @@ class CustomHookHelper implements Serializable {
                 script.stage("Download Hook Script") {
                     script.dir(hookDir) {
                         fetchHook(buildScriptUrl)
+                    }
+                }
+
+                script.stage("Extract Hook Archive") {
+                    script.dir(hookDir) {
+                        script.unzip zipFile: hookScriptFileName
+                    }
+                }
+
+                script.stage('Prepare Environment for Run') {
+                    /* Applying ACLs, allow hookslave user permissions */
+                    if(hookLabel.contains(libraryProperties.'ios.node.label')) {
+                        macACLbeforeRun()
+                    }
+                    else if(hookLabel.contains(libraryProperties.'test.automation.node.label')) {
+                        linuxACLbeforeRun()
+                    }
+                    else {
+                        script.echoCustom("Something went wrong.. unable to run hook",'ERROR')
                     }
                 }
 
@@ -230,5 +249,33 @@ class CustomHookHelper implements Serializable {
             }
         }
         hookSlaveForCurrentComputer
+    }
+
+    /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
+    def macACLbeforeRun()
+    {
+        def hookSlaveACLapply_fordirs = 'set +xe && find . -type d -exec chmod -R +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
+        def hookSlaveACLapply_forfiles = 'set +xe && find . -type f -exec chmod -R +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
+
+        script.shellCustom("$hookSlaveACLapply_fordirs", true)
+        script.shellCustom("$hookSlaveACLapply_forfiles", true)
+
+        /* This is to restrict no other hook job to enter the project workspace folder */
+        def projworkspace = libraryProperties.'project.workspace.folder.name'
+        script.shellCustom("set +xe && chmod 710 $projworkspace", true)
+    }
+
+    /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
+    def linuxACLbeforeRun()
+    {
+        def cleanTmpFiles = 'set +xe && find . -type d -name "*@tmp" -empty -delete'
+        def hookSlaveACLapply = 'set +xe && setfacl -R -m u:hookslave:rwx ../../runTests'
+
+        script.shellCustom("$cleanTmpFiles", true)
+        script.shellCustom("$hookSlaveACLapply", true)
+
+        /* This is to restrict no other hook job to enter the project workspace folder */
+        def projworkspace = libraryProperties.'project.workspace.folder.name'
+        script.shellCustom("set +xe && chmod 710 $projworkspace", true)
     }
 }
