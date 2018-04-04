@@ -80,6 +80,12 @@ class CustomHook implements Serializable {
                                         script.echoCustom("Hook build execution failed!!",'ERROR')
                                     } finally {
                                         script.stage('Prepare Environment for actual Build Run') {
+                                            def customHooksLogDir = [visWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')
+                                            script.dir(customHooksLogDir){
+                                                def buildLogName = script.env.JOB_NAME.replaceAll("/", "_") + ".log"
+                                                script.writeFile file: buildLogName, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+                                            }
+                                            
                                             /* Applying ACLs, allow buildslave/jenkins user permissions*/
                                             if (hookLabel.contains(libraryProperties.'visualizer.hooks.node.label')) {
                                                 macACLafterRun()
@@ -89,13 +95,6 @@ class CustomHook implements Serializable {
                                             }
                                             else {
                                                 script.echoCustom("Something went wrong.. unable to run hook", 'ERROR')
-                                            }
-                                        }
-                                        script.node(buildSlave) {
-                                            def customHooksLogDir = [visWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')
-                                            script.dir(customHooksLogDir){
-                                                def buildLogName = script.env.JOB_NAME.replaceAll("/", "_") + ".log"
-                                                script.writeFile file: buildLogName, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
                                             }
                                         }
                                     }
