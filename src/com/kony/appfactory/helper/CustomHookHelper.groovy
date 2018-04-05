@@ -143,7 +143,7 @@ class CustomHookHelper implements Serializable {
 
                 script.stage('Clean Hook Environment') {
                     if (hookLabel.contains(libraryProperties.'test.automation.node.label')) {
-                        hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/deviceFarm/" + "Hook"
+                        hookDir = [script.env.WORKSPACE,libraryProperties.'project.workspace.folder.name',projectName,"deviceFarm","Hook"].join('/')
                     } else {
                         hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
                     }
@@ -165,6 +165,9 @@ class CustomHookHelper implements Serializable {
                     }
                 }
 
+                /* Setting permissions to hookslave user to read/write/modify in project workspace folder */
+                /* Sample workspace: Visualizer/Builds/Channels/buildAndroid/vis_ws/ProjectName */
+                /* Hook is extracted at: Visualizer/Builds/Channels/buildAndroid/vis_ws/ProjectName/Hook */
                 script.stage('Prepare Environment for Run') {
                     /* Applying ACLs, allow hookslave user permissions */
                     if(hookLabel.contains(libraryProperties.'ios.node.label')) {
@@ -254,28 +257,36 @@ class CustomHookHelper implements Serializable {
     /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
     def macACLbeforeRun()
     {
-        def hookSlaveACLapply_fordirs = 'set +xe && find . -type d -exec chmod -R +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
-        def hookSlaveACLapply_forfiles = 'set +xe && find . -type f -exec chmod -R +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
-
-        script.shellCustom("$hookSlaveACLapply_fordirs", true)
-        script.shellCustom("$hookSlaveACLapply_forfiles", true)
-
-        /* This is to restrict no other hook job to enter the project workspace folder */
         def projworkspace = libraryProperties.'project.workspace.folder.name'
-        script.shellCustom("set +xe && chmod 710 $projworkspace", true)
+
+        script.dir(projworkspace) {
+            def hookSlaveACLapply_fordirs = '#!/bin/sh +xe && find . -type d -exec chmod -R +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
+            def hookSlaveACLapply_forfiles = '#!/bin/sh +xe && find . -type f -exec chmod -R +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
+
+            script.shellCustom("$hookSlaveACLapply_fordirs", true)
+            script.shellCustom("$hookSlaveACLapply_forfiles", true)
+
+            /* This is to restrict no other hook job to enter the project workspace folder */
+            script.shellCustom("#!/bin/sh +xe && chmod 710 .", true)
+        }
     }
 
     /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
     def linuxACLbeforeRun()
     {
-        def cleanTmpFiles = 'set +xe && find . -type d -name "*@tmp" -empty -delete'
-        def hookSlaveACLapply = 'set +xe && setfacl -R -m u:hookslave:rwx ../../runTests'
+        def projworkspace = [script.env.WORKSPACE,libraryProperties.'project.workspace.folder.name'].join('/')
 
-        script.shellCustom("$cleanTmpFiles", true)
-        script.shellCustom("$hookSlaveACLapply", true)
+        script.dir(projworkspace) {
+            def cleanTmpFiles = 'set +xe && find . -type d -name "*@tmp" -empty -delete'
+            def hookSlaveACLapply_fordirs = 'set +xe && find ../../runTests -user jenkins -type d -exec setfacl -m u:hookslave:rwx "{}" \\+'
+            def hookSlaveACLapply_forfiles = 'set +xe && find ../../runTests -user jenkins -type f -exec setfacl -m u:hookslave:rwx "{}" \\+'
 
-        /* This is to restrict no other hook job to enter the project workspace folder */
-        def projworkspace = libraryProperties.'project.workspace.folder.name'
-        script.shellCustom("set +xe && chmod 710 $projworkspace", true)
+            script.shellCustom("$cleanTmpFiles", true)
+            script.shellCustom("$hookSlaveACLapply_fordirs", true)
+            script.shellCustom("$hookSlaveACLapply_forfiles", true)
+
+            /* This is to restrict no other hook job to enter the project workspace folder */
+            script.shellCustom("set +xe && chmod 710 .", true)
+        }
     }
 }
