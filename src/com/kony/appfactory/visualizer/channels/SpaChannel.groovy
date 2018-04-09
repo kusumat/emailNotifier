@@ -73,7 +73,7 @@ class SpaChannel extends Channel {
                 *  Due to this, if user need to run Custom Hooks on SPA (runCustomHook is checked) then run SPA
                 *  build on MAC Agent. Otherwise default node strategy will be followed (WIN || MAC)
                 */
-                resourceList = BuildHelper.getResoursesList()
+                resourceList = BuildHelper.getResourcesList()
                 nodeLabel = BuildHelper.getAvailableNode(runCustomHook, resourceList, libraryProperties, script)
 
                 script.node(nodeLabel) {

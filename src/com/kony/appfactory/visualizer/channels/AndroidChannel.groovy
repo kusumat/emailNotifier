@@ -145,8 +145,8 @@ class AndroidChannel extends Channel {
                     /*
                     To restrict Headless Builds to run in parallel, this workaround implemented
                     */
-                    resourceList = BuildHelper.getResoursesList()
-                    nodeLabel = BuildHelper.getAvailableNode(runCustomHook, resourceList, libraryProperties, script)
+                    resourceList = BuildHelper.getResourcesList()
+                    nodeLabel = BuildHelper.getAvailableNode(projectName, runCustomHook, resourceList, libraryProperties, script)
                 }
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
