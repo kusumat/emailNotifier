@@ -74,7 +74,7 @@ class SpaChannel extends Channel {
                 *  build on MAC Agent. Otherwise default node strategy will be followed (WIN || MAC)
                 */
                 resourceList = BuildHelper.getResourcesList()
-                nodeLabel = BuildHelper.getAvailableNode(runCustomHook, resourceList, libraryProperties, script)
+                nodeLabel = BuildHelper.getAvailableNode(projectName, runCustomHook, resourceList, libraryProperties, script)
 
                 script.node(nodeLabel) {
                     pipelineWrapper {

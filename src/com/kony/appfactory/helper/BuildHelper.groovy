@@ -451,35 +451,33 @@ class BuildHelper implements Serializable {
     /**
      * Check if CustomHooks defined and active. Return false if doesn't.
      *
+     * @param ProjectFullPath
      * @param projectName
-     * return boolean
+     * @return boolean
      */
-    def static isActiveCustomHookAvailable(script,String customhooksConfigFolder, String projectName) {
-        def isAvailable = false;
-        String configFileContent = ConfigFileHelper.getContent(customhooksConfigFolder, projectName)
+    def static isActiveCustomHookAvailable(String projectFullPath, String projectName) {
+        String configFileContent = ConfigFileHelper.getContent(projectFullPath, projectName)
         JsonSlurper jsonSlurper = new JsonSlurper();
         def configFileContentInJson = (configFileContent) ? jsonSlurper.parseText(configFileContent) : null;
 
-        if(configFileContentInJson){
-            script.echo(configFileContentInJson.toString())
-
-            /* Check PreBuild CustomHooks*/
-            if(configFileContentInJson.PRE_BUILD.size() > 0){
-                configFileContentInJson.PRE_BUILD.any { hookProperties ->
-                    script.echo(hookProperties.status)
-                    isAvailable = hookProperties.status == 'enabled' ? true : false
-                    return isAvailable
+        if (configFileContentInJson) {
+            def checkAvailableActiveHook = { hookStage ->
+                hookStage.any { hookProperties ->
+                    hookProperties.status == 'enabled' ? true : false
                 }
             }
+
+            if (checkAvailableActiveHook(configFileContentInJson.PRE_BUILD)) return true
+            if (checkAvailableActiveHook(configFileContentInJson.POST_BUILD)) return true
         }
 
-        return isAvailable
+        return false
     }
 
     /**
      * Main function to determine node label for build. This function implements node allocation strategy.
      * 1) CustomHooks always run in Mac/Linux Systems. So if there is any CustomHooks defined, for Android & SPA & IOS build
-     *    should run in Unix machines.
+     *    should run in Mac machines.
      * 2) If CustomHooks not defined. Then there is case of Handling 7.3 Headless and 8.0 CI builds.
      *    Now, CI builds can run in Parallel but Headless builds doesn't support Parallel builds.
      *    This function take cares in any Headless build running in Any agent, other headless build started, it shouldn't run
@@ -490,6 +488,8 @@ class BuildHelper implements Serializable {
      *    For mac, if multiple headless build got triggered, then only one will occupy MAC and all other headless build will
      *    be in waiting state.
      *
+     * @params ProjectName to getConfigFile Content
+     * @params runCustomHooks if user want to runCustomHooks
      * @params Resources Status with name and lock status [['name':Resource Name,'status':state]]
      * @params common Library properties object
      * @params Script build instance to log print statements
@@ -501,14 +501,18 @@ class BuildHelper implements Serializable {
         def winNodeLabel = libraryProperties.'windows.node.label'
 
         /*
-         *  1. Checks if user want to run CustomHooks
-         *  2. If Yes, check if there is any CustomHooks defined and in active state.
+         *  1. Checks if user wants to run CustomHooks
+         *  2. If Yes, check if there are any CustomHooks defined and are in active state.
          */
 
         if (runCustomHook) {
             def customhooksFolderSubpath = libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
             def customhooksConfigFolder = projectName + customhooksFolderSubpath
-            !isActiveCustomHookAvailable(script, customhooksConfigFolder, projectName) ?: iosNodeLabel
+
+            if(isActiveCustomHookAvailable(customhooksConfigFolder, projectName)){
+                script.echoCustom('Found active CustomHooks. Allocating MAC agent.')
+                return iosNodeLabel;
+            }
         }
 
         /* return win if no Node in Label 'ios' is alive  */
