@@ -1,5 +1,6 @@
 package com.kony.appfactory.helper
 import org.jenkins.plugins.lockableresources.LockableResources
+import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
 
 /**
@@ -144,13 +145,26 @@ class BuildHelper implements Serializable {
      * Get the build log for a specific build of a specific job
      */
     @NonCPS
-    protected static String getBuildLogText(jobFullName, buildNumber) {
-        String buildLogText
+    protected static String getBuildLogText(jobFullName, buildNumber, script) {
+        String buildLogText = ""
+        BufferedReader reader
         Jenkins.instance.getItemByFullName(jobFullName).each{ item->
             Run currentBuild = ((Job)item).getBuild(buildNumber)
             if(currentBuild){
-                File file = currentBuild.getLogFile()
-                buildLogText = file.getText()
+                try {
+                    reader = TimestamperAPI.get().read(currentBuild,"time=HH:mm:ss&appendLog")
+                    String line
+                    while((line=reader.readLine())!= null){
+                        buildLogText = buildLogText + line + "\n";
+                    }
+                } catch (Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed to capture the Build Log....'
+                    script.echoCustom(exceptionMessage,'ERROR',false)
+                } finally {
+                    if(reader != null){
+                        reader.close();
+                    }
+                }
             }
         }
         buildLogText

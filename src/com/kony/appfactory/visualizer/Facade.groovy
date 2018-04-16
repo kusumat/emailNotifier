@@ -479,7 +479,7 @@ class Facade implements Serializable {
         script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: 'vizMustHaves*', type: 'INCLUDE']]
 
         script.dir(mustHaveFolderPath){
-            script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+            script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)

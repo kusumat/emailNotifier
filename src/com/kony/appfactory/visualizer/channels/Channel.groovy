@@ -689,7 +689,7 @@ class Channel implements Serializable {
     protected final void collectAllInformation() {
         String buildLog = "JenkinsBuild.log"
         script.dir(mustHavePath){
-            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
             if(script.params.RUN_CUSTOM_HOOKS){
