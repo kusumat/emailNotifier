@@ -83,7 +83,7 @@ class CustomHook implements Serializable {
                                             def customHooksLogDir = [visWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')
                                             script.dir(customHooksLogDir){
                                                 def buildLogName = script.env.JOB_NAME.replaceAll("/", "_") + ".log"
-                                                script.writeFile file: buildLogName, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+                                                script.writeFile file: buildLogName, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
                                             }
                                             
                                             /* Applying ACLs, allow buildslave/jenkins user permissions*/

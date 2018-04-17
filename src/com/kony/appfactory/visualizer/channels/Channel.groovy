@@ -25,6 +25,7 @@ class Channel implements Serializable {
     protected mustHaves = []
     protected mustHavePath
     protected String upstreamJob = null
+    protected isRebuild = false
     protected String s3MustHaveAuthUrl
     /*
         Platform dependent default name-separator character as String.
@@ -197,6 +198,7 @@ class Channel implements Serializable {
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                 upstreamJob = BuildHelper.getUpstreamJobName(script)
+                isRebuild = BuildHelper.isRebuildTriggered(script)
                 PrepareMustHaves()
             }
             setBuildDescription()
@@ -630,7 +632,7 @@ class Channel implements Serializable {
         if(script.env.FABRIC_ENV_NAME) {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
-        if(upstreamJob == null && s3MustHaveAuthUrl != null){
+        if((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null){
             mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
         }
         script.currentBuild.description = """\
@@ -689,7 +691,7 @@ class Channel implements Serializable {
     protected final void collectAllInformation() {
         String buildLog = "JenkinsBuild.log"
         script.dir(mustHavePath){
-            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
             if(script.params.RUN_CUSTOM_HOOKS){
@@ -725,8 +727,10 @@ class Channel implements Serializable {
                         s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
                         /* We will be keeping the s3 url of the must haves into the collection only if the 
                          * channel job is triggered by the parent job that is buildVisualiser job.
+                         * Handling the case where we rebuild a child job, from an existing job which was
+                         * triggered by the buildVisualiser job.
                          */
-                        if(upstreamJob != null){
+                        if(upstreamJob != null && !isRebuild) {
                             mustHaves.add([
                                     channelVariableName: channelVariableName, name: mustHaveFile, url: s3MustHaveUrl
                             ])

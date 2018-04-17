@@ -43,6 +43,7 @@ class TestAutomation implements Serializable {
     private projectFullPath
     /* must gathering related variables */
     protected String upstreamJob = null
+    protected boolean isRebuild = false
     protected String s3MustHaveAuthUrl
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
@@ -416,7 +417,7 @@ class TestAutomation implements Serializable {
      * Sets build description at the end of the build.
      */
     protected final void setBuildDescription() {
-        if(upstreamJob == null && s3MustHaveAuthUrl != null){
+        if((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null){
             script.currentBuild.description = """\
             <div id="build-description">
                 <p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>
@@ -438,7 +439,7 @@ class TestAutomation implements Serializable {
         script.dir(mustHaveFolderPath){
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-            script.writeFile file: "runTestBuildLog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID)
+            script.writeFile file: "runTestBuildLog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
         }
         if(runCustomHook){
             script.dir(chBuildLogs){
@@ -453,11 +454,14 @@ class TestAutomation implements Serializable {
                     String s3MustHaveUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
                                     sourceFilePath: projectFullPath, script
                     upstreamJob = BuildHelper.getUpstreamJobName(script)
+                    isRebuild = BuildHelper.isRebuildTriggered(script)
                     s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
                     /* We will be keeping the s3 url of the must haves into the collection only if the
                      * channel job is triggered by the parent job that is buildVisualiser job.
+                     * Handling the case where we rebuild a child job, from an existing job which was
+                     * triggered by the buildVisualiser job.
                      */
-                    if(upstreamJob != null){
+                    if(upstreamJob != null && !isRebuild) {
                         mustHaves.add([
                             channelVariableName: "Tests", name: mustHaveFile, url: s3MustHaveUrl
                         ])

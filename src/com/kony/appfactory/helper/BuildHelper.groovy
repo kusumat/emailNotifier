@@ -1,6 +1,8 @@
 package com.kony.appfactory.helper
 
 import groovy.json.JsonSlurper
+import org.jenkins.plugins.lockableresources.LockableResources
+import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
 import org.jenkins.plugins.lockableresources.LockableResources
 import com.kony.appfactory.helper.ConfigFileHelper
@@ -147,13 +149,26 @@ class BuildHelper implements Serializable {
      * Get the build log for a specific build of a specific job
      */
     @NonCPS
-    protected static String getBuildLogText(jobFullName, buildNumber) {
-        String buildLogText
+    protected static String getBuildLogText(jobFullName, buildNumber, script) {
+        String buildLogText = ""
+        BufferedReader reader
         Jenkins.instance.getItemByFullName(jobFullName).each{ item->
             Run currentBuild = ((Job)item).getBuild(buildNumber)
             if(currentBuild){
-                File file = currentBuild.getLogFile()
-                buildLogText = file.getText()
+                try {
+                    reader = TimestamperAPI.get().read(currentBuild,"time=HH:mm:ss&appendLog")
+                    String line
+                    while((line=reader.readLine())!= null){
+                        buildLogText = buildLogText + line + "\n";
+                    }
+                } catch (Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed to capture the Build Log....'
+                    script.echoCustom(exceptionMessage,'ERROR',false)
+                } finally {
+                    if(reader != null){
+                        reader.close();
+                    }
+                }
             }
         }
         buildLogText
@@ -596,7 +611,27 @@ class BuildHelper implements Serializable {
 
         authArtifactUrl
     }
-    
+
+    /**
+     *  Tells whether the current build is rebuilt or not
+     *
+     *  @param  script
+     *  @return true if the current build is rebuilt from previous build, false otherwise
+     */
+    protected final static isRebuildTriggered(script) {
+        boolean isRebuildFlag = false
+        script.currentBuild.rawBuild.actions.each { action ->
+            if (action.hasProperty("causes")) {
+                action.causes.each { cause ->
+                    if (cause instanceof com.sonyericsson.rebuild.RebuildCause) {
+                        isRebuildFlag = true
+                    }
+                }
+            }
+        }
+        return isRebuildFlag
+    }
+        
     /* This is required as each build can be trigger from IOS Android or SPA.
      *  To give permission to channel jobs workspace we need info about Upstream job
      *
