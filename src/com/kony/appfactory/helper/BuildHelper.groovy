@@ -554,7 +554,27 @@ class BuildHelper implements Serializable {
 
         authArtifactUrl
     }
-    
+
+    /**
+     *  Tells whether the current build is rebuilt or not
+     *
+     *  @param  script
+     *  @return true if the current build is rebuilt from previous build, false otherwise
+     */
+    protected final static isRebuildTriggered(script) {
+        boolean isRebuildFlag = false
+        script.currentBuild.rawBuild.actions.each { action ->
+            if (action.hasProperty("causes")) {
+                action.causes.each { cause ->
+                    if (cause instanceof com.sonyericsson.rebuild.RebuildCause) {
+                        isRebuildFlag = true
+                    }
+                }
+            }
+        }
+        return isRebuildFlag
+    }
+        
     /* This is required as each build can be trigger from IOS Android or SPA.
      *  To give permission to channel jobs workspace we need info about Upstream job
      *
