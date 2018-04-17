@@ -1,7 +1,11 @@
 package com.kony.appfactory.helper
+
+import groovy.json.JsonSlurper
 import org.jenkins.plugins.lockableresources.LockableResources
 import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
+import org.jenkins.plugins.lockableresources.LockableResources
+import com.kony.appfactory.helper.ConfigFileHelper
 
 /**
  * Implements logic related to channel build process.
@@ -450,55 +454,108 @@ class BuildHelper implements Serializable {
      *
      * @returns resouces : [['name':ResouceName,'status':state]]
      */
-    protected final static getResoursesList(){
+    protected final static getResourcesList() {
         def resources = []
-        def resourceList = new  LockableResources().resources
+        def resourceList = new LockableResources().resources
         resourceList.each { resource ->
-            resources << ['name': resource.getName(),'status':resource.isLocked()]
+            resources << ['name': resource.getName(), 'status': resource.isLocked()]
         }
         return resources
     }
 
     /**
-     * Main function to determine node label for build
+     * Check if CustomHooks defined and active. Return false if doesn't.
      *
-     * @params ResoucesStatus with name and lock status [['name':ResouceName,'status':state]]
+     * @param ProjectFullPath
+     * @param projectName
+     * @return boolean
+     */
+    def static isActiveCustomHookAvailable(String projectFullPath, String projectName) {
+        String configFileContent = ConfigFileHelper.getContent(projectFullPath, projectName)
+        JsonSlurper jsonSlurper = new JsonSlurper();
+        def configFileContentInJson = (configFileContent) ? jsonSlurper.parseText(configFileContent) : null;
+
+        if (configFileContentInJson) {
+            def checkAvailableActiveHook = { hookStage ->
+                hookStage.any { hookProperties ->
+                    hookProperties.status == 'enabled' ? true : false
+                }
+            }
+
+            if (checkAvailableActiveHook(configFileContentInJson.PRE_BUILD)) return true
+            if (checkAvailableActiveHook(configFileContentInJson.POST_BUILD)) return true
+        }
+
+        return false
+    }
+
+    /**
+     * Main function to determine node label for build. This function implements node allocation strategy.
+     * 1) CustomHooks always run in Mac/Linux Systems. So if there is any CustomHooks defined, for Android & SPA & IOS build
+     *    should run in Mac machines.
+     * 2) If CustomHooks not defined. Then there is case of Handling 7.3 Headless and 8.0 CI builds.
+     *    Now, CI builds can run in Parallel but Headless builds doesn't support Parallel builds.
+     *    This function take cares in any Headless build running in Any agent, other headless build started, it shouldn't run
+     *    in same agent. It finds if there is any other Compatible agent is free and allocate that agent to run current build.
+     *
+     *    For eg. Android and SPA both can runs in both WIN and MAC, So if WIN is occupied, then next build should occupy MAC
+     *    and vice versa.
+     *    For mac, if multiple headless build got triggered, then only one will occupy MAC and all other headless build will
+     *    be in waiting state.
+     *
+     * @params ProjectName to getConfigFile Content
+     * @params runCustomHooks if user want to runCustomHooks
+     * @params Resources Status with name and lock status [['name':Resource Name,'status':state]]
      * @params common Library properties object
      * @params Script build instance to log print statements
      *
      * @return NodeLabel
-    */
-    protected final static getAvailableNode(runCustomHook, resourcesStatus,libraryProperties,script){
+     */
+    protected final static getAvailableNode(projectName, runCustomHook, resourcesStatus, libraryProperties, script) {
         def iosNodeLabel = libraryProperties.'ios.node.label'
         def winNodeLabel = libraryProperties.'windows.node.label'
 
-        /*If we need to run CustomHooks, then Run Android Job always in mac */
-        if(runCustomHook){
-            return iosNodeLabel
+        /*
+         *  1. Checks if user wants to run CustomHooks
+         *  2. If Yes, check if there are any CustomHooks defined and are in active state.
+         */
+
+        if (runCustomHook) {
+            def customhooksFolderSubpath = libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
+            def customhooksConfigFolder = projectName + customhooksFolderSubpath
+
+            if(isActiveCustomHookAvailable(customhooksConfigFolder, projectName)){
+                script.echoCustom('Found active CustomHooks. Allocating MAC agent.')
+                return iosNodeLabel;
+            }
         }
 
         /* return win if no Node in Label 'ios' is alive  */
-        if(!isLabelActive(iosNodeLabel, script)){
-            script.echoCustom("All the MAC slaves are down currently. Starting on Windows")
+        if (!isLabelActive(iosNodeLabel, script)) {
+            script.echoCustom('All the MAC slaves are down currently. Starting on Windows')
             return winNodeLabel
         }
         /* return ios if no Node in Label 'win' is alive  */
-        if(!isLabelActive(winNodeLabel, script)) {
-            script.echoCustom("All the Windows slaves are down currently. Starting on Mac")
+        if (!isLabelActive(winNodeLabel, script)) {
+            script.echoCustom('All the Windows slaves are down currently. Starting on Mac')
             return iosNodeLabel
         }
 
         def winResourceStatus
         def macResourceStatus
 
-        resourcesStatus.each{
-            if(it.name == libraryProperties.'window.lockable.resource.name') winResourceStatus=it.status
-            if(it.name == libraryProperties.'ios.lockable.resource.name') macResourceStatus=it.status
+        resourcesStatus.each {
+            if (it.name == libraryProperties.'window.lockable.resource.name') {
+                winResourceStatus = it.status
+            }
+            if (it.name == libraryProperties.'ios.lockable.resource.name') {
+                macResourceStatus = it.status
+            }
         }
 
-        if(winResourceStatus == true && macResourceStatus == false){
+        if (winResourceStatus == true && macResourceStatus == false) {
             return iosNodeLabel
-        } else if(winResourceStatus == false && macResourceStatus == true){
+        } else if (winResourceStatus == false && macResourceStatus == true) {
             return winNodeLabel
         } else {
             return winNodeLabel + " || " + iosNodeLabel
