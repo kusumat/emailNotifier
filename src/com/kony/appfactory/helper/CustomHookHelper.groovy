@@ -182,6 +182,7 @@ class CustomHookHelper implements Serializable {
                 }
 
                 script.stage("Run " + hookName ) {
+                    script.echoCustom("Hook execution for $hookName hook is being initiated...", 'INFO')
                     def hookJob = script.build job: hookJobName,
                             propagate: false,
                             parameters: [[$class: 'WHideParameterValue',
@@ -197,14 +198,14 @@ class CustomHookHelper implements Serializable {
                                           value : "$currentComputer"]]
 
                     if (hookJob.currentResult == 'SUCCESS') {
-                        script.echoCustom("Hook execution for $hookJobName hook is SUCCESS, continuing with next build step..", 'INFO')
+                        script.echoCustom("Hook execution for $hookName hook is SUCCESS, continuing with next build step..", 'INFO')
                     } else if (!(Boolean.valueOf(isPropagateBuildResult)) && hookJob.currentResult != 'SUCCESS') {
-                        script.echoCustom("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult", 'WARN')
+                        script.echoCustom("Build is completed for the Hook $hookName. Hook build status: $hookJob.currentResult", 'WARN')
                         script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as false, " +
                                 "continuing with next build step..", 'INFO')
                     } else if (Boolean.valueOf(isPropagateBuildResult) && hookJob.currentResult != 'SUCCESS'){
                         hookReturnStatus = false
-                        script.echoCustom("Build is completed for the Hook $hookJobName. Hook build status: $hookJob.currentResult", 'ERROR', false)
+                        script.echoCustom("Build is completed for the Hook $hookName. Hook build status: $hookJob.currentResult", 'ERROR', false)
                         script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as true, " +
                             "exiting the build...",'ERROR', true)
                     }
