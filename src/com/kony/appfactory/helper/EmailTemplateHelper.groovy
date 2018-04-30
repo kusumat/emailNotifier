@@ -103,9 +103,26 @@ class EmailTemplateHelper implements Serializable {
                                             td(artifact.channelPath.replaceAll('/', ' '))
                                             td {
                                                 if (artifact.name && artifact.otaurl) {
-                                                    a(href: artifact.otaurl, target:'_blank', artifact.name)
-                                                }else if (artifact.name) {
-                                                    a(href: artifact.authurl, target:'_blank', artifact.name)
+                                                    span() {
+                                                        mkp.yield 'OTA: '
+                                                    }
+                                                    a(href: artifact.otaurl, target: '_blank', artifact.name)
+                                                    mkp.yieldUnescaped '<br>'
+                                                    span() {
+                                                        mkp.yield 'IPA: '
+                                                    }
+                                                    a(href: artifact.ipaAuthUrl, target: '_blank', artifact.ipaName)
+                                                } else if (artifact.name) {
+                                                    span() {
+                                                        if ((artifact.name).toLowerCase().endsWith('apk')) {
+                                                            mkp.yield 'APK: '
+                                                        } else if ((artifact.name).toLowerCase().endsWith('war')) {
+                                                            mkp.yield 'WAR: '
+                                                        } else {
+                                                            mkp.yield ''
+                                                        }
+                                                    }
+                                                    a(href: artifact.authurl, target: '_blank', artifact.name)
                                                 } else {
                                                     mkp.yield 'Build failed'
                                                 }

@@ -12,6 +12,7 @@ class IosChannel extends Channel {
     private karArtifact
     private plistArtifact
     private ipaArtifact
+    private authenticatedIPAArtifactUrl
     /* IPA file S3 URL, used for PLIST file creation */
     private ipaArtifactUrl
     /* Stash name for fastlane configuration */
@@ -31,6 +32,7 @@ class IosChannel extends Channel {
     private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_STAGE" : "IOS_TABLET_STAGE";
     private final customHookIPAStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_IPA_STAGE" : "IOS_TABLET_IPA_STAGE";
     private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
+
 
     /* CustomHookHelper object */
     protected hookHelper
@@ -371,10 +373,12 @@ class IosChannel extends Channel {
                         script.stage("Publish IPA artifact to S3") {
                             ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                     sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
+
                         }
 
                         script.stage("Generate PLIST file") {
-                            String authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
+                            authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
+
                             /* Get plist artifact */
                             plistArtifact = createPlist(authenticatedIPAArtifactUrl)
                         }
@@ -389,7 +393,7 @@ class IosChannel extends Channel {
                             String plistArtifactOTAUrl = authenticatedArtifactUrl
 
                             artifacts.add([
-                                    channelPath: channelPath, name: artifactName, url: artifactUrl, otaurl: plistArtifactOTAUrl
+                                    channelPath: channelPath, name: artifactName, url: artifactUrl, otaurl: plistArtifactOTAUrl, ipaName: ipaArtifact.name, ipaAuthUrl: authenticatedIPAArtifactUrl
                             ])
                         }
 
