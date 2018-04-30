@@ -694,7 +694,14 @@ class Channel implements Serializable {
             script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-            if(script.params.RUN_CUSTOM_HOOKS){
+            
+            /* APPFACT-858 - Custom hooks will be executed only on MAC Machine. Build will be executed on MAC node
+             * if there are custom hooks and also run custom hook is checked. If the run custom hook is checked, but
+             * there are no custom hooks defined, then there is a chance that a build will be executed in Windows where
+             * must haves collection get failed as the commands we use don't exists. So added a check if we are running
+             * the build on non-Windows node.
+             */
+            if(script.params.RUN_CUSTOM_HOOKS && isUnixNode){
                 copyCustomHooksBuildLogs()
             }
             if(mustHaveArtifacts.size() > 0){
