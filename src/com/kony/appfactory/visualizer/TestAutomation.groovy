@@ -308,6 +308,7 @@ class TestAutomation implements Serializable {
     private final void fetchTestResults() {
         def stepsToRun = [:]
         def deviceFarmTestRunArnsKeys = deviceFarmTestRunArns.keySet().toArray()
+        def summary = [:]
 
         /* Workaround to iterate over map keys in c++ style for loop */
         for (int i = 0; i < deviceFarmTestRunArnsKeys.size(); ++i) {
@@ -330,14 +331,29 @@ class TestAutomation implements Serializable {
                 else {
                     script.echoCustom("Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!",'WARN')
                 }
+		 summary.putAll(deviceFarm.summaryMap)
             }
         }
-
+	
         /* Run prepared step in parallel */
         if (stepsToRun) {
             script.parallel(stepsToRun)
         }
+	
+	def separator = {
+            script.echoCustom("*"*99);
+        }
 
+	 script.echoCustom("Test execution is completed for all the devices in device pool.", 'INFO' )
+        script.echoCustom("Summary of Test Results : ",'INFO')
+	 separator()
+	 separator()
+        summary.each{
+            script.echoCustom("On " + it.key + ":: " + it.value,'INFO')
+        }
+	 separator()
+	 separator()
+	
         /* Move artifacts to customer bucket */
         script.dir('artifacts') {
             deviceFarm.moveArtifactsToCustomerS3Bucket(

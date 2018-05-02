@@ -8,6 +8,7 @@ import java.net.URLDecoder
  */
 class AwsDeviceFarmHelper implements Serializable {
     def script
+    def summaryMap = [:]
     /**
      * Class constructor.
      *
@@ -377,8 +378,8 @@ class AwsDeviceFarmHelper implements Serializable {
         String successMessage = 'Test run results fetched successfully'
         String errorMessage = 'Failed to fetch test run results'
         def completedRunDevicesList = []
-        def summaryMap = [:]
-
+	 def index = 0
+	    
         script.catchErrorCustom(errorMessage, successMessage) {
             script.waitUntil {
                 String runResultScript = "set +x;aws devicefarm get-run --arn ${testRunArn}"
@@ -386,17 +387,17 @@ class AwsDeviceFarmHelper implements Serializable {
                 def runResultJSON = script.readJSON text: runResultOutput
                 testRunStatus = runResultJSON.run.status
                 testRunResult = runResultJSON.run.result
-                
+
                 String listJobsScript = "set +x;aws devicefarm list-jobs --arn ${testRunArn} --no-paginate"
                 String listJobsOutput = script.shellCustom(listJobsScript, true, [returnStdout: true]).trim()
                 def listJobsJSON = script.readJSON text: listJobsOutput
-               
+
                 if(listJobsJSON.jobs.size()){
                     for(def i=0; i< listJobsJSON.jobs.size(); i++){
                         listJobsArrayList = listJobsJSON.jobs[i]
 			if(completedRunDevicesList.contains(listJobsArrayList.arn))
 			    continue
-                        switch (listJobsArrayList.status) {
+                        switch (listJobsArrayList.status){
                             case 'PENDING':
 			         script.echoCustom("Tests are initiated, execution is yet to start on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
 		                 break
@@ -438,7 +439,8 @@ class AwsDeviceFarmHelper implements Serializable {
 	                         }
 				 counterValues += "total tests: " + listJobsArrayList.counters.get('total')
 				 summaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
-	                         completedRunDevicesList[i] = listJobsArrayList.arn
+	                         completedRunDevicesList[index] = listJobsArrayList.arn
+				 index++
 			         break
 			     case 'WARNED':
 			         script.echoCustom("Build is warned for unknown reason on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'WARN')
@@ -455,27 +457,19 @@ class AwsDeviceFarmHelper implements Serializable {
 			         def counterValues = ""
 			         for(def j = 0; j < keys.size()-1; j++){
 			             if(listJobsArrayList.counters.get(keys[j])){
-			                  script.echoCustom("Number of " + keys[j] +" test cases :: " + listJobsArrayList.counters.get(keys[j]), 'INFO')
 			                  counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
 			             }
 				 }
-				 script.echoCustom("Total number of test cases :: " + listJobsArrayList.counters.get('total') + "\n\n", 'INFO')
 				 counterValues += "total tests: " + listJobsArrayList.counters.get('total')
 				 summaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
-				 completedRunDevicesList[i] = listJobsArrayList.arn
+				 completedRunDevicesList[index] = listJobsArrayList.arn
+				 index++
 			         break
 			     default:
 			         break
 	                 }    
 	                  
                      }
-                     if(testRunStatus == 'COMPLETED'){
-	                 script.echoCustom("Test execution is completed for all the devices in device pool and overall result is " + testRunResult, 'INFO' )
-	                 script.echoCustom("Summary of Test Results : ",'INFO')
-	                 summaryMap.each{
-                             script.echoCustom("On " + it.key + ":: " + it.value,'INFO')
-                         }
-    		     }
     		}   
 		else
 		    (testRunStatus == 'COMPLETED')?
@@ -484,7 +478,7 @@ class AwsDeviceFarmHelper implements Serializable {
 		
     		testRunStatus == 'COMPLETED'
             }
-        }   
+        }
 	testRunResult
     }
 
