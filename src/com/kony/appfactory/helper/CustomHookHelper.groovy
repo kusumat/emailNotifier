@@ -279,8 +279,8 @@ class CustomHookHelper implements Serializable {
 
         script.dir(projworkspace) {
             def cleanTmpFiles = 'set +xe && find . -type d -name "*@tmp" -empty -delete'
-            def hookSlaveACLapply_fordirs = 'set +xe && find ../../runTests -user jenkins -type d -exec setfacl -m u:hookslave:rwx "{}" \\+'
-            def hookSlaveACLapply_forfiles = 'set +xe && find ../../runTests -user jenkins -type f -exec setfacl -m u:hookslave:rwx "{}" \\+'
+            def hookSlaveACLapply_fordirs = 'set +xe && find . -user jenkins -type d -exec setfacl -m u:hookslave:rwx "{}" \\+'
+            def hookSlaveACLapply_forfiles = 'set +xe && find . -user jenkins -type f -exec setfacl -m u:hookslave:rwx "{}" \\+'
 
             script.shellCustom("$cleanTmpFiles", true)
             script.shellCustom("$hookSlaveACLapply_fordirs", true)
