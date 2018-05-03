@@ -55,8 +55,8 @@ class AwsHelper implements Serializable {
         String fullBucketPath = [bucketName, projectName, bucketPath].join('/')
         String artifactFolder = (args.sourceFilePath) ?: script.echoCustom("artifactFolder argument can't be null!",'ERROR')
         String artifactUrl = getS3ArtifactUrl(script, [bucketPath, fileName].join('/'))
-        String successMessage = 'Artifact published successfully.'
-        String errorMessage = 'Failed to publish artifact!'
+        String successMessage = fileName + ' published successfully.'
+        String errorMessage = 'Failed to publish ' + fileName + '!' 
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
