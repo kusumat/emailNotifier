@@ -11,8 +11,7 @@ def call(String printMsg, String logType = 'INFO', boolean isExit = "true") {
         case 'ERROR':
             ANSI_PREFIX = '\033[0;31m' // ansi Red color code
             if(isExit) {
-                echo "$ANSI_PREFIX [$logType] $printMsg $ANSI_PREFIX_NO_COLOR"
-     	         error()
+     	         error("$ANSI_PREFIX [$logType] $printMsg $ANSI_PREFIX_NO_COLOR")
             }
         default:
             ANSI_PREFIX = ANSI_PREFIX_NO_COLOR // ansi No color code

@@ -205,9 +205,8 @@ class CustomHookHelper implements Serializable {
                                 "continuing with next build step..", 'INFO')
                     } else if (Boolean.valueOf(isPropagateBuildResult) && hookJob.currentResult != 'SUCCESS'){
                         hookReturnStatus = false
-                        script.echoCustom("Build is completed for the Hook $hookName. Hook build status: $hookJob.currentResult", 'ERROR', false)
-                        script.echoCustom("Since Hook setting is set with Propagate_Build_Status flag as true, " +
-                            "exiting the build...",'ERROR', true)
+                        throw new AppFactoryException("Build is completed for the Hook $hookName. Hook build status: $hookJob.currentResult." +
+                            "Since Hook setting is set with Propagate_Build_Status flag as true, exiting the build...")
                     }
                 }
 

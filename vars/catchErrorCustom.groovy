@@ -1,3 +1,5 @@
+import com.kony.appfactory.helper.AppFactoryException
+
 def call(String errorMsg, String successMsg = '', Closure closure) {
     try {
         closure()
@@ -8,6 +10,6 @@ def call(String errorMsg, String successMsg = '', Closure closure) {
     } catch (Exception e) {
         String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
         echoCustom(exceptionMessage,'WARN')
-        echoCustom(errorMsg,'ERROR')
+        throw new AppFactoryException(errorMsg)
     }
 }
