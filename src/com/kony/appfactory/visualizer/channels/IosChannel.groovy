@@ -201,6 +201,7 @@ class IosChannel extends Channel {
             /* Build project and export IPA using fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
                 /* Inject required environment variables */
+
                 script.withCredentials([
                         script.usernamePassword(
                                 credentialsId: "${appleID}",
@@ -209,6 +210,14 @@ class IosChannel extends Channel {
                         )
                 ]) {
                     def ProjectBuildMode = buildMode.capitalize()
+                    /*
+                    * APPFACT-779
+                    * Custom IOS App display name can be given using the Key "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}"
+                    * But this is should be picked from projectprop.xml, So this key is removed, and user committed app name will
+                    * be considered.
+                    *
+                    * Note: In debug mode, Visualizer prefixes 'debugger' word in App display name.
+                    * */
                     script.withEnv([
                             "FASTLANE_DONT_STORE_PASSWORD=true",
                             "MATCH_APP_IDENTIFIER=${iosBundleId}",
@@ -216,7 +225,6 @@ class IosChannel extends Channel {
                             "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                             "GYM_OUTPUT_DIRECTORY=${karArtifact.path}",
                             "GYM_OUTPUT_NAME=${projectName}",
-                            "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}",
                             "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
                             "MATCH_TYPE=${iosDistributionType}",
                             "EXPORT_METHOD=${iOSExportMethod}",
