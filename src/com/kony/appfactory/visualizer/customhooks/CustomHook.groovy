@@ -24,6 +24,7 @@ class CustomHook implements Serializable {
     /* customhooks hook definitions */
     protected hookDir
     protected upstreamJobName
+    protected visWorkspace
 
     CustomHook(script) {
         this.script = script
@@ -39,7 +40,7 @@ class CustomHook implements Serializable {
             upstreamJobWorkspace && buildSlave && hookSlave ?: script.echoCustom("CustomHooks aren't supposed to be triggered directly. CustomHooks will only be triggered as part of the Visualizer jobs.", 'ERROR')
         }
         upstreamJobName = BuildHelper.getUpstreamJobName(script)
-        String visWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
+        visWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
 
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
@@ -65,13 +66,24 @@ class CustomHook implements Serializable {
                         script.echoCustom("Running CustomHook")
                         script.withEnv(["JAVA_HOME=${javaHome}", "PATH+TOOLS=${javaHome}${pathSeparator}${antBinPath}"]) {
                             script.stage("Run CustomHook") {
+                                /* Get all Environment Variables defined for AppFactory instance.
+                                 * Unset all these Env Variables to run customhook program on a clean shell.
+                                 * This way, securely preventing user to access any Jenkins global parameters like S3, AWS etc..,
+                                 * Below line gets all Environment variables defined in UpperCase since we follow System Variables
+                                 * definitions with same convention.
+                                 */
+                                def EnvVariablesList = script.env.getEnvironment().findAll { envkey, envvalue ->
+                                    envkey.equals(envkey.toUpperCase()) }.keySet().join(' ')
+
+                                def defaultParams = getCustomhookDefaultArgs()
+
                                 script.dir(hookDir) {
                                     try {
                                         if (buildAction == "Execute Ant") {
-                                            def antCmd = "$antBinPath" + "/ant" + " -f build.xml ${scriptArguments}"
+                                            def antCmd = "set +ex; unset $EnvVariablesList; set -e; $antBinPath" + "/ant" + " -f build.xml ${scriptArguments} $defaultParams"
                                             script.shellCustom("$antCmd", true)
                                         } else if (buildAction == "Execute Maven") {
-                                            def mvnCmd = "$mavenBinPath" + "/mvn" + " ${scriptArguments}"
+                                            def mvnCmd = "set +ex; unset $EnvVariablesList; set -e; $mavenBinPath" + "/mvn" + " ${scriptArguments} $defaultParams"
                                             script.shellCustom("$mvnCmd ", true)
                                         } else {
                                             script.echoCustom("unknown build script",'WARN')
@@ -132,6 +144,29 @@ class CustomHook implements Serializable {
         /* Clean any @tmp files created after build run */
         def cleanTmpFiles = 'set +xe && find . -type d -name "*@tmp" -empty -delete'
         script.shellCustom("$cleanTmpFiles", true)
+    }
+
+    /** Construct a string with current Job Parameters key-pair list with -Dkey=value space separated format.
+     * Below line gets all Jenkins job Parameters defined in UpperCase, since we follow same convention
+     * while defining Parameters.
+     *
+     * Append these Job parameters with Parent Job parameters, to get consolidate list of all Parameters
+     * Append additional built-in properties like workspace paths, build_numbers etc..,
+     * This final string is then passed to ANT and Maven scripts in the build action step.
+     */
+    protected final getCustomhookDefaultArgs() {
+        def defaultParams = script.params.PARENTJOB_PARAMS
+        /* Exclude the PARENTJOB_PARAMS input parameter while collecting customhook job parameters now */
+        script.params.findAll { propkey, propvalue -> propkey.equals(propkey.toUpperCase()) && !propkey.contains("PARENTJOB_PARAMS") }.each {
+            defaultParams = [defaultParams,"-D${it.key}=\"${it.value}\""].join(' ')
+        }
+        /** Add additional most useful properties to quickly access with in a hook program. A pre-defined variables apart
+         * from Build Input Parameters
+         **/
+        defaultParams += " -DPROJECT_NAME=$script.env.PROJECT_NAME"
+        defaultParams += " -DPROJECT_WORKSPACE=$visWorkspace" + "/" + script.env.PROJECT_NAME
+        defaultParams += " -DPROJECT_VMWORKSPACE_PATH=$visWorkspace" + "/KonyiOSWorkspace/VMAppWithKonylib/"
+        return defaultParams
     }
 
 }

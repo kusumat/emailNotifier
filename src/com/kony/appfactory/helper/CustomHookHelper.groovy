@@ -20,6 +20,7 @@ class CustomHookHelper implements Serializable {
     protected hookDir
     protected final hookScriptFileName
     protected customhooksFolderSubpath
+    protected defaultParams = ""
 
     protected CustomHookHelper(script) {
         this.script = script
@@ -168,7 +169,20 @@ class CustomHookHelper implements Serializable {
                 /* Setting permissions to hookslave user to read/write/modify in project workspace folder */
                 /* Sample workspace: Visualizer/Builds/Channels/buildAndroid/vis_ws/ProjectName */
                 /* Hook is extracted at: Visualizer/Builds/Channels/buildAndroid/vis_ws/ProjectName/Hook */
+                /* Pass Current Job Parameters details to Child Job. These params can be passed later to ANT and Maven scripts */
                 script.stage('Prepare Environment for Run') {
+                    /** Construct a String with current Job Parameters key-pair list with -Dkey=value format.
+                     * We will send this string to customhook child job to pass as argument to ANT/Maven program.
+                     * Below line gets all Jenkins job Parameters defined in UpperCase since we follow same convention
+                     * while defining Parameters.
+                     */
+                    script.params.findAll { propkey, propvalue -> propkey.equals(propkey.toUpperCase()) }.each {
+                        defaultParams = [defaultParams,"-D${it.key}=\"${it.value}\""].join(' ')
+                    }
+
+                    /* Append current job build_number to defaultParams string. */
+                    defaultParams += " -DPROJECT_BUILDNUMBER=$script.env.BUILD_NUMBER"
+
                     /* Applying ACLs, allow hookslave user permissions */
                     if(hookLabel.contains(libraryProperties.'ios.node.label')) {
                         macACLbeforeRun()
@@ -195,7 +209,12 @@ class CustomHookHelper implements Serializable {
 
                                          [$class: 'WHideParameterValue',
                                           name  : 'BUILD_SLAVE',
-                                          value : "$currentComputer"]]
+                                          value : "$currentComputer"],
+
+                                         [$class: 'WHideParameterValue',
+                                          name  : 'PARENTJOB_PARAMS',
+                                          value : "$defaultParams"]]
+
 
                     if (hookJob.currentResult == 'SUCCESS') {
                         script.echoCustom("Hook execution for $hookName hook is SUCCESS, continuing with next build step..", 'INFO')
