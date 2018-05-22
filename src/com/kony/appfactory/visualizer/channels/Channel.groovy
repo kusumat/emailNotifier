@@ -254,7 +254,10 @@ class Channel implements Serializable {
 
         script.withEnv(["PATH+TOOLS=${script.env.NODE_HOME}${pathSeparator}${toolBinPath}"]) {
             script.withCredentials(credentialsTypeList) {
-                closure()
+                def password = script.env.CLOUD_PASSWORD.replace('$','$$');
+                script.withEnv(["CLOUD_PASSWORD=$password"]) {
+                    closure()
+                }
             }
         }
     }

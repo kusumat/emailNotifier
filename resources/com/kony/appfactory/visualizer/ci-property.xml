@@ -162,7 +162,9 @@
             <entry key="android.versioncode" value="${androidVersionCode}"/>
             <entry key="ios.bundleversion" value="${iosBundleVersion}"/>
             <entry key="cloud.username" value="${cloudUsername}"/>
-            <entry key="cloud.password" value="${cloudPassword}"/>
+            <!--APPFACT-545, direct assignment leads in adding escape character '\' with all special characters.
+                Instead using replace task to add proper value of password -->
+            <entry key="cloud.password" value="CLOUD_PASSWORD"/>
             <entry key="account.id" value="${cloudAccountId}"/>
             <entry key="cloud.environment" value="${domainParam}"/>
             <entry key="mobilefabric.url" value="${fabricUrl}"/>
@@ -203,6 +205,9 @@
             <entry key="combinewar.ear" value="false"/>
             <entry key="combinewar.dependencylibraries" value=""/>
         </propertyfile>
+
+        <!--APPFACT-545: propertyfile appends escape character to Special Characters, workaround to use exact same password -->
+        <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}" />
     </target>
 
     <target name="plugins" description="-> generate ivy.xml from konyplugins.xml">
