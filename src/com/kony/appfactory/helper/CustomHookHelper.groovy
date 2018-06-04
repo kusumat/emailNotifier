@@ -279,14 +279,16 @@ class CustomHookHelper implements Serializable {
         def projworkspace = libraryProperties.'project.workspace.folder.name'
 
         script.dir(projworkspace) {
-            def hookSlaveACLapply_fordirs = '#!/bin/sh +xe && find . -type d -exec chmod -R +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
-            def hookSlaveACLapply_forfiles = '#!/bin/sh +xe && find . -type f -exec chmod -R +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
+            def hookSlaveACLapply_fordirs = 'set +xe; find . -user buildslave -type d -exec chmod +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
+            def hookSlaveACLapply_forfiles = 'set +xe; find . -user buildslave -type f -exec chmod +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
 
             script.shellCustom("$hookSlaveACLapply_fordirs", true)
             script.shellCustom("$hookSlaveACLapply_forfiles", true)
 
             /* This is to restrict no other hook job to enter the project workspace folder */
-            script.shellCustom("#!/bin/sh +xe && chmod 710 .", true)
+            script.shellCustom("set +xe; chmod 710 .", true)
+            def ACLGroupPerms = 'set +xe; find . -user buildslave -exec chmod 770 \'{}\' \\+'
+            script.shellCustom("$ACLGroupPerms", true)
         }
     }
 
