@@ -279,8 +279,8 @@ class CustomHookHelper implements Serializable {
         def projworkspace = libraryProperties.'project.workspace.folder.name'
 
         script.dir(projworkspace) {
-            def hookSlaveACLapply_fordirs = 'set +xe; find . -user buildslave -type d -exec chmod +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit" \'{}\' \\+'
-            def hookSlaveACLapply_forfiles = 'set +xe; find . -user buildslave -type f -exec chmod +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity" \'{}\' \\+'
+            def hookSlaveACLapply_fordirs = 'set +xe; find . -user buildslave -type d -print0 | xargs -0 chmod +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit"'
+            def hookSlaveACLapply_forfiles = 'set +xe; find . -user buildslave -type f -print0 | xargs -0 chmod +a "hookslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity"'
 
             script.shellCustom("$hookSlaveACLapply_fordirs", true)
             script.shellCustom("$hookSlaveACLapply_forfiles", true)
