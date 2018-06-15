@@ -90,42 +90,67 @@ class EmailTemplateHelper implements Serializable {
                     }
                     tr {
                         td {
-                            table(style: "width:100%;text-align:left", class: "text-color table-border") {
+                            table(style: "width:100%;text-align:left", class: "text-color table-border-channels") {
                                 thead {
                                     tr {
-                                        th('Installer')
-                                        th('URL')
+                                        th(style: "text-align:center", 'Channel')
+                                        th(style: "text-align:center", colspan:"2", 'INSTALLER')
                                     }
                                 }
                                 tbody {
                                     for (artifact in binding.artifacts) {
-                                        tr {
-                                            td(artifact.channelPath.replaceAll('/', ' '))
-                                            td {
-                                                if (artifact.name && artifact.otaurl) {
-                                                    span() {
-                                                        mkp.yield 'OTA: '
+                                        if (artifact.name) {
+                                            /* iOS */
+                                            if (artifact.otaurl) {
+                                                tr {
+                                                    th(rowspan: "2", artifact.channelPath.replaceAll('/', ' '))
+                                                    td(style: "border-right: 1px dotted #e8e8e8; width: 65px;", "OTA")
+                                                    td {
+                                                        a(href: artifact.ipaAuthUrl, target: '_blank', artifact.ipaName)
                                                     }
-                                                    a(href: artifact.otaurl, target: '_blank', artifact.name)
-                                                    mkp.yieldUnescaped '<br>'
-                                                    span() {
-                                                        mkp.yield 'IPA: '
-                                                    }
-                                                    a(href: artifact.ipaAuthUrl, target: '_blank', artifact.ipaName)
-                                                } else if (artifact.name) {
-                                                    span() {
-                                                        if ((artifact.name).toLowerCase().endsWith('apk')) {
-                                                            mkp.yield 'APK: '
-                                                        } else if ((artifact.name).toLowerCase().endsWith('war')) {
-                                                            mkp.yield 'WAR: '
-                                                        } else {
-                                                            mkp.yield ''
-                                                        }
-                                                    }
-                                                    a(href: artifact.authurl, target: '_blank', artifact.name)
-                                                } else {
-                                                    mkp.yield 'Build failed'
                                                 }
+                                                tr {
+                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", "IPA")
+                                                    td {
+                                                        a(href: artifact.otaurl, target: '_blank', artifact.name)
+                                                    }
+                                                }
+                                            }
+
+                                            /* Web */
+                                            else if (artifact.webappurl) {
+                                                tr {
+                                                    th(rowspan: "2", artifact.channelPath.replaceAll('/', ' '))
+                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", "WAR")
+                                                    td {
+                                                        a(href: artifact.authurl, target: '_blank', artifact.name)
+                                                    }
+                                                }
+                                                tr {
+                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", "APP URL")
+                                                    td {
+                                                        a(href: artifact.webappurl, target: '_blank', artifact.webappurl)
+                                                    }
+                                                }
+                                            }
+
+                                            /* Android or channels - SPA/DesktopWeb/Web without publish enabled */
+                                            else {
+                                                def artifactNameUpperCase = (artifact.name).toUpperCase()
+                                                def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+                                                tr {
+                                                    th(artifact.channelPath.replaceAll('/', ' '))
+                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", artifactExtension)
+                                                    td {
+                                                        a(href: artifact.authurl, target: '_blank', artifact.name)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else {
+                                            tr {
+                                                th(artifact.channelPath.replaceAll('/', ' '))
+                                                td(colspan:"2", "Build failed")
                                             }
                                         }
                                     }

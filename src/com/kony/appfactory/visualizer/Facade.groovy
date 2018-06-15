@@ -24,7 +24,7 @@ class Facade implements Serializable {
     /* List of steps for parallel run */
     private runList = [:]
     /* List of Pre Build Hooks */
-    private preBuildHookList= [:]
+    private preBuildHookList = [:]
     /* List of channels to build */
     private channelsToRun
     /*
@@ -32,7 +32,7 @@ class Facade implements Serializable {
             [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
      */
     private artifacts = []
-	private mustHaveArtifacts = []
+    private mustHaveArtifacts = []
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
     /* Common build parameters */
@@ -62,8 +62,13 @@ class Facade implements Serializable {
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
-    /* SPA build parameters */
-    private final spaAppVersion = script.params.SPA_APP_VERSION
+    /* WEB build parameters */
+    private
+    final webAppVersion = script.params.WEB_APP_VERSION ? script.params.WEB_APP_VERSION : script.params.SPA_APP_VERSION ? script.params.SPA_APP_VERSION : null
+    private
+    final webVersionParameterName = script.params.containsKey('WEB_APP_VERSION') ? 'WEB_APP_VERSION' : 'SPA_APP_VERSION'
+    private final desktopWebChannel = script.params.DESKTOP_WEB
+    private final compatibilityMode = script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE
     /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
     /* CustomHooks build Parameters*/
@@ -81,7 +86,7 @@ class Facade implements Serializable {
         )
         /* Checking if at least one channel been selected */
         channelsToRun = (getSelectedChannels(this.script.params)) ?:
-                script.echoCustom('Please select at least one channel to build!','ERROR')
+                script.echoCustom('Please select at least one channel to build!', 'ERROR')
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
     }
@@ -94,8 +99,10 @@ class Facade implements Serializable {
      */
     @NonCPS
     private static getSelectedChannels(buildParameters) {
+        /* Creating a list of boolean parameters that are not Target Channels */
+        def nonChannelBooleanParameters = ['PUBLISH_FABRIC_APP', 'FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE', 'RUN_CUSTOM_HOOKS']
         buildParameters.findAll {
-            it.value instanceof Boolean && it.key != 'PUBLISH_FABRIC_APP' && it.value && it.key != 'RUN_CUSTOM_HOOKS'
+            it.value instanceof Boolean && !(nonChannelBooleanParameters.contains(it.key)) && it.value
         }.keySet().collect()
     }
 
@@ -116,7 +123,7 @@ class Facade implements Serializable {
      * @return list of Native selected channels.
      */
     private final getNativeChannels(channelsToRun) {
-        channelsToRun.findAll { !it.contains('SPA') }
+        channelsToRun.findAll { it.contains('NATIVE') }
     }
 
     /**
@@ -174,11 +181,17 @@ class Facade implements Serializable {
             case ~/^.*WINDOWS.*$/:
                 channelType = 'Windows'
                 break
+            case 'DESKTOP_WEB':
+                channelType = 'DesktopWeb'
+                break
+            case 'WEB':
+                channelType = 'Web'
+                break
             default:
                 break
         }
 
-        channelsBaseFolder + '/' + 'build' + (channelType) ?: script.echoCustom('Unknown channel type!','ERROR')
+        channelsBaseFolder + '/' + 'build' + (channelType) ?: script.echoCustom('Unknown channel type!', 'ERROR')
     }
 
     /**
@@ -224,14 +237,28 @@ class Facade implements Serializable {
     }
 
     /**
-     * Return SPA specific build parameters.
-     *
+     * Return specific to WEB channel build parameters.
      * @param spaChannelsToBuildJobParameters list of SPA channels to build.
-     * @return SPA specific build parameters.
+     * @return WEB specific build parameters.
      */
-    private final getSpaChannelJobBuildParameters(spaChannelsToBuildJobParameters) {
-        getCommonJobBuildParameters() + [script.string(name: 'SPA_APP_VERSION', value: "${spaAppVersion}")] +
-                spaChannelsToBuildJobParameters
+    private final getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters = null) {
+        if (spaChannelsToBuildJobParameters && desktopWebChannel) {
+            getCommonJobBuildParameters()
+            +[script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")]
+            +[script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+            +spaChannelsToBuildJobParameters
+        } else if (spaChannelsToBuildJobParameters) {
+            getCommonJobBuildParameters()
+            +[script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")]
+            +[script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+            +spaChannelsToBuildJobParameters
+        } else {
+            getCommonJobBuildParameters()
+            +[script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")]
+            +[script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)]
+            +[script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+        }
+
     }
 
     /**
@@ -338,11 +365,9 @@ class Facade implements Serializable {
         }
     }
 
-
     /**
      * Prepares run steps for triggering channel jobs in parallel.
      */
-
     private final void prepareRun() {
         /* Filter Native channels */
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
@@ -352,13 +377,13 @@ class Facade implements Serializable {
         for (item in nativeChannelsToRun) {
             def channelName = item
             def channelJobName = (getChannelJobName(channelName)) ?:
-                    script.echoCustom("Channel job name can't be null",'ERROR')
+                    script.echoCustom("Channel job name can't be null", 'ERROR')
             def channelOs = getChannelOs(channelName)
             def channelFormFactor = (getChannelFormFactor(channelName)) ?:
-                    script.echoCustom("Channel form factor can't be null",'ERROR')
+                    script.echoCustom("Channel form factor can't be null", 'ERROR')
             def channelJobBuildParameters = (
                     getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)
-            ) ?: script.echoCustom("Channel job build parameters list can't be null",'ERROR')
+            ) ?: script.echoCustom("Channel job build parameters list can't be null", 'ERROR')
             def channelPath = getChannelPath(channelName)
 
             runList[channelName] = {
@@ -378,43 +403,59 @@ class Facade implements Serializable {
                     /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echoCustom("Status of the channel ${channelName} " +
-                                "build is: ${channelJob.currentResult}",'WARN')
+                                "build is: ${channelJob.currentResult}", 'WARN')
                     }
                 }
             }
         }
 
+        if (spaChannelsToRun || desktopWebChannel) {
+            runWebChannels(spaChannelsToRun, desktopWebChannel)
+        }
 
-        /* If SPA channels been set */
+    }
+
+    /**
+     * Prepares runList for WebChannels
+     * @params spaChannelsToRun , desktopWebChannel web channels to run.
+     */
+    private final void runWebChannels(spaChannelsToRun = null, desktopWebChannel = null) {
+        def channelName = (spaChannelsToRun && desktopWebChannel) ? 'WEB' : spaChannelsToRun ? 'SPA' : desktopWebChannel ? 'DESKTOP_WEB' : null
+        def channelJobBuildParameters
+
+        def channelJobName = (getChannelJobName(channelName)) ?:
+                script.echoCustom("Channel job name can't be null", 'ERROR')
+
         if (spaChannelsToRun) {
-            def channelName = 'SPA'
-            def channelJobName = (getChannelJobName(channelName)) ?:
-                    script.echoCustom("Channel job name can't be null",'ERROR')
             /* Convert selected SPA channels to build parameters for SPA job */
             def spaChannelsToBuildJobParameters = convertSpaChannelsToBuildParameters(spaChannelsToRun)
-            def channelJobBuildParameters = (getSpaChannelJobBuildParameters(spaChannelsToBuildJobParameters)) ?:
-                    script.echoCustom("Channel job build parameters list can't be null",'ERROR')
-            def channelPath = getChannelPath(channelName)
+            channelJobBuildParameters = (getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters)) ?:
+                    script.echoCustom("Channel job build parameters list can't be null", 'ERROR')
+        } else if (desktopWebChannel) {
+            channelJobBuildParameters = (getWebChannelJobBuildParameters()) ?:
+                    script.echoCustom("Channel job build parameters list can't be null", 'ERROR')
+        }
 
-            runList[channelName] = {
-                script.stage(channelName) {
-                    /* Trigger channel job */
-                    def channelJob = script.build job: channelJobName, parameters: channelJobBuildParameters,
-                            propagate: false
-                    /* Collect job result */
-                    jobResultList.add(channelJob.currentResult)
+        def channelPath = getChannelPath(channelName)
 
-                    /* Collect job artifacts */
-                    artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
+        runList[channelName] = {
+            script.stage(channelName) {
+                /* Trigger channel job */
+                def channelJob = script.build job: channelJobName, parameters: channelJobBuildParameters,
+                        propagate: false
+                /* Collect job result */
+                jobResultList.add(channelJob.currentResult)
 
-                    /* Collect must have artifacts */
-                    mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
+                /* Collect job artifacts */
+                artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
 
-                    /* Notify user that SPA channel build failed */
-                    if (channelJob.currentResult != 'SUCCESS') {
-                        script.echoCustom("Status of the channel ${channelName} " +
-                                "build is: ${channelJob.currentResult}",'WARN')
-                    }
+                /* Collect must have artifacts */
+                mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
+                /* Notify user that Web channel build failed */
+                if (channelJob.currentResult != 'SUCCESS') {
+                    script.echoCustom("Status of the channel ${channelName} " +
+                            "build is: ${channelJob.currentResult}", 'WARN')
                 }
             }
         }
@@ -430,7 +471,7 @@ class Facade implements Serializable {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
 
-        if(s3MustHaveAuthUrl)
+        if (s3MustHaveAuthUrl)
             mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
 
         script.currentBuild.description = """\
@@ -450,27 +491,27 @@ class Facade implements Serializable {
      */
     private final String getYourAppFactoryVersions() {
         def apver = new AppFactoryVersions()
-		
+
         def versionInfo = StringBuilder.newInstance()
-		
-        versionInfo.append "PipeLine Version : " + apver.getPipelineVersion() 
+
+        versionInfo.append "PipeLine Version : " + apver.getPipelineVersion()
         versionInfo.append "\nDSL Job Version : " + apver.getJobDslVersion()
         versionInfo.append "\nAppFactory Plugin Version : " + apver.getAppFactoryPluginVersion()
         versionInfo.append "\nAppFactory Custom View Plugin Version : " + apver.getCustomViewPluginVersion()
-		
+
         def corePlugInVersionInfo = apver.getCorePluginVersions()
-		
+
         corePlugInVersionInfo.each { pluginName, pluginVersion ->
             versionInfo.append "\n$pluginName : $pluginVersion"
         }
-		
+
         versionInfo.toString()
     }
-	
-	/**
-	 * Prepare must haves for the debugging
-	 */
-	private final String PrepareMustHaves() {
+
+    /**
+     * Prepare must haves for the debugging
+     */
+    private final String PrepareMustHaves() {
         String s3MustHaveAuthUrl
         String separator = script.isUnix() ? '/' : '\\'
         String mustHaveFolderPath = [script.env.WORKSPACE, "vizMustHaves"].join(separator)
@@ -478,37 +519,37 @@ class Facade implements Serializable {
         String mustHaveFilePath = [script.env.WORKSPACE, mustHaveFile].join(separator)
         script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: 'vizMustHaves*', type: 'INCLUDE']]
 
-        script.dir(mustHaveFolderPath){
+        script.dir(mustHaveFolderPath) {
             script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
 
-            mustHaveArtifacts.each{
-                if(it.url.trim().length() > 0){
+            mustHaveArtifacts.each {
+                if (it.url.trim().length() > 0) {
                     String artifactUrl = it.url.replace(' ', '%20')
-				    // Converting the https url into s3 url to download the musthaves for the channel jobs
+                    // Converting the https url into s3 url to download the musthaves for the channel jobs
                     artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
-                                                artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com',
-                                                's3://'+script.env.S3_BUCKET_NAME) : artifactUrl) : ''
+                            artifactUrl.replaceAll('https://' + script.env.S3_BUCKET_NAME + '(.*)amazonaws.com',
+                                    's3://' + script.env.S3_BUCKET_NAME) : artifactUrl) : ''
                     String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
 
-                    String cpS3Cmd="set +x;aws s3 mv \"${artifactUrlDecoded}\" \"${it.name}\" --only-show-errors"
+                    String cpS3Cmd = "set +x;aws s3 mv \"${artifactUrlDecoded}\" \"${it.name}\" --only-show-errors"
                     script.shellCustom(cpS3Cmd, true)
-				}
+                }
             }
         }
 
-        script.dir(script.env.WORKSPACE){
-        	script.zip dir:"vizMustHaves", zipFile: mustHaveFile
-        	script.catchErrorCustom("Failed to create the Zip file") {
-                if(script.fileExists(mustHaveFilePath)){
+        script.dir(script.env.WORKSPACE) {
+            script.zip dir: "vizMustHaves", zipFile: mustHaveFile
+            script.catchErrorCustom("Failed to create the Zip file") {
+                if (script.fileExists(mustHaveFilePath)) {
                     String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
-                    s3MustHaveAuthUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
-                                        sourceFilePath: script.env.WORKSPACE, script
+                    s3MustHaveAuthUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
+                            sourceFilePath: script.env.WORKSPACE, script
                     s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveAuthUrl, script)
                 }
-		    }
+            }
         }
         s3MustHaveAuthUrl
     }
@@ -573,10 +614,10 @@ class Facade implements Serializable {
                     /* Collect SPA channel parameters to check */
                     def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
 
-                    if (spaChannels) {
-                        def spaMandatoryParams = ['SPA_APP_VERSION', 'FABRIC_APP_CONFIG']
+                    if (spaChannels || desktopWebChannel) {
+                        def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
 
-                        checkParams.addAll(spaMandatoryParams)
+                        checkParams.addAll(webMandatoryParams)
                     }
 
                     /* Check all required parameters depending on user input */

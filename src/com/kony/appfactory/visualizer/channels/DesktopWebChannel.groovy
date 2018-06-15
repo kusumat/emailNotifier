@@ -1,10 +1,9 @@
 package com.kony.appfactory.visualizer.channels
 import com.kony.appfactory.visualizer.channels.WebChannel
-
 /**
- * Implements logic for SPA channel builds.
+ * Implements logic for Desktop_Web channel builds.
  */
-class SpaChannel extends Channel {
+class DesktopWebChannel extends Channel {
     /* WebChannel object */
     protected webChannel
     /**
@@ -12,7 +11,7 @@ class SpaChannel extends Channel {
      *
      * @param script pipeline object.
      */
-    SpaChannel(script) {
+    DesktopWebChannel(script) {
         super(script)
         this.webChannel = new WebChannel(script)
     }
@@ -22,6 +21,7 @@ class SpaChannel extends Channel {
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void createPipeline() {
-        webChannel.pipelineWrapperForWebChannels("SPA")
+        webChannel.pipelineWrapperForWebChannels("DESKTOP_WEB")
     }
 }
+

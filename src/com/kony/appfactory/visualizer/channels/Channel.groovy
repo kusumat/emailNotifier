@@ -47,6 +47,8 @@ class Channel implements Serializable {
      */
     protected fabric
     protected fabricEnvName
+    private fabricCliFileName
+    private webAppUrl
     /*
         Flag stores slave OS type, mostly used in shellCustom step,
         or set environment dependent variables, or run OS dependent steps
@@ -89,8 +91,6 @@ class Channel implements Serializable {
     protected s3ArtifactPath
     /* Library configuration */
     protected libraryProperties
-	/* Domain Param to be used for the SPA channel deployment on non prod environments */
-	protected domainParam
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
@@ -124,6 +124,7 @@ class Channel implements Serializable {
         )
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         resourceBasePath = libraryProperties.'project.resources.base.path'
+        fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         /*
             Instantiate Fabric object for publishing Fabric apps,
             because of lack of information about publishing native apps,
@@ -135,7 +136,7 @@ class Channel implements Serializable {
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
 
-        if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0 ){
+        if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0) {
             this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-kony.com"))
         }
     }
@@ -178,21 +179,21 @@ class Channel implements Serializable {
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
         /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
-        
-        /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */ 
+
+        /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */
         fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
 
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
-                script.echoCustom('Artifacts base path is missing!','ERROR')
+                script.echoCustom('Artifacts base path is missing!', 'ERROR')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
-                script.echoCustom('Artifacts extension is missing!','ERROR')
+                script.echoCustom('Artifacts extension is missing!', 'ERROR')
 
         try {
             closure()
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-            script.echoCustom(exceptionMessage,'ERROR',false)
+            script.echoCustom(exceptionMessage, 'ERROR', false)
             script.currentBuild.result = 'FAILURE'
         } finally {
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
@@ -220,10 +221,8 @@ class Channel implements Serializable {
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
         script.env.visualizerVersion = visualizerVersion
-        if (getVisualizerPackVersion(visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ci.build.support.base.version')) {
-            /* Set a property for a reference to check current build is CI or not for any other module */
-            script.env.isCIBUILD = "true"
-        }
+        setVersionBasedProperties(visualizerVersion)
+
         /* Get Visualizer dependencies */
         visualizerDependencies = (
                 BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerHome,
@@ -231,7 +230,7 @@ class Channel implements Serializable {
                         libraryProperties.'visualizer.dependencies.base.url',
                         libraryProperties.'visualizer.dependencies.archive.file.prefix',
                         libraryProperties.'visualizer.dependencies.archive.file.extension')
-        ) ?: script.echoCustom('Missing Visualizer dependencies!','ERROR')
+        ) ?: script.echoCustom('Missing Visualizer dependencies!', 'ERROR')
         /* Expose tool installation path as environment variable */
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath
@@ -254,7 +253,7 @@ class Channel implements Serializable {
 
         script.withEnv(["PATH+TOOLS=${script.env.NODE_HOME}${pathSeparator}${toolBinPath}"]) {
             script.withCredentials(credentialsTypeList) {
-                def password = script.env.CLOUD_PASSWORD.replace('$','$$');
+                def password = script.env.CLOUD_PASSWORD.replace('$', '$$');
                 script.withEnv(["CLOUD_PASSWORD=$password"]) {
                     closure()
                 }
@@ -268,7 +267,6 @@ class Channel implements Serializable {
     protected final void build() {
         /* List of required build resources */
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
-
         /* Populate Fabric configuration to appfactory.js file */
         populateFabricAppConfig()
 
@@ -277,43 +275,42 @@ class Channel implements Serializable {
                 mustHaveArtifacts.add([name: "HeadlessBuild.properties", path: projectFullPath])
                 mustHaveArtifacts.add([name: ".log", path: [workspace, '.metadata'].join(separator)])
                 /* Load required resources and store them in project folder */
-                for (int i=0; i < requiredResources.size(); i++) {
+                for (int i = 0; i < requiredResources.size(); i++) {
                     String resource = script.loadLibraryResource(resourceBasePath + requiredResources[i])
-				
-					if(requiredResources[i] == 'ivysettings.xml'){
-						// Replace the environment domain to the correct domain i.e. qa-kony.com or sit2-kony.com
-						resource = resource.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
-					}
+
+                    if (requiredResources[i] == 'ivysettings.xml') {
+                        // Replace the environment domain to the correct domain i.e. qa-kony.com or sit2-kony.com
+                        resource = resource.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
+                    }
                     script.writeFile file: requiredResources[i], text: resource
                 }
 
                 /* Workaround for run.sh files */
                 if (isUnixNode) {
                     script.echoCustom("Applying fix for run.sh file...")
-                    BuildHelper.fixRunShScript(script, script.pwd() ,'run.sh')
+                    BuildHelper.fixRunShScript(script, script.pwd(), 'run.sh')
                 }
 
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
-                    if (script.env.isCIBUILD){
+                    if (script.env.isCIBUILD) {
                         /* Build project using CI tool" */
                         script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
                         /* Run npm install */
                         script.catchErrorCustom('Something wrong, FAILED to run "npm install" on this project') {
-                                def npmBuildScript = "npm install"
-                                script.shellCustom(npmBuildScript, isUnixNode)
+                            def npmBuildScript = "npm install"
+                            script.shellCustom(npmBuildScript, isUnixNode)
                         }
                         /* Run node build.js */
                         script.catchErrorCustom('CI build failed for this project') {
-                                def nodeBuildScript = 'node build.js'
-                                script.shellCustom(nodeBuildScript, isUnixNode)
+                            def nodeBuildScript = 'node build.js'
+                            script.shellCustom(nodeBuildScript, isUnixNode)
                         }
-                    }
-                    else {
+                    } else {
                         def windowsResource = libraryProperties.'window.lockable.resource.name'
                         def iosResource = libraryProperties.'ios.lockable.resource.name'
 
-                        def slave= isUnixNode ? iosResource : windowsResource
+                        def slave = isUnixNode ? iosResource : windowsResource
                         script.lock(slave) {
                             /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
                             script.shellCustom('ant -buildfile property.xml', isUnixNode)
@@ -334,12 +331,12 @@ class Channel implements Serializable {
      * @return Visualizer version.
      */
     protected final getVisualizerVersion(konyPluginsXmlFileContent) {
-	    String visualizerVersion = ''
+        String visualizerVersion = ''
         def plugins = [
-                'Branding': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.ide.paas.branding"/,
+                'Branding'       : /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.ide.paas.branding"/,
                 'Studioviz win64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.win64"/,
                 'Studioviz mac64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.mac64"/,
-                'KEditor': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.pat.tool.keditor"/
+                'KEditor'        : /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.pat.tool.keditor"/
         ]
 
         plugins.find { pluginName, pluginSearchPattern ->
@@ -356,11 +353,36 @@ class Channel implements Serializable {
 
         visualizerVersion
     }
+    /**
+     * Set properties that vary based upon the Visualizer Version of users' app.
+     *
+     * @param Visualizer version of the project.
+     */
+    protected final void setVersionBasedProperties(visualizerVersion) {
+        def visualizerPackVersion = getVisualizerPackVersion(visualizerVersion)
+        def zipExtensionSupportBaseVersion = getVisualizerPackVersion(libraryProperties.'webapp.extension.support.base.version')
+        if (visualizerPackVersion >= getVisualizerPackVersion(libraryProperties.'ci.build.support.base.version')) {
+            /* Set a property for a reference to check current build is CI or not for any other module */
+            script.env.isCIBUILD = "true"
+            /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
+            if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
+                if (visualizerPackVersion < zipExtensionSupportBaseVersion) {
+                    (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
+                } else if (visualizerPackVersion >= zipExtensionSupportBaseVersion) {
+                    script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE ?
+                            script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true" :
+                            /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */ (artifactExtension = 'zip')
+                }
+            } else {
+                script.echoCustom("Since your Visualizer Version does not support web build using Zip extension, the build will be done using War extension.")
+            }
+        }
+    }
 
     /**
      * Get visualizer version in Number Format
      *
-     * @param visualizerVersion  ( with Dots eg. 8.0.0 )
+     * @param visualizerVersion ( with Dots eg. 8.0.0 )
      * @return Visualizer Fix Pack version  (without dots eg. 800)
      */
     protected final getVisualizerPackVersion(visualizerVersion) {
@@ -375,7 +397,7 @@ class Channel implements Serializable {
      */
     protected final getArtifactLocations(artifactExtension) {
         /* Check required arguments */
-        (artifactExtension) ?: script.echoCustom("artifactExtension argument can't be null",'ERROR')
+        (artifactExtension) ?: script.echoCustom("artifactExtension argument can't be null", 'ERROR')
 
         def files = null
         def artifactLocations = []
@@ -452,7 +474,7 @@ class Channel implements Serializable {
                     /* Check if appfactory.js file exists */
                     if (script.fileExists(configFileName)) {
                         String config = (script.readFile(configFileName)) ?:
-                                script.echoCustom("$configFileName content is empty!",'ERROR')
+                                script.echoCustom("$configFileName content is empty!", 'ERROR')
                         String successMessage = 'Fabric app key, secret and service URL were successfully populated'
                         String errorMessage = 'Failed to populate Fabric app key, secret and service URL'
 
@@ -499,7 +521,7 @@ class Channel implements Serializable {
                 searchGlob = '**/WindowsPhone*.' + artifactExtension
                 break
             case ~/^.*appx.*$/:
-            case ~/^.*war.*$/:
+            case ~/^.*war.*|^.*zip.*$/:
                 searchGlob = '**/' + projectName + '.' + artifactExtension
                 break
             default:
@@ -521,9 +543,18 @@ class Channel implements Serializable {
      */
     protected final getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) {
         def artifactsTempPath
-
+        def spaPlatform
+        /* Modified the method to get artifact from binaries folder, in future all channels will be shifted. */
         def getPath = {
-            def tempBasePath = [projectWorkspacePath, 'temp', projectName]
+            def tempBasePath
+            switch (channelVariableName) {
+                case ~/^.*SPA.*$|^.*WEB*$/:
+                    tempBasePath = [projectWorkspacePath, projectName, 'binaries']
+                    break
+                default:
+                    tempBasePath = [projectWorkspacePath, 'temp', projectName]
+                    break
+            }
             (tempBasePath + it).join(separator)
         }
 
@@ -553,8 +584,17 @@ class Channel implements Serializable {
                 artifactsTempPath = getPath(['build', 'windows8'])
                 break
             case ~/^.*SPA.*$/:
-                artifactsTempPath = getPath(['middleware_mobileweb'])
+                if (channelVariableName?.contains('ANDROID')) {
+                    spaPlatform = 'android'
+                } else {
+                    spaPlatform = 'iphone'
+                }
+                artifactsTempPath = getPath([(channelType + '.' + spaPlatform).toLowerCase()])
                 break
+            case ~/^.*WEB*$/:
+                artifactsTempPath = getPath(['desktopweb'])
+                break
+
             default:
                 artifactsTempPath = ''
                 break
@@ -574,7 +614,7 @@ class Channel implements Serializable {
         def artifactExtension
 
         switch (channelVariableName) {
-            case ~/^.*SPA.*$/:
+            case ~/^.*SPA.*$|^.*WEB$/:
                 artifactExtension = 'war'
                 break
             case ~/^.*ANDROID.*$/:
@@ -632,10 +672,10 @@ class Channel implements Serializable {
     protected final void setBuildDescription() {
         String EnvironmentDescription = ""
         String mustHavesDescription = ""
-        if(script.env.FABRIC_ENV_NAME) {
+        if (script.env.FABRIC_ENV_NAME) {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
-        if((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null){
+        if ((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null) {
             mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
         }
         script.currentBuild.description = """\
@@ -651,35 +691,34 @@ class Channel implements Serializable {
      * @params Absolute or relative path of a Folder or file
      * Set execute permissions to all shell files
      */
-    protected final void setExecutePermissions(source,isDir) {
-        if(script.fileExists(source)){
-            isDir ? script.shellCustom("chmod -R 755 $source/*.sh",isUnixNode): script.shellCustom("chmod 755 $source",isUnixNode)
-        } else{
-            script.echoCustom("File or Directory doesn't exist : ${source}",'WARN')
+    protected final void setExecutePermissions(source, isDir) {
+        if (script.fileExists(source)) {
+            isDir ? script.shellCustom("chmod -R 755 $source/*.sh", isUnixNode) : script.shellCustom("chmod 755 $source", isUnixNode)
+        } else {
+            script.echoCustom("File or Directory doesn't exist : ${source}", 'WARN')
         }
     }
 
     /**
      * Copies the custom hooks build logs into must haves folder
-    */
+     */
     protected final void copyCustomHooksBuildLogs() {
         def chLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
-        script.dir(chLogs){
+        script.dir(chLogs) {
             script.shellCustom("find \"${chLogs}\" -name \"*.log\" -exec cp -f {} \"${mustHavePath}\" \\;", isUnixNode)
         }
     }
 
-    
     /**
      * Sanitizes the sensitive information from the collected information
-    */
+     */
     protected final void sanitizeFiles() {
         def sanitizableResources = ['HeadlessBuild.properties']
-        script.dir(mustHavePath){
+        script.dir(mustHavePath) {
             sanitizableResources.each { propertyFileName ->
                 if (script.fileExists(propertyFileName)) {
                     String fileContent = script.readFile file: propertyFileName
-                    fileContent = fileContent.replaceAll('\\.password=.*','.password=********')
+                    fileContent = fileContent.replaceAll('\\.password=.*', '.password=********')
                     script.writeFile file: propertyFileName, text: fileContent
                 }
             }
@@ -690,27 +729,27 @@ class Channel implements Serializable {
      * Collect all the information for the musthaves.
      * Copies all the required files from the workspace.
      * Also collected the information about the environment, Input Params, Build Log
-    */
+     */
     protected final void collectAllInformation() {
         String buildLog = "JenkinsBuild.log"
-        script.dir(mustHavePath){
+        script.dir(mustHavePath) {
             script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-            
+
             /* APPFACT-858 - Custom hooks will be executed only on MAC Machine. Build will be executed on MAC node
              * if there are custom hooks and also run custom hook is checked. If the run custom hook is checked, but
              * there are no custom hooks defined, then there is a chance that a build will be executed in Windows where
              * must haves collection get failed as the commands we use don't exists. So added a check if we are running
              * the build on non-Windows node.
              */
-            if(script.params.RUN_CUSTOM_HOOKS && isUnixNode){
+            if (script.params.RUN_CUSTOM_HOOKS && isUnixNode) {
                 copyCustomHooksBuildLogs()
             }
-            if(mustHaveArtifacts.size() > 0){
-                mustHaveArtifacts.each{
+            if (mustHaveArtifacts.size() > 0) {
+                mustHaveArtifacts.each {
                     String sourceFile = [it.path, it.name].join(separator)
-                    if(script.fileExists(sourceFile)){
+                    if (script.fileExists(sourceFile)) {
                         script.shellCustom("cp -f \"${sourceFile}\" \"${mustHavePath}\"", isUnixNode)
                     }
                 }
@@ -727,21 +766,21 @@ class Channel implements Serializable {
         String mustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
         String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
         try {
-            script.catchErrorCustom("Error while preparing must haves"){
+            script.catchErrorCustom("Error while preparing must haves") {
                 collectAllInformation()
-                script.dir(projectFullPath){
-                    script.zip dir:mustHavePath, zipFile: mustHaveFile
+                script.dir(projectFullPath) {
+                    script.zip dir: mustHavePath, zipFile: mustHaveFile
                     script.catchErrorCustom("Failed to create the zip file") {
-                        if(script.fileExists(mustHaveFilePath)){
-                            String s3MustHaveUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
-    	                                    sourceFilePath: projectFullPath, script
+                        if (script.fileExists(mustHaveFilePath)) {
+                            String s3MustHaveUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
+                                    sourceFilePath: projectFullPath, script
                             s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
                             /* We will be keeping the s3 url of the must haves into the collection only if the 
                              * channel job is triggered by the parent job that is buildVisualiser job.
                              * Handling the case where we rebuild a child job, from an existing job which was
                              * triggered by the buildVisualiser job.
                              */
-                            if(upstreamJob != null && !isRebuild) {
+                            if (upstreamJob != null && !isRebuild) {
                                 mustHaves.add([
                                         channelVariableName: channelVariableName, name: mustHaveFile, url: s3MustHaveUrl
                                 ])
@@ -751,9 +790,9 @@ class Channel implements Serializable {
                     }
                 }
             }
-        } catch(Exception e){
+        } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed while collecting the logs (must-gather) for debugging.'
-            script.echoCustom(exceptionMessage,'ERROR')
+            script.echoCustom(exceptionMessage, 'ERROR')
         }
     }
 
