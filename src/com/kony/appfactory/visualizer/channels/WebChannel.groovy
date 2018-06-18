@@ -36,6 +36,7 @@ class WebChannel extends Channel {
      */
     WebChannel(script) {
         super(script)
+        channelOs = channelFormFactor = channelType = 'WEB'
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
@@ -74,13 +75,6 @@ class WebChannel extends Channel {
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void pipelineWrapperForWebChannels(webChannelType) {
-        if (webChannelType.equalsIgnoreCase("SPA")) {
-            channelOs = channelFormFactor = channelType = 'SPA'
-        } else if (webChannelType.equalsIgnoreCase("DESKTOP_WEB")) {
-            channelOs = channelFormFactor = channelType = 'DESKTOP WEB'
-        } else {
-            channelOs = channelFormFactor = channelType = 'WEB'
-        }
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {

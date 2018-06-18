@@ -14,6 +14,7 @@ class SpaChannel extends Channel {
      */
     SpaChannel(script) {
         super(script)
+        channelOs = channelFormFactor = channelType = 'SPA'
         this.webChannel = new WebChannel(script)
     }
 

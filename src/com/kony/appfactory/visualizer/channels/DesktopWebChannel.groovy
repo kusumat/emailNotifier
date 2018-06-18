@@ -13,6 +13,7 @@ class DesktopWebChannel extends Channel {
      */
     DesktopWebChannel(script) {
         super(script)
+        channelOs = channelFormFactor = channelType = 'DESKTOP WEB'
         this.webChannel = new WebChannel(script)
     }
 
