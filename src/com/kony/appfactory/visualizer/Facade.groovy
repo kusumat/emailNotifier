@@ -243,20 +243,20 @@ class Facade implements Serializable {
      */
     private final getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters = null) {
         if (spaChannelsToBuildJobParameters && desktopWebChannel) {
-            getCommonJobBuildParameters()
-            +[script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")]
-            +[script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
-            +spaChannelsToBuildJobParameters
+            getCommonJobBuildParameters() +
+                    [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
+                    [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)] +
+                    spaChannelsToBuildJobParameters
         } else if (spaChannelsToBuildJobParameters) {
-            getCommonJobBuildParameters()
-            +[script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")]
-            +[script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
-            +spaChannelsToBuildJobParameters
+            getCommonJobBuildParameters() +
+                    [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
+                    [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)] +
+                    spaChannelsToBuildJobParameters
         } else {
-            getCommonJobBuildParameters()
-            +[script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")]
-            +[script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)]
-            +[script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+            getCommonJobBuildParameters() +
+                    [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
+                    [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] +
+                    [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
         }
 
     }
