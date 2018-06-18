@@ -594,15 +594,22 @@ class BuildHelper implements Serializable {
     protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false) {
 		
         def authArtifactUrl = "";
-		
-        if (script.env['CLOUD_ENVIRONMENT_GUID'] != "" && script.env['CLOUD_DOMAIN'] != ""){
-            artifactUrl = artifactUrl.substring(artifactUrl.indexOf(script.env.PROJECT_NAME));
-            authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + artifactUrl
+
+        def encodedArtifactUrl = artifactUrl
+                .substring(artifactUrl.indexOf(script.env.PROJECT_NAME))
+                .split("/")
+                .collect({ URLEncoder.encode(it, "UTF-8") })
+                .join('/')
+
+        if (script.env['CLOUD_ENVIRONMENT_GUID'] && script.env['CLOUD_DOMAIN']) {
+            authArtifactUrl = "https://manage." +
+                    script.env['CLOUD_DOMAIN'] + "/console/#/environments/" +
+                    script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" +
+                    encodedArtifactUrl
         }
         else {
-            script.echoCustom("Failed to generate the authenticated URLs. " +
-                    "Unable to find the cloud environment guid. ",'WARN')
-            authArtifactUrl = artifactUrl
+            script.echoCustom("Failed to generate the authenticated URLs. Unable to find the cloud environment guid.",'WARN')
+            authArtifactUrl = encodedArtifactUrl
         }
 		
         if (exposeUrl) {
