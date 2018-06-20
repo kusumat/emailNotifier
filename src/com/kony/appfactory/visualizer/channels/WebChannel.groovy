@@ -34,9 +34,15 @@ class WebChannel extends Channel {
      *
      * @param script pipeline object.
      */
-    WebChannel(script) {
+    WebChannel(script, webChannelType) {
         super(script)
-        channelOs = channelFormFactor = channelType = 'WEB'
+        if (webChannelType.equalsIgnoreCase("SPA")) {
+            channelOs = channelFormFactor = channelType = 'SPA'
+        } else if (webChannelType.equalsIgnoreCase("DESKTOP_WEB")) {
+            channelOs = channelFormFactor = channelType = 'DESKTOP WEB'
+        } else {
+            channelOs = channelFormFactor = channelType = 'WEB'
+        }
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
@@ -46,6 +52,10 @@ class WebChannel extends Channel {
         /* Expose SPA and DESKTOP_WEB build parameters to environment variables to use it in HeadlessBuild.properties */
         this.script.env['APP_VERSION'] = webAppVersion
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
+    }
+    
+    WebChannel(script) {
+        this(script, 'WEB')
     }
 
     /**
@@ -155,6 +165,9 @@ class WebChannel extends Channel {
 
                         script.stage('Build') {
                             build()
+                            script.echoCustom("channelOs = ${channelOs} -- channelFormFactor =  ${channelFormFactor} -- channelType = ${channelType}")
+                            script.echoCustom("channelPath = ${channelPath} -- channelVariableName =  ${channelVariableName} ")
+                            script.echoCustom("artifactsBasePath = ${artifactsBasePath}")
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension) ?:
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
@@ -168,7 +181,7 @@ class WebChannel extends Channel {
                         script.stage('Publish to Fabric') {
                             /* Publish Fabric application if PUBLISH_FABRIC_APP set to true */
                             if (publishFabricApp) {
-                                if (webChannelType.equalsIgnoreCase("DESKTOPWEB")) {
+                                if (webChannelType.equalsIgnoreCase("DESKTOP_WEB")) {
                                     script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Fabric environment you've chosen.")
                                 }
                                 fabric.fetchFabricCli(libraryProperties.'fabric.cli.version')
@@ -294,4 +307,3 @@ class WebChannel extends Channel {
     }
 
 }
-

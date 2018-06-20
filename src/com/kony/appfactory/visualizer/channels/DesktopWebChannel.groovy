@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 import com.kony.appfactory.visualizer.channels.WebChannel
+
 /**
  * Implements logic for Desktop_Web channel builds.
  */
@@ -13,8 +14,7 @@ class DesktopWebChannel extends Channel {
      */
     DesktopWebChannel(script) {
         super(script)
-        channelOs = channelFormFactor = channelType = 'DESKTOP WEB'
-        this.webChannel = new WebChannel(script)
+        this.webChannel = new WebChannel(script, 'DESKTOP_WEB')
     }
 
     /**

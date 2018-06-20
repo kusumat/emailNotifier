@@ -48,7 +48,6 @@ class Channel implements Serializable {
     protected fabric
     protected fabricEnvName
     private fabricCliFileName
-    private webAppUrl
     /*
         Flag stores slave OS type, mostly used in shellCustom step,
         or set environment dependent variables, or run OS dependent steps
@@ -175,7 +174,9 @@ class Channel implements Serializable {
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
+        script.echoCustom("channelOs = ${channelOs} -- channelFormFactor =  ${channelFormFactor} -- channelType = ${channelType}")
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
+        script.echoCustom("channelPath = ${channelPath} -- channelVariableName =  ${channelVariableName} ")
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
         /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
@@ -186,6 +187,7 @@ class Channel implements Serializable {
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
+        script.echoCustom("artifactsBasePath = ${artifactsBasePath}")
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
 
@@ -365,16 +367,19 @@ class Channel implements Serializable {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
-            if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
-                if (visualizerPackVersion < zipExtensionSupportBaseVersion) {
-                    (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
+            if (["SPA", "DESKTOP_WEB", "WEB"].contains(channelVariableName)) {
+                if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
+                    if (visualizerPackVersion < zipExtensionSupportBaseVersion) {
+                        (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
+                    } else {
+                        script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE ?
+                                script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true" :
+                                /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */ 
+                                (artifactExtension = 'zip')
+                    }
                 } else if (visualizerPackVersion >= zipExtensionSupportBaseVersion) {
-                    script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE ?
-                            script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true" :
-                            /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */ (artifactExtension = 'zip')
+                    artifactExtension = 'zip'
                 }
-            } else {
-                script.echoCustom("Since your Visualizer Version does not support web build using Zip extension, the build will be done using War extension.")
             }
         }
     }
