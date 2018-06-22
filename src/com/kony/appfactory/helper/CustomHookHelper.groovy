@@ -287,7 +287,7 @@ class CustomHookHelper implements Serializable {
 
             /* This is to restrict no other hook job to enter the project workspace folder */
             script.shellCustom("set +xe; chmod 710 .", true)
-            def ACLGroupPerms = 'set +xe; find . -user buildslave -exec chmod 770 \'{}\' \\+'
+            def ACLGroupPerms = 'set +xe; find . -user buildslave -print0 | xargs -0 chmod 770'
             script.shellCustom("$ACLGroupPerms", true)
         }
     }
