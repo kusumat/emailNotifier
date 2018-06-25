@@ -165,9 +165,6 @@ class WebChannel extends Channel {
 
                         script.stage('Build') {
                             build()
-                            script.echoCustom("channelOs = ${channelOs} -- channelFormFactor =  ${channelFormFactor} -- channelType = ${channelType}")
-                            script.echoCustom("channelPath = ${channelPath} -- channelVariableName =  ${channelVariableName} ")
-                            script.echoCustom("artifactsBasePath = ${artifactsBasePath}")
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension) ?:
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
