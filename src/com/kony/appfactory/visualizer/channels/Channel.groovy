@@ -174,9 +174,7 @@ class Channel implements Serializable {
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
-        script.echoCustom("channelOs = ${channelOs} -- channelFormFactor =  ${channelFormFactor} -- channelType = ${channelType}")
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
-        script.echoCustom("channelPath = ${channelPath} -- channelVariableName =  ${channelVariableName} ")
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
         /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
@@ -187,7 +185,6 @@ class Channel implements Serializable {
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
-        script.echoCustom("artifactsBasePath = ${artifactsBasePath}")
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
 
