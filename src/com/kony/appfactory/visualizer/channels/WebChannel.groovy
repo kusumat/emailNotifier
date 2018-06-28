@@ -178,7 +178,7 @@ class WebChannel extends Channel {
                         script.stage('Publish to Fabric') {
                             /* Publish Fabric application if PUBLISH_FABRIC_APP set to true */
                             if (publishFabricApp) {
-                                if (webChannelType.equalsIgnoreCase("DESKTOP_WEB")) {
+                                if (webChannelType.equalsIgnoreCase("WEB")) {
                                     script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Fabric environment you've chosen.")
                                 }
                                 fabric.fetchFabricCli(libraryProperties.'fabric.cli.version')
