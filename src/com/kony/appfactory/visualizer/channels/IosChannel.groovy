@@ -165,7 +165,7 @@ class IosChannel extends Channel {
                 script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
                 script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/*.zip')
-                script.unzip zipFile: "${dummyProjectArchive[0].path}"
+                script.shellCustom("unzip -q ${dummyProjectArchive[0].path}", true)
             }
 
             script.dir(iosDummyProjectGenPath) {
