@@ -24,6 +24,7 @@ class IosChannel extends Channel {
     /* At least one of application id parameters should be set */
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
 
@@ -50,6 +51,7 @@ class IosChannel extends Channel {
         fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
         this.script.env['IOS_BUNDLE_ID'] = iosBundleId
+        this.script.env['APP_VERSION'] = iosBundleVersion
     }
 
     /**
