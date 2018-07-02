@@ -211,7 +211,12 @@ class IosChannel extends Channel {
                                 usernameVariable: 'MATCH_USERNAME'
                         )
                 ]) {
-                    def ProjectBuildMode = buildMode.capitalize()
+                    /*Note:
+                    * If the build mode is "release-protected" need to change the build mode to 'Protected' because
+                    * xcode will not have 'release-protected' as mode. So, changing the build mode explicitly here in that case.
+                    */
+                    def ProjectBuildMode = buildMode.equals(libraryProperties.'buildmode.release.protected.type') ?
+                          buildMode.substring(buildMode.lastIndexOf("-") + 1).capitalize() : buildMode.capitalize()
                     /*
                     * APPFACT-779
                     * Custom IOS App display name can be given using the Key "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}"
@@ -243,10 +248,10 @@ class IosChannel extends Channel {
                             /* set iOS build configuration to debug/release based on Visualizer version,
                             * note that, in 8.1.0 and above versions, to build debug mode binary, set the build configuration of KRelease as debug.
                             */
-                            if (getVisualizerPackVersion(script.env.visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ios.schema.buildconfig.changed.version')) {
+                            if ((getVisualizerPackVersion(script.env.visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ios.schema.buildconfig.changed.version')) && (buildMode != libraryProperties.'buildmode.release.protected.type')) {
                                 script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_build', true)
                             } else {
-                                script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode, true)
+                                script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode.replaceAll('-', '_'), true)
                             }
                         }
                     }
@@ -303,6 +308,10 @@ class IosChannel extends Channel {
                     channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
                             mandatoryParameters.add('IOS_TABLET_APP_ID')
 
+                    if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                        mandatoryParameters.add('PROTECTED_KEYS')
+                    }
+
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
@@ -337,7 +346,7 @@ class IosChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
-
+                        
                         script.stage('Check PreBuild Hook Points') {
                             /* Run Pre Build iOS Hooks */
                             if (runCustomHook) {

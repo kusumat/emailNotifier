@@ -73,6 +73,8 @@ class Facade implements Serializable {
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    /* Protected mode build parameters */
+    private final protectedKeys = script.params.PROTECTED_KEYS
     /**
      * Class constructor.
      *
@@ -284,7 +286,8 @@ class Facade implements Serializable {
                         script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${keystoreFileID}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${keystorePasswordID}"),
                         script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${privateKeyPassword}"),
-                        script.string(name: 'ANDROID_KEY_ALIAS', value: "${keystoreAlias}")
+                        script.string(name: 'ANDROID_KEY_ALIAS', value: "${keystoreAlias}"),
+                        script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}")
                 ]
                 break
             case ~/^.*IOS.*$/:
@@ -294,7 +297,8 @@ class Facade implements Serializable {
                         script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}"),
                         script.string(name: 'IOS_MOBILE_APP_ID', value: "${iosMobileAppId}"),
                         script.string(name: 'IOS_TABLET_APP_ID', value: "${iosTabletAppId}"),
-                        script.string(name: 'IOS_BUNDLE_VERSION', value: "${iosBundleVersion}")
+                        script.string(name: 'IOS_BUNDLE_VERSION', value: "${iosBundleVersion}"),
+                        script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}")
                 ]
                 break
             case ~/^.*WINDOWS.*$/:
@@ -584,11 +588,15 @@ class Facade implements Serializable {
                             androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
                         }
 
-                        if (buildMode == 'release') {
+                        if (buildMode != libraryProperties.'buildmode.debug.type') {
                             androidMandatoryParams.addAll([
                                     'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
                                     'ANDROID_KEY_ALIAS'
                             ])
+                        }
+
+                        if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                            androidMandatoryParams.add('PROTECTED_KEYS')
                         }
 
                         checkParams.addAll(androidMandatoryParams)
@@ -608,6 +616,9 @@ class Facade implements Serializable {
                             iosMandatoryParams.add('IOS_TABLET_APP_ID')
                         }
 
+                        if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                            iosMandatoryParams.add('PROTECTED_KEYS')
+                        }
                         checkParams.addAll(iosMandatoryParams)
                     }
 

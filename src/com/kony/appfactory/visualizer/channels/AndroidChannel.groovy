@@ -132,11 +132,15 @@ class AndroidChannel extends Channel {
                     channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
                             mandatoryParameters.add('ANDROID_TABLET_APP_ID')
 
-                    if (buildMode == 'release') {
+                    /* If the build mode is debug not adding the Androiod keystore parameters*/
+                    if (buildMode != libraryProperties.'buildmode.debug.type') {
                         mandatoryParameters.addAll([
                                 'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
                                 'ANDROID_KEY_ALIAS'
                         ])
+                    }
+                    if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                        mandatoryParameters.add('PROTECTED_KEYS')
                     }
 
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
@@ -174,7 +178,7 @@ class AndroidChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
-
+                        
                         script.stage('Check PreBuild Hook Points'){
                             if(runCustomHook){
                                 /* Run Pre Build Android Hooks */
@@ -195,7 +199,7 @@ class AndroidChannel extends Channel {
                         }
 
                         script.stage("Sign artifacts") {
-                            if (buildMode == 'release') {
+                            if (buildMode != libraryProperties.'buildmode.debug.type') {
                                 signArtifacts(buildArtifacts)
                             } else {
                                 script.echoCustom("Build mode is ${buildMode}, " +

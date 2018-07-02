@@ -196,7 +196,25 @@ class BuildHelper implements Serializable {
             closure()
         }
     }
-
+    
+    /**
+     * Extract Protected Keys from credential plug-in.
+     *
+     * @param script pipeline object.
+     * @param protectedKeysId protected Keys ID in Jenkins credentials store.
+     * @param targetProtectedKeysPath for copying the keys at build workspace
+     * @param closure block of code.
+     */
+    protected final static void extractProtectedKeys(script, protectedKeysId, targetProtectedKeysPath, closure) {
+        script.withCredentials([[$class: 'ProtectedModeTripletBinding',
+            credentialsId: "${protectedKeysId}",
+            filePath: "${targetProtectedKeysPath}"
+            ]]) {
+        /* Block of code to run */
+        closure()
+        }
+    }
+    
     /**
      * Loads library configuration properties.
      * Properties can be places anywhere in the library, but most appropriate place is under:

@@ -103,8 +103,11 @@
         <condition property="workspace" value="${env.PROJECT_WORKSPACE}" else="">
             <isset property="env.WORKSPACE"/>
         </condition>
-        <condition property="buildMode" value="${env.BUILD_MODE}" else="">
-            <isset property="env.BUILD_MODE"/>
+        <condition property="buildMode" value="release" else="${env.BUILD_MODE}">
+            <and>
+                <isset property="env.BUILD_MODE" />
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+            </and>
         </condition>
         <condition property="appVersion" value="${env.APP_VERSION}" else="">
             <isset property="env.APP_VERSION"/>
@@ -147,6 +150,25 @@
         </condition>
         <condition property="binaryextensionWEB" value="war" else="zip">
             <equals arg1="${env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE}" arg2="true"/>
+        </condition>
+        <!-- set of protected build properties -->
+        <condition property="protectedIosBuild" value="true" else="false">
+            <and>
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                <or>
+                    <equals arg1="${iosMobileNative}" arg2="true" />
+                    <equals arg1="${iosTabletNative}" arg2="true" />
+                </or>
+            </and>
+        </condition>
+        <condition property="protectedAndroidBuild" value="true" else="false">
+            <and>
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                <or>
+                    <equals arg1="${androidMobileNative}" arg2="true" />
+                    <equals arg1="${androidTabletNative}" arg2="true" />
+                </or>
+            </and>
         </condition>
         <property name="pluginDir" value="${workspace}${separator}kony-plugins"/>
 
@@ -210,6 +232,9 @@
             <entry key="combinewar.war" value="false"/>
             <entry key="combinewar.ear" value="false"/>
             <entry key="combinewar.dependencylibraries" value=""/>
+            <!-- Protected build mode options -->
+            <entry key="protectedmodeenabled.ios" value="${protectedIosBuild}"/>
+            <entry key="protectedmodeenabled.android" value="${protectedAndroidBuild}"/>
             <entry key="web.binary.extension" value="${binaryextensionWEB}"/>
         </propertyfile>
 

@@ -109,6 +109,7 @@ class Channel implements Serializable {
     protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
     protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected final jobBuildNumber = script.env.BUILD_NUMBER
+    protected final protectedKeys = script.params.PROTECTED_KEYS
 
     /**
      * Class constructor.
@@ -268,6 +269,11 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
         /* Populate Fabric configuration to appfactory.js file */
         populateFabricAppConfig()
+
+        /* Copy protected keys to project workspace if build mode is "release-protected" */
+        if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+            copyProtectedKeysToProjectWorkspace()
+        }
 
         script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
@@ -431,7 +437,7 @@ class Channel implements Serializable {
     protected final renameArtifacts(buildArtifacts) {
         def renamedArtifacts = []
         String shellCommand = (isUnixNode) ? 'mv' : 'rename'
-
+        String artifactsBuildModeSuffix = ''
         script.catchErrorCustom('Failed to rename artifacts') {
             for (int i = 0; i < buildArtifacts?.size(); ++i) {
                 def artifact = buildArtifacts[i]
@@ -447,7 +453,8 @@ class Channel implements Serializable {
                     Workaround for Android binaries, because of there are two build artifacts
                     with debug and release suffixes, working only with required one.
                  */
-                if (channelVariableName?.contains('ANDROID') && !artifactName.contains(buildMode)) {
+                artifactsBuildModeSuffix = (buildMode == libraryProperties.'buildmode.debug.type') ? 'debug' : 'release'
+                if (channelVariableName?.contains('ANDROID') && !artifactName.contains(artifactsBuildModeSuffix)) {
                     continue
                 }
 
@@ -504,6 +511,29 @@ class Channel implements Serializable {
     }
 
     /**
+     * Copy protected keys to build workspace for release-protected mode.
+     */
+    protected final void copyProtectedKeysToProjectWorkspace() {
+        String targetProtectedKeysPath = [projectWorkspacePath, '__encryptionkeys'].join(separator)
+        script.catchErrorCustom("Failed to copy protected keys to project workspace") {
+            script.dir(targetProtectedKeysPath) {
+                /* Note: Here, Expecting the file name from plug-in as: private_key.pem, public_key.dat
+                 * and FinKeys.zip contains fin.zip with minimum three .key files for different architecture.
+                 */
+                BuildHelper.extractProtectedKeys(script, protectedKeys, targetProtectedKeysPath) {
+                    script.unzip zipFile: "FinKeys.zip"
+                    script.unzip dir: 'fin', zipFile: "fin.zip"
+                    String finKeysFilesPath = [targetProtectedKeysPath, 'fin'].join(separator)
+                    script.dir(finKeysFilesPath) {
+                        def finKeysFiles = script.findFiles(glob: '**/*.key')
+                        finKeysFiles.size() >= 3 ?: script.echoCustom("Problem found with fin keys.",'ERROR')
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
      * Returns search glob for build artifacts search.
      *
      * @param artifactExtension artifact extension.
@@ -513,8 +543,16 @@ class Channel implements Serializable {
         def searchGlob
 
         switch (artifactExtension) {
+
             case ~/^.*apk.*$/:
-                searchGlob = '**/' + projectName + '-' + buildMode + '*.' + artifactExtension
+                switch (buildMode) {
+                    case libraryProperties.'buildmode.release.protected.type':
+                        searchGlob = '**/' + projectName + '-' + 'release' + '*.' + artifactExtension
+                        break
+                    default:
+                        searchGlob = '**/' + projectName + '-' + buildMode + '*.' + artifactExtension
+                        break
+                }
                 break
             case ~/^.*KAR.*$/:
                 searchGlob = '**/*.' + artifactExtension
