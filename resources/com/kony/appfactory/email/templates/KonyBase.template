@@ -68,7 +68,6 @@
             width: 247px;
             text-align: left;
             font-size: 12px;
-            text-transform: uppercase;
             outline: none;
             background: #f8f9fb;
             border: 1px solid #e8e8e8;
