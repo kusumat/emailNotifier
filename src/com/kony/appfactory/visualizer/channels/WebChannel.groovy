@@ -52,6 +52,11 @@ class WebChannel extends Channel {
         /* Expose SPA and DESKTOP_WEB build parameters to environment variables to use it in HeadlessBuild.properties */
         this.script.env['APP_VERSION'] = webAppVersion
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
+        /* Changing Channel Variable name if only SPA channels are selected */
+        if (webChannelType.equalsIgnoreCase("WEB") && !(desktopWebChannel)) {
+            channelVariableName = 'SPA'
+            channelType = channelVariableName
+        }
     }
     
     WebChannel(script) {

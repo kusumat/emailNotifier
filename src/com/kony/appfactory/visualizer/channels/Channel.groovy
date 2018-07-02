@@ -182,7 +182,6 @@ class Channel implements Serializable {
 
         /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */
         fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
-
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
@@ -377,7 +376,7 @@ class Channel implements Serializable {
                     } else {
                         script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE ?
                                 script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true" :
-                                /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */ 
+                                /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */
                                 (artifactExtension = 'zip')
                     }
                 } else if (visualizerPackVersion >= zipExtensionSupportBaseVersion) {
