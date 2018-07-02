@@ -89,7 +89,7 @@ class WebChannel extends Channel {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 script.stage('Check provided parameters') {
-                    if (!(selectedSpaChannels || desktopWebChannel)) {
+                    if (!(webChannelType.equalsIgnoreCase("DESKTOP_WEB")) && !(selectedSpaChannels || desktopWebChannel)) {
                         script.echoCustom('Please select at least one channel to build!', 'ERROR')
                     }
                     ValidationHelper.checkBuildConfiguration(script)

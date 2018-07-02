@@ -257,7 +257,6 @@ class Facade implements Serializable {
         } else {
             getCommonJobBuildParameters() +
                     [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
-                    [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] +
                     [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
         }
 

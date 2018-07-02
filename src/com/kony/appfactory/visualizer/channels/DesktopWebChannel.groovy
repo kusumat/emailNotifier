@@ -15,6 +15,7 @@ class DesktopWebChannel extends Channel {
     DesktopWebChannel(script) {
         super(script)
         this.webChannel = new WebChannel(script, 'DESKTOP_WEB')
+        script.env.DESKTOP_WEB = "true"
     }
 
     /**
