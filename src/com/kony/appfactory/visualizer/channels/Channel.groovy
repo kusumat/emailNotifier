@@ -582,18 +582,9 @@ class Channel implements Serializable {
      */
     protected final getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) {
         def artifactsTempPath
-        def spaPlatform
-        /* Modified the method to get artifact from binaries folder, in future all channels will be shifted. */
+        /* In future, the temp paths for all platforms will move to binaries directory. */
         def getPath = {
-            def tempBasePath
-            switch (channelVariableName) {
-                case ~/^.*SPA.*$|^.*WEB*$/:
-                    tempBasePath = [projectWorkspacePath, projectName, 'binaries']
-                    break
-                default:
-                    tempBasePath = [projectWorkspacePath, 'temp', projectName]
-                    break
-            }
+            def tempBasePath = [projectWorkspacePath, 'temp', projectName]
             (tempBasePath + it).join(separator)
         }
 
@@ -623,15 +614,10 @@ class Channel implements Serializable {
                 artifactsTempPath = getPath(['build', 'windows8'])
                 break
             case ~/^.*SPA.*$/:
-                if (channelVariableName?.contains('ANDROID')) {
-                    spaPlatform = 'android'
-                } else {
-                    spaPlatform = 'iphone'
-                }
-                artifactsTempPath = getPath([(channelType + '.' + spaPlatform).toLowerCase()])
+                artifactsTempPath = getPath(['middleware_mobileweb'])
                 break
             case ~/^.*WEB*$/:
-                artifactsTempPath = getPath(['desktopweb'])
+                artifactsTempPath = getPath(['middleware_mobileweb'])
                 break
 
             default:

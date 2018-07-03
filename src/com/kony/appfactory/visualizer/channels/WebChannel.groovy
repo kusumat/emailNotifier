@@ -59,7 +59,7 @@ class WebChannel extends Channel {
             channelType = channelVariableName
         }
     }
-    
+
     WebChannel(script) {
         this(script, 'WEB')
     }
@@ -171,6 +171,19 @@ class WebChannel extends Channel {
 
                         script.stage('Build') {
                             build()
+                            /*
+                                Workaround for Zip extension web app binaries to copy to temp location
+                                because in getArtifactTempPath function we refer single temp path for each channel
+                                and Web builds can contain binaries with either war or zip extension.
+                            */
+                            if (artifactExtension == 'zip') {
+                                def copyArtifactsCmd = isUnixNode ? 'cp' : 'copy'
+                                def tempBasePath = [projectWorkspacePath, 'temp', projectName]
+                                def destPath = (tempBasePath + ['middleware_mobileweb']).join(separator)
+                                def sourcePath = (tempBasePath + ['build', 'wap', 'build', '*.zip']).join(separator)
+                                copyArtifactsCmd = [copyArtifactsCmd, sourcePath, destPath].join(' ')
+                                script.shellCustom(copyArtifactsCmd, isUnixNode)
+                            }
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension) ?:
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
