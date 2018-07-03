@@ -52,6 +52,7 @@ class Facade implements Serializable {
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
+    private final iosWatchApp = script.params.APPLE_WATCH_EXTENSION
     /* Android build parameters */
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
@@ -297,6 +298,7 @@ class Facade implements Serializable {
                         script.string(name: 'IOS_MOBILE_APP_ID', value: "${iosMobileAppId}"),
                         script.string(name: 'IOS_TABLET_APP_ID', value: "${iosTabletAppId}"),
                         script.string(name: 'IOS_BUNDLE_VERSION', value: "${iosBundleVersion}"),
+                        script.booleanParam(name: 'APPLE_WATCH_EXTENSION', value: iosWatchApp),
                         script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}")
                 ]
                 break

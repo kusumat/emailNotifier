@@ -33,7 +33,7 @@ class IosChannel extends Channel {
     private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_STAGE" : "IOS_TABLET_STAGE";
     private final customHookIPAStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_IPA_STAGE" : "IOS_TABLET_IPA_STAGE";
     private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
-
+    private iosWatchExtension = script.env.APPLE_WATCH_EXTENSION ?: false
 
     /* CustomHookHelper object */
     protected hookHelper
@@ -183,6 +183,17 @@ class IosChannel extends Channel {
                 """, true)
             }
 
+            script.stage('Check PreBuild IPA Hook Points') {
+                /* Run Pre Build iOS IPA Hooks */
+                if(runCustomHook){
+                    /* Run Pre Build iOS IPA stage Hooks */
+                    hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
+                }
+                else{
+                    script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
+                }
+            }
+
             /* Set Export Method for Fastlane according to iosDistributionType
              * NOTE : For adhoc distribution type export method should be ad-hoc
              *   For appstore distribution type export method should be app-store
@@ -239,6 +250,7 @@ class IosChannel extends Channel {
                             "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
                             "PROJECT_BUILDMODE=${ProjectBuildMode}",
                             "FASTLANE_TEAM_ID=${script.env.APPLE_DEVELOPER_TEAM_ID}",
+                            "APPLE_WATCH_EXTENSION=${iosWatchExtension}",
                             "FASTLANE_SKIP_UPDATE_CHECK=1"
                     ]) {
                         script.dir('fastlane') {
@@ -319,6 +331,13 @@ class IosChannel extends Channel {
                     }
 
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+                    if ((channelFormFactor?.equalsIgnoreCase('tablet')) && iosWatchExtension) {
+                        script.echoCustom ("Skipping Apple Watch extension build for iOS Tablet channel.", 'WARN')
+                        /* Resetting Watch variables to false for fastlane to ignore watch extension signing */
+                        iosWatchExtension = false
+                        /* Reset Watch build environment variable as well, to reflect it in HeadlessBuild.properties */
+                        script.env.APPLE_WATCH_EXTENSION = false
+                    }
                 }
 
                 /* Allocate a slave for the run */
@@ -374,17 +393,6 @@ class IosChannel extends Channel {
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
                                     mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
-                        }
-
-                        script.stage('Check PreBuild IPA Hook Points') {
-                            /* Run Pre Build iOS IPA Hooks */
-                            if(runCustomHook){
-                                /* Run Pre Build iOS IPA stage Hooks */
-                                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
-                            }
-                            else{
-                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
-                            }
                         }
 
                         script.stage('Generate IPA file') {

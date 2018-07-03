@@ -40,8 +40,8 @@
         <condition property="androidTabletSPA" value="${env.ANDROID_TABLET_SPA}" else="false">
             <isset property="env.ANDROID_TABLET_SPA"/>
         </condition>
-        <condition property="iosWatchNative" value="${env.IOS_WATCH_NATIVE}" else="false">
-            <isset property="env.IOS_WATCH_NATIVE"/>
+        <condition property="iosWatchNative" value="${env.APPLE_WATCH_EXTENSION}" else="false">
+            <isset property="env.APPLE_WATCH_EXTENSION"/>
         </condition>
         <condition property="iosMobileNative" value="${env.IOS_MOBILE_NATIVE}" else="false">
             <isset property="env.IOS_MOBILE_NATIVE"/>

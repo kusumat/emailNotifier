@@ -298,6 +298,21 @@ class Channel implements Serializable {
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
                     if (script.env.isCIBUILD) {
+                        /** Check CI build support exist for few features.
+                         *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
+                         *  Creating a Map with features list - featureParam as Key and value as featureProperties with a collection of supportVersion and Description.
+                         *  Note that, first entry in collection is the substring of support.base.version defined in our libraryProperties file.
+                         *  For example: watch.extension is the entry for watch.extension.support.base.version=8.2.8
+                         */
+                        def featureBooleanParameters = [:]
+                        featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
+
+                        def finalFeatureParamsToCheck = featureBooleanParameters.findAll{
+                            script.params.containsKey(it.key)  && script.params[it.key] == true
+                        }
+                        
+                        checkCISupportExistForFeatures(getVisualizerPackVersion(visualizerVersion), finalFeatureParamsToCheck)
+
                         /* Build project using CI tool" */
                         script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
                         /* Run npm install */
@@ -820,6 +835,25 @@ class Channel implements Serializable {
             script.echoCustom(exceptionMessage, 'ERROR')
         }
     }
+
+    /**
+     * Validates Visualizer CI build support exist for few (new) features triggered through AppFactory.
+     * If CI support not available, fails the build.
+     */
+    protected final void checkCISupportExistForFeatures(visualizerVersion, vizFeaturesCiSupportToCheck = [:]) {
+        vizFeaturesCiSupportToCheck.each { featureKey, featureProperties ->
+                def featureKeyInLowers = featureKey.toLowerCase()
+                def featureSupportedVersion = libraryProperties."${featureKeyInLowers}.support.base.version"
+                def featureSupportedNonDotVersion = getVisualizerPackVersion(featureSupportedVersion)
+
+                if (visualizerVersion < featureSupportedNonDotVersion) {
+                    script.echoCustom("Sorry, the CI build for ${featureProperties.featureDisplayName} is not supported for your Visualizer project " +
+                            "version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
+                            "latest version and build the app.", 'ERROR')
+                }
+        }
+    }
+
 
 }
 
