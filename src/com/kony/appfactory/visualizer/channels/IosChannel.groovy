@@ -254,6 +254,12 @@ class IosChannel extends Channel {
                                 script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode.replaceAll('-', '_'), true)
                             }
                         }
+                        script.dir('fastlane') {
+                            /* Cleanup fastlane configuration files post the build, as these should not be exposed/accessed
+                             * by other steps like post-build CustomHooks.
+                             */
+                            script.deleteDir()
+                        }
                     }
                 }
             }
