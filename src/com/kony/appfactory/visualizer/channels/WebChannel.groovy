@@ -13,12 +13,13 @@ class WebChannel extends Channel {
     private fabricCliFileName
     private libraryProperties
     /* Build parameters */
-    private
-    final webAppVersion = script.params.WEB_APP_VERSION ? script.params.WEB_APP_VERSION : script.params.SPA_APP_VERSION ? script.params.SPA_APP_VERSION : null
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final desktopWebChannel = script.params.DESKTOP_WEB
     private final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private webAppUrl
+    /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
+    def appVersionParameterName = script.params.containsKey('WEB_APP_VERSION') ? 'WEB_APP_VERSION' : 'SPA_APP_VERSION'
+    private final webAppVersion = script.params[appVersionParameterName]
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     private final selectedSpaChannels
@@ -98,7 +99,7 @@ class WebChannel extends Channel {
                         script.echoCustom('Please select at least one channel to build!', 'ERROR')
                     }
                     ValidationHelper.checkBuildConfiguration(script)
-                    script.params.WEB_APP_VERSION ? ValidationHelper.checkBuildConfiguration(script, ['WEB_APP_VERSION', 'FABRIC_APP_CONFIG']) : ValidationHelper.checkBuildConfiguration(script, ['SPA_APP_VERSION', 'FABRIC_APP_CONFIG'])
+                    ValidationHelper.checkBuildConfiguration(script, [appVersionParameterName, 'FABRIC_APP_CONFIG'])
                 }
 
                 /*
