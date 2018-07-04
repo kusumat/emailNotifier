@@ -55,8 +55,7 @@ class WebChannel extends Channel {
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         /* Changing Channel Variable name if only SPA channels are selected */
         if (webChannelType.equalsIgnoreCase("WEB") && !(desktopWebChannel)) {
-            channelVariableName = 'SPA'
-            channelType = channelVariableName
+            channelOs = channelFormFactor = channelType = 'SPA'
         }
     }
 
