@@ -277,7 +277,7 @@ class NotificationsHelper implements Serializable {
 	String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
 	switch (templateType) {
             case 'buildVisualizerApp':
-	        modifiedBuildTag = (((modifiedBuildTag.minus("-Visualizer")).minus("s-buildVisualizerApp")).minus("s-Channels")).minus("build")
+	        modifiedBuildTag =(((modifiedBuildTag.minus("-Visualizer")).minus("s-buildVisualizerApp")).minus("s-Channels")).replaceAll("-build","-")
 		if(modifiedBuildTag.contains("Android"))
 		    return modifiedBuildTag.replace("Android","Android-$script.env.FORM_FACTOR")
 		if(modifiedBuildTag.contains("Ios"))
