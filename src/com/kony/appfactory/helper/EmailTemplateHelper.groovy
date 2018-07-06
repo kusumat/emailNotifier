@@ -384,86 +384,96 @@ class EmailTemplateHelper implements Serializable {
                         h2 binding.notificationHeader
                     }
                 }
-
+                
                 tr {
                     td(style: "text-align:left", class: "text-color") {
-                        h4 "AppID: ${binding.projectName}"
+                        h4(class: "subheading", "Build Details")
                     }
                 }
 
                 tr {
                     td {
-                        table(style: "width:100%;text-align:left", class: "text-color table-border") {
-                            thead {
+                        table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                            if (binding.triggeredBy) {
                                 tr {
-                                    th 'Input Params'
-                                    th 'Value'
+                                    td(style: "width:22%;text-align:right", 'Triggered by:')
+                                    td(class: "table-value", binding.triggeredBy)
                                 }
                             }
-                            tbody {
-                                if (binding.triggeredBy) {
-                                    tr {
-                                        td 'Triggered by'
-                                        td(class: "table-value", binding.triggeredBy)
+                            
+                            tr {
+                                td(style: "width:22%;text-align:right", 'Build URL:')
+                                td {
+                                    a(href: binding.build.url, "${binding.build.url}")
+                                }
+                            }
+                            
+                            if (binding.gitURL) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Repository URL:')
+                                    td {
+                                        a(href: binding.gitURL, "${binding.exportRepositoryUrl}")
                                     }
                                 }
-                                if (binding.gitURL) {
-                                    tr {
-                                        td 'Repository URL'
-                                        td {
-                                            a(href: binding.gitURL, "${binding.exportRepositoryUrl}")
-                                        }
+                            }
+                            if (binding.gitBranch) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Repository Branch:')
+                                    td(class: "table-value", binding.exportRepositoryBranch)
+                                }
+                            }
+                            if (binding.commitAuthor) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Author:')
+                                    td(class: "table-value", binding.commitAuthor)
+                                }
+                            }
+                            if (binding.authorEmail) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Author Email:')
+                                    td {
+                                        a(href: "mailto:${binding.authorEmail}", "${binding.authorEmail}")
                                     }
                                 }
-                                if (binding.gitBranch) {
-                                    tr {
-                                        td 'Repository Branch'
-                                        td(class: "table-value", binding.exportRepositoryBranch)
-                                    }
+                            }
+                            if (binding.commitMessage) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Message:')
+                                    td(class: "table-value", binding.commitMessage)
                                 }
-                                if (binding.commitAuthor) {
-                                    tr {
-                                        td 'Author'
-                                        td(class: "table-value", binding.commitAuthor)
-                                    }
+                            }
+                            if (binding.overwriteExisting) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Overwrite Existing:')
+                                    td(class: "table-value", binding.overwriteExisting)
                                 }
-                                if (binding.authorEmail) {
-                                    tr {
-                                        td 'Author Email'
-                                        td {
-                                            a(href: "mailto:${binding.authorEmail}", "${binding.authorEmail}")
-                                        }
-                                    }
+                            }
+                            if (binding.publishApp) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Enable Publish:')
+                                    td(class: "table-value", binding.publishApp)
                                 }
-                                if (binding.commitMessage) {
-                                    tr {
-                                        td 'Message'
-                                        td(class: "table-value", binding.commitMessage)
-                                    }
+                            }
+                            if (binding.fabricEnvironmentName) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Environment:')
+                                    td(class: "table-value", binding.fabricEnvironmentName)
                                 }
-                                if (binding.overwriteExisting) {
-                                    tr {
-                                        td 'Overwrite Existing'
-                                        td(class: "table-value", binding.overwriteExisting)
-                                    }
-                                }
-                                if (binding.publishApp) {
-                                    tr {
-                                        td 'Enable Publish'
-                                        td(class: "table-value", binding.publishApp)
-                                    }
-                                }
-                                if (binding.fabricEnvironmentName) {
-                                    tr {
-                                        td 'Environment'
-                                        td(class: "table-value", binding.fabricEnvironmentName)
-                                    }
-                                }
+                            }
+                            
+                            tr {
+                                td(style: "width:22%;text-align:right", 'Date of build:')
+                                td(class: "table-value", binding.build.started)
+                            }
+                            
+                            tr {
+                                td(style: "width:22%;text-align:right", 'Build duration:')
+                                td(class: "table-value", binding.build.duration)
                             }
                         }
                     }
                 }
-
+                
                 tr {
                     td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                         h4(style: "margin-bottom:0", "${binding.commandName} Details")
@@ -471,6 +481,17 @@ class EmailTemplateHelper implements Serializable {
                             mkp.yield "${binding.commandName} of Fabric app ${binding.projectName} is: "
                             strong binding.build.result
                             mkp.yield '.'
+                        }
+                    }
+                }
+
+                if(binding.build.result.equalsIgnoreCase('FAILURE')){
+                    tr {
+                        td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                            h4(style: "margin-bottom:0", 'Console Output')
+                            binding.build.log.each { line ->
+                                p(line)
+                            }
                         }
                     }
                 }
