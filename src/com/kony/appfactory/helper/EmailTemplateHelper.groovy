@@ -106,22 +106,24 @@ class EmailTemplateHelper implements Serializable {
                                                     th(rowspan: "2", artifact.channelPath.replaceAll('/', ' '))
                                                     td(style: "border-right: 1px dotted #e8e8e8; width: 65px;", "OTA")
                                                     td {
-                                                        a(href: artifact.ipaAuthUrl, target: '_blank', artifact.ipaName)
+                                                        a(href: artifact.otaurl, target: '_blank', artifact.name)
                                                     }
                                                 }
                                                 tr {
                                                     td(style: "border-right: 1px solid #e8e8e8; width: 65px;", "IPA")
                                                     td {
-                                                        a(href: artifact.otaurl, target: '_blank', artifact.name)
+                                                        a(href: artifact.ipaAuthUrl, target: '_blank', artifact.ipaName)
                                                     }
                                                 }
                                             }
 
                                             /* Web */
                                             else if (artifact.webappurl) {
+                                                def artifactNameUpperCase = (artifact.name).toUpperCase()
+                                                def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
                                                 tr {
                                                     th(rowspan: "2", artifact.channelPath.replaceAll('/', ' '))
-                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", "WAR")
+                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", artifactExtension)
                                                     td {
                                                         a(href: artifact.authurl, target: '_blank', artifact.name)
                                                     }
