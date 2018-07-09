@@ -80,8 +80,8 @@
         <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_KIOSK}" else="false">
             <isset property="env.WINDOWS_DESKTOP_KIOSK"/>
         </condition>
-        <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_WEB}" else="false">
-            <isset property="env.WINDOWS_DESKTOP_WEB"/>
+        <condition property="desktopWeb" value="${env.DESKTOP_WEB}" else="false">
+            <isset property="env.DESKTOP_WEB"/>
         </condition>
         <condition property="blackberryMobileSPA" value="${env.BLACKBERRY_MOBILE_SPA}" else="false">
             <isset property="env.BLACKBERRY_MOBILE_SPA"/>
@@ -105,8 +105,8 @@
         </condition>
         <condition property="buildMode" value="release" else="${env.BUILD_MODE}">
             <and>
-                <isset property="env.BUILD_MODE" />
-                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                <isset property="env.BUILD_MODE"/>
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected"/>
             </and>
         </condition>
         <condition property="appVersion" value="${env.APP_VERSION}" else="">
@@ -139,9 +139,9 @@
         <condition property="domainParam" value="${env.domainParam}" else="">
             <isset property="env.domainParam"/>
         </condition>
-    	<condition property="fabricUrl" value="https://manage.${env.CLOUD_DOMAIN}" else="https://manage.kony.com">
-    	     <isset property="env.CLOUD_DOMAIN"/>
-    	</condition>
+        <condition property="fabricUrl" value="https://manage.${env.CLOUD_DOMAIN}" else="https://manage.kony.com">
+            <isset property="env.CLOUD_DOMAIN"/>
+        </condition>
         <condition property="fabricEnvironmentName" value="${env.FABRIC_ENV_NAME}" else="">
             <isset property="env.FABRIC_ENV_NAME"/>
         </condition>
@@ -151,19 +151,19 @@
         <!-- set of protected build properties -->
         <condition property="protectedIosBuild" value="true" else="false">
             <and>
-                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected"/>
                 <or>
-                    <equals arg1="${iosMobileNative}" arg2="true" />
-                    <equals arg1="${iosTabletNative}" arg2="true" />
+                    <equals arg1="${iosMobileNative}" arg2="true"/>
+                    <equals arg1="${iosTabletNative}" arg2="true"/>
                 </or>
             </and>
         </condition>
         <condition property="protectedAndroidBuild" value="true" else="false">
             <and>
-                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected"/>
                 <or>
-                    <equals arg1="${androidMobileNative}" arg2="true" />
-                    <equals arg1="${androidTabletNative}" arg2="true" />
+                    <equals arg1="${androidMobileNative}" arg2="true"/>
+                    <equals arg1="${androidTabletNative}" arg2="true"/>
                 </or>
             </and>
         </condition>
@@ -221,7 +221,7 @@
             <entry key="spa.androidtablet" value="${androidTabletSPA}"/>
             <entry key="spa.windowstablet" value="${windowsTabletSPA}"/>
             <entry key="desktop_kiosk" value="${windowsDesktopKiosk}"/>
-            <entry key="desktopweb" value="${windowsDesktopKiosk}"/>
+            <entry key="desktopweb" value="${desktopWeb}"/>
             <entry key="iphonewatch" value="${iosWatchNative}"/>
             <entry key="mac.ipaddress" value=""/>
             <entry key="mac.username" value=""/>
@@ -243,15 +243,18 @@
         </propertyfile>
 
         <!--APPFACT-545: propertyfile appends escape character to Special Characters, workaround to use exact same password -->
-        <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}" />
+        <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}"/>
     </target>
-    
+
     <!--APPFACT-861: For 7.x projects we are updating directly in projectprop.xml for protected builds enablement.-->
     <target name="projectprop-xml-update" description="-> updating xml attributes with params">
-        <replaceregexp file="projectprop.xml" match="(.*)protectedmodeenabled_android(.*)$" replace="\1protectedmodeenabled_android&quot; value=&quot;${protectedAndroidBuild}&quot;/>" flags="gm"/>
-        <replaceregexp file="projectprop.xml" match="(.*)protectedmodeenabled_ios(.*)$" replace="\1protectedmodeenabled_ios&quot; value=&quot;${protectedIosBuild}&quot;/>" flags="gm"/>
+        <replaceregexp file="projectprop.xml" match="(.*)protectedmodeenabled_android(.*)$"
+                       replace="\1protectedmodeenabled_android&quot; value=&quot;${protectedAndroidBuild}&quot;/>"
+                       flags="gm"/>
+        <replaceregexp file="projectprop.xml" match="(.*)protectedmodeenabled_ios(.*)$"
+                       replace="\1protectedmodeenabled_ios&quot; value=&quot;${protectedIosBuild}&quot;/>" flags="gm"/>
     </target>
-	
+
     <target name="plugins" description="-> generate ivy.xml from konyplugins.xml">
         <condition property="plugin.os.ver" value="mac64" else="win64">
             <os family="mac"/>
@@ -267,14 +270,14 @@
         <replace file="ivy.xml" token="plugin-id" value="name"/>
         <replace file="ivy.xml" token="version-no" value="rev"/>
         <replaceregexp file="ivy.xml" match="plugin-name.*$" replace="/>" flags="gm"/>
-        <replace file="ivy.xml"> 
+        <replace file="ivy.xml">
             <replacetoken><![CDATA[</plugins>]]></replacetoken>
             <replacevalue><![CDATA[    </dependencies>
 </ivy-module>]]></replacevalue>
         </replace>
         <replace file="ivy.xml" token="win64" value="${plugin.os.ver}"/>
         <replace file="ivy.xml" token="mac64" value="${plugin.os.ver}"/>
-	</target>
+    </target>
 
     <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
         <ivy:retrieve pattern="${visInner}/dropins/[artifact]_[revision].[ext]"/>
