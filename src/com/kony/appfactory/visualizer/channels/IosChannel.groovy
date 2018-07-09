@@ -24,14 +24,21 @@ class IosChannel extends Channel {
     /* At least one of application id parameters should be set */
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosUniversalAppId = script.params.IOS_UNIVERSAL_APP_ID
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
-    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? iosMobileAppId : iosTabletAppId
+    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+        iosMobileAppId : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+        iosTabletAppId : iosUniversalAppId
 
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
-    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_STAGE" : "IOS_TABLET_STAGE";
-    private final customHookIPAStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "IOS_MOBILE_IPA_STAGE" : "IOS_TABLET_IPA_STAGE";
+    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+        "IOS_MOBILE_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+        "IOS_TABLET_STAGE" : "IOS_UNIVERSAL_STAGE"
+    private final customHookIPAStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+        "IOS_MOBILE_IPA_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+        "IOS_TABLET_IPA_STAGE" : "IOS_UNIVERSAL_IPA_STAGE"
     private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
     private iosWatchExtension = script.env.APPLE_WATCH_EXTENSION ?: false
 
@@ -322,10 +329,13 @@ class IosChannel extends Channel {
                     ValidationHelper.checkBuildConfiguration(script)
 
                     def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
-
-                    channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('IOS_MOBILE_APP_ID') :
-                            mandatoryParameters.add('IOS_TABLET_APP_ID')
-
+                    if (channelOs && channelFormFactor) {
+                        def appIdType = BuildHelper.getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor)
+                        mandatoryParameters.add(appIdType)
+                    } else {
+                        script.echoCustom("Something went wrong. Unable to figure out valid application id type", 'ERROR')
+                    }
+                    
                     if(buildMode == libraryProperties.'buildmode.release.protected.type') {
                         mandatoryParameters.add('PROTECTED_KEYS')
                     }

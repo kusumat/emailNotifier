@@ -6,7 +6,7 @@
 
     <target name="main"
             depends="init-ivy,property,clean,retrieve,plugins"
-            description="-> generate properties, generate ivy.xlm, retrieve artifacts, delete duplicates"/>
+            description="-> generate properties, generate ivy.xml, retrieve artifacts, delete duplicates"/>
 
     <target name="download-ivy" unless="offline">
         <get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
@@ -148,6 +148,13 @@
         <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
             <isset property="env.FABRIC_APP_NAME"/>
         </condition>
+        <!-- Set of Universal application build properties -->
+        <condition property="universalAndroid" value="${env.ANDROID_UNIVERSAL_NATIVE}" else="false">
+            <isset property="env.ANDROID_UNIVERSAL_NATIVE"/>
+        </condition>
+        <condition property="universalIos" value="${env.IOS_UNIVERSAL_NATIVE}" else="false">
+            <isset property="env.IOS_UNIVERSAL_NATIVE"/>
+        </condition>
         <condition property="binaryextensionWEB" value="war" else="zip">
             <equals arg1="${env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE}" arg2="true"/>
         </condition>
@@ -232,6 +239,9 @@
             <entry key="combinewar.war" value="false"/>
             <entry key="combinewar.ear" value="false"/>
             <entry key="combinewar.dependencylibraries" value=""/>
+            <!-- Universal application properties -->
+            <entry key="universal.android" value="${universalAndroid}"/>
+            <entry key="universal.iphone" value="${universalIos}"/>
             <!-- Protected build mode options -->
             <entry key="protectedmodeenabled.ios" value="${protectedIosBuild}"/>
             <entry key="protectedmodeenabled.android" value="${protectedAndroidBuild}"/>

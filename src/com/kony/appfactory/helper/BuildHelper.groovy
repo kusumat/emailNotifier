@@ -676,5 +676,17 @@ class BuildHelper implements Serializable {
          }
          upstreamJobName
      }
+     
+     /**
+      * Get the app id type for the native channel
+      *
+      * @param channelOs
+      * @param channelFormFactor
+      * @return appIdType.
+      */
+     protected static getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor ) {
+         def appIdType = [channelOs, channelFormFactor, "APP_ID"].join('_').toUpperCase()
+         return appIdType
+     }
  
 }

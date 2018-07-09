@@ -154,15 +154,19 @@ class TestAutomation implements Serializable {
                     script.echoCustom("Build parameter ${parameter.key} value is not valid URL!",'ERROR')
                 }
             }
-
             /* Set flag to run tests on Device Farm */
             runTests = true
         }
 
-        /*
-            To restrict user run tests with build Test Automation scripts or with provided test binaries,
-            fail build if both options provided.
+        /* Restrict the user to run tests either with Universal build binary or with normal native test binaries,
+           fail the build if both options are provided.
          */
+        if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL && (script.env.ANDROID_MOBILE_NATIVE_BINARY_URL || script.env.ANDROID_TABLET_NATIVE_BINARY_URL)) {
+            script.echoCustom("Sorry, You can't run test for Android Universal binary along with Android Mobile/Tablet",'ERROR')
+        }
+        if (script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL && (script.env.IOS_MOBILE_NATIVE_BINARY_URL || script.env.IOS_TABLET_NATIVE_BINARY_URL)) {
+            script.echoCustom("Sorry, You can't run test for iOS Universal binary along with iOS Mobile/Tablet",'ERROR')
+        }
         if (testBinaryUrlParameter && scmParameters) {
             script.echoCustom("Please provide only one option for the source of test scripts: GIT or URL",'ERROR')
         }
@@ -220,16 +224,13 @@ class TestAutomation implements Serializable {
      */
     protected final void prepareParallelSteps(artifacts, stageName, stepClosure) {
         def stepsToRun = [:]
-
         def artifactsNames = artifacts.keySet().toArray()
-
         for (int i = 0; i < artifactsNames.size(); i++) {
             def artifact = artifacts.get(artifactsNames[i])
             def artifactName = artifactsNames[i]
             def artifactUrl = artifact.url
             def artifactExt = artifact.extension
             def uploadType = artifact.uploadType
-
             if (artifactUrl) {
                 def step = {
                     stepClosure(artifactName, artifactUrl, artifactExt, uploadType)
@@ -243,7 +244,7 @@ class TestAutomation implements Serializable {
 
         stepsToRun
     }
-
+    
     /**
      * Cleans Device Farm objects after every run.
      * Currently removes only uploads and device pools that are generated on every run.
@@ -393,7 +394,15 @@ class TestAutomation implements Serializable {
                 script.echoCustom("Failed to get uploadArn",'WARN')
             }
         }
-
+        /* Setting the Universal binary url to respective platform input run test job paramaters*/
+        if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL) {
+            projectArtifacts.'Android_Mobile'.'url' = devicePoolArns.phones ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
+            projectArtifacts.'Android_Tablet'.'url' = devicePoolArns.tablets ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
+        }
+        if (script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL) {
+            projectArtifacts.'iOS_Mobile'.'url' = devicePoolArns.phones ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
+            projectArtifacts.'iOS_Tablet'.'url' = devicePoolArns.tablets ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
+        }
         /* Prepare parallel steps */
         def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
                 script.echoCustom("No artifacts to upload and run!",'ERROR')
@@ -418,6 +427,15 @@ class TestAutomation implements Serializable {
             } else {
                 deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
             }
+        }
+        /*For universal build test run job setting the artifacts url path to fetch the binary from universal artifacts  */
+        if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL) {
+            projectArtifacts.'Android_Mobile'.'url' = script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL
+            projectArtifacts.'Android_Tablet'.'url' = script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL
+        }
+        if (script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL) {
+            projectArtifacts.'iOS_Mobile'.'url' = script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL
+            projectArtifacts.'iOS_Tablet'.'url' = script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL
         }
         def stepsToRun = prepareParallelSteps(
                 testPackage << projectArtifacts, 'fetch_', step

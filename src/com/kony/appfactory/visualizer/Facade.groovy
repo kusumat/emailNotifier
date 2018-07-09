@@ -45,15 +45,19 @@ class Facade implements Serializable {
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     private final recipientsList = script.params.RECIPIENTS_LIST
     private final defaultLocale = script.params.DEFAULT_LOCALE
+    private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
+    private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     /* iOS build parameters */
     private final appleID = script.params.APPLE_ID
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private final iosUniversalAppId = script.params.IOS_UNIVERSAL_APP_ID
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     private final iosWatchApp = script.params.APPLE_WATCH_EXTENSION
     /* Android build parameters */
+    private final androidUniversalAppId = script.params.ANDROID_UNIVERSAL_APP_ID
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
     private final androidAppVersion = script.params.ANDROID_APP_VERSION
@@ -287,6 +291,7 @@ class Facade implements Serializable {
                         script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${keystorePasswordID}"),
                         script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${privateKeyPassword}"),
                         script.string(name: 'ANDROID_KEY_ALIAS', value: "${keystoreAlias}"),
+                        script.string(name: 'ANDROID_UNIVERSAL_APP_ID', value: "${androidUniversalAppId}"),
                         script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}")
                 ]
                 break
@@ -298,6 +303,7 @@ class Facade implements Serializable {
                         script.string(name: 'IOS_MOBILE_APP_ID', value: "${iosMobileAppId}"),
                         script.string(name: 'IOS_TABLET_APP_ID', value: "${iosTabletAppId}"),
                         script.string(name: 'IOS_BUNDLE_VERSION', value: "${iosBundleVersion}"),
+                        script.string(name: 'IOS_UNIVERSAL_APP_ID', value: "${iosUniversalAppId}"),
                         script.booleanParam(name: 'APPLE_WATCH_EXTENSION', value: iosWatchApp),
                         script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}")
                 ]
@@ -496,7 +502,6 @@ class Facade implements Serializable {
      */
     private final String getYourAppFactoryVersions() {
         def apver = new AppFactoryVersions()
-
         def versionInfo = StringBuilder.newInstance()
 
         versionInfo.append "PipeLine Version : " + apver.getPipelineVersion()
@@ -571,13 +576,16 @@ class Facade implements Serializable {
                 script.stage('Check provided parameters') {
                     /* Check common params */
                     ValidationHelper.checkBuildConfiguration(script)
+                    /* Check params for universal application build */
+                    if (universalAndroid || universalIos) {
+                        ValidationHelper.checkBuildConfigurationForUniversalApp(script)
+                    }
 
                     /* List of required parameters */
                     def checkParams = []
-
+                    
                     /* Collect Android channel parameters to check */
                     def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
-
                     if (androidChannels) {
                         def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
 
@@ -587,6 +595,10 @@ class Facade implements Serializable {
 
                         if (androidChannels.findAll { it.contains('TABLET') }) {
                             androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                        }
+                        
+                        if (androidChannels.findAll { it.contains('UNIVERSAL') }) {
+                            androidMandatoryParams.add('ANDROID_UNIVERSAL_APP_ID')
                         }
 
                         if (buildMode != libraryProperties.'buildmode.debug.type') {
@@ -615,6 +627,10 @@ class Facade implements Serializable {
 
                         if (iosChannels.findAll { it.contains('TABLET') }) {
                             iosMandatoryParams.add('IOS_TABLET_APP_ID')
+                        }
+                        
+                        if (iosChannels.findAll { it.contains('UNIVERSAL') }) {
+                            iosMandatoryParams.add('IOS_UNIVERSAL_APP_ID')
                         }
 
                         if(buildMode == libraryProperties.'buildmode.release.protected.type') {

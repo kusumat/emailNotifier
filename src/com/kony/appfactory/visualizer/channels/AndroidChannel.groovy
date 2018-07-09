@@ -20,8 +20,10 @@ class AndroidChannel extends Channel {
     /* At least one of application id parameters should be set */
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
+    private final androidUniversalAppId = script.params.ANDROID_UNIVERSAL_APP_ID
     private final androidPackageName = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
-            androidMobileAppId : androidTabletAppId
+        androidMobileAppId : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+        androidTabletAppId : androidUniversalAppId
 
     /* resourceList contains list of locks and their status */
     private resourceList
@@ -29,7 +31,9 @@ class AndroidChannel extends Channel {
     private nodeLabel
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
-    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ? "ANDROID_MOBILE_STAGE" : "ANDROID_TABLET_STAGE";
+    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+        "ANDROID_MOBILE_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+        "ANDROID_TABLET_STAGE" : "ANDROID_UNIVERSAL_STAGE"
 
     /* CustomHookHelper object */
     protected hookHelper
@@ -128,10 +132,13 @@ class AndroidChannel extends Channel {
                     ValidationHelper.checkBuildConfiguration(script)
 
                     def mandatoryParameters = ['APP_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
-
-                    channelFormFactor.equalsIgnoreCase('Mobile') ? mandatoryParameters.add('ANDROID_MOBILE_APP_ID') :
-                            mandatoryParameters.add('ANDROID_TABLET_APP_ID')
-
+                    if (channelOs && channelFormFactor) {
+                        def appIdType = BuildHelper.getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor)
+                        mandatoryParameters.add(appIdType)
+                    } else {
+                        script.echoCustom("Something went wrong. Unable to figure out valid application id type", 'ERROR')
+                    }
+                    
                     /* If the build mode is debug not adding the Androiod keystore parameters*/
                     if (buildMode != libraryProperties.'buildmode.debug.type') {
                         mandatoryParameters.addAll([

@@ -104,6 +104,8 @@ class Channel implements Serializable {
     protected final buildMode = script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     protected channelFormFactor = script.params.FORM_FACTOR
+    protected final universalAndroidNative = script.params.ANDROID_UNIVERSAL_NATIVE
+    protected final universalIosNative = script.params.IOS_UNIVERSAL_NATIVE
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
     protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
@@ -281,7 +283,6 @@ class Channel implements Serializable {
                 /* Load required resources and store them in project folder */
                 for (int i = 0; i < requiredResources.size(); i++) {
                     String resource = script.loadLibraryResource(resourceBasePath + requiredResources[i])
-
                     if (requiredResources[i] == 'ivysettings.xml') {
                         // Replace the environment domain to the correct domain i.e. qa-kony.com or sit2-kony.com
                         resource = resource.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
@@ -302,11 +303,13 @@ class Channel implements Serializable {
                          *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
                          *  Creating a Map with features list - featureParam as Key and value as featureProperties with a collection of supportVersion and Description.
                          *  Note that, first entry in collection is the substring of support.base.version defined in our libraryProperties file.
-                         *  For example: watch.extension is the entry for watch.extension.support.base.version=8.2.8
+                         *  For example: apple_watch_extension is the entry for apple_watch_extension.support.base.version=8.2.8
                          */
                         def featureBooleanParameters = [:]
                         featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
-
+                        featureBooleanParameters.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
+                        featureBooleanParameters.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
+                        
                         def finalFeatureParamsToCheck = featureBooleanParameters.findAll{
                             script.params.containsKey(it.key)  && script.params[it.key] == true
                         }
@@ -409,6 +412,23 @@ class Channel implements Serializable {
      */
     protected final getVisualizerPackVersion(visualizerVersion) {
         return visualizerVersion.replace(".", "")
+    }
+    
+    /**
+     * Build project using CI tool
+     */
+    protected final buildProjectUsingCITool() {
+        script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
+        /* Run npm install */
+        script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
+            def npmBuildScript = "npm install"
+            script.shellCustom(npmBuildScript, isUnixNode)
+        }
+        /* Run node build.js */
+        script.catchErrorCustom('CI build failed for this project') {
+            def nodeBuildScript = 'node build.js'
+            script.shellCustom(nodeBuildScript, isUnixNode)
+        }
     }
 
     /**
@@ -604,6 +624,12 @@ class Channel implements Serializable {
         }
 
         switch (channelVariableName) {
+            case 'ANDROID_UNIVERSAL_NATIVE':
+                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                break
+            case 'IOS_UNIVERSAL_NATIVE':
+                artifactsTempPath = getPath(['build', 'server', 'iphonekbf'])
+                break
             case 'ANDROID_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
                 break
