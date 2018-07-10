@@ -207,7 +207,7 @@ class WebChannel extends Channel {
                                 /* Prepare string with shell script to run */
                                 fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, fabricCommandOptions)
                                 script.echoCustom("Published to Fabric Successfully, Fetching AppInfo")
-                                webAppUrl = getWebAppUrl("appinfo", cloudCredentialsID, fabricCommandOptions)
+                                webAppUrl = getWebAppUrl("appinfo", fabricCommandOptions)
                                 script.echoCustom("Your published app is accessible at : " + webAppUrl)
                             } else {
                                 script.echoCustom("PUBLISH_FABRIC_APP flag set to false, " +
@@ -283,7 +283,7 @@ class WebChannel extends Channel {
      * @params cliCommand , cloudCredentialsID , fabricCommandOptions cliCommand for fabric command,cloudCredentialsID for accessing the fabric credentials,fabricCommandOptions other options to be provided.
      * @return WebAppUrl of the web app.
      */
-    protected getWebAppUrl(cliCommand, cloudCredentialsID, fabricCommandOptions = [:]) {
+    protected getWebAppUrl(cliCommand, fabricCommandOptions = [:]) {
         def webAppUrlText
         String errorMessage = ['Failed to run', cliCommand, 'command'].join(' ')
         script.catchErrorCustom(errorMessage) {
@@ -306,10 +306,11 @@ class WebChannel extends Channel {
                 /* Prepare string with shell script to run */
                 String shellString = [
                         'java -jar', fabricCliFileName, cliCommand,
-                        '-u', script.env.fabricUsername,
-                        '-p', script.env.fabricPassword,
+                        '-u', (isUnixNode) ? '$fabricUsername' : '%fabricUsername%',
+                        '-p', (isUnixNode) ? '$fabricPassword' : '%fabricPassword%',
                         options
                 ].join(' ')
+
                 webAppUrlText = script.shellCustom(shellString, isUnixNode, [returnStdout: true])
             }
         }
