@@ -431,8 +431,7 @@ class Fabric implements Serializable {
         String descriptionItems = itemsToExpose?.findResults {
             item -> item.value ? "<p>${item.key}: ${item.value}</p>" : null
         }?.join('\n')
-
-        script.currentBuild.description = """\
+	 script.currentBuild.description = """\
             <div id="build-description">
                 ${descriptionItems}
             </div>\
@@ -596,11 +595,11 @@ class Fabric implements Serializable {
                         commandName           : fabricCommand.capitalize(),
                         fabricEnvironmentName : fabricEnvironmentName
                 ]
-                buildDescriptionItems = [
-                        'Application name': fabricAppName,
-                        'Published'       : (enablePublish) ? 'yes' : 'no',
-                        'Environment'     : (enablePublish) ? fabricEnvironmentName : null
+                 buildDescriptionItems = [
+                        'Application name' : fabricAppName,
+                        'Published'        : enablePublish ? fabricEnvironmentName : 'No'
                 ]
+                
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
 
