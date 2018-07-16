@@ -107,9 +107,10 @@ class Facade implements Serializable {
     @NonCPS
     private static getSelectedChannels(buildParameters) {
         /* Creating a list of boolean parameters that are not Target Channels */
-        def nonChannelBooleanParameters = ['PUBLISH_FABRIC_APP', 'FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE', 'RUN_CUSTOM_HOOKS']
         buildParameters.findAll {
-            it.value instanceof Boolean && !(nonChannelBooleanParameters.contains(it.key)) && it.value
+            it.value instanceof Boolean && (it.key.matches('^ANDROID_.*_NATIVE$') || it.key.matches('^IOS_.*_NATIVE$')
+                    || it.key.matches('^ANDROID_.*_SPA$') || it.key.matches('^IOS_.*_SPA$')
+                    || it.key.matches('^DESKTOP_WEB')) && it.value
         }.keySet().collect()
     }
 
