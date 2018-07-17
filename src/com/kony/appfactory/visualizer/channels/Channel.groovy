@@ -314,7 +314,7 @@ class Channel implements Serializable {
                             script.params.containsKey(it.key)  && script.params[it.key] == true
                         }
                         
-                        checkCISupportExistForFeatures(getVisualizerPackVersion(visualizerVersion), finalFeatureParamsToCheck)
+                        checkCISupportExistForFeatures(visualizerVersion, finalFeatureParamsToCheck)
 
                         /* Build project using CI tool" */
                         script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
@@ -381,15 +381,18 @@ class Channel implements Serializable {
      * @param Visualizer version of the project.
      */
     protected final void setVersionBasedProperties(visualizerVersion) {
-        def visualizerPackVersion = getVisualizerPackVersion(visualizerVersion)
-        def zipExtensionSupportBaseVersion = getVisualizerPackVersion(libraryProperties.'webapp.extension.support.base.version')
-        if (visualizerPackVersion >= getVisualizerPackVersion(libraryProperties.'ci.build.support.base.version')) {
+        def ciBuildSupport = libraryProperties.'ci.build.support.base.version'
+        def zipExtensionSupportBaseVersion = libraryProperties.'webapp.extension.support.base.version'
+        def compareCIVizVersions = compareVisualizerVersions(visualizerVersion, ciBuildSupport)
+
+        if (compareCIVizVersions >= 0) {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
             if (["SPA", "DESKTOP WEB", "WEB"].contains(channelVariableName)) {
+                def compareVizZipExtensionVersions = compareVisualizerVersions(visualizerVersion, zipExtensionSupportBaseVersion)
                 if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
-                    if (visualizerPackVersion < zipExtensionSupportBaseVersion) {
+                    if (compareVizZipExtensionVersions == -1) {
                         (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
                     } else {
                         script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE ?
@@ -397,7 +400,8 @@ class Channel implements Serializable {
                                 /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */
                                 (artifactExtension = 'zip')
                     }
-                } else if (visualizerPackVersion >= zipExtensionSupportBaseVersion) {
+                }
+                else if (compareVizZipExtensionVersions >= 0) {
                     artifactExtension = 'zip'
                 }
             }
@@ -405,13 +409,28 @@ class Channel implements Serializable {
     }
 
     /**
-     * Get visualizer version in Number Format
+     * Compare two visualizer versions
      *
-     * @param visualizerVersion ( with Dots eg. 8.0.0 )
-     * @return Visualizer Fix Pack version  (without dots eg. 800)
+     * @param two visualizerVersions (eg. 8.0.0, 8.2.0)
+     * @return
+     *      0 if two versions are equal
+     *      1 if first parameter version is higher than second parameter version
+     *      -1 if first parameter version is lower than second parameter version
      */
-    protected final getVisualizerPackVersion(visualizerVersion) {
-        return visualizerVersion.replace(".", "")
+    protected final int compareVisualizerVersions(String visualizerVersion1, String visualizerVersion2) {
+        List<String> verA = visualizerVersion1.tokenize('.')
+        List<String> verB = visualizerVersion2.tokenize('.')
+        def commonIndices = Math.min(verA.size(), verB.size())
+        for (int i = 0; i < commonIndices; ++i) {
+            def numA = verA[i].toInteger()
+            def numB = verB[i].toInteger()
+            if (numA != numB) {
+                /* compareTo two indices, return result (1 or -1) */
+                return numA <=> numB
+            }
+        }
+        /* If we got this far then all the common indices are identical */
+        verA.size() <=> verB.size()
     }
     
     /**
@@ -870,9 +889,8 @@ class Channel implements Serializable {
         vizFeaturesCiSupportToCheck.each { featureKey, featureProperties ->
                 def featureKeyInLowers = featureKey.toLowerCase()
                 def featureSupportedVersion = libraryProperties."${featureKeyInLowers}.support.base.version"
-                def featureSupportedNonDotVersion = getVisualizerPackVersion(featureSupportedVersion)
 
-                if (visualizerVersion < featureSupportedNonDotVersion) {
+                if (compareVisualizerVersions(visualizerVersion, featureSupportedVersion) == -1) {
                     script.echoCustom("Sorry, the CI build for ${featureProperties.featureDisplayName} is not supported for your Visualizer project " +
                             "version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
                             "latest version and build the app.", 'ERROR')

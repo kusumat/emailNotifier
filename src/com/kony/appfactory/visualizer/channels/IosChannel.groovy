@@ -267,7 +267,9 @@ class IosChannel extends Channel {
                             /* set iOS build configuration to debug/release based on Visualizer version,
                             * note that, in 8.1.0 and above versions, to build debug mode binary, set the build configuration of KRelease as debug.
                             */
-                            if ((getVisualizerPackVersion(script.env.visualizerVersion) >= getVisualizerPackVersion(libraryProperties.'ios.schema.buildconfig.changed.version')) && (buildMode != libraryProperties.'buildmode.release.protected.type')) {
+                            def iOSSchemaChangedVersion = libraryProperties.'ios.schema.buildconfig.changed.version'
+                            def compareViziOSSchemaChangedVersions = compareVisualizerVersions(script.env.visualizerVersion, iOSSchemaChangedVersion)
+                            if ((compareViziOSSchemaChangedVersions >= 0) && (buildMode != libraryProperties.'buildmode.release.protected.type')) {
                                 script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_build', true)
                             } else {
                                 script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode.replaceAll('-', '_'), true)
