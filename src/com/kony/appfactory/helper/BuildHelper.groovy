@@ -669,7 +669,7 @@ class BuildHelper implements Serializable {
              if (action.hasProperty("causes")) {
                  action.causes.each { cause ->
                      if (cause instanceof hudson.model.Cause$UpstreamCause && cause.hasProperty("shortDescription") && cause.shortDescription.contains("Started by upstream project")) {
-                         upstreamJobName = cause.upstreamRun.getEnvironment(TaskListener.NULL).get("JOB_BASE_NAME")
+                         upstreamJobName = cause.upstreamRun?.getEnvironment(TaskListener.NULL)?.get("JOB_BASE_NAME")
                      }
                  }
              }

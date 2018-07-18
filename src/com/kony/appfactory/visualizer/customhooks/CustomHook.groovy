@@ -23,7 +23,6 @@ class CustomHook implements Serializable {
 
     /* customhooks hook definitions */
     protected hookDir
-    protected upstreamJobName
     protected visWorkspace
 
     CustomHook(script) {
@@ -39,7 +38,6 @@ class CustomHook implements Serializable {
         script.ansiColor('xterm') {
             upstreamJobWorkspace && buildSlave && hookSlave ?: script.echoCustom("CustomHooks aren't supposed to be triggered directly. CustomHooks will only be triggered as part of the Visualizer jobs.", 'ERROR')
         }
-        upstreamJobName = BuildHelper.getUpstreamJobName(script)
         visWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
 
         /* Wrapper for injecting timestamp to the build console output */
