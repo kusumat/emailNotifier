@@ -575,6 +575,8 @@ class Facade implements Serializable {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 script.stage('Check provided parameters') {
+                    /* Logging build mode */
+                    script.echoCustom("Running the build in ${buildMode} mode..")
                     /* Check common params */
                     ValidationHelper.checkBuildConfiguration(script)
                     /* Check params for universal application build */

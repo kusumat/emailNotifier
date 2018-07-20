@@ -6,6 +6,7 @@ import com.kony.appfactory.fabric.Fabric
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 /**
  * Implements logic for building channels. Contains common methods that are used during the channel build.
@@ -266,6 +267,7 @@ class Channel implements Serializable {
      * Builds the project.
      */
     protected final void build() {
+        script.echoCustom("Running the build in ${buildMode} mode..")
         /* List of required build resources */
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
         /* Populate Fabric configuration to appfactory.js file */
@@ -303,23 +305,20 @@ class Channel implements Serializable {
                          *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
                          *  Creating a Map with features list - featureParam as Key and value as featureProperties with a collection of supportVersion and Description.
                          *  Note that, first entry in collection is the substring of support.base.version defined in our libraryProperties file.
-                         *  For example: apple_watch_extension is the entry for apple_watch_extension.support.base.version=8.2.8
+                         *  For example: apple_watch_extension is the entry for apple_watch_extension.ci.support.base.version=8.2.8
                          */
-                        def featureBooleanParameters = [:]
-                        featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
-                        featureBooleanParameters.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
-                        featureBooleanParameters.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
                         
-                        def finalFeatureParamsToCheck = featureBooleanParameters.findAll{
-                            script.params.containsKey(it.key)  && script.params[it.key] == true
-                        }
-                        
-                        checkCISupportExistForFeatures(visualizerVersion, finalFeatureParamsToCheck)
+                        ValidationHelper.checkFeatureSupportExist(
+                            script,
+                            script.env.visualizerVersion,
+                            libraryProperties,
+                            getFeatureParamsToCheckCIBuildSupport(),
+                            'ci')
 
                         /* Build project using CI tool" */
                         script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
                         /* Run npm install */
-                        script.catchErrorCustom('Something wrong, FAILED to run "npm install" on this project') {
+                        script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
                             def npmBuildScript = "npm install"
                             script.shellCustom(npmBuildScript, isUnixNode)
                         }
@@ -331,7 +330,14 @@ class Channel implements Serializable {
                     } else {
                         def windowsResource = libraryProperties.'window.lockable.resource.name'
                         def iosResource = libraryProperties.'ios.lockable.resource.name'
-
+                        
+                        ValidationHelper.checkFeatureSupportExist(
+                            script,
+                            script.env.visualizerVersion,
+                            libraryProperties,
+                            getFeatureParamsToCheckHeadlessBuildSupport(),
+                            'headless')
+                        
                         def slave = isUnixNode ? iosResource : windowsResource
                         script.lock(slave) {
                             /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
@@ -382,15 +388,15 @@ class Channel implements Serializable {
      */
     protected final void setVersionBasedProperties(visualizerVersion) {
         def ciBuildSupport = libraryProperties.'ci.build.support.base.version'
-        def zipExtensionSupportBaseVersion = libraryProperties.'webapp.extension.support.base.version'
-        def compareCIVizVersions = compareVisualizerVersions(visualizerVersion, ciBuildSupport)
+        def zipExtensionSupportBaseVersion = libraryProperties.'webapp.extension.ci.support.base.version'
+        def compareCIVizVersions = ValidationHelper.compareVisualizerVersions(visualizerVersion, ciBuildSupport)
 
         if (compareCIVizVersions >= 0) {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
             if (["SPA", "DESKTOP WEB", "WEB"].contains(channelVariableName)) {
-                def compareVizZipExtensionVersions = compareVisualizerVersions(visualizerVersion, zipExtensionSupportBaseVersion)
+                def compareVizZipExtensionVersions = ValidationHelper.compareVisualizerVersions(visualizerVersion, zipExtensionSupportBaseVersion)
                 if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
                     if (compareVizZipExtensionVersions == -1) {
                         (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
@@ -408,31 +414,6 @@ class Channel implements Serializable {
         }
     }
 
-    /**
-     * Compare two visualizer versions
-     *
-     * @param two visualizerVersions (eg. 8.0.0, 8.2.0)
-     * @return
-     *      0 if two versions are equal
-     *      1 if first parameter version is higher than second parameter version
-     *      -1 if first parameter version is lower than second parameter version
-     */
-    protected final int compareVisualizerVersions(String visualizerVersion1, String visualizerVersion2) {
-        List<String> verA = visualizerVersion1.tokenize('.')
-        List<String> verB = visualizerVersion2.tokenize('.')
-        def commonIndices = Math.min(verA.size(), verB.size())
-        for (int i = 0; i < commonIndices; ++i) {
-            def numA = verA[i].toInteger()
-            def numB = verB[i].toInteger()
-            if (numA != numB) {
-                /* compareTo two indices, return result (1 or -1) */
-                return numA <=> numB
-            }
-        }
-        /* If we got this far then all the common indices are identical */
-        verA.size() <=> verB.size()
-    }
-    
     /**
      * Build project using CI tool
      */
@@ -880,24 +861,42 @@ class Channel implements Serializable {
             script.echoCustom(exceptionMessage, 'ERROR')
         }
     }
-
+    
     /**
-     * Validates Visualizer CI build support exist for few (new) features triggered through AppFactory.
-     * If CI support not available, fails the build.
+     * Get the CI build parameters to check if Visualizer build support exists for few of new features
      */
-    protected final void checkCISupportExistForFeatures(visualizerVersion, vizFeaturesCiSupportToCheck = [:]) {
-        vizFeaturesCiSupportToCheck.each { featureKey, featureProperties ->
-                def featureKeyInLowers = featureKey.toLowerCase()
-                def featureSupportedVersion = libraryProperties."${featureKeyInLowers}.support.base.version"
-
-                if (compareVisualizerVersions(visualizerVersion, featureSupportedVersion) == -1) {
-                    script.echoCustom("Sorry, the CI build for ${featureProperties.featureDisplayName} is not supported for your Visualizer project " +
-                            "version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
-                            "latest version and build the app.", 'ERROR')
-                }
+    protected final getFeatureParamsToCheckCIBuildSupport() {
+        def featureBooleanParameters = [:]
+        def finalFeatureParamsToCheckCISupport = [:]
+        featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
+        
+        finalFeatureParamsToCheckCISupport = featureBooleanParameters.findAll{
+            script.params.containsKey(it.key) && script.params[it.key] == true
         }
+        if ((channelFormFactor == "Universal") && (channelOs.equalsIgnoreCase('Android'))) {
+            finalFeatureParamsToCheckCISupport.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
+        }
+        if ((channelFormFactor == "Universal") && (channelOs.equalsIgnoreCase('iOS'))) {
+            finalFeatureParamsToCheckCISupport.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
+        }
+        finalFeatureParamsToCheckCISupport
     }
-
+    
+    /**
+     * Get the headless build parameters to check if Visualizer build support exists for few of new features.
+     */
+    protected final getFeatureParamsToCheckHeadlessBuildSupport() {
+        def finalFeatureParamsToCheckHeadlessSupport = [:]
+        
+        if ((channelFormFactor == "Universal") && (channelOs.equalsIgnoreCase('Android'))) {
+            finalFeatureParamsToCheckHeadlessSupport.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
+        }
+        if ((channelFormFactor == "Universal") && (channelOs.equalsIgnoreCase('iOS'))) {
+            finalFeatureParamsToCheckHeadlessSupport.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
+        }
+        finalFeatureParamsToCheckHeadlessSupport
+    }
+    
 
 }
 
