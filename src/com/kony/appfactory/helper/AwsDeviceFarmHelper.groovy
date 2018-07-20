@@ -334,18 +334,23 @@ class AwsDeviceFarmHelper implements Serializable {
      * @return scheduled run ARN.
      */
     protected final scheduleRun(
-            String projectArn, String devicePoolArn, String runType, String uploadArtifactArn, String testPackageArn
+            String projectArn, String devicePoolArn, String runType, String uploadArtifactArn, String testPackageArn, String artifactName
     ) {
         def runArn
         String getDevicePoolScript = "set +x;aws devicefarm get-device-pool --arn ${devicePoolArn}"
         String getDevicePoolOutput = script.shellCustom(getDevicePoolScript, true, [returnStdout: true]).trim()
         def getDevicePoolJSON = script.readJSON text: getDevicePoolOutput
         def list = getDevicePoolJSON.devicePool.rules[0].value.tokenize(",")
+	 def isAndroidDevicePresentInPool = false, isiOSDevicePresentInPool = false
+	    
         for(def i=0; i <list.size(); i++){
             def deviceArn = list[i].minus('[').minus(']')
             String getDeviceScript = "set +x;aws devicefarm get-device --arn ${deviceArn}"
             String getDeviceOutput = script.shellCustom(getDeviceScript, true, [returnStdout: true]).trim()
             def getDeviceJSON = script.readJSON text: getDeviceOutput
+	
+	     // The below line is used to make isAndroidDevicePresentInPool to true if pool has android device and vice versa for iOS devices	
+	     (getDeviceJSON.device.platform.equalsIgnoreCase("Android")) ?(isAndroidDevicePresentInPool=true): (isiOSDevicePresentInPool = true)
         
             String successMessage = "Test run is scheduled successfully on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
             String errorMessage = "Failed to schedule run on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
@@ -363,6 +368,11 @@ class AwsDeviceFarmHelper implements Serializable {
                 runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim() ?: null
             }
 	}
+	//Validate whether pool has android device if artifact is given for Android, else throw error and vice versa for iOS as well    
+	artifactName.toLowerCase().contains('android') ? isAndroidDevicePresentInPool ?:
+                script.echoCustom("Artifacts provided for Android platform, but no android devices were found in the device pool",'ERROR') :
+                isiOSDevicePresentInPool ?: script.echoCustom("Artifacts provided for iOS platform, but no iOS devices were found in the device pool",'ERROR')
+    
         runArn
     }
 

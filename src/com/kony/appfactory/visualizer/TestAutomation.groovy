@@ -387,7 +387,7 @@ class TestAutomation implements Serializable {
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
                 /* Once all parameters gotten, schedule the Device Farm run */
                 def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn,
-                        'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn)
+                        'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName)
                 deviceFarmTestRunArns["$artifactName"] = runArn
                 /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
             } else {
