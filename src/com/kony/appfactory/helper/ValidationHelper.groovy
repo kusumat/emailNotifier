@@ -69,20 +69,16 @@ class ValidationHelper implements Serializable {
     }
     
     /**
-     * Validate universal application  build parameters
+     * Validate universal application build parameters
      *
      * @param script pipeline object.
      */
     protected static void checkBuildConfigurationForUniversalApp(script) {
         // Checking if both Native and Universal Channels are selected, if so failing the build.
-        if (script.params.ANDROID_UNIVERSAL_NATIVE && (script.params.ANDROID_MOBILE_NATIVE || script.params.ANDROID_TABLET_NATIVE)) {
-            script.echoCustom("Build parameters are invalid, we allow to run either Android universal app or individual Android Mobile/Tablet native " +
-                "channels build. The universal app just works for both channels, you can skip native channel selection.",'ERROR')
-        }
-        // Checking if both Native and Universal Channels are selected, if so failing the build.
-        if (script.params.IOS_UNIVERSAL_NATIVE && (script.params.IOS_MOBILE_NATIVE || script.params.IOS_TABLET_NATIVE)) {
-            script.echoCustom("Build parameters are invalid, we allow to run either iOS universal app or individual iOS Mobile/Tablet native " +
-                "channels build. The universal app just works for both channels, you can skip native channel selection.",'ERROR')
+        if ((script.params.ANDROID_UNIVERSAL_NATIVE && (script.params.ANDROID_MOBILE_NATIVE || script.params.ANDROID_TABLET_NATIVE)) ||
+            (script.params.IOS_UNIVERSAL_NATIVE && (script.params.IOS_MOBILE_NATIVE || script.params.IOS_TABLET_NATIVE))) {
+            script.echoCustom("Build parameters are invalid, We allow to run either universal app or individual Mobile/Tablet native " +
+                "channels build. The universal app just works for both channels, you can skip individual Mobile/Tablet native channel selection.",'ERROR')
         }
     }
     
