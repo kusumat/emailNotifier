@@ -40,7 +40,7 @@ class WebChannel extends Channel {
         if (webChannelType.equalsIgnoreCase("SPA")) {
             channelOs = channelFormFactor = channelType = 'SPA'
         } else if (webChannelType.equalsIgnoreCase("DESKTOP_WEB")) {
-            channelOs = channelFormFactor = channelType = 'DESKTOP WEB'
+            channelOs = channelFormFactor = channelType = 'DESKTOPWEB'
         } else {
             channelOs = channelFormFactor = channelType = 'WEB'
         }
@@ -54,9 +54,15 @@ class WebChannel extends Channel {
         this.script.env['APP_VERSION'] = webAppVersion
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         /* Changing Channel Variable name if only SPA channels are selected */
-        if (webChannelType.equalsIgnoreCase("WEB") && !(desktopWebChannel)) {
-            channelOs = channelFormFactor = channelType = 'SPA'
+        if (webChannelType.equalsIgnoreCase("WEB")) {
+            if(!desktopWebChannel) {
+                channelOs = channelFormFactor = channelType = 'SPA'
+            }
+            else if(!selectedSpaChannels){
+                channelOs = channelFormFactor = channelType = 'DESKTOPWEB'
+            }
         }
+
     }
 
     WebChannel(script) {

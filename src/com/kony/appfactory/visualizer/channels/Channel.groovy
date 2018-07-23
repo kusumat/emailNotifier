@@ -403,8 +403,9 @@ class Channel implements Serializable {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
-            if (["SPA", "DESKTOP WEB", "WEB"].contains(channelVariableName)) {
+            if (["SPA", "DESKTOPWEB", "WEB"].contains(channelVariableName)) {
                 def compareVizZipExtensionVersions = ValidationHelper.compareVisualizerVersions(visualizerVersion, zipExtensionSupportBaseVersion)
+              
                 if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
                     if (compareVizZipExtensionVersions == -1) {
                         (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
