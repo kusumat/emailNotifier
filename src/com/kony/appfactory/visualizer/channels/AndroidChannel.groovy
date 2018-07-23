@@ -197,8 +197,13 @@ class AndroidChannel extends Channel {
                                 script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
                             }
                         }
-
+                        
                         script.stage('Build') {
+                            /* Copy protected keys to project workspace if build mode is "release-protected" */
+                            if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                                script.echoCustom("Placing encryptions keys for protected mode build.")
+                                copyProtectedKeysToProjectWorkspace()
+                            }
                             build()
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension) ?:

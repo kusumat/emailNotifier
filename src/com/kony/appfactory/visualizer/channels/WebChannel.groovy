@@ -169,6 +169,11 @@ class WebChannel extends Channel {
                         }
 
                         script.stage('Build') {
+                            /* Showing warning if triggered the build mode in release-protected for DesktopWeb and SPA channels  */
+                            if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                                script.echoCustom("Release-protected mode is not applicable for DesktopWeb and SPA channels build." +
+                                    " It will build as Release mode only.", 'WARN')
+                            }
                             build()
                             /*
                                 Workaround for Zip extension web app binaries to copy to temp location

@@ -102,7 +102,7 @@ class Channel implements Serializable {
     protected final scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected final buildMode = script.params.BUILD_MODE
+    protected final buildMode = (script.params.BUILD_MODE == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     protected channelFormFactor = script.params.FORM_FACTOR
     protected final universalAndroidNative = script.params.ANDROID_UNIVERSAL_NATIVE
@@ -147,6 +147,8 @@ class Channel implements Serializable {
         if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0) {
             this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-kony.com"))
         }
+        /* Re-setting for global access of build mode */
+        this.script.env['BUILD_MODE'] = buildMode
     }
 
     /**
@@ -277,12 +279,7 @@ class Channel implements Serializable {
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
         /* Populate Fabric configuration to appfactory.js file */
         populateFabricAppConfig()
-
-        /* Copy protected keys to project workspace if build mode is "release-protected" */
-        if(buildMode == libraryProperties.'buildmode.release.protected.type') {
-            copyProtectedKeysToProjectWorkspace()
-        }
-
+        
         script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
                 mustHaveArtifacts.add([name: "HeadlessBuild.properties", path: projectFullPath])

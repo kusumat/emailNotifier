@@ -586,7 +586,7 @@ class Facade implements Serializable {
 
                     /* List of required parameters */
                     def checkParams = []
-                    
+                    def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
                     /* Collect Android channel parameters to check */
                     def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
                     if (androidChannels) {
@@ -604,14 +604,14 @@ class Facade implements Serializable {
                             androidMandatoryParams.add('ANDROID_UNIVERSAL_APP_ID')
                         }
 
-                        if (buildMode != libraryProperties.'buildmode.debug.type') {
+                        if (tempBuildMode != libraryProperties.'buildmode.debug.type') {
                             androidMandatoryParams.addAll([
                                     'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
                                     'ANDROID_KEY_ALIAS'
                             ])
                         }
 
-                        if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                        if(tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
                             androidMandatoryParams.add('PROTECTED_KEYS')
                         }
 
@@ -636,7 +636,7 @@ class Facade implements Serializable {
                             iosMandatoryParams.add('IOS_UNIVERSAL_APP_ID')
                         }
 
-                        if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                        if(tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
                             iosMandatoryParams.add('PROTECTED_KEYS')
                         }
                         checkParams.addAll(iosMandatoryParams)

@@ -398,8 +398,13 @@ class IosChannel extends Channel {
                         script.stage('Update Bundle ID') {
                             updateIosBundleId()
                         }
-
+                        
                         script.stage('KAR Build') {
+                            /* Copy protected keys to project workspace if build mode is "release-protected" */
+                            if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                                script.echoCustom("Placing encryptions keys for protected mode build.")
+                                copyProtectedKeysToProjectWorkspace()
+                            }
                             build()
                             /* Search for build artifacts */
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
