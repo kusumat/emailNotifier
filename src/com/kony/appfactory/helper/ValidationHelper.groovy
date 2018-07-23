@@ -194,11 +194,11 @@ class ValidationHelper implements Serializable {
      * Validates Visualizer CI/Headless build support exists for few of new features.
      * If CI/Headless support not available, fails the build.
      */
-    protected static void checkFeatureSupportExist(script, visualizerVersion, libraryProperties, vizFeaturesSupportToCheck, buildType) {
+    protected static void checkFeatureSupportExist(script, libraryProperties, vizFeaturesSupportToCheck, buildType) {
         vizFeaturesSupportToCheck.each { featureKey, featureProperties ->
             def featureKeyInLowers = featureKey.toLowerCase()
             def featureSupportedVersion = libraryProperties."${featureKeyInLowers}.${buildType}.support.base.version"
-            if (ValidationHelper.compareVisualizerVersions(visualizerVersion, featureSupportedVersion) == -1) {
+            if (ValidationHelper.compareVisualizerVersions(script.env["visualizerVersion"], featureSupportedVersion) == -1) {
                 script.echoCustom("Sorry, the ${buildType} build for ${featureProperties.featureDisplayName} is not supported for your Visualizer project " +
                         "version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
                         "latest version and build the app.", 'ERROR')

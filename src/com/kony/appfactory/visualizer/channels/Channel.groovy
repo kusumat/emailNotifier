@@ -114,6 +114,11 @@ class Channel implements Serializable {
     protected final jobBuildNumber = script.env.BUILD_NUMBER
     protected final protectedKeys = script.params.PROTECTED_KEYS
 
+    /* Visualizer command-line build types */
+    protected final enum VisualizerBuildType {
+        headless, ci
+    }
+
     /**
      * Class constructor.
      *
@@ -303,47 +308,53 @@ class Channel implements Serializable {
                     if (script.env.isCIBUILD) {
                         /** Check CI build support exist for few features.
                          *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
-                         *  Creating a Map with features list - featureParam as Key and value as featureProperties with a collection of supportVersion and Description.
-                         *  Note that, first entry in collection is the substring of support.base.version defined in our libraryProperties file.
-                         *  For example: apple_watch_extension is the entry for apple_watch_extension.ci.support.base.version=8.2.8
                          */
-                        
-                        ValidationHelper.checkFeatureSupportExist(
-                            script,
-                            script.env.visualizerVersion,
-                            libraryProperties,
-                            getFeatureParamsToCheckCIBuildSupport(),
-                            'ci')
+                        ValidationHelper.checkFeatureSupportExist(script, libraryProperties, getFeatureParamsToCheckCIBuildSupport(), VisualizerBuildType.ci)
 
                         /* Build project using CI tool" */
                         script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
+
                         /* Run npm install */
                         script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
                             def npmBuildScript = "npm install"
                             script.shellCustom(npmBuildScript, isUnixNode)
                         }
+
                         /* Run node build.js */
                         script.catchErrorCustom('CI build failed for this project') {
                             def nodeBuildScript = 'node build.js'
                             script.shellCustom(nodeBuildScript, isUnixNode)
                         }
-                    } else {
+                    }
+                    else {
                         def windowsResource = libraryProperties.'window.lockable.resource.name'
                         def iosResource = libraryProperties.'ios.lockable.resource.name'
-                        
-                        ValidationHelper.checkFeatureSupportExist(
-                            script,
-                            script.env.visualizerVersion,
-                            libraryProperties,
-                            getFeatureParamsToCheckHeadlessBuildSupport(),
-                            'headless')
+
+                        /** Check Headless build support exist for few features.
+                         *  If user triggered a build with a feature that is not supported by Visualizer Headless, make the build fail.
+                         */
+                        ValidationHelper.checkFeatureSupportExist(script, libraryProperties, getFeatureParamsToCheckHeadlessBuildSupport(), VisualizerBuildType.headless)
                         
                         def slave = isUnixNode ? iosResource : windowsResource
+
                         script.lock(slave) {
                             /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
                             script.shellCustom('ant -buildfile property.xml', isUnixNode)
+
                             /* Build project using headless build tool*/
                             script.shellCustom('ant', isUnixNode)
+
+                            if (channelOs.equalsIgnoreCase('iOS')) {
+                                /** Copying the iOS plugin from VisualizerHome for ipa generate.
+                                 *  This helps out to kick-start other Headless build in-parallel for KAR generation,
+                                 * as we are going to release lock here.
+                                 */
+                                String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
+                                String iOSPluginPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
+                                script.dir(iOSPluginPath) {
+                                    script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar ${iOSPluginPath}", true)
+                                }
+                            }
                         }
                     }
                 }
