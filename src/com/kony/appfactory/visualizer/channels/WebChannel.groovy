@@ -190,9 +190,14 @@ class WebChannel extends Channel {
                                 def copyArtifactsCmd = isUnixNode ? 'cp' : 'copy'
                                 def tempBasePath = [projectWorkspacePath, 'temp', projectName]
                                 def destPath = (tempBasePath + ['middleware_mobileweb']).join(separator)
-                                def sourcePath = (tempBasePath + ['build', 'wap', 'build', '*.zip']).join(separator)
-                                copyArtifactsCmd = [copyArtifactsCmd, sourcePath, destPath].join(' ')
-                                script.shellCustom(copyArtifactsCmd, isUnixNode)
+                                def sourcePath = (tempBasePath + ['build', 'wap', 'build', "${projectName}.zip"]).join(separator)
+                                if (script.fileExists(sourcePath)) {
+                                    copyArtifactsCmd = [copyArtifactsCmd, sourcePath, destPath].join(' ')
+                                    script.shellCustom(copyArtifactsCmd, isUnixNode)
+                                }
+                                else {
+                                    script.echoCustom('Failed to find build artifact!', 'ERROR')
+                                }
                             }
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension) ?:
