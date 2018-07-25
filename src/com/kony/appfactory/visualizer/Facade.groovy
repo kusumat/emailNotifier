@@ -509,6 +509,7 @@ class Facade implements Serializable {
         versionInfo.append "\nDSL Job Version : " + apver.getJobDslVersion()
         versionInfo.append "\nAppFactory Plugin Version : " + apver.getAppFactoryPluginVersion()
         versionInfo.append "\nAppFactory Custom View Plugin Version : " + apver.getCustomViewPluginVersion()
+        versionInfo.append "\nAppFactory Build Parameters Plugin : " + apver.getBuildParametersPluginVersion()
 
         def corePlugInVersionInfo = apver.getCorePluginVersions()
 
