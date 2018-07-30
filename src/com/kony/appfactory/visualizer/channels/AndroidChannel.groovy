@@ -37,6 +37,7 @@ class AndroidChannel extends Channel {
 
     /* CustomHookHelper object */
     protected hookHelper
+    private boolean isCustomHookRunBuild
 
     /**
      * Class constructor.
@@ -157,7 +158,8 @@ class AndroidChannel extends Channel {
                     To restrict Headless Builds to run in parallel, this workaround implemented
                     */
                     resourceList = BuildHelper.getResourcesList()
-                    nodeLabel = BuildHelper.getAvailableNode(projectName, runCustomHook, resourceList, libraryProperties, script)
+                    isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
+                    nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild)
                 }
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
@@ -187,14 +189,14 @@ class AndroidChannel extends Channel {
                         }
                         
                         script.stage('Check PreBuild Hook Points'){
-                            if(runCustomHook){
+                            if(isCustomHookRunBuild){
                                 /* Run Pre Build Android Hooks */
                                 def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
                                 if(!isSuccess)
                                     throw new Exception("Something went wrong with the Custom hooks execution.")
                             }
                             else{
-                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
+                                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.','WARN')
                             }
                         }
                         
@@ -245,12 +247,12 @@ class AndroidChannel extends Channel {
                         /* Run Post Build Android Hooks */
                         script.stage('Check PostBuild Hook Points') {
                             if (script.currentBuild.currentResult == 'SUCCESS') {
-                                if (runCustomHook) {
+                                if (isCustomHookRunBuild) {
                                     def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
                                     if (!isSuccess)
                                         throw new Exception("Something went wrong with the Custom hooks execution.")
                                 } else {
-                                    script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }
                             } else {
                                 script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')

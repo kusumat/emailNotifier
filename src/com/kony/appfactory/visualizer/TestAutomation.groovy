@@ -655,7 +655,7 @@ class TestAutomation implements Serializable {
                                         deviceFarmTestRunResults ?: script.echoCustom('Tests results are not found as the run result is skipped.', 'ERROR')
                                     }
                                 }
-
+                                
                                 script.stage('Check PostTest Hook Points'){
                                     if(runCustomHook) {
                                         deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
@@ -675,7 +675,7 @@ class TestAutomation implements Serializable {
                                         }
                                     }
                                     else{
-                                        script.echoCustom('runCustomHook parameter is not selected by the User. Hence CustomHooks execution skipped.', 'INFO')
+                                        script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
                                     }
                                 }
                             }

@@ -26,6 +26,7 @@ class WebChannel extends Channel {
 
     /* CustomHookHelper object */
     protected hookHelper
+    private boolean isCustomHookRunBuild
 
     /* Build agent resources */
     def resourceList
@@ -114,7 +115,8 @@ class WebChannel extends Channel {
                  *  build on MAC Agent. Otherwise default node strategy will be followed (WIN || MAC)
                  */
                 resourceList = BuildHelper.getResourcesList()
-                nodeLabel = BuildHelper.getAvailableNode(projectName, runCustomHook, resourceList, libraryProperties, script)
+                isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
+                nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild)
 
                 script.node(nodeLabel) {
                     pipelineWrapper {
@@ -144,9 +146,9 @@ class WebChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
-
+                        
                         script.stage('Check PreBuild Hook Points') {
-                            if (runCustomHook) {
+                            if (isCustomHookRunBuild) {
                                 def projectStage
                                 def projectsToRun = []
                                 if (webChannelType.equalsIgnoreCase("SPA")) {
@@ -170,7 +172,7 @@ class WebChannel extends Channel {
                                 }
 
                             } else {
-                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                             }
                         }
 
@@ -259,7 +261,7 @@ class WebChannel extends Channel {
                         /* Run Post Build Web Hooks */
                         script.stage('Check PostBuild Hook Points') {
                             if (script.currentBuild.currentResult == 'SUCCESS') {
-                                if (runCustomHook) {
+                                if (isCustomHookRunBuild) {
                                     def projectStage
                                     def projectsToRun = []
                                     if (webChannelType.equalsIgnoreCase("SPA")) {
@@ -282,7 +284,7 @@ class WebChannel extends Channel {
 
                                     }
                                 } else {
-                                    script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }
                             } else {
                                 script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')

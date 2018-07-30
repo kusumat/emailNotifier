@@ -44,6 +44,7 @@ class IosChannel extends Channel {
 
     /* CustomHookHelper object */
     protected hookHelper
+    private boolean isCustomHookRunBuild
 
     /**
      * Class constructor.
@@ -189,15 +190,14 @@ class IosChannel extends Channel {
                     perl extract.pl ${karArtifact.name}
                 """, true)
             }
-
             script.stage('Check PreBuild IPA Hook Points') {
                 /* Run Pre Build iOS IPA Hooks */
-                if(runCustomHook){
+                if(isCustomHookRunBuild){
                     /* Run Pre Build iOS IPA stage Hooks */
                     hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
                 }
                 else{
-                    script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.','WARN')
+                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.','WARN')
                 }
             }
 
@@ -383,15 +383,15 @@ class IosChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
-                        
+                        isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
                         script.stage('Check PreBuild Hook Points') {
                             /* Run Pre Build iOS Hooks */
-                            if (runCustomHook) {
+                            if (isCustomHookRunBuild) {
                                 def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
                                 if(!isSuccess)
                                     throw new Exception("Something went wrong with the Custom hooks execution.")
                             } else {
-                                script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                             }
                         }
 
@@ -452,12 +452,12 @@ class IosChannel extends Channel {
                         /* Run Post Build iOS Hooks */
                         script.stage('Check PostBuild Hook Points') {
                             if (script.currentBuild.currentResult == 'SUCCESS') {
-                                if (runCustomHook) {
+                                if (isCustomHookRunBuild) {
                                     def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
                                     if (!isSuccess)
                                         throw new Exception("Something went wrong with the Custom hooks execution.")
                                 } else {
-                                    script.echoCustom('runCustomHook parameter is not selected by user, Hence CustomHooks execution is skipped.', 'WARN')
+                                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }
                             } else {
                                 script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')

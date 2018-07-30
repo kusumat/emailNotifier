@@ -521,15 +521,14 @@ class BuildHelper implements Serializable {
      *    For mac, if multiple headless build got triggered, then only one will occupy MAC and all other headless build will
      *    be in waiting state.
      *
-     * @params ProjectName to getConfigFile Content
-     * @params runCustomHooks if user want to runCustomHooks
      * @params Resources Status with name and lock status [['name':Resource Name,'status':state]]
      * @params common Library properties object
      * @params Script build instance to log print statements
+     * @params isActiveCustomHookAvailable
      *
      * @return NodeLabel
      */
-    protected final static getAvailableNode(projectName, runCustomHook, resourcesStatus, libraryProperties, script) {
+    protected final static getAvailableNode(resourcesStatus, libraryProperties, script, isThisBuildWithCustomHooksRun) {
         def iosNodeLabel = libraryProperties.'ios.node.label'
         def winNodeLabel = libraryProperties.'windows.node.label'
 
@@ -537,15 +536,10 @@ class BuildHelper implements Serializable {
          *  1. Checks if user wants to run CustomHooks
          *  2. If Yes, check if there are any CustomHooks defined and are in active state.
          */
-
-        if (runCustomHook) {
-            def customhooksFolderSubpath = libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
-            def customhooksConfigFolder = projectName + customhooksFolderSubpath
-
-            if(isActiveCustomHookAvailable(customhooksConfigFolder, projectName)){
-                script.echoCustom('Found active CustomHooks. Allocating MAC agent.')
-                return iosNodeLabel;
-            }
+        
+        if (isThisBuildWithCustomHooksRun) {
+            script.echoCustom('Found active CustomHooks. Allocating MAC agent.')
+            return iosNodeLabel;
         }
 
         /* return win if no Node in Label 'ios' is alive  */
@@ -687,6 +681,20 @@ class BuildHelper implements Serializable {
      protected static getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor ) {
          def appIdType = [channelOs, channelFormFactor, "APP_ID"].join('_').toUpperCase()
          return appIdType
+     }
+     
+     /**
+      * Returns the flag to trigger the custom hook based on RUN_CUSTOM_HOOK build parameters flag
+      * and available active custom hook for the project
+      * 
+      * @param projectName
+      * @param runCustomHook
+      * @param libraryProperties
+      * @return runCustomHookForBuild
+      */
+     protected final static isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties ) {
+         def customhooksConfigFolder = projectName + libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
+         return (runCustomHook && isActiveCustomHookAvailable(customhooksConfigFolder, projectName))
      }
  
 }
