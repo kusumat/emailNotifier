@@ -151,25 +151,7 @@ class WebChannel extends Channel {
                             if (isCustomHookRunBuild) {
                                 def projectStage
                                 def projectsToRun = []
-                                if (webChannelType.equalsIgnoreCase("SPA")) {
-                                    ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
-                                        if (selectedSpaChannels.contains(project))
-                                            projectsToRun << project
-                                    }
-                                } else {
-                                    projectsToRun << webChannelType
-                                }
-                                projectsToRun.each { project ->
-                                    if (project.contains('SPA')) {
-                                        projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-                                    } else {
-                                        projectStage = project + "_STAGE"
-                                    }
-                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', projectStage)
-                                    if (!isSuccess)
-                                        throw new Exception("Something went wrong with the Custom hooks execution.")
-
-                                }
+                                triggerHooksBasedOnSelectedChannels(webChannelType, projectsToRun, projectStage, libraryProperties.'customhooks.prebuild.name')
 
                             } else {
                                 script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
@@ -264,25 +246,7 @@ class WebChannel extends Channel {
                                 if (isCustomHookRunBuild) {
                                     def projectStage
                                     def projectsToRun = []
-                                    if (webChannelType.equalsIgnoreCase("SPA")) {
-                                        ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
-                                            if (selectedSpaChannels.contains(project))
-                                                projectsToRun << project
-                                        }
-                                    } else {
-                                        projectsToRun << webChannelType
-                                    }
-                                    projectsToRun.each { project ->
-                                        if (project.contains('SPA')) {
-                                            projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-                                        } else {
-                                            projectStage = project + "_STAGE"
-                                        }
-                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', projectStage)
-                                        if (!isSuccess)
-                                            throw new Exception("Something went wrong with the Custom hooks execution.")
-
-                                    }
+                                    triggerHooksBasedOnSelectedChannels(webChannelType, projectsToRun, projectStage, libraryProperties.'customhooks.postbuild.name')
                                 } else {
                                     script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }
@@ -293,6 +257,41 @@ class WebChannel extends Channel {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * In this method, we will prepare a list of channels for which we need to run the hooks, 
+     * depending upon the webChannelType and then call runCustomHooks
+     * @param webChannelType tells us whether the channel is SPA or WEB or DESKTOP_WEB
+     * @param projectsToRun is a list which will contain the channels that will be passed to runCustomHooks method
+     * @param projectStage is the stage for which hooks will be executed, for ex: IOS_MOBILE_SPA
+     * @param buildStage is the hook stage such as PRE_BUILD, POST_BUILD, POST_TEST
+     */
+    protected triggerHooksBasedOnSelectedChannels(webChannelType, projectsToRun, projectStage, buildStage){
+        //In order to avoid duplication of code, added OR condition to trigger hooks of SPA and DESTOPWEB channel in WEB channel
+        if (webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("WEB")) {
+            projectsToRun << "DESKTOP_WEB"
+        }
+
+        if (webChannelType.equalsIgnoreCase("SPA") || webChannelType.equalsIgnoreCase("WEB")) {
+            ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
+                if (selectedSpaChannels.contains(project))
+                    projectsToRun << project
+            }
+        }
+
+        projectsToRun.each { project ->
+            if (project.contains('SPA')) {
+                projectStage = "SPA_" + project - "_SPA" + "_STAGE"
+            }
+            if (project.contains('DESKTOP_WEB')) {
+                projectStage = project + "_STAGE"
+            }
+            def isSuccess = hookHelper.runCustomHooks(projectName, buildStage, projectStage)
+            if (!isSuccess)
+                throw new Exception("Something went wrong with the Custom hooks execution.")
+            
         }
     }
 
