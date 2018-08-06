@@ -7,6 +7,11 @@ import com.kony.appfactory.helper.AwsDeviceFarmHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import groovyx.net.http.*
+import groovy.util.slurpersupport.*
+import org.apache.commons.lang.StringUtils
+import java.io.File
+import java.util.*
 
 /**
  * Implements logic for runTests job.
@@ -52,10 +57,12 @@ class TestAutomation implements Serializable {
     final projectWorkspaceFolderName
     /* Folder name with test automation scripts */
     private testFolder
+    private testFolderForDesktopWeb
     /* Build parameters */
     private scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     private scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
+    protected scriptArgumentsForDesktopWeb = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
     /* Environment variables */
     private projectName = script.env.PROJECT_NAME
     private projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
@@ -71,6 +78,13 @@ class TestAutomation implements Serializable {
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
     private deviceFarmTestRunResults = []
+    private desktopTestRunResults = [:]
+    /* desktopweb tests Map variables */
+    def listofLogFiles = [:], listofScreenshots = [:], testList = [:], testMethodMap = [:], classList = [:], status_Map = [:]
+    def suiteNameList = [], surefireReportshtmlAuthURL = []
+    def failedTests = 0, totalTests = 0, passedTests = 0, skippedTests = 0
+    def browserVersionsMap = [:]
+    String surefireReportshtml = ""	
     /* Temp folder for Device Farm objects (test run results) */
     private deviceFarmWorkingFolder
     /* Device Farm AWS region */
@@ -98,6 +112,8 @@ class TestAutomation implements Serializable {
                                        uploadType: 'APPIUM_JAVA_TESTNG_TEST_PACKAGE',
                                        url       : (script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
     ]
+    public isDesktopwebApp = script.params.findAll { it.key == 'FABRIC_APP_URL' && it.value }
+    public isNativeApp =  script.params.findAll { it.key.contains('NATIVE_BINARY_URL') && it.value }
 
     /* CustomHookHelper object */
     protected hookHelper
@@ -130,33 +146,29 @@ class TestAutomation implements Serializable {
      */
     protected final void validateBuildParameters(buildParameters) {
         /* Filter all application binaries build parameters */
-        def appBinaryUrlParameters = buildParameters.findAll {
-            it.key.contains('URL') && it.key != 'TESTS_BINARY_URL' && it.value
+        def nativeAppBinaryUrlParameters = buildParameters.findAll {
+            it.key.contains('NATIVE_BINARY_URL') && it.value
         }
+        /* Filter desktopWeb application binaries build parameters */
+        def desktopWebPublishedAppUrlParameters = buildParameters.findAll { it.key.contains('FABRIC_APP_URL') && it.value }
+
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
-        /* Filter test binaries build parameter */
-        def testBinaryUrlParameter = buildParameters.findAll { it.key == 'TESTS_BINARY_URL' && it.value }
+        /* Filter test binaries build parameter. This check is needed to maintain backward compatibility*/
+        def nativeTestsUrl = script.params.containsKey('NATIVE_TESTS_URL') ? 'NATIVE_TESTS_URL' : 'TESTS_BINARY_URL'
+        def nativeTestBinaryUrlParameter = buildParameters.findAll { it.key == nativeTestsUrl && it.value }
+        /* Filter desktopWeb test binaries build parameter */
+        def desktopWebTestBinaryUrlParameter = buildParameters.findAll { it.key == 'DESKTOPWEB_TESTS_URL' && it.value }
         /* Filter pool name build parameter */
         def poolNameParameter = buildParameters.findAll { it.key.contains('AVAILABLE_TEST_POOLS') && it.value }
         /* Combine binaries build parameters */
-        def UrlParameters = testBinaryUrlParameter + appBinaryUrlParameters
+        def nativeUrlParameters = nativeTestBinaryUrlParameter + nativeAppBinaryUrlParameters
+        /* Combine desktopWeb binaries build parameters */
+        def desktopWebUrlParameters = desktopWebTestBinaryUrlParameter + desktopWebPublishedAppUrlParameters
 
         /* Check if at least one application binaries parameter been provided */
-        if (appBinaryUrlParameters) {
-            /* Validate application binaries URLs */
-            for (parameter in UrlParameters) {
-                if (parameter.value.contains('//') && isValidUrl(parameter.value)) {
-                    parameter.value=parameter.value.replace(" ", "%20")
-                }
-                else
-                {
-                    script.echoCustom("Build parameter ${parameter.key} value is not valid URL!",'ERROR')
-                }
-            }
-            /* Set flag to run tests on Device Farm */
-            runTests = true
-        }
+        (!nativeAppBinaryUrlParameters) ?: validateApplicationBinariesURLs(nativeUrlParameters)
+        (!desktopWebPublishedAppUrlParameters) ?: validateApplicationBinariesURLs(desktopWebUrlParameters)
 
         /* Restrict the user to run tests either with Universal build binary or with normal native test binaries,
            fail the build if both options are provided.
@@ -167,20 +179,20 @@ class TestAutomation implements Serializable {
         if (script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL && (script.env.IOS_MOBILE_NATIVE_BINARY_URL || script.env.IOS_TABLET_NATIVE_BINARY_URL)) {
             script.echoCustom("Sorry, You can't run test for iOS Universal binary along with iOS Mobile/Tablet",'ERROR')
         }
-        if (testBinaryUrlParameter && scmParameters) {
-            script.echoCustom("Please provide only one option for the source of test scripts: GIT or URL",'ERROR')
+        if (scmParameters && (nativeTestBinaryUrlParameter || desktopWebTestBinaryUrlParameter)) {
+            script.echoCustom("Please provide only one option for the source of test scripts: GIT or TESTS_URL",'ERROR')
         }
         /* Same if none of the options provided */
-        else if (!testBinaryUrlParameter && !scmParameters) {
+        else if (!nativeTestBinaryUrlParameter && !scmParameters && !desktopWebTestBinaryUrlParameter) {
             script.echoCustom("Please provide at least one source of test binaries",'ERROR')
         }
 
-        /* Fail build if testBinaryUrlParameter been provided without appBinaryUrlParameters */
-        if (!appBinaryUrlParameters && testBinaryUrlParameter) {
+        /* Fail build if nativeTestBinaryUrlParameter been provided without nativeAppBinaryUrlParameters, similarly for DesktopWeb */
+        if ((!nativeAppBinaryUrlParameters && nativeTestBinaryUrlParameter) || (!desktopWebPublishedAppUrlParameters && desktopWebTestBinaryUrlParameter)) {
             script.echoCustom("Please provide at least one of application binaries URL",'ERROR')
         }
-        /* Fail build if appBinaryUrlParameters been provided without test pool */
-        else if (!poolNameParameter && appBinaryUrlParameters) {
+        /* Fail build if nativeAppBinaryUrlParameters been provided without test pool */
+        else if (!poolNameParameter && nativeAppBinaryUrlParameters) {
             script.echoCustom("Please provide pool to test on",'ERROR')
         }
     }
@@ -201,16 +213,38 @@ class TestAutomation implements Serializable {
     }
 
     /**
-     * Builds Test Automation scripts.
+     * Validate application binaries URLs
      */
-    protected final void build() {
-        String successMessage = 'Test Automation scripts have been built successfully'
-        String errorMessage = 'Failed to build the Test Automation scripts'
+
+    protected final void validateApplicationBinariesURLs(AppBinaryUrlParameters) {
+        for (parameter in AppBinaryUrlParameters) {
+            if (parameter.value.contains('//') && isValidUrl(parameter.value))
+                parameter.value=parameter.value.replace(" ", "%20")
+            else
+                script.echoCustom("Build parameter ${parameter.key} value is not valid URL!",'ERROR')
+        }
+        /* Set flag to run tests on Device Farm */
+        runTests = true
+    }
+
+    /**
+     * Builds Test Automation scripts for Native and DesktopWeb.
+     */
+    protected final void buildTestScripts(nativeOrWeb) {
+        String successMessage = "Test Automation scripts have been built successfully for ${nativeOrWeb}"
+        String errorMessage = "Failed to build the Test Automation scripts for ${nativeOrWeb}"
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.dir(testFolder) {
-                script.shellCustom('mvn clean package -DskipTests=true', true)
-                script.shellCustom("mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip", true)
+            if(nativeOrWeb.equals("Native")){
+                script.dir(testFolder) {
+                    script.shellCustom('mvn clean package -DskipTests=true', true)
+                    script.shellCustom("mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip", true)
+                }
+            }
+            if(nativeOrWeb.equals("DesktopWeb")){
+                script.dir(testFolderForDesktopWeb) {
+                    script.shellCustom('mvn clean package -DskipTests=true', true)
+                }
             }
         }
     }
@@ -365,6 +399,113 @@ class TestAutomation implements Serializable {
     }
 
     /**
+     * Collect all the required log files, store them in a folder under testFolderForDesktopWeb
+     * publish the artifacts and parse the results to form email template
+     * We create certain folder structure which is used to display screenshots and logs in html which will be shown in email
+     * First we create testOutput folder, under that 2 sub-folders Smoke and test-output
+     * Now copy the content of target/surefire-reports/ to testOutput/Smoke
+     * Also copy files from test-output/Appscommon-Logs to testOutput/test-output, now copy from test-output/Screenshots to testOutput/test-output
+     * Now we have all the date in testOutput folder , zip this and place it under target/${projectName}_TestApp
+     */
+    private final void fetchTestResultsforDesktopWeb() {
+        String successMessage = 'Test Results have been fetched successfully for DesktopWeb'
+        String errorMessage = 'Failed to fetch the Test Results for DesktopWeb'
+
+        script.catchErrorCustom(errorMessage, successMessage) {
+            String testOutputFolderForDesktopWeb = testFolderForDesktopWeb + "/testOutput"
+            script.dir(testOutputFolderForDesktopWeb) {
+                script.shellCustom("mkdir -p Smoke", true)
+                script.shellCustom("mkdir -p test-output", true)
+            }
+            script.dir(testFolderForDesktopWeb) {
+                script.shellCustom("cp -R target/surefire-reports/* testOutput/Smoke", true)
+                script.shellCustom("cp -R test-output/Appscommon-Logs testOutput/test-output", true)
+                script.shellCustom("cp -R test-output/Screenshots testOutput/test-output", true)
+                script.shellCustom("zip -r target/${projectName}_TestApp testOutput", true)
+            }
+        }
+
+        /* Parse testng-results, collecting the count of total failed/passed/skipped/total tests, to display in email notification */
+        String testNGResultsFileContent=script.readFile("${testFolderForDesktopWeb}/target/surefire-reports/testng-results.xml")
+        def testng_results = new XmlSlurper().parseText(testNGResultsFileContent)
+        failedTests = testng_results.@failed.join("")
+        totalTests = testng_results.@total.join("")
+        skippedTests = testng_results.@skipped.join("")
+        passedTests = testng_results.@passed.join("")
+        int suiteNo=0
+        def durationList  = [], startedAtList = [], finishedAtList = []
+
+        /* In this step we are parsing each suite and collecting the data into corresponding lists */
+
+        testng_results.suite.each{
+            int testsCount = 0
+            int classCount = 0
+            int testMethodCount = 0
+            suiteNameList.add(testng_results.suite[suiteNo].@name.join(""))
+            durationList.add(convertTimeFromMilliseconds(Long.valueOf(testng_results.suite[suiteNo]."@duration-ms".join(""))))
+            startedAtList.add(testng_results.suite[suiteNo]."@started-at".join(""))
+            finishedAtList.add(testng_results.suite[suiteNo]."@finished-at".join(""))
+
+            /* In this step we are parsing each test of suite */
+
+            testng_results.suite[suiteNo].test.each {
+                testList.put(testng_results.suite[suiteNo].test[testsCount].@name.join(""), testng_results.suite[suiteNo].@name.join(""))
+                testng_results.suite[suiteNo].test[testsCount].class.each {
+                    classList.put(testng_results.suite[suiteNo].test[testsCount].class[classCount].@name.join(""), testng_results.suite[suiteNo].test[testsCount].@name.join(""))
+
+                    /* In this step we are parsing each test case of test*/
+
+                    testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method".each {
+                        if(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount]."@is-config".join("") != "true"){
+                            status_Map.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""), testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@status.join(""))
+                            testMethodMap.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""),testng_results.suite[suiteNo].test[testsCount].class[classCount].@name.join(""))
+                        }
+                        testMethodCount++
+                    }
+                    classCount++
+                }
+                testsCount++
+            }
+            suiteNo++
+        }
+        browserVersionsMap << ["Chrome":'68.0.3419.0', "Internet Explorer":'', "Safari":'', "Firefox":'']
+        desktopTestRunResults << ["suiteName":suiteNameList, "className":classList, "testName":testList, "testMethod":testMethodMap, "status_Map":status_Map, "duration":durationList, "finishTime":finishedAtList]
+        desktopTestRunResults << ["passedTests":passedTests, "skippedTests":skippedTests, "failedTests":failedTests, "totalTests":totalTests, "browserName":script.params.AVAILABLE_BROWSERS, "browserVersion":browserVersionsMap[script.params.AVAILABLE_BROWSERS], "startTime":startedAtList]
+    }
+
+    void publishDesktopWebTestsResults() {
+        def s3ArtifactsPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER]
+        s3ArtifactsPath.add("DesktopWeb")
+        s3ArtifactsPath.add(desktopTestRunResults["browserName"] + '_' + desktopTestRunResults["browserVersion"])
+        def s3PublishPath = s3ArtifactsPath.join('/').replaceAll('\\s', '_')
+        String testng_reportsCSSAndCSS = AwsHelper.publishToS3 bucketPath: s3PublishPath + "/testOutput/Smoke", sourceFileName: "testng.css,testng-reports.css",
+                sourceFilePath: "${testFolderForDesktopWeb}/testOutput/Smoke", script, true
+
+        suiteNameList.each {
+            def suiteName = it.value
+            def testListKeys = testList.keySet()
+            def testListValues = testList.values()
+            for(int testListVar=0;testListVar<testList.size();testListVar++){
+                if(testListValues[testListVar].equalsIgnoreCase(suiteName.join(""))){
+                    def testFolderForDWeb = testFolderForDesktopWeb
+                    surefireReportshtml = AwsHelper.publishToS3  bucketPath: s3PublishPath + "/testOutput/Smoke/" + suiteName , sourceFileName: testListKeys[testListVar] + ".html",
+                            sourceFilePath: testFolderForDWeb + "/testOutput/Smoke/" + suiteName, script, true
+                    surefireReportshtmlAuthURL.add(BuildHelper.createAuthUrl(surefireReportshtml, script, true, "view"))
+                }
+            }
+        }
+        desktopTestRunResults.put("surefireReportshtml", surefireReportshtmlAuthURL)
+        testMethodMap.each {
+            String screenshotsURL = AwsHelper.publishToS3  bucketPath: s3PublishPath + "/testOutput/test-output/Screenshots", sourceFileName: it.key + ".jpg",
+                    sourceFilePath: "${testFolderForDesktopWeb}/testOutput/test-output/Screenshots", script, true
+            listofScreenshots.put(it.key, BuildHelper.createAuthUrl(screenshotsURL, script, true))
+            String logFileURL = AwsHelper.publishToS3  bucketPath: s3PublishPath + "/testOutput/test-output/Appscommon-Logs", sourceFileName: it.key + ".log",
+                    sourceFilePath: "${testFolderForDesktopWeb}/testOutput/test-output/Appscommon-Logs", script, true
+            listofLogFiles.put(it.key, BuildHelper.createAuthUrl(logFileURL, script, true))
+        }
+    }
+
+    /**
      * Uploads application binaries and Schedules the run.
      */
     private final void uploadAndRun() {
@@ -411,6 +552,16 @@ class TestAutomation implements Serializable {
         if (stepsToRun) {
             script.parallel(stepsToRun)
         }
+    }
+
+    /**
+     * Uploads application binaries and Schedules the run for DesktopWeb.
+     */
+    private final void runTestsforDesktopWeb() {
+          script.dir(testFolderForDesktopWeb) {
+              scriptArgumentsForDesktopWeb.contains('-Dsurefire.suiteXmlFiles')?: (scriptArgumentsForDesktopWeb += " -Dsurefire.suiteXmlFiles=Testng.xml")
+              script.shellCustom("mvn test -DDRIVER_PATH='/usr/bin/chromedriver' -DBROWSER_PATH='/usr/bin/my_project/node_modules/puppeteer/.local-chromium/linux-555668/chrome-linux/chrome' -Dmaven.test.failure.ignore=true ${scriptArgumentsForDesktopWeb}", true)
+          }
     }
 
     /**
@@ -536,6 +687,28 @@ class TestAutomation implements Serializable {
         def testResultsToJson = jsonSlurper.parseText(testResultsToText)
         return testResultsToJson[0].result
     }
+
+    /**
+     * Converts the given time difference into hours, minutes, seconds
+     * */
+    protected String convertTimeFromMilliseconds(Long difference){
+        Map diffMap =[:]
+        difference = difference / 1000
+        diffMap.seconds = difference.remainder(60)
+        difference = (difference - diffMap.seconds) / 60
+        diffMap.minutes = difference.remainder(60)
+        difference = (difference - diffMap.minutes) / 60
+        diffMap.hours = difference.remainder(24)
+        def value = ""
+        if(diffMap.hours.setScale(0, BigDecimal.ROUND_HALF_UP))
+            value+=diffMap.hours.setScale(0, BigDecimal.ROUND_HALF_UP) + " hrs "
+        if(diffMap.minutes.setScale(0, BigDecimal.ROUND_HALF_UP))
+            value+=diffMap.minutes.setScale(0, BigDecimal.ROUND_HALF_UP)  + " mins "
+        if(diffMap.seconds.setScale(0, BigDecimal.ROUND_HALF_UP))
+            value+=diffMap.seconds.setScale(0, BigDecimal.ROUND_HALF_UP) + " secs "
+        return value
+    }
+
     /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
@@ -561,6 +734,7 @@ class TestAutomation implements Serializable {
                             workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
                     ].findAll().join(separator)
                     testFolder = [projectFullPath, libraryProperties.'test.automation.scripts.path'].join(separator)
+                    testFolderForDesktopWeb = [projectFullPath, libraryProperties.'test.automation.scripts.path.for.desktopweb'].join(separator)
                     deviceFarmWorkingFolder = [
                             projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'
                     ].join(separator)
@@ -584,20 +758,24 @@ class TestAutomation implements Serializable {
 
                             script.stage('Build') {
                                 /* Build Test Automation scripts */
-                                build()
+                                if(isNativeApp)
+                                    buildTestScripts("Native")
+                                if(isDesktopwebApp)
+                                    buildTestScripts("DesktopWeb")
                             }
-
-                            script.stage('Publish test automation scripts build result to S3') {
-                                if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
-                                    AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
-                                            bucketPath: [
-                                                    'Tests',
-                                                    script.env.JOB_BASE_NAME,
-                                                    script.env.BUILD_NUMBER
-                                            ].join('/'),
-                                            sourceFilePath: "${testFolder}/target", script, true
-                                } else {
-                                    script.echoCustom('Failed to find build result artifact!','ERROR')
+                            if(isNativeApp){
+                                script.stage('Publish test automation scripts build result to S3') {
+                                    if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
+                                        AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
+                                                bucketPath: [
+                                                        'Tests',
+                                                        script.env.JOB_BASE_NAME,
+                                                        script.env.BUILD_NUMBER
+                                                ].join('/'),
+                                                sourceFilePath: "${testFolder}/target", script, true
+                                    }
+				     else
+					 script.echoCustom('Failed to find build result artifact!','ERROR')
                                 }
                             }
                         }
@@ -621,58 +799,112 @@ class TestAutomation implements Serializable {
                             script.dir(deviceFarmWorkingFolder) {
                                 /* Providing AWS region for Device Farm, currently it is available in us-west-2 */
                                 script.withAWS(region: awsRegion) {
-                                    script.stage('Fetch binaries') {
-                                        fetchBinaries()
-                                    }
+                                    if (isNativeApp) {
+                                        script.stage('Fetch binaries') {
+                                            fetchBinaries()
+                                        }
 
-                                    script.stage('Create Device Farm Project') {
-                                        /* Check if project already exists */
-                                        deviceFarmProjectArn = (deviceFarm.getProject(projectName)) ?:
-                                                /*
-                                                If not, create new project and return ARN or break the build,
-                                                if ARN equals null
-                                             */
-                                                deviceFarm.createProject(projectName) ?:
-                                                        script.echoCustom("Project ARN is empty!",'ERROR')
-                                    }
+                                        script.stage('Create Device Farm Project') {
+                                            /* Check if project already exists */
+                                            deviceFarmProjectArn = (deviceFarm.getProject(projectName)) ?:
+                                                    /*
+                                                    If not, create new project and return ARN or break the build,
+                                                    if ARN equals null
+                                                 */
+                                                    deviceFarm.createProject(projectName) ?:
+                                                            script.echoCustom("Project ARN is empty!", 'ERROR')
 
-                                    script.stage('Create Device Pools') {
-                                        devicePoolArns = deviceFarm.createDevicePools(
-                                                deviceFarmProjectArn, devicePoolName
-                                        ) ?: script.echoCustom("Device pool ARN list is empty!",'ERROR')
-                                    }
+                                        }
 
-                                    script.stage('Upload test package') {
-                                        uploadTestBinaries()
-                                    }
+                                        script.stage('Create Device Pools') {
+                                            devicePoolArns = deviceFarm.createDevicePools(
+                                                    deviceFarmProjectArn, devicePoolName
+                                            ) ?: script.echoCustom("Device pool ARN list is empty!", 'ERROR')
 
-                                    script.stage('Upload application binaries and schedule run') {
-                                        uploadAndRun()
+                                        }
+
+                                        script.stage('Upload test package') {
+                                            uploadTestBinaries()
+                                        }
+                                    }
+                                    if(isNativeApp) {
+                                        script.stage('Upload application binaries and schedule run') {
+                                            uploadAndRun()
+                                        }
+                                    }
+                                    if(isDesktopwebApp){
+                                        script.stage('Run the Tests') {
+                                            runTestsforDesktopWeb()
+                                        }
+
                                     }
 
                                     script.stage('Get Test Results') {
-                                        fetchTestResults()
-                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results are not found as the run result is skipped.', 'ERROR')
+                                        if(isNativeApp) {
+                                            fetchTestResults()
+                                            deviceFarmTestRunResults ?: script.echoCustom('Tests results are not found as the run result is skipped.', 'ERROR')
+                                        }
+                                        if(isDesktopwebApp){
+                                            fetchTestResultsforDesktopWeb()
+                                            desktopTestRunResults ?: script.echoCustom('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
+                                            publishDesktopWebTestsResults()
+                                        }
                                     }
                                 }
                                 
                                 script.stage('Check PostTest Hook Points'){
                                     if(runCustomHook) {
-                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
-                                        def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
-                                        def status = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
-
-                                        if (status) {
-                                            ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
-                                                if (projectArtifacts."$project".'binaryName') {
-                                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
-                                                    if (!isSuccess)
-                                                        throw new Exception("Something went wrong with the Custom hooks execution.")
-                                                }
-                                            }
-                                        } else {
-                                            script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
+                                        def desktopWebTestsResultsStatus = true
+                                        if(isNativeApp){
+                                            deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                            def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
+                                            def nativeTestsResultStatus = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
                                         }
+                                        if(isDesktopwebApp){
+                                            desktopTestRunResults ?: script.echoCustom('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                            status_Map.each {
+                                                if(it.value != "PASS")
+                                                    desktopWebTestsResultsStatus = false
+                                            }
+                                        }
+
+                                        if(isNativeApp && isDesktopwebApp){
+                                            if (nativeTestsResultStatus && desktopWebTestsResultsStatus) {
+                                                ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet', 'Desktop_Web'].each { project ->
+                                                    if (projectArtifacts."$project".'binaryName') {
+                                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
+                                                        if (!isSuccess)
+                                                            throw new Exception("Something went wrong with the Custom hooks execution.")
+                                                    }
+                                                }
+                                            } else {
+                                                script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
+                                            }
+                                        }
+                                        else if(isNativeApp){
+                                            if (nativeTestsResultStatus) {
+                                                ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
+                                                    if (projectArtifacts."$project".'binaryName') {
+                                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
+                                                        if (!isSuccess)
+                                                            throw new Exception("Something went wrong with the Custom hooks execution.")
+                                                    }
+                                                }
+                                            } else {
+                                                script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
+                                            }
+                                        }
+                                        else {
+                                            if (desktopWebTestsResultsStatus) {
+                                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
+                                                if (!isSuccess)
+                                                    throw new Exception("Something went wrong with the Custom hooks execution.")
+
+                                            } else {
+                                                script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
+                                            }
+                                        }
+
                                     }
                                     else{
                                         script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
@@ -684,12 +916,21 @@ class TestAutomation implements Serializable {
                             script.echoCustom(exceptionMessage,'WARN')
                             script.currentBuild.result = 'FAILURE'
                         } finally {
-                            NotificationsHelper.sendEmail(script, 'runTests', [
-                                    runs          : deviceFarmTestRunResults,
-                                    devicePoolName: devicePoolName,
-                                    binaryName    : getBinaryNameForEmail(projectArtifacts),
-                                    missingDevices: script.env.MISSING_DEVICES
-                            ], true)
+                            if (isDesktopwebApp) {
+                                NotificationsHelper.sendEmail(script, 'runTests', [
+                                        desktopruns: desktopTestRunResults,
+                                        listofLogFiles: listofLogFiles,
+                                        listofScreenshots:listofScreenshots
+                                ], true)
+                            }
+                            if (isNativeApp) {
+                                NotificationsHelper.sendEmail(script, 'runTests', [
+                                        deviceruns    : deviceFarmTestRunResults,
+                                        devicePoolName: devicePoolName,
+                                        binaryName    : getBinaryNameForEmail(projectArtifacts),
+                                        missingDevices: script.env.MISSING_DEVICES
+                                ], true)
+                            }
                             if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED'){
                                 PrepareMustHaves(true)
                                 setBuildDescription()

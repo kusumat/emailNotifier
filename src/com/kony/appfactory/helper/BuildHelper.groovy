@@ -602,8 +602,15 @@ class BuildHelper implements Serializable {
         }
         return paramsInfo.toString()
     }
-	
-    protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false) {
+
+    /*
+     * This method is used to to create authenticated urls from S3 urls
+     * @param artifactUrl is the url which we want to convert as authenticated
+     * @param script is defeault script parameter
+     * @param exposeUrl is made as true if we want to display it in the console
+     * @param action - (downloads or view): decides whether the url is direct download link or directly view from browser (such as HTML files), default value is "downloads"
+     */
+    protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false, String action = "downloads") {
 
         def authArtifactUrl = artifactUrl;
 
@@ -613,10 +620,9 @@ class BuildHelper implements Serializable {
                     .split("/")
                     .collect({ URLEncoder.encode(it, "UTF-8") })
                     .join('/')
-
             authArtifactUrl = "https://manage." +
                     script.env['CLOUD_DOMAIN'] + "/console/#/environments/" +
-                    script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" +
+                    script.env['CLOUD_ENVIRONMENT_GUID'] + "/${action}?path=" +
                     encodedArtifactUrl
         }
         else {

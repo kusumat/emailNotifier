@@ -76,6 +76,9 @@ class Facade implements Serializable {
     private final compatibilityMode = script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE
     /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
+    private final availableBrowsers = script.params.AVAILABLE_BROWSERS
+    private final desktopWebTestsArguments = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
+    private final runDesktopwebTests = script.params.RUN_DESKTOPWEB_TESTS
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     /* Protected mode build parameters */
@@ -334,8 +337,12 @@ class Facade implements Serializable {
                         value: "${projectSourceCodeBranch}"),
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                         value: "${projectSourceCodeRepositoryCredentialsId}"),
-                script.string(name: 'TESTS_BINARY_URL', value: ''),
+                script.string(name: 'NATIVE_TESTS_URL', value: ''),
+                script.string(name: 'DESKTOPWEB_TESTS_URL', value: ''),
                 script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}"),
+                script.string(name: 'RUN_DESKTOPWEB_TESTS', value: "${runDesktopwebTests}"),
+                script.string(name: 'AVAILABLE_BROWSERS', value: "${availableBrowsers}"),
+                script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: "${desktopWebTestsArguments}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
                 script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook)
         ]
@@ -363,7 +370,7 @@ class Facade implements Serializable {
     private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
         buildJobArtifacts.findResults { artifact ->
             /* Filter Android and iOS channels */
-            String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|ipa|apk)\$")) ? artifact.name : ''
+            String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|ipa|apk|war|zip)\$")) ? artifact.name : ''
             /*
                 Workaround to get ipa URL for iOS, just switching extension in URL to ipa,
                 because ipa file should be places nearby plist file on S3.
@@ -373,7 +380,7 @@ class Facade implements Serializable {
             String channelName = artifact.channelPath.toUpperCase().replaceAll('/', '_')
 
             /* Create build parameter for Test Automation job */
-            artifactName ? script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
+            artifactName ? (artifact.name.matches("^.*.?(war|zip)\$")) ? script.stringParam(name: "FABRIC_APP_URL", value: artifact.webappurl) : script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
         }
     }
 
@@ -679,7 +686,7 @@ class Facade implements Serializable {
                         script.parallel(runList)
 
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
-                        if (availableTestPools) {
+                        if (availableTestPools || runDesktopwebTests) {
                             script.stage('TESTS') {
                                 def testAutomationJobParameters = getTestAutomationJobParameters() ?:
                                         script.echoCustom("runTests job parameters are missing!", 'ERROR')

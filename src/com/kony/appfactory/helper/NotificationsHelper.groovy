@@ -21,10 +21,10 @@ class NotificationsHelper implements Serializable {
         (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
 
         /* If storeBody is true , expecting the tests results from AWS and using them to set build result. */
-        if (storeBody && templateData.runs) {
+        if (storeBody && templateData.deviceruns) {
             /* Get test results and set build result accordingly */
             def jsonSlurper = new JsonSlurper()
-            String testResultsToText = JsonOutput.toJson(templateData.runs)
+            String testResultsToText = JsonOutput.toJson(templateData.deviceruns)
             def testResultsToJson = jsonSlurper.parseText(testResultsToText)
             setbuildResult(script, testResultsToJson)
         }
@@ -100,7 +100,7 @@ class NotificationsHelper implements Serializable {
             Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name
             and result status of the job.
          */
-	 String modifiedBuildTag = modifySubjectOfMail(script, templateType);
+	 String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
 	 String subject = modifiedBuildTag + "-${script.currentBuild.currentResult}"
 
         /* Load base e-mail template from library resources */
@@ -193,13 +193,22 @@ class NotificationsHelper implements Serializable {
                 break
             case 'runTests':
                 /* Convert test run results to JSON */
-                String testRunsToJson = JsonOutput.toJson(templateData.runs)
+                String testRunsToJson = JsonOutput.toJson(templateData.deviceruns)
+                String testDesktopRunsToJson = JsonOutput.toJson(templateData.desktopruns)
 
                 /* For test console we are storing both HTML and JSON representation of test results */
-                filesToStore.addAll([
-                        [name: 'testResults' + buildResultForTestConsole + '.html', data: body],
-                        [name: 'testResults' + buildResultForTestConsole + '.json', data: testRunsToJson]
-                ])
+                if(templateData.desktopruns){
+                    filesToStore.addAll([
+                            [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.html', data: body],
+                            [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.json', data: testDesktopRunsToJson]
+                    ])
+                }
+                if(templateData.deviceruns){
+                    filesToStore.addAll([
+                            [name: 'testResults-Native' + buildResultForTestConsole + '.html', data: body],
+                            [name: 'testResults-Native' + buildResultForTestConsole + '.json', data: testRunsToJson]
+                    ])
+                }
                 break
             default:
                 filesToStore
@@ -220,7 +229,7 @@ class NotificationsHelper implements Serializable {
     private static String getTemplateContent(script, templateType, templateData = [:]) {
         String templateContent
         /* Common properties for content */
-	 String modifiedBuildTag = modifySubjectOfMail(script, templateType);
+	 String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
@@ -273,7 +282,7 @@ class NotificationsHelper implements Serializable {
         (template) ? template.toString() : null
     }
 	
-    private static String modifySubjectOfMail(script, templateType) {
+    private static String modifySubjectOfMail(script, templateType, templateData) {
 	String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
 	switch (templateType) {
             case 'buildVisualizerApp':
@@ -288,6 +297,12 @@ class NotificationsHelper implements Serializable {
 		break
 	    case 'runTests':
 		modifiedBuildTag = (modifiedBuildTag.minus("-Visualizer")).minus("-runTests")
+            if(templateData.desktopruns){
+                modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-DesktopWeb-Tests")
+            }
+            if(templateData.deviceruns){
+                modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-Native-Tests")
+            }
 		break
 	    case 'Export':
 	    case 'Import':
