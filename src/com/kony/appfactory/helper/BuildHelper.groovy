@@ -613,17 +613,17 @@ class BuildHelper implements Serializable {
     protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false, String action = "downloads") {
 
         def authArtifactUrl = artifactUrl;
-
         if (script.env['CLOUD_ENVIRONMENT_GUID'] && script.env['CLOUD_DOMAIN']) {
             def encodedArtifactUrl = artifactUrl
                     .substring(artifactUrl.indexOf(script.env.PROJECT_NAME))
                     .split("/")
                     .collect({ URLEncoder.encode(it, "UTF-8") })
                     .join('/')
-            authArtifactUrl = "https://manage." +
-                    script.env['CLOUD_DOMAIN'] + "/console/#/environments/" +
-                    script.env['CLOUD_ENVIRONMENT_GUID'] + "/${action}?path=" +
+          
+            def externalAuthID = (script.env['URL_PATH_INFO']) ? "?&url_path=" + script.env['URL_PATH_INFO'] : ''
+            authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/" + externalAuthID + "#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/${action}?path=" +
                     encodedArtifactUrl
+
         }
         else {
             script.echoCustom("Failed to generate the authenticated URLs. Unable to find the cloud environment guid.",'WARN')
