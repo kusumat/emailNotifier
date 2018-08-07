@@ -856,10 +856,11 @@ class TestAutomation implements Serializable {
                                 script.stage('Check PostTest Hook Points'){
                                     if(runCustomHook) {
                                         def desktopWebTestsResultsStatus = true
+					  def nativeTestsResultStatus = true
                                         if(isNativeApp){
                                             deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
                                             def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
-                                            def nativeTestsResultStatus = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
+                                            nativeTestsResultStatus = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
                                         }
                                         if(isDesktopwebApp){
                                             desktopTestRunResults ?: script.echoCustom('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
