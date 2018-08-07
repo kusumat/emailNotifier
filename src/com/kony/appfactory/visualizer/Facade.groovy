@@ -62,7 +62,6 @@ class Facade implements Serializable {
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
     private final androidAppVersion = script.params.ANDROID_APP_VERSION
     private final androidVersionCode = script.params.ANDROID_VERSION_CODE
-    private final googleMapsKeyId = script.params.GOOGLE_MAPS_KEY_ID
     private final keystoreFileID = script.params.ANDROID_KEYSTORE_FILE
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
@@ -291,7 +290,6 @@ class Facade implements Serializable {
                         script.string(name: 'ANDROID_TABLET_APP_ID', value: "${androidTabletAppId}"),
                         script.string(name: 'ANDROID_APP_VERSION', value: "${androidAppVersion}"),
                         script.string(name: 'ANDROID_VERSION_CODE', value: "${androidVersionCode}"),
-                        script.string(name: 'GOOGLE_MAPS_KEY_ID', value: "${googleMapsKeyId}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_FILE', value: "${keystoreFileID}"),
                         script.credentials(name: 'ANDROID_KEYSTORE_PASSWORD', value: "${keystorePasswordID}"),
                         script.credentials(name: 'ANDROID_KEY_PASSWORD', value: "${privateKeyPassword}"),

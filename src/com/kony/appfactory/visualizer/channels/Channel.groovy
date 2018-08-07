@@ -223,7 +223,7 @@ class Channel implements Serializable {
 
     /**
      * Wraps code with required environment variables (home paths of dependencies,
-     *  updates PATH environment variable, Kony cloud credentials and optionally GOOGLE_MAPS_KEY for Android builds).
+     *  updates PATH environment variable, Kony cloud credentials).
      *
      * @param closure block of code.
      */
@@ -254,12 +254,6 @@ class Channel implements Serializable {
         /* Collect all additional environment variables that required for build */
         def credentialsTypeList = [script.usernamePassword(credentialsId: "${cloudCredentialsID}",
                 passwordVariable: 'CLOUD_PASSWORD', usernameVariable: 'CLOUD_USERNAME')]
-
-        if (channelOs == 'Android' && script.params.GOOGLE_MAPS_KEY_ID) {
-            credentialsTypeList.add(
-                    script.string(credentialsId: "${script.params.GOOGLE_MAPS_KEY_ID}", variable: 'GOOGLE_MAPS_KEY')
-            )
-        }
 
         script.withEnv(["PATH+TOOLS=${script.env.NODE_HOME}${pathSeparator}${toolBinPath}"]) {
             script.withCredentials(credentialsTypeList) {
