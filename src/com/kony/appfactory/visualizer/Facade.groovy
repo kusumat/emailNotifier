@@ -49,6 +49,7 @@ class Facade implements Serializable {
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     /* iOS build parameters */
     private final appleID = script.params.APPLE_ID
+    private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosUniversalAppId = script.params.IOS_UNIVERSAL_APP_ID
@@ -301,6 +302,7 @@ class Facade implements Serializable {
             case ~/^.*IOS.*$/:
                 channelJobParameters = commonParameters + [
                         script.credentials(name: 'APPLE_ID', value: "${appleID}"),
+                        script.credentials(name: 'APPLE_SIGNING_CERTIFICATES', value: "${appleCertID}"),
                         script.string(name: 'APPLE_DEVELOPER_TEAM_ID', value: "${appleDeveloperTeamId}"),
                         script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}"),
                         script.string(name: 'IOS_MOBILE_APP_ID', value: "${iosMobileAppId}"),

@@ -10,7 +10,7 @@ class ValidationHelper implements Serializable {
      * @param script pipeline object.
      * @param [parametersToCheck] parameters that need to be validated.
      */
-    protected static void checkBuildConfiguration(script, parametersToCheck = []) {
+    protected static void checkBuildConfiguration(script, parametersToCheck = [], eitherOrParameters = []) {
         /* List of the parameters that every channel job requires */
         def commonRequiredParams = [
                 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
@@ -34,6 +34,12 @@ class ValidationHelper implements Serializable {
             script.echoCustom(errorMessage,'ERROR')
         }
 
+        if(eitherOrParameters.size() > 0) {
+            eitherOrParameters.each{ paramSet ->
+                (script.params[paramSet[0]]?.trim() != "" ^ script.params[paramSet[1]]?.trim() != "") ?: script.echoCustom("Only one of parameters must be selected from ${paramSet[0]}, ${paramSet[1]}.",'ERROR')
+            }
+        }
+        
         /* Validate required parameters */
         def notValidPrams = checkIfValid(buildConfiguration)
         /* If there are not valid parameters */

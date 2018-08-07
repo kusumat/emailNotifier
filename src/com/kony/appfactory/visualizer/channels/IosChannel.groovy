@@ -4,6 +4,8 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.AppFactory.Jenkins.credentials.impl.AppleSigningCertUtils
+import com.kony.AppFactory.Jenkins.credentials.impl.ProfileInfo
 
 /**
  * Implements logic for iOS channel builds.
@@ -20,6 +22,7 @@ class IosChannel extends Channel {
 
     /* Build parameters */
     private final appleID = script.params.APPLE_ID
+    private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
     /* At least one of application id parameters should be set */
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
@@ -168,6 +171,7 @@ class IosChannel extends Channel {
         String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
         String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithKonylib'].join(separator)
         String iosDummyProjectGenPath = [iosDummyProjectWorkspacePath, 'gen'].join(separator)
+        String fastlaneName
 
         script.catchErrorCustom(errorMessage, successMessage) {
             /* Extract Visualizer iOS Dummy Project */
@@ -220,73 +224,158 @@ class IosChannel extends Channel {
 
             /* Build project and export IPA using fastlane */
             script.dir(iosDummyProjectWorkspacePath) {
-                /* Inject required environment variables */
-
-                script.withCredentials([
-                        script.usernamePassword(
-                                credentialsId: "${appleID}",
-                                passwordVariable: 'FASTLANE_PASSWORD',
-                                usernameVariable: 'MATCH_USERNAME'
-                        )
-                ]) {
-                    /*Note:
-                    * If the build mode is "release-protected" need to change the build mode to 'Protected' because
-                    * xcode will not have 'release-protected' as mode. So, changing the build mode explicitly here in that case.
-                    */
-                    def ProjectBuildMode = buildMode.equals(libraryProperties.'buildmode.release.protected.type') ?
+                /*Note:
+                * If the build mode is "release-protected" need to change the build mode to 'Protected' because
+                * xcode will not have 'release-protected' as mode. So, changing the build mode explicitly here in that case.
+                */
+                def ProjectBuildMode = buildMode.equals(libraryProperties.'buildmode.release.protected.type') ?
                           buildMode.substring(buildMode.lastIndexOf("-") + 1).capitalize() : buildMode.capitalize()
-                    /*
-                    * APPFACT-779
-                    * Custom IOS App display name can be given using the Key "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}"
-                    * But this is should be picked from projectprop.xml, So this key is removed, and user committed app name will
-                    * be considered.
-                    *
-                    * Note: In debug mode, Visualizer prefixes 'debugger' word in App display name.
-                    * */
-                    script.withEnv([
-                            "FASTLANE_DONT_STORE_PASSWORD=true",
-                            "MATCH_APP_IDENTIFIER=${iosBundleId}",
-                            "MATCH_GIT_BRANCH=${(appleDeveloperTeamId) ?: script.env.MATCH_USERNAME}",
-                            "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
-                            "GYM_OUTPUT_DIRECTORY=${karArtifact.path}",
-                            "GYM_OUTPUT_NAME=${projectName}",
-                            "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
-                            "MATCH_TYPE=${iosDistributionType}",
-                            "EXPORT_METHOD=${iOSExportMethod}",
-                            "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
-                            "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
-                            "PROJECT_BUILDMODE=${ProjectBuildMode}",
-                            "FASTLANE_TEAM_ID=${script.env.APPLE_DEVELOPER_TEAM_ID}",
-                            "APPLE_WATCH_EXTENSION=${iosWatchExtension}",
-                            "FASTLANE_SKIP_UPDATE_CHECK=1"
-                    ]) {
-                        script.dir('fastlane') {
-                            script.unstash name: fastlaneConfigStashName
-                        }
-                        script.sshagent(credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
-                            /* set iOS build configuration to debug/release based on Visualizer version,
-                            * note that, in 8.1.0 and above versions, to build debug mode binary, set the build configuration of KRelease as debug.
-                            */
-                            def iOSSchemaChangedVersion = libraryProperties.'ios.schema.buildconfig.changed.version'
-                            def compareViziOSSchemaChangedVersions = ValidationHelper.compareVisualizerVersions(script.env.visualizerVersion, iOSSchemaChangedVersion)
-                            if ((compareViziOSSchemaChangedVersions >= 0) && (buildMode != libraryProperties.'buildmode.release.protected.type')) {
-                                script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_build', true)
-                            } else {
-                                script.shellCustom('$FASTLANE_DIR/fastlane kony_ios_' + buildMode.replaceAll('-', '_'), true)
+                
+                script.dir('fastlane') {
+                    script.unstash name: fastlaneConfigStashName
+                }
+                
+                /* set iOS build configuration to debug/release based on Visualizer version,
+                 * note that, in 8.1.0 and above versions, to build debug mode binary, set the build configuration of KRelease as debug.
+                 */
+                 def iOSSchemaChangedVersion = libraryProperties.'ios.schema.buildconfig.changed.version'
+                 def compareViziOSSchemaChangedVersions = ValidationHelper.compareVisualizerVersions(script.env.visualizerVersion, iOSSchemaChangedVersion)
+                 if ((compareViziOSSchemaChangedVersions >= 0) && (buildMode != libraryProperties.'buildmode.release.protected.type')) {
+                     fastlaneName = 'kony_ios_build'
+                 } else {
+                     fastlaneName = 'kony_ios_' + buildMode.replaceAll('-', '_')
+                 }
+                 
+                /*
+                 * APPFACT-779
+                 * Custom IOS App display name can be given using the Key "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}"
+                 * But this is should be picked from projectprop.xml, So this key is removed, and user committed app name will
+                 * be considered.
+                 *
+                 * Note: In debug mode, Visualizer prefixes 'debugger' word in App display name.
+                 * */
+                script.withEnv([
+                    "FASTLANE_DONT_STORE_PASSWORD=true",
+                    "MATCH_APP_IDENTIFIER=${iosBundleId}",
+                    "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
+                    "GYM_OUTPUT_DIRECTORY=${karArtifact.path}",
+                    "GYM_OUTPUT_NAME=${projectName}",
+                    "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
+                    "MATCH_TYPE=${iosDistributionType}",
+                    "EXPORT_METHOD=${iOSExportMethod}",
+                    "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
+                    "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
+                    "PROJECT_BUILDMODE=${ProjectBuildMode}",
+                    "FASTLANE_TEAM_ID=${script.env.APPLE_DEVELOPER_TEAM_ID}",
+                    "FASTLANE_SKIP_UPDATE_CHECK=1"
+                ]) {
+                    
+                    if (appleID){
+                        script.withCredentials([
+                                script.usernamePassword(
+                                    credentialsId: "${appleID}",
+                                    passwordVariable: 'FASTLANE_PASSWORD',
+                                    usernameVariable: 'MATCH_USERNAME'
+                                )
+                        ]) {
+                            script.withEnv([
+                                    "MATCH_GIT_BRANCH=${(appleDeveloperTeamId) ?: script.env.MATCH_USERNAME}",
+                                    "MANUAL_CERTS=false"
+                            ]) {
+                                script.sshagent(credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
+                                    script.shellCustom('$FASTLANE_DIR/fastlane ' + fastlaneName, true)
+                                }
                             }
                         }
-                        script.dir('fastlane') {
-                            /* Cleanup fastlane configuration files post the build, as these should not be exposed/accessed
-                             * by other steps like post-build CustomHooks.
-                             */
-                            script.deleteDir()
+                    } else if(appleCertID) {
+                        def profileFileNames = [], profilesEnv = []
+                        script.withCredentials([
+                            script.AppleSigningCerts(
+                                credentialsId: "${appleCertID}",
+                                filePath: "${iosDummyProjectWorkspacePath}",
+                                provisionPWD: 'PROVISION_PASSWORD',
+                                isSingleProfile: 'IS_SINGLE_PROFILE'
+                            )
+                        ]) {
+                            if(script.env.IS_SINGLE_PROFILE.equalsIgnoreCase("false")){
+                                script.unzip zipFile: 'AppleSigningProfiles.zip'
+                            }
+                            script.dir(iosDummyProjectWorkspacePath){
+                                def files = script.findFiles glob: '**/*.mobileprovision'
+                                for (file in files) {
+                                    profileFileNames.add([iosDummyProjectWorkspacePath, file.path].join(separator))
+                                }
+                                profilesEnv = getProfileEnvVarsFromFiles(profileFileNames)
+                            }
+                            script.withEnv([
+                                            "PROVISION_CERT_FILE=${iosDummyProjectWorkspacePath}/AppleProvisioningCert.p12",
+                                            "PROVISION_CERT_PASSWORD=${script.env.PROVISION_PASSWORD}",
+                                            "MANUAL_CERTS=true"
+                                            ] + profilesEnv) {
+                                script.shellCustom('$FASTLANE_DIR/fastlane ' + fastlaneName, true)
+                            }
                         }
                     }
+                }
+                script.dir('fastlane') {
+                    /* Cleanup fastlane configuration files post the build, as these should not be exposed/accessed
+                     * by other steps like post-build CustomHooks.
+                     */
+                    script.deleteDir()
                 }
             }
         }
     }
 
+    /**
+     * This method will collect all the information (like bundle id, Creation Date, Expiry Date) 
+     * about the mobile provisioing profiles from the list of the given files.
+     * 
+     * @param profileFileNames
+     * @return list of ProfileInfo objects
+     */
+    private final getProfileEnvVarsFromFiles(profileFileNames){
+        def profileEnvVars = [], appIdentifiers = [], copyCMDs = []
+        def profileHome = "~/Library/MobileDevice/Provisioning\\ Profiles"
+        boolean isValidBundleID = false
+        
+        profileFileNames.each{filePath ->
+            def profileContent = script.readFile file: filePath
+            def profileInfo = AppleSigningCertUtils.parseProvisioning(profileContent)
+            def appIdentifier = profileInfo.getAppIdentifier()
+            def teamID = profileInfo.getTeamID()
+            def UUID = profileInfo.getUUID()
+            appIdentifier = appIdentifier.split('\\.').minus(teamID).join(".")
+            def testAppIdentifier = appIdentifier.replaceAll('\\.', '\\\\.')
+            if(iosBundleId.matches(testAppIdentifier.replaceAll('\\*', '(\\.\\*)'))){
+                appIdentifier = iosBundleId
+                isValidBundleID = true
+            }
+            
+            if(profileInfo.isProfileExpired())
+                script.echoCustom("Provisioning profile is expired. Please check and upload the new provisioing profile for the app identifier : ${appIdentifier}.", "ERROR")
+                
+            appIdentifiers.add(appIdentifier) // this is for the wildcard profiles - fastlane needs this info
+            profileEnvVars.add("sigh_${appIdentifier}_${iosDistributionType}_profile-path=${filePath}")
+            profileEnvVars.add("sigh_${appIdentifier}_${iosDistributionType}_profile-name=" + profileInfo.getProfileName())
+            profileEnvVars.add("sigh_${appIdentifier}_${iosDistributionType}_team-id=${teamID}")
+            profileEnvVars.add("sigh_${appIdentifier}_${iosDistributionType}=${UUID}")
+
+            // Preparing the commands to copy the profile files. If we run the copy command here, we are getting the java.io.NotSerializableException
+            copyCMDs.add("cp -f ${filePath} ${profileHome}/${UUID}.mobileprovision")
+        }
+        
+        if(!isValidBundleID){
+            script.echoCustom("There is no matching profile found for the given bundle identifier (Application Identifier). " + 
+                            "Looks like mapping profiles are not available in the APPLE_SIGNING_CERTIFICATES uploaded files.", "ERROR")
+        }
+        copyCMDs.each{
+            script.shellCustom(it, true)
+        }
+        profileEnvVars.add("APP_IDENTIFIERS=" + appIdentifiers.join(","))
+        profileEnvVars
+    }
+    
     /**
      * Creates PLIST file.
      * @param ipaArtifactUrl IPA file S3 URL.
@@ -330,7 +419,8 @@ class IosChannel extends Channel {
                 script.stage('Check provided parameters') {
                     ValidationHelper.checkBuildConfiguration(script)
 
-                    def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
+                    def mandatoryParameters = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION', 'FORM_FACTOR']
+                    def eitherOrParameters = [['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES']]
                     if (channelOs && channelFormFactor) {
                         def appIdType = BuildHelper.getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor)
                         mandatoryParameters.add(appIdType)
@@ -342,7 +432,7 @@ class IosChannel extends Channel {
                         mandatoryParameters.add('PROTECTED_KEYS')
                     }
 
-                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters, eitherOrParameters)
                     if ((channelFormFactor?.equalsIgnoreCase('tablet')) && iosWatchExtension) {
                         script.echoCustom ("Skipping Apple Watch extension build for iOS Tablet channel.", 'WARN')
                         /* Resetting Watch variables to false for fastlane to ignore watch extension signing */
