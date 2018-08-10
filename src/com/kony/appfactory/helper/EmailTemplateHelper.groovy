@@ -768,7 +768,7 @@ class EmailTemplateHelper implements Serializable {
                     td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                         h4(style: "margin-bottom:0", "${binding.commandName} Details")
                         p {
-                            mkp.yield "${binding.commandName} of Fabric app ${binding.projectName} is: "
+                            mkp.yield "${binding.commandName} of Fabric app ${binding.fabricAppName}(${binding.fabricAppVersion}) is: "
                             strong binding.build.result
                             mkp.yield '.'
                         }

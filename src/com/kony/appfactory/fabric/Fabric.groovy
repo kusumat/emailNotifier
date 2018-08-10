@@ -3,6 +3,7 @@ package com.kony.appfactory.fabric
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
+
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
@@ -37,18 +38,23 @@ class Fabric implements Serializable {
     private final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private final String fabricAppName = script.params.FABRIC_APP_NAME
     private final String recipientsList = script.params.RECIPIENTS_LIST
+
+    private final String fabricAppVersion
+
     /* Import build parameters */
     private final String commitAuthor = script.params.COMMIT_AUTHOR?.trim() ?: 'Jenkins'
     private final String authorEmail = script.params.AUTHOR_EMAIL
     private String commitMessage = script.params.COMMIT_MESSAGE?.trim() ?:
             "Automatic backup of Fabric services" +
                     (script.env.BUILD_NUMBER ? ", build-${script.env.BUILD_NUMBER}" : '.')
+
     /* Force Fabric CLI to overwrite existing application on import */
-    private final boolean overwriteExisting = script.params.OVERWRITE_EXISTING
+    private final boolean overwriteExisting
     /* Flag for triggering Publish job */
     private final boolean enablePublish = script.params.ENABLE_PUBLISH
     /* Publish build parameters */
     private final String fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
+    private final boolean setDefaultVersion = script.params.SET_DEFAULT_VERSION
 
     /**
      * Class constructor.
@@ -65,6 +71,40 @@ class Fabric implements Serializable {
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         nodeLabel = libraryProperties.'fabric.node.label'
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
+
+        /*
+            To maintain backward compatibility, checking if param exist, if it doesn't then
+            setting the value to default 1.0 which is fabric base version for any app
+            that you submit before SP2.
+        */
+        if (!this.script.params.containsKey('FABRIC_APP_VERSION')) {
+            this.script.env['FABRIC_APP_VERSION'] = '1.0'
+        }
+        fabricAppVersion = this.script.env['FABRIC_APP_VERSION']
+
+        overwriteExisting =
+                this.script.params.containsKey('OVERWRITE_EXISTING') ? this.script.params.OVERWRITE_EXISTING : true
+    }
+
+    /**
+     * Validates if a local copy of fabric app is having the same version which user has selected.
+     *
+     *  Meta.js File content at location ${GitRepositoryName}/export/Apps/${APP_NAME}/Meta.json
+     *  <pre>
+     *  {@code
+     *      "subType":"customapp",
+     *      "description":"MyWork",
+     *      "version":"1.0"
+     *  }
+     *  </pre>
+     *
+     * @param fabricAppVersion
+     * @param metaFileLocation
+     * @return boolean : return true if version is same else false.
+     */
+    private final boolean validateLocalFabricAppVersion(String fabricAppVersion, String metaFileLocation) {
+        def metaJson = script.readJSON file: metaFileLocation
+        return (fabricAppVersion == metaJson.version)
     }
 
     /**
@@ -92,8 +132,11 @@ class Fabric implements Serializable {
      * @param cloudCredentialsID Kony Cloud credentials Id in Jenkins credentials store.
      * @param isUnixNode UNIX node flag.
      * @param fabricCommandOptions options for Fabric command.
+     * @param args to shellCustom to return status and command output
+     *
+     * @return returnStatus/returnStdout
      */
-    protected final void fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCommandOptions = [:]) {
+    protected final String fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCommandOptions = [:], args = [:]) {
         /* Check required arguments */
         (fabricCommand) ?: script.echoCustom("fabricCommand argument can't be null",'ERROR')
         (cloudCredentialsID) ?: script.echoCustom("cloudCredentialsID argument can't be null",'ERROR')
@@ -125,7 +168,7 @@ class Fabric implements Serializable {
                         options
                 ].join(' ')
 
-                script.shellCustom(shellString, isUnixNode)
+                script.shellCustom(shellString, isUnixNode, args)
             }
         }
     }
@@ -302,17 +345,26 @@ class Fabric implements Serializable {
     }
 
     /**
-     * Changes name of current export for next build.
+     * Creates application zip file for export
      *
      * @param projectName name of the application.
+     * @param fabricApplicationName name of the application on Fabric.
      */
-    private final void storeArtifacts(projectName) {
-        String errorMessage = 'Failed to store artifacts'
+    private final void zipProjectForExport(projectName) {
+        String errorMessage = "Failed to create zip file for project ${projectName}"
+
+        def exportAppDir = projectName + "/export"
+        def exportZipName = "${projectName}_PREV.zip"
 
         script.catchErrorCustom(errorMessage) {
-            script.shellCustom("cp -p ${projectName}.zip ${projectName}_PREV.zip", isUnixNode)
+            script.dir(exportAppDir) {
+                script.shellCustom("zip -r $exportZipName Apps -x *.pretty.json", isUnixNode)
+                script.shellCustom("cp $exportZipName ../../", isUnixNode)
+            }
+
         }
     }
+
 
     /**
      * Creates application zip file for import.
@@ -431,7 +483,7 @@ class Fabric implements Serializable {
         String descriptionItems = itemsToExpose?.findResults {
             item -> item.value ? "<p>${item.key}: ${item.value}</p>" : null
         }?.join('\n')
-	 script.currentBuild.description = """\
+        script.currentBuild.description = """\
             <div id="build-description">
                 ${descriptionItems}
             </div>\
@@ -468,18 +520,24 @@ class Fabric implements Serializable {
                 fabricCommand = 'export'
                 /* Data for e-mail notification */
                 emailData = [
-                        projectName           : fabricAppName,
+                        fabricAppName         : fabricAppName,
+                        fabricAppVersion      : fabricAppVersion,
                         exportRepositoryUrl   : exportRepositoryUrl,
                         exportRepositoryBranch: exportRepositoryBranch,
+                        authorEmail           : authorEmail,
                         commitAuthor          : commitAuthor,
                         commitMessage         : commitMessage,
-                        authorEmail           : authorEmail,
                         commandName           : fabricCommand.capitalize()
+
                 ]
+
                 buildDescriptionItems = [
-                        'Application name': fabricAppName
+                        'App Name'      : fabricAppName,
+                        'App Version'   : fabricAppVersion
                 ]
+
                 boolean appChanged
+
                 /* Folder name for storing exported application */
                 String exportFolder = fabricCommand
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
@@ -487,8 +545,14 @@ class Fabric implements Serializable {
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_EXPORT_REPOSITORY_URL',
-                            'PROJECT_EXPORT_BRANCH', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID', 'AUTHOR_EMAIL'
+                            'CLOUD_ACCOUNT_ID',
+                            'CLOUD_CREDENTIALS_ID',
+                            'FABRIC_APP_NAME',
+                            'FABRIC_APP_VERSION',
+                            'PROJECT_EXPORT_BRANCH',
+                            'PROJECT_EXPORT_REPOSITORY_URL',
+                            'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID',
+                            'AUTHOR_EMAIL'
                     ]
 
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
@@ -499,13 +563,8 @@ class Fabric implements Serializable {
                     script.node(nodeLabel) {
                         isUnixNode = (script.isUnix()) ?: script.echoCustom("Slave's OS type for this run is not supported!",'ERROR')
                         script.stage('Prepare build-node environment') {
-                            /*
-                            Clean workspace, to be sure that we have not any items from previous build,
-                            and build environment completely new, but exclude zip file with exported
-                            application from previous run.
-                         */
-                            script.cleanWs deleteDirs: true,
-                                    patterns: [[pattern: "**/${projectName}_PREV.zip", type: 'EXCLUDE']]
+                            script.cleanWs deleteDirs: true
+
                             fetchFabricCli(fabricCliVersion)
                         }
 
@@ -513,42 +572,71 @@ class Fabric implements Serializable {
                             def fabricCliOptions = [
                                     '-t': "\"$cloudAccountId\"",
                                     '-a': "\"$fabricAppName\"",
-                                    '-f': "\"${projectName}.zip\""
+                                    '-f': "\"${projectName}.zip\"",
+                                    '-v': "\"$fabricAppVersion\""
                             ]
 
                             fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
                         }
 
-                        script.stage('Check if there were changes') {
-                            appChanged = fabricAppChanged(
-                                    previousPath: "${projectName}_PREV.zip",
-                                    currentPath: "${projectName}.zip"
-                            )
+                        script.stage('Fetch project from remote git repository') {
+                            BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: projectName,
+                                    scmBranch: exportRepositoryBranch,
+                                    scmCredentialsId: exportRepositoryCredentialsId,
+                                    scmUrl: exportRepositoryUrl
+                        }
 
-                            if (appChanged) {
-                                script.echoCustom("There were some changes from previous run, proceeding...")
+                        script.stage("Validate the Local Fabric App") {
+                            if (!overwriteExisting) {
+
+                                def errorMessage = "\n Select OVERWRITE_EXISTING parameter to use force push to SCM."
+
+                                def metaFileLocation = projectName + '/export/' + "Apps/$fabricAppName/Meta.json"
+                                def fileExist = script.fileExists file: metaFileLocation
+
+                                if (fileExist) {
+                                    validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation) ?:
+                                            script.echoCustom("Repository contains a different version of fabric app. Please select an appropriate branch " +
+                                                    "OR " + errorMessage, "ERROR")
+                                } else {
+                                    script.echoCustom("Repository doesn't contain valid fabric app. \n" + errorMessage, "ERROR")
+                                }
+                            }
+                        }
+
+                        script.stage('Check if there were changes') {
+
+                            if (overwriteExisting) {
+                                script.echoCustom("Force Push ${fabricAppName}(${fabricAppVersion}) is selected, exporting updates to ${exportRepositoryBranch} Branch.")
+
+                                /* If Override Existing is selected, delete all the files from previous version and check in the code. */
+                                script.dir(exportFolder) {
+                                    script.deleteDir()
+                                }
                                 script.unzip zipFile: "${projectName}.zip", dir: exportFolder
+                                appChanged = true
                             } else {
-                                script.echoCustom("There were no changes from previous run")
+                                zipProjectForExport(projectName)
+                                appChanged = fabricAppChanged(previousPath: "${projectName}_PREV.zip", currentPath: "${projectName}.zip")
+
+                                if (appChanged) {
+                                    script.echoCustom("Found updates on Fabric for ${fabricAppName}(${fabricAppVersion}), exporting updates to ${exportRepositoryBranch} Branch.")
+                                    script.unzip zipFile: "${projectName}.zip", dir: exportFolder
+                                } else {
+                                    script.echoCustom("${fabricAppName}(${fabricAppVersion}) has no updates in Fabric.")
+                                }
                             }
                         }
 
                         if (appChanged) {
-                            script.stage('Fetch project from remote git repository') {
-                                BuildHelper.checkoutProject script: script,
-                                        projectRelativePath: projectName,
-                                        scmBranch: exportRepositoryBranch,
-                                        scmCredentialsId: exportRepositoryCredentialsId,
-                                        scmUrl: exportRepositoryUrl
-                            }
-
                             script.stage('Prettify exported JSON files') {
                                 def JSonFilesList = findJsonFiles folderToSearchIn: exportFolder
                                 if (JSonFilesList) {
                                     prettifyJsonFiles rootFolder: exportFolder, files: JSonFilesList
                                     overwriteFilesInGit exportFolder: exportFolder, projectPath: projectName
                                 } else {
-                                    script.echoCustom('JSON files were not found','ERROR')
+                                    script.echoCustom('JSON files were not found', 'ERROR')
                                 }
                             }
 
@@ -560,13 +648,9 @@ class Fabric implements Serializable {
                                             pushChanges()
                                         }
                                     } else {
-                                        script.echoCustom("There were no any changes in local git repository")
+                                        script.echoCustom("${fabricAppName}(${fabricAppVersion}) has no updates in Fabric.")
                                     }
                                 }
-                            }
-
-                            script.stage("Store exported project on workspace") {
-                                storeArtifacts(projectName)
                             }
                         }
                     }
@@ -587,7 +671,8 @@ class Fabric implements Serializable {
                 fabricCommand = 'import'
                 /* Data for e-mail notification */
                 emailData = [
-                        projectName           : fabricAppName,
+                        fabricAppName         : fabricAppName,
+                        fabricAppVersion      : fabricAppVersion,
                         exportRepositoryUrl   : exportRepositoryUrl,
                         exportRepositoryBranch: exportRepositoryBranch,
                         overwriteExisting     : overwriteExisting,
@@ -595,18 +680,24 @@ class Fabric implements Serializable {
                         commandName           : fabricCommand.capitalize(),
                         fabricEnvironmentName : fabricEnvironmentName
                 ]
-                 buildDescriptionItems = [
-                        'Application name' : fabricAppName,
-                        'Published'        : enablePublish ? fabricEnvironmentName : 'No'
+
+                buildDescriptionItems = [
+                        'App Name'      : fabricAppName,
+                        'App Version'   : fabricAppVersion
                 ]
-                
+
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'PROJECT_EXPORT_REPOSITORY_URL',
-                            'PROJECT_EXPORT_BRANCH', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'
+                            'CLOUD_ACCOUNT_ID',
+                            'CLOUD_CREDENTIALS_ID',
+                            'FABRIC_APP_NAME',
+                            'FABRIC_APP_VERSION',
+                            'PROJECT_EXPORT_BRANCH',
+                            'PROJECT_EXPORT_REPOSITORY_URL',
+                            'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'
                     ]
 
                     if (enablePublish) {
@@ -638,6 +729,19 @@ class Fabric implements Serializable {
                                     scmUrl: exportRepositoryUrl
                         }
 
+                        script.stage("Validate the Local Fabric App") {
+
+                            def metaFileLocation = projectName + '/export/' + "Apps/${fabricAppName}/Meta.json"
+                            def fileExist = script.fileExists file: metaFileLocation
+
+                            fileExist ?:
+                                    script.echoCustom("Repository doesn't contain valid fabric app.", "ERROR")
+
+                            validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation) ?:
+                                    script.echoCustom("This repository contains a different version of Fabric app. Please select the appropriate branch.", "ERROR")
+
+                        }
+
                         script.stage("Create zip archive of the project") {
                             zipProject(projectName, fabricAppName)
                         }
@@ -645,7 +749,8 @@ class Fabric implements Serializable {
                         script.stage('Import project to Fabric') {
                             def commonOptions = [
                                     '-t': "\"$cloudAccountId\"",
-                                    '-f': "\"${fabricAppName}.zip\""
+                                    '-f': "\"${fabricAppName}.zip\"",
+                                    '-v': "\"$fabricAppVersion\""
                             ]
                             def fabricCliOptions = (overwriteExisting) ? commonOptions + ['-a': "\"$fabricAppName\""] :
                                     commonOptions
@@ -656,6 +761,8 @@ class Fabric implements Serializable {
                         if (enablePublish) {
                             script.stage('Trigger Publish job') {
                                 script.build job: "Publish", parameters: [
+                                        script.string(name: 'FABRIC_APP_VERSION', value: fabricAppVersion),
+                                        script.booleanParam(name: "SET_DEFAULT_VERSION", value: setDefaultVersion),
                                         script.string(name: 'CLOUD_CREDENTIALS_ID', value: cloudCredentialsID),
                                         script.string(name: 'CLOUD_ACCOUNT_ID', value: cloudAccountId),
                                         script.string(name: 'FABRIC_APP_NAME', value: fabricAppName),
@@ -682,18 +789,25 @@ class Fabric implements Serializable {
                 fabricCommand = 'publish'
                 /* Data for e-mail notification */
                 emailData = [
-                        projectName          : fabricAppName,
+                        fabricAppName        : fabricAppName,
+                        fabricAppVersion     : fabricAppVersion,
                         fabricEnvironmentName: fabricEnvironmentName,
                         commandName          : fabricCommand.capitalize()
                 ]
+
                 buildDescriptionItems = [
-                        'Application name': fabricAppName,
-                        'Environment'     : fabricEnvironmentName
+                        'App Name'      : fabricAppName,
+                        'App Version'   : fabricAppVersion
                 ]
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            'CLOUD_ACCOUNT_ID', 'CLOUD_CREDENTIALS_ID', 'FABRIC_APP_NAME', 'FABRIC_ENVIRONMENT_NAME'
+                            'CLOUD_ACCOUNT_ID',
+                            'CLOUD_CREDENTIALS_ID',
+                            'FABRIC_APP_NAME',
+                            'FABRIC_APP_VERSION',
+                            'FABRIC_ENVIRONMENT_NAME'
+
                     ]
 
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
@@ -717,11 +831,24 @@ class Fabric implements Serializable {
                             def fabricCliOptions = [
                                     '-t': "\"$cloudAccountId\"",
                                     '-a': "\"$fabricAppName\"",
-                                    '-e': "\"$fabricEnvironmentName\""
+                                    '-e': "\"$fabricEnvironmentName\"",
+                                    '-v': "\"$fabricAppVersion\""
                             ]
 
                             fabricCli(fabricCommand, cloudCredentialsID, isUnixNode, fabricCliOptions)
                         }
+
+                        if (setDefaultVersion) {
+                            def fabricCliOptions = [
+                                    '-t': "\"$cloudAccountId\"",
+                                    '-a': "\"$fabricAppName\"",
+                                    '-e': "\"$fabricEnvironmentName\"",
+                                    '-v': "\"$fabricAppVersion\""
+                            ]
+
+                            fabricCli('set-appversion', cloudCredentialsID, isUnixNode, fabricCliOptions)
+                        }
+
                     }
                 }
             }
