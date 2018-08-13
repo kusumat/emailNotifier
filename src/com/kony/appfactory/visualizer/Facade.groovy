@@ -594,7 +594,7 @@ class Facade implements Serializable {
                     }
 
                     /* List of required parameters */
-                    def checkParams = []
+                    def checkParams = [], eitherOrParameters = []
                     def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
                     /* Collect Android channel parameters to check */
                     def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
@@ -631,7 +631,8 @@ class Facade implements Serializable {
                     def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
 
                     if (iosChannels) {
-                        def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'APPLE_ID', 'IOS_BUNDLE_VERSION']
+                        def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION']
+                        eitherOrParameters.add(['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES'])
 
                         if (iosChannels.findAll { it.contains('MOBILE') }) {
                             iosMandatoryParams.add('IOS_MOBILE_APP_ID')
@@ -661,7 +662,7 @@ class Facade implements Serializable {
                     }
 
                     /* Check all required parameters depending on user input */
-                    ValidationHelper.checkBuildConfiguration(script, checkParams)
+                    ValidationHelper.checkBuildConfiguration(script, checkParams, eitherOrParameters)
                 }
 
                 /* Allocate a slave for the run */
