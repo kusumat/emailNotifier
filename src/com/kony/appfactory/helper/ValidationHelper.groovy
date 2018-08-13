@@ -36,7 +36,9 @@ class ValidationHelper implements Serializable {
 
         if(eitherOrParameters.size() > 0) {
             eitherOrParameters.each{ paramSet ->
-                (script.params[paramSet[0]]?.trim() != "" ^ script.params[paramSet[1]]?.trim() != "") ?: script.echoCustom("Only one of parameters must be selected from ${paramSet[0]}, ${paramSet[1]}.",'ERROR')
+                boolean isParam1Valid = (script.params.containsKey(paramSet[0]) && script.params[paramSet[0]]?.trim() != "")
+                boolean isParam2Valid = (script.params.containsKey(paramSet[1]) && script.params[paramSet[1]]?.trim() != "")
+                (isParam1Valid ^ isParam2Valid) ?: script.echoCustom("One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter.",'ERROR')
             }
         }
         
