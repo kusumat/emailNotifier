@@ -34,10 +34,14 @@ class ValidationHelper implements Serializable {
             script.echoCustom(errorMessage,'ERROR')
         }
 
+        /* 
+            We are checking for the explicit null string check, since in the case of previous (< 8.3) appfactory projects,
+            buildviz job is going to send the newly added param value with the null string. 
+        */
         if(eitherOrParameters.size() > 0) {
             eitherOrParameters.each{ paramSet ->
-                boolean isParam1Valid = (script.params.containsKey(paramSet[0]) && script.params[paramSet[0]]?.trim() != "")
-                boolean isParam2Valid = (script.params.containsKey(paramSet[1]) && script.params[paramSet[1]]?.trim() != "")
+                boolean isParam1Valid = (script.params.containsKey(paramSet[0]) && script.params[paramSet[0]] != null && script.params[paramSet[0]] != "null" && script.params[paramSet[0]]?.trim() != "")
+                boolean isParam2Valid = (script.params.containsKey(paramSet[1]) && script.params[paramSet[1]] != null && script.params[paramSet[1]] != "null" && script.params[paramSet[1]]?.trim() != "")
                 (isParam1Valid ^ isParam2Valid) ?: script.echoCustom("One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter.",'ERROR')
             }
         }
