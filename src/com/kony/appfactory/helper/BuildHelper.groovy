@@ -79,7 +79,9 @@ class BuildHelper implements Serializable {
                        branches                         : [[name: scmBranch]],
                        doGenerateSubmoduleConfigurations: false,
                        extensions                       : [[$class           : 'RelativeTargetDirectory',
-                                                            relativeTargetDir: relativeTargetDir]],
+                                                            relativeTargetDir: relativeTargetDir],
+                                                           [$class           : 'CloneOption',
+                                                            timeout: 30]],
                        submoduleCfg                     : [],
                        userRemoteConfigs                : [[credentialsId: scmCredentialsId,
                                                             url          : scmUrl]]]
