@@ -94,9 +94,10 @@ class Facade implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
-        /* Checking if at least one channel been selected */
+        /* Checking if at least one channel been selected. */
         channelsToRun = (getSelectedChannels(this.script.params)) ?:
-                script.echoCustom('Please select at least one channel to build!', 'ERROR')
+                /* Note :- script.error has been used instead of script.echoCustom as part of fix for APPFACT-1101. Please do not replace. */
+                script.error('Please select at least one channel to build!')
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
         this.script.env['URL_PATH_INFO'] = (this.script.kony.URL_PATH_INFO) ?: ''
