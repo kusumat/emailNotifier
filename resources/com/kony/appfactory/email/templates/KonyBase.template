@@ -159,6 +159,45 @@
         td.table-value {
             color: #333;
         }
+        td.testresults {
+	      text-align:center;
+	      border-bottom: 1px solid #e8e8e8;
+	      text-transform: uppercase;
+	      background-color:#f8f9fb;
+	      font-weight:bold;
+	      padding:15px 10px
+	  }
+	  td.testresults-left-aligned {
+	      text-align:left;
+	      border-bottom: 1px solid #e8e8e8;
+	      text-transform: uppercase;
+	      background-color:#f8f9fb;
+	      font-weight:bold;
+	      padding:15px 10px
+	  }
+	  th.testresults {
+	      border-bottom: 1px solid #e8e8e8;
+	      padding:15px 10px;
+	      background-color:#ffffff;
+	      font-weight:normal;		  
+	  }
+	  th.testresults-left-aligned {
+	      border-bottom: 1px solid #e8e8e8;
+	      padding:15px 10px;
+            background-color:#ffffff;
+	      font-weight:normal;
+	      text-align:left;	 
+            text-transform: none;		  
+	  }
+	  th.testresults-left-aligned-font-bold {
+	      border-bottom: 1px solid #e8e8e8;
+	      background-color:#ffffff;
+	      padding:15px 10px;
+	      font-weight:normal;
+	      text-align:left;
+	      font-weight:bold;
+            text-transform: none;		  
+	  }
     </style>
 </head>
 <body>

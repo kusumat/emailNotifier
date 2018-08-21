@@ -370,17 +370,20 @@ class EmailTemplateHelper implements Serializable {
                         td {
                             table(style: "width:100%", class: "text-color table-border cell-spacing") {
                                 tr {
-                                    td(style: "width:22%;text-align:right", 'Build URL: ')
+                                    td(style: "width:30%;text-align:right", 'Build URL: ')
                                     td {
                                         a(href: binding.build.url, "${binding.build.url}")
                                     }
+                                }
+                                tr {
+                                    td(style: "width:30%;text-align:right", 'Selected Browser: ')
+                                    td("${binding.desktopruns["browserName"]} (${binding.desktopruns["browserVersion"]})")
                                 }
                             }
                         }
                     }
                     tr {
                         td(style: "text-align:left", class: "text-color")  {
-                            p(style: "margin:10px 5 10px", "Selected Browser : ${binding.desktopruns["browserName"]} (${binding.desktopruns["browserVersion"]})")
                             br()
                             p(style: "font-weight:bold", "Brief Summary of Test Results:")
                         }
@@ -446,7 +449,7 @@ class EmailTemplateHelper implements Serializable {
         htmlBuilder.table(style: "width:100%") {
             tr {
                 td {
-                    table(style: "border-collapse: collapse;border:0.1px solid DimGray;width:80%;text-align:center", class: "text-color table-border") {
+                    table(style: "width:100%;text-align:center", class: "text-color table-border") {
                         def surefireReportshtml = binding.desktopruns["surefireReportshtml"]
                         def testName = binding.desktopruns["testName"]
                         def testNameKeys = testName.keySet()
@@ -454,29 +457,24 @@ class EmailTemplateHelper implements Serializable {
 
                         //This is to create first row with headings 'Test Name', 'Passed', 'Failed', 'Skipped', 'Total'
                         tr {
-                            th(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#4682B4;font-weight:bold;padding:10px",
+                            td(
+                                    class: "testresults",
                                     'Test Name'
                             )
-                            th(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#4682B4;font-weight:bold;padding:10px",
+                            td(
+                                    class: "testresults",
                                     'Passed'
                             )
-                            th(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#4682B4;font-weight:bold;padding:10px",
+                            td(
+                                    class: "testresults",
                                     'Failed'
                             )
-                            th(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#4682B4;font-weight:bold;padding:10px",
+                            td(
+                                    class: "testresults",
                                     'Skipped'
                             )
-                            th(
-                                    class: "table-value",
-                                    style: "background-color:#4682B4;font-weight:bold;padding:10px",
+                            td(
+                                    class: "testresults",
                                     'Total'
                             )
                         }
@@ -485,8 +483,7 @@ class EmailTemplateHelper implements Serializable {
                         for (int testNameVar = 0; testNameVar < testName.size(); testNameVar++) {
                             tr {
                                 th(
-                                        class: "table-value",
-                                        style: "padding:10px",
+                                        class: "testresults-left-aligned",
                                         {
                                             a(href: surefireReportshtml[testNameVar], target: '_blank', testNameKeys[testNameVar])
                                         }
@@ -500,23 +497,19 @@ class EmailTemplateHelper implements Serializable {
                                         totalSkippedTestCases += summaryList[3]
 
                                         th(
-                                                class: "table-value",
-                                                style: "padding:10px",
+                                                class: "testresults",
                                                 summaryList[1]
                                         )
                                         th(
-                                                class: "table-value",
-                                                style: "padding:10px",
+                                                class: "testresults",
                                                 summaryList[2]
                                         )
                                         th(
-                                                class: "table-value",
-                                                style: "padding:10px",
+                                                class: "testresults",
                                                 summaryList[3]
                                         )
                                         th(
-                                                class: "table-value",
-                                                style: "padding:10px",
+                                                class: "testresults",
                                                 summaryList[0]
                                         )
                                     }
@@ -527,28 +520,23 @@ class EmailTemplateHelper implements Serializable {
                         // This is the last row to print the total number of passed, failed. skipped and total tests across all suites
                         tr(style: "font-weight:bold;background-color:#B0C4DE") {
                             td(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#B0C4DE;font-weight:bold;padding:10px",
+                                    class: "testresults",
                                     'Total'
                             )
                             td(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#B0C4DE;font-weight:bold;padding:10px",
+                                    class: "testresults",
                                     totalPassedTestCases
                             )
                             td(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#B0C4DE;font-weight:bold;padding:10px",
+                                    class: "testresults",
                                     totalFailedTestCases
                             )
                             td(
-                                    class: "table-value",
-                                    style: "border-right: 2px solid #FFFFFF;background-color:#B0C4DE;font-weight:bold;padding:10px",
+                                    class: "testresults",
                                     totalSkippedTestCases
                             )
                             td(
-                                    class: "table-value",
-                                    style: "background-color:#B0C4DE;font-weight:bold;padding:10px",
+                                    class: "testresults",
                                     totalTestCases
                             )
                         }
@@ -570,7 +558,7 @@ class EmailTemplateHelper implements Serializable {
                 td {
                     br()
                     p(style: "margin:30px 0 30px;font-weight:bold", "Detailed Summary of Test Results:")
-                    table(style: "border-collapse: collapse;border:0.1px solid DimGray;width:100%;text-align:left", class: "text-color table-border") {
+                    table(style: "width:100%;text-align:left", class: "text-color table-border") {
                         //Parse each suite and get status of each test case
                         suiteList.each{
                             def mapForTestCaseAndStatus = [:]
@@ -600,13 +588,11 @@ class EmailTemplateHelper implements Serializable {
                                     }
 
                                     td(
-                                            class: "table-value",
-                                            style: "background-color:#B0C4DE;border-bottom:0.1px solid DimGray;border-top:0.1px solid DimGray;font-weight:bold;padding:10px",
+                                            class: "testresults-left-aligned",
                                             'Suite Name: ' + suite_name
                                     )
                                     td(
-                                            class: "table-value",
-                                            style: "background-color:#B0C4DE;border-bottom:0.1px solid DimGray;border-top:0.1px solid DimGray;font-weight:bold;padding:10px",
+                                            class: "testresults-left-aligned",
                                             'Total test cases: ' + mapForTestCaseAndStatus.size()
                                     )
                                 }
@@ -614,38 +600,32 @@ class EmailTemplateHelper implements Serializable {
                                 mapForTestCaseAndStatus.each { mapForTestCaseAndStatusVar ->
                                     if(mapForTestCaseAndStatusVar.key){
                                         tr {
-                                            td(
-                                                    class: "table-value",
-                                                    style: "font-weight:bold;padding:10px",
+                                            th(
+                                                    class: "testresults-left-aligned-font-bold",
                                                     'Test Name: ' + mapForTestCaseAndStatusVar.key
                                             )
-                                            td(
-                                                    class: "table-value",
-                                                    style: "font-weight:bold;padding:10px",
+                                            th(
+                                                    class: "testresults-left-aligned-font-bold",
                                                     mapForTestCaseAndStatusVar.value
                                             )
                                         }
                                         tr {
-                                            td(
-                                                    class: "table-value",
-                                                    style: "padding:10px",
+                                            th(
+                                                    class: "testresults-left-aligned",
                                                     mapForTestCaseAndStatusVar.key + ".log"
                                             )
-                                            td(
-                                                    class: "table-value",
-                                                    style: "padding:10px",
+                                            th(
+                                                    class: "testresults-left-aligned",
                                                     {a(href: binding.listofLogFiles[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')}
                                             )
                                         }
                                         tr {
-                                            td(
-                                                    class: "table-value",
-                                                    style: "padding:10px",
+                                            th(
+                                                    class: "testresults-left-aligned",
                                                     mapForTestCaseAndStatusVar.key + ".jpg"
                                             )
-                                            td(
-                                                    class: "table-value",
-                                                    style: "padding:10px",
+                                            th(
+                                                    class: "testresults-left-aligned",
                                                     {a(href: binding.listofScreenshots[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')}
                                             )
                                         }
