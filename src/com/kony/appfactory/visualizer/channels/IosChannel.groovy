@@ -28,6 +28,7 @@ class IosChannel extends Channel {
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
     private final iosUniversalAppId = script.params.IOS_UNIVERSAL_APP_ID
+    private final iosAppVersion = script.params.IOS_APP_VERSION
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
@@ -62,9 +63,9 @@ class IosChannel extends Channel {
         fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
         this.script.env['IOS_BUNDLE_ID'] = iosBundleId
-        this.script.env['APP_VERSION'] = iosBundleVersion
+        this.script.env['APP_VERSION'] =  ValidationHelper.isValidStringParam(script,'IOS_APP_VERSION') ? iosAppVersion : iosBundleVersion
+        this.script.env['IOS_BUNDLE_VERSION'] = iosBundleVersion
     }
-
     /**
      * Fetches fastlane configuration files for signing build artifacts from S3.
      */
@@ -194,6 +195,7 @@ class IosChannel extends Channel {
                     perl extract.pl ${karArtifact.name}
                 """, true)
             }
+            
             script.stage('Check PreBuild IPA Hook Points') {
                 /* Run Pre Build iOS IPA Hooks */
                 if(isCustomHookRunBuild){
@@ -267,7 +269,8 @@ class IosChannel extends Channel {
                     "PROJECT_WORKSPACE=${iosDummyProjectBasePath}",
                     "PROJECT_BUILDMODE=${ProjectBuildMode}",
                     "FASTLANE_TEAM_ID=${script.env.APPLE_DEVELOPER_TEAM_ID}",
-                    "FASTLANE_SKIP_UPDATE_CHECK=1"
+                    "FASTLANE_SKIP_UPDATE_CHECK=1",
+                    "APP_VERSION=${script.env.APP_VERSION}"
                 ]) {
                     
                     if (appleID){
@@ -430,6 +433,10 @@ class IosChannel extends Channel {
                     
                     if(buildMode == libraryProperties.'buildmode.release.protected.type') {
                         mandatoryParameters.add('PROTECTED_KEYS')
+                    }
+                    
+                    if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
+                        mandatoryParameters.add('IOS_APP_VERSION')
                     }
 
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters, eitherOrParameters)

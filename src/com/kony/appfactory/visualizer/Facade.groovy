@@ -55,6 +55,7 @@ class Facade implements Serializable {
     private final iosUniversalAppId = script.params.IOS_UNIVERSAL_APP_ID
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
     private final iosTabletAppId = script.params.IOS_TABLET_APP_ID
+    private final iosAppVersion = script.params.IOS_APP_VERSION
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     private final iosWatchApp = script.params.APPLE_WATCH_EXTENSION
     /* Android build parameters */
@@ -308,6 +309,7 @@ class Facade implements Serializable {
                         script.string(name: 'IOS_DISTRIBUTION_TYPE', value: "${iosDistributionType}"),
                         script.string(name: 'IOS_MOBILE_APP_ID', value: "${iosMobileAppId}"),
                         script.string(name: 'IOS_TABLET_APP_ID', value: "${iosTabletAppId}"),
+                        script.string(name: 'IOS_APP_VERSION', value: "${iosAppVersion}"),
                         script.string(name: 'IOS_BUNDLE_VERSION', value: "${iosBundleVersion}"),
                         script.string(name: 'IOS_UNIVERSAL_APP_ID', value: "${iosUniversalAppId}"),
                         script.booleanParam(name: 'APPLE_WATCH_EXTENSION', value: iosWatchApp),
@@ -649,6 +651,10 @@ class Facade implements Serializable {
 
                         if(tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
                             iosMandatoryParams.add('PROTECTED_KEYS')
+                        }
+                        
+                        if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
+                            mandatoryParameters.add('IOS_APP_VERSION')
                         }
                         checkParams.addAll(iosMandatoryParams)
                     }
