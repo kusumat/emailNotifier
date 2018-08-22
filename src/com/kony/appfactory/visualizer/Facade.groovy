@@ -654,7 +654,7 @@ class Facade implements Serializable {
                         }
                         
                         if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
-                            mandatoryParameters.add('IOS_APP_VERSION')
+                            iosMandatoryParams.add('IOS_APP_VERSION')
                         }
                         checkParams.addAll(iosMandatoryParams)
                     }
