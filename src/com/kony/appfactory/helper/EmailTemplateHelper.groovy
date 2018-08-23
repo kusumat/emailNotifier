@@ -363,7 +363,7 @@ class EmailTemplateHelper implements Serializable {
                     def testNameMap = binding.desktopruns["testName"]
                     def classNameMap = binding.desktopruns["className"]
                     def testMethodNameMap = binding.desktopruns["testMethod"]
-                    def statusOfTestsMap = binding.desktopruns["status_Map"]
+                    def statusOfTestsMap = binding.desktopruns["testStatusMap"]
                     def suiteWiseSummary = [:]
 
                     tr {

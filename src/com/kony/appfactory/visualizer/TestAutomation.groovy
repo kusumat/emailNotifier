@@ -80,7 +80,7 @@ class TestAutomation implements Serializable {
     private deviceFarmTestRunResults = []
     private desktopTestRunResults = [:]
     /* desktopweb tests Map variables */
-    def listofLogFiles = [:], listofScreenshots = [:], testList = [:], testMethodMap = [:], classList = [:], status_Map = [:]
+    def listofLogFiles = [:], listofScreenshots = [:], testList = [:], testMethodMap = [:], classList = [:], testStatusMap = [:]
     def suiteNameList = [], surefireReportshtmlAuthURL = []
     def failedTests = 0, totalTests = 0, passedTests = 0, skippedTests = 0
     def browserVersionsMap = [:]
@@ -458,7 +458,7 @@ class TestAutomation implements Serializable {
 
                     testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method".each {
                         if(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount]."@is-config".join("") != "true"){
-                            status_Map.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""), testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@status.join(""))
+                            testStatusMap.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""), testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@status.join(""))
                             testMethodMap.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""),testng_results.suite[suiteNo].test[testsCount].class[classCount].@name.join(""))
                         }
                         testMethodCount++
@@ -470,7 +470,7 @@ class TestAutomation implements Serializable {
             suiteNo++
         }
         browserVersionsMap << ["Chrome":'68.0.3419.0', "Internet Explorer":'', "Safari":'', "Firefox":'']
-        desktopTestRunResults << ["suiteName":suiteNameList, "className":classList, "testName":testList, "testMethod":testMethodMap, "status_Map":status_Map, "duration":durationList, "finishTime":finishedAtList]
+        desktopTestRunResults << ["suiteName":suiteNameList, "className":classList, "testName":testList, "testMethod":testMethodMap, "testStatusMap":testStatusMap, "duration":durationList, "finishTime":finishedAtList]
         desktopTestRunResults << ["passedTests":passedTests, "skippedTests":skippedTests, "failedTests":failedTests, "totalTests":totalTests, "browserName":script.params.AVAILABLE_BROWSERS, "browserVersion":browserVersionsMap[script.params.AVAILABLE_BROWSERS], "startTime":startedAtList]
     }
 
@@ -854,22 +854,19 @@ class TestAutomation implements Serializable {
                                 }
                                 
                                 script.stage('Check PostTest Hook Points'){
+                                    def desktopWebTestsResultsStatus = true
+                                    def nativeTestsResultStatus = true
+                                    if (isNativeApp) {
+                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                        def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
+                                        nativeTestsResultStatus = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
+                                    }
+                                    if (isDesktopwebApp) {
+                                        desktopTestRunResults ?: script.echoCustom('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                        desktopWebTestsResultsStatus = !testStatusMap.any {it.value != "PASS"}
+                                        desktopWebTestsResultsStatus ?: (script.currentBuild.result = 'UNSTABLE')
+                                    }
                                     if(runCustomHook) {
-                                        def desktopWebTestsResultsStatus = true
-					  def nativeTestsResultStatus = true
-                                        if(isNativeApp){
-                                            deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
-                                            def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
-                                            nativeTestsResultStatus = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
-                                        }
-                                        if(isDesktopwebApp){
-                                            desktopTestRunResults ?: script.echoCustom('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
-                                            status_Map.each {
-                                                if(it.value != "PASS")
-                                                    desktopWebTestsResultsStatus = false
-                                            }
-                                        }
-
                                         if(isNativeApp && isDesktopwebApp){
                                             if (nativeTestsResultStatus && desktopWebTestsResultsStatus) {
                                                 ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet', 'Desktop_Web'].each { project ->
