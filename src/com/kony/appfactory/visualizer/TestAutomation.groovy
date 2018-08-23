@@ -224,8 +224,6 @@ class TestAutomation implements Serializable {
             else
                 script.echoCustom("Build parameter ${parameter.key} value is not valid URL!",'ERROR')
         }
-        /* Set flag to run tests on Device Farm */
-        runTests = true
     }
 
     /**
@@ -763,6 +761,8 @@ class TestAutomation implements Serializable {
                                     buildTestScripts("Native")
                                 if(isDesktopwebApp)
                                     buildTestScripts("DesktopWeb")
+				  /* Set runTests flag to run tests on Device Farm when build is successful,otherwise set in to false (in catch block) */  
+				  runTests = true  
                             }
                             if(isNativeApp){
                                 script.stage('Publish test automation scripts build result to S3') {
@@ -784,6 +784,8 @@ class TestAutomation implements Serializable {
                         String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
                         script.echoCustom(exceptionMessage,'WARN')
                         script.currentBuild.result = 'FAILURE'
+			  /* Set runTests flag to false so that tests will not get triggered on Device Farm when build is failed */    
+			  runTests = false
                     } finally {
                         NotificationsHelper.sendEmail(script, 'buildTests')
                         /* Exit in case of test binaries failed, throw error to build console. */
