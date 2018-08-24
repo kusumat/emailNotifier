@@ -559,7 +559,7 @@ class TestAutomation implements Serializable {
     private final void runTestsforDesktopWeb() {
           script.dir(testFolderForDesktopWeb) {
               scriptArgumentsForDesktopWeb.contains('-Dsurefire.suiteXmlFiles')?: (scriptArgumentsForDesktopWeb += " -Dsurefire.suiteXmlFiles=Testng.xml")
-              script.shellCustom("mvn test -DDRIVER_PATH='/usr/bin/chromedriver' -DBROWSER_PATH='/usr/bin/my_project/node_modules/puppeteer/.local-chromium/linux-555668/chrome-linux/chrome' -Dmaven.test.failure.ignore=true ${scriptArgumentsForDesktopWeb}", true)
+              script.shellCustom("mvn test -DDRIVER_PATH='chromedriver' -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -Dmaven.test.failure.ignore=true ${scriptArgumentsForDesktopWeb}", true)
           }
     }
 
