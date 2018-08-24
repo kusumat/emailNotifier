@@ -315,7 +315,7 @@ class TestAutomation implements Serializable {
     @NonCPS
     protected final getBinaryName(urlString) {
         def binaryName = (urlString) ? urlString.replaceAll(/.*\//, '') : ''
-
+        
         binaryName
     }
 
@@ -878,6 +878,7 @@ class TestAutomation implements Serializable {
                                                             throw new Exception("Something went wrong with the Custom hooks execution.")
                                                     }
                                                 }
+                                                runCustomHookForUniversalBinaryRunTest()
                                             } else {
                                                 script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
                                             }
@@ -891,6 +892,7 @@ class TestAutomation implements Serializable {
                                                             throw new Exception("Something went wrong with the Custom hooks execution.")
                                                     }
                                                 }
+                                                runCustomHookForUniversalBinaryRunTest()
                                             } else {
                                                 script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
                                             }
@@ -941,6 +943,20 @@ class TestAutomation implements Serializable {
                         }
                     }
                 }
+            }
+        }
+    }
+    
+    /**
+     * It iterates and run custom hook available for Universal binary hook stages in runTest job.
+     * This method is called when "runCustomHook" flag and "nativeTestsResultStatus" is true.
+     */
+    private void runCustomHookForUniversalBinaryRunTest() {
+        ['ANDROID_UNIVERSAL','IOS_UNIVERSAL'].each { project ->
+            if (getBinaryName(script.env[project + "_NATIVE_BINARY_URL"])) {
+                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project + "_STAGE")
+                if (!isSuccess)
+                    throw new Exception("Something went wrong with the Custom hooks execution.")
             }
         }
     }
