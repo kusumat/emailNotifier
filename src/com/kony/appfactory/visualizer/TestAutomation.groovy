@@ -871,43 +871,19 @@ class TestAutomation implements Serializable {
                                     if(runCustomHook) {
                                         if(isNativeApp && isDesktopwebApp){
                                             if (nativeTestsResultStatus && desktopWebTestsResultsStatus) {
-                                                ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet', 'Desktop_Web'].each { project ->
-                                                    if (projectArtifacts."$project".'binaryName') {
-                                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
-                                                        if (!isSuccess)
-                                                            throw new Exception("Something went wrong with the Custom hooks execution.")
-                                                    }
-                                                }
-                                                runCustomHookForUniversalBinaryRunTest()
+                                                runCutomHookForNativeChannels()
+                                                runCustomHookForDesktopWebApp()
                                             } else {
                                                 script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
                                             }
-                                        }
-                                        else if(isNativeApp){
-                                            if (nativeTestsResultStatus) {
-                                                ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
-                                                    if (projectArtifacts."$project".'binaryName') {
-                                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
-                                                        if (!isSuccess)
-                                                            throw new Exception("Something went wrong with the Custom hooks execution.")
-                                                    }
-                                                }
-                                                runCustomHookForUniversalBinaryRunTest()
-                                            } else {
-                                                script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
-                                            }
-                                        }
-                                        else {
-                                            if (desktopWebTestsResultsStatus) {
-                                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
-                                                if (!isSuccess)
-                                                    throw new Exception("Something went wrong with the Custom hooks execution.")
+                                        } else if (isNativeApp) {
+                                            nativeTestsResultStatus ? runCutomHookForNativeChannels() :
+                                                    script.echoCustom('Tests got failed for one/more devices. Hence CustomHooks execution is skipped.', 'WARN')
 
-                                            } else {
-                                                script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
-                                            }
+                                        } else {
+                                            desktopWebTestsResultsStatus ? runCustomHookForDesktopWebApp() :
+                                                    script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
                                         }
-
                                     }
                                     else{
                                         script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
@@ -959,5 +935,31 @@ class TestAutomation implements Serializable {
                     throw new Exception("Something went wrong with the Custom hooks execution.")
             }
         }
+    }
+
+    /**
+     * This runs the custom hooks available for DesktopWeb stage in runTest job.
+     * This method is called when "runCustomHook" flag and "desktopWebTestsResultsStatus" is true.
+     * @exception Exception saying "Something wrong with custom hooks execution" when hooks execution failed
+     */
+    private void runCustomHookForDesktopWebApp() {
+        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
+        if (!isSuccess)
+            throw new Exception("Something went wrong with the Custom hooks execution.")
+    }
+    /**
+     * This runs the custom hooks available for Native channels in runTest job.
+     * This method is called when "runCustomHook" flag and "nativeTestsResultStatus" is true.
+     * @exception Exception saying "Something wrong with custom hooks execution" when hooks execution failed
+     */
+    private void runCutomHookForNativeChannels() {
+        ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
+            if (projectArtifacts."$project".'binaryName') {
+                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
+                if (!isSuccess)
+                    throw new Exception("Something went wrong with the Custom hooks execution.")
+            }
+        }
+        runCustomHookForUniversalBinaryRunTest()
     }
 }
