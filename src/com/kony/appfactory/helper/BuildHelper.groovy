@@ -165,7 +165,7 @@ class BuildHelper implements Serializable {
                     }
                 } catch (Exception e) {
                     String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed to capture the Build Log....'
-                    script.echoCustom(exceptionMessage,'ERROR',false)
+                    script.echoCustom(exceptionMessage, 'ERROR', false)
                 } finally {
                     if(reader != null){
                         reader.close();
