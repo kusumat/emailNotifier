@@ -464,7 +464,7 @@ class Channel implements Serializable {
             artifactLocations.add([name: file.name, path: filePath, extension: artifactExtension])
         }
 
-        artifactLocations
+        artifactLocations ? artifactLocations : script.echoCustom("Failed to find any build artifacts!", 'ERROR')
     }
 
     /**
@@ -505,7 +505,7 @@ class Channel implements Serializable {
             }
         }
 
-        renamedArtifacts
+        renamedArtifacts ? renamedArtifacts : script.echoCustom("No artifacts found to rename!", 'ERROR')
     }
 
     /**
