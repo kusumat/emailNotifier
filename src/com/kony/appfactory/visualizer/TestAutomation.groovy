@@ -467,9 +467,22 @@ class TestAutomation implements Serializable {
             }
             suiteNo++
         }
-        browserVersionsMap << ["Chrome":'68.0.3419.0', "Internet Explorer":'', "Safari":'', "Firefox":'']
         desktopTestRunResults << ["suiteName":suiteNameList, "className":classList, "testName":testList, "testMethod":testMethodMap, "testStatusMap":testStatusMap, "duration":durationList, "finishTime":finishedAtList]
         desktopTestRunResults << ["passedTests":passedTests, "skippedTests":skippedTests, "failedTests":failedTests, "totalTests":totalTests, "browserName":script.params.AVAILABLE_BROWSERS, "browserVersion":browserVersionsMap[script.params.AVAILABLE_BROWSERS], "startTime":startedAtList]
+    }
+
+    /*
+     * This method returns the corresponding browser version
+     * @param browserName is the name of the browser for which we are trying to get the version
+     * @return the version of corresponding browser
+     */
+    private final def getBrowserVersion(browserName, browserPath) {
+        String errorMessage = 'Failed to find the version of ' + browserName + ' browser!'
+        def version
+        script.catchErrorCustom(errorMessage) {
+            version = script.shellCustom("${browserPath} --version", true, [returnStdout: true])
+        }
+        version
     }
 
     void publishDesktopWebTestsResults() {
@@ -556,10 +569,18 @@ class TestAutomation implements Serializable {
     /**
      * Uploads application binaries and Schedules the run for DesktopWeb.
      */
-    private final void runTestsforDesktopWeb() {
+    private final void runTestsforDesktopWeb(browserName) {
           script.dir(testFolderForDesktopWeb) {
               scriptArgumentsForDesktopWeb.contains('-Dsurefire.suiteXmlFiles')?: (scriptArgumentsForDesktopWeb += " -Dsurefire.suiteXmlFiles=Testng.xml")
-              script.shellCustom("mvn test -DDRIVER_PATH='chromedriver' -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -Dmaven.test.failure.ignore=true ${scriptArgumentsForDesktopWeb}", true)
+              switch (browserName) {
+                  case 'CHROME':
+                      script.shellCustom("mvn test -DDRIVER_PATH=${script.env.CHROME_DRIVER_PATH} -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -Dmaven.test.failure.ignore=true ${scriptArgumentsForDesktopWeb}", true)
+                      browserVersionsMap << ["CHROME":getBrowserVersion('CHROME', script.env.CHROME_BROWSER_PATH)]
+                      break
+                  default:
+                      script.echoCustom("Unable to find the browser.. might be unknown/unsupported browser selected!!", 'ERROR')
+                      break
+              }
           }
     }
 
@@ -837,7 +858,7 @@ class TestAutomation implements Serializable {
                                     }
                                     if(isDesktopwebApp){
                                         script.stage('Run the Tests') {
-                                            runTestsforDesktopWeb()
+                                            runTestsforDesktopWeb(script.params.AVAILABLE_BROWSERS)
                                         }
 
                                     }

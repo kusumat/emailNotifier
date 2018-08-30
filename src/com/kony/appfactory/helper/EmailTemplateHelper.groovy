@@ -377,7 +377,7 @@ class EmailTemplateHelper implements Serializable {
                                 }
                                 tr {
                                     td(style: "width:30%;text-align:right", 'Selected Browser: ')
-                                    td("${binding.desktopruns["browserName"]} (${binding.desktopruns["browserVersion"]})")
+                                    td("${binding.desktopruns["browserVersion"]}")
                                 }
                             }
                         }
