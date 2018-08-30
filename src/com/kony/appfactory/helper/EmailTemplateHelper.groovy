@@ -430,9 +430,9 @@ class EmailTemplateHelper implements Serializable {
                             }
                             //Create a map with passed, failed, skipped, total test cases correponding to each suite
                             def passedTestCases = 0, failedTestCases = 0, skippedTestCases = 0
-                            mapForTestCaseAndStatus.each {
-                                (mapForTestCaseAndStatus.value == "PASS")?passedTestCases++:(mapForTestCaseAndStatus.value == "FAIL")?failedTestCases++:skippedTestCases++
-                            }
+                            passedTestCases = mapForTestCaseAndStatus.count{mapForTestCaseAndStatusVar -> mapForTestCaseAndStatusVar.value == "PASS"}
+                            failedTestCases = mapForTestCaseAndStatus.count{mapForTestCaseAndStatusVar -> mapForTestCaseAndStatusVar.value == "FAIL"}
+                            skippedTestCases = mapForTestCaseAndStatus.size() - passedTestCases - failedTestCases
                             suiteWiseSummary.put(testNameMapVar.key, [mapForTestCaseAndStatus.size(), passedTestCases, failedTestCases, skippedTestCases])
                         }
                     }
