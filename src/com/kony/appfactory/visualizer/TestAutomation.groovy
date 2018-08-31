@@ -80,7 +80,7 @@ class TestAutomation implements Serializable {
     private deviceFarmTestRunResults = []
     private desktopTestRunResults = [:]
     /* desktopweb tests Map variables */
-    def listofLogFiles = [:], listofScreenshots = [:], testList = [:], testMethodMap = [:], classList = [:], testStatusMap = [:]
+    def listofLogFiles = [:], listofScreenshots = [:],summary = [:], testList = [:], testMethodMap = [:], classList = [:], testStatusMap = [:], duration = [:], runArnMap = [:]
     def suiteNameList = [], surefireReportshtmlAuthURL = []
     def failedTests = 0, totalTests = 0, passedTests = 0, skippedTests = 0
     def browserVersionsMap = [:]
@@ -342,11 +342,11 @@ class TestAutomation implements Serializable {
     private final void fetchTestResults() {
         def stepsToRun = [:]
         def deviceFarmTestRunArnsKeys = deviceFarmTestRunArns.keySet().toArray()
-        def summary = [:]
 
         /* Workaround to iterate over map keys in c++ style for loop */
         for (int i = 0; i < deviceFarmTestRunArnsKeys.size(); ++i) {
             def arn = deviceFarmTestRunArns[deviceFarmTestRunArnsKeys[i]]
+            script.echoCustom("Run ARN for ${deviceFarmTestRunArnsKeys[i]} is: " + arn)
             /* Prepare step to run in parallel */
             stepsToRun["testResults_${deviceFarmTestRunArnsKeys[i]}"] = {
                 def testRunResult = deviceFarm.getTestRunResult(arn)
@@ -365,7 +365,7 @@ class TestAutomation implements Serializable {
                 else {
                     script.echoCustom("Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!",'WARN')
                 }
-		 summary.putAll(deviceFarm.summaryMap)
+		 summary.putAll(deviceFarm.testSummaryMap)
             }
         }
 	
@@ -382,8 +382,10 @@ class TestAutomation implements Serializable {
         script.echoCustom("Summary of Test Results : ",'INFO')
 	 separator()
 	 separator()
+        duration.putAll(deviceFarm.durationMap)
+        runArnMap.putAll(deviceFarm.runArnMap)
         summary.each{
-            script.echoCustom("On " + it.key + ":: " + it.value,'INFO')
+            script.echoCustom("On " + it.key + ":: " + it.value + ", Duration: " + duration[it.key] + ", Run ARN: " + runArnMap[it.key])
         }
 	 separator()
 	 separator()
@@ -928,7 +930,9 @@ class TestAutomation implements Serializable {
                                         deviceruns    : deviceFarmTestRunResults,
                                         devicePoolName: devicePoolName,
                                         binaryName    : getBinaryNameForEmail(projectArtifacts),
-                                        missingDevices: script.env.MISSING_DEVICES
+                                        missingDevices: script.env.MISSING_DEVICES,
+                                        summaryofResults: summary,
+                                        duration      : duration
                                 ], true)
                             }
                             if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED'){

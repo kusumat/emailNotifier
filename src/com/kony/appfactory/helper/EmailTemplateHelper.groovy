@@ -1,6 +1,8 @@
 package com.kony.appfactory.helper
 
 import groovy.xml.MarkupBuilder
+import com.kony.appfactory.visualizer.TestAutomation
+import org.apache.commons.lang.StringUtils
 
 /**
  * Implements logic of creation content for job result notifications.
@@ -273,8 +275,114 @@ class EmailTemplateHelper implements Serializable {
                     td(style: "text-align:left", class: "text-color") {
                         h4 "Project Name: ${binding.projectName}"
                         if (binding.deviceruns) {
-                            p { strong "Selected Device Pools: ${binding.devicePoolName}" }
-                            p { strong "Devices not available in pool: ${(binding.missingDevices) ?: 'None'}" }
+                            table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                                tr {
+                                    td(style: "width:30%;text-align:right", 'Build URL: ')
+                                    td {
+                                        a(href: binding.build.url, "${binding.build.url}")
+                                    }
+                                }
+                                tr {
+                                    td(style: "width:30%;text-align:right", 'Selected Device Pools: ')
+                                    td("${binding.devicePoolName}")
+                                }
+                                tr {
+                                    td(style: "width:30%;text-align:right", 'Devices not available in pool: ')
+                                    td("${(binding.missingDevices) ?: 'None'}")
+                                }
+                            }
+                        }
+                    }
+                }
+                if (binding.deviceruns) {
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            br()
+                            p(style: "font-weight:bold", "Brief Summary of Test Results:")
+                        }
+                    }
+                    table(style: "width:100%;text-align:center", class: "text-color table-border") {
+                        tr {
+                            td(
+                                    class: "testresults",
+                                    'DEVICE'
+                            )
+                            td(
+                                    class: "testresults",
+                                    'TOTAL'
+                            )
+                            td(
+                                    class: "testresults",
+                                    'PASSED'
+                            )
+                            td(
+                                    class: "testresults",
+                                    colspan:"5",
+                                    'FAILURES'
+                            )
+                            td(
+                                    class: "testresults",
+                                    'DURATION'
+                            )
+                        }
+                        tr {
+                            td("")
+                            td("")
+                            td("")
+                            td(class: "fail","Failed")
+                            td(class: "skip","Skipped")
+                            td(class: "warn","Warned")
+                            td(class: "stop","Stopped")
+                            td(class: "error","Errored")
+                            td("")
+                        }
+                        def testsSummary = [:]
+                        testsSummary.putAll(binding.summaryofResults)
+                        def keys= testsSummary.keySet()
+                        def vals= testsSummary.values()
+                        for(int i=0;i<vals.size();i++){
+                            tr {
+                                th(
+                                        class: "testresults",
+                                        keys[i]
+                                )
+                                th(
+                                        class: "testresults",
+                                        vals[i].substring(vals[i].lastIndexOf(":") + 1)
+                                )
+                                (vals[i].contains("errored")) ? th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "errored:")) :
+                                        th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "total tests:"))
+                                th(
+                                        class: "testresults",
+                                        StringUtils.substringBetween(vals[i], "failed:", "stopped:")
+                                )
+                                th(
+                                        class: "testresults",
+                                        StringUtils.substringBetween(vals[i], "skipped:", "warned:")
+                                )
+                                th(
+                                        class: "testresults",
+                                        StringUtils.substringBetween(vals[i], "warned:", "failed:")
+                                )
+                                th(
+                                        class: "testresults",
+                                        StringUtils.substringBetween(vals[i], "stopped:", "passed:")
+                                )
+                                th(
+                                        class: "testresults",
+                                        StringUtils.substringBetween(vals[i], "errored:", "total tests:")
+                                )
+                                th(
+                                        class: "testresults",
+                                        binding.duration[keys[i]]
+                                )
+                            }
+                        }
+                    }
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            br()
+                            p(style: "font-weight:bold", "Detailed Summary of Test Results:")
                         }
                     }
                 }
@@ -304,49 +412,39 @@ class EmailTemplateHelper implements Serializable {
                         if (prop.key == 'suites') {
                             tr {
                                 td {
-                                    table(style: "border:2px solid;width:100%;text-align:left", class: "text-color table-border") {
-                                        tr {
-                                            th('Name')
-                                            th('URL')
-                                            th(style: "width:25%", 'Status')
-                                        }
+                                    table(style: "width:100%;text-align:left", class: "text-color table-border") {
                                         for (suite in prop.value) {
                                             tr {
-                                                th(
-                                                        colspan: "2",
-                                                        class: "table-value",
-                                                        style: "padding:10px;text-transform:none",
+                                                td(
+                                                        class: "testresults-left-aligned",
                                                         'Suite Name: ' + suite.name
                                                 )
-                                                th(
-                                                        class: "table-value",
-                                                        style: "padding:10px;text-transform:none",
+                                                td(
+                                                        class: "testresults-left-aligned",
                                                         'Total test cases: ' + suite.totalTests
                                                 )
                                             }
                                             for (test in suite.tests) {
                                                 tr {
                                                     th(
-                                                            colspan: "2",
-                                                            class: "table-value",
-                                                            style: "padding:10px;text-transform:none",
+                                                            class: "testresults-left-aligned-font-bold",
                                                             'Test Name: ' + test.name
                                                     )
                                                     th(
-                                                            class: "table-value",
-                                                            style: "padding:10px;text-transform:none",
+                                                            class: "testresults-left-aligned-font-bold",
                                                             test.result
                                                     )
                                                 }
                                                 for (artifact in test.artifacts) {
                                                     tr {
-                                                        td artifact.name + '.' + artifact.extension
-                                                        td {
-                                                            a(href: artifact.authurl, target:'_blank', 'Download File')
-                                                        }
-                                                        td(style: "padding:10px") {
-                                                            mkp.yieldUnescaped('&nbsp;')
-                                                        }
+                                                        th(
+                                                                class: "testresults-left-aligned",
+                                                                artifact.name + '.' + artifact.extension
+                                                        )
+                                                        th(
+                                                                class: "testresults-left-aligned",
+                                                                {a(href: artifact.authurl, target:'_blank', 'Download File')}
+                                                        )
                                                     }
                                                 }
                                             }

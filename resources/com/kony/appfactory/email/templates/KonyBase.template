@@ -198,6 +198,21 @@
 	      font-weight:bold;
             text-transform: none;		  
 	  }
+	  .fail {
+          color: #d60024;
+        }
+	  .skip {
+          color: #8c4d2e;
+        }
+	  .warn {
+          color: #fc9414;
+        }
+	  .stop {
+          color: #6a3b3b;
+        }
+	  .error {
+          color: #fa0004;
+        }
     </style>
 </head>
 <body>

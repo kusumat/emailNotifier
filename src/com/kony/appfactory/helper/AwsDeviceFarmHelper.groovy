@@ -2,13 +2,17 @@ package com.kony.appfactory.helper
 
 import groovy.json.JsonOutput
 import java.net.URLDecoder
+import java.text.SimpleDateFormat
+import groovy.time.TimeCategory
+import java.math.*;
 
 /**
  * Implements Device Farm logic.
  */
 class AwsDeviceFarmHelper implements Serializable {
     def script
-    def summaryMap = [:]
+    def testSummaryMap = [:]
+    def durationMap = [:], testStartTimeMap = [:], testEndTimeMap = [:], mapWithTimeFormat = [:], runArnMap = [:]
     /**
      * Class constructor.
      *
@@ -405,11 +409,14 @@ class AwsDeviceFarmHelper implements Serializable {
                 if(listJobsJSON.jobs.size()){
                     for(def i=0; i< listJobsJSON.jobs.size(); i++){
                         listJobsArrayList = listJobsJSON.jobs[i]
+                        runArnMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, testRunArn)
 			if(completedRunDevicesList.contains(listJobsArrayList.arn))
 			    continue
                         switch (listJobsArrayList.status){
                             case 'PENDING':
-			         script.echoCustom("Tests are initiated, execution is yet to start on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
+                                Date startTime = new Date()
+                                testStartTimeMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, startTime.time)
+                                script.echoCustom("Tests are initiated, execution is yet to start on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
 		                 break
 		             case 'PENDING_DEVICE':
 			         script.echoCustom("Tests Execution is pending, trying to get the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
@@ -440,17 +447,7 @@ class AwsDeviceFarmHelper implements Serializable {
 			     case 'PASSED':
 			         script.echoCustom("Test Execution is completed on \'"+ listJobsArrayList.name + " " + listJobsArrayList.device.os 
 	                             + "\' and over all test result is PASSED", 'INFO')
-	                         def keys = listJobsArrayList.counters.keySet()
-			         def counterValues = ""
-			         for(def j = 0; j < keys.size()-1; j++){
-			             if(listJobsArrayList.counters.get(keys[j])){
-			                 counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
-			             }
-	                         }
-				 counterValues += "total tests: " + listJobsArrayList.counters.get('total')
-				 summaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
-	                         completedRunDevicesList[index] = listJobsArrayList.arn
-				 index++
+                               createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
 			         break
 			     case 'WARNED':
 			         script.echoCustom("Build is warned for unknown reason on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'WARN')
@@ -463,17 +460,7 @@ class AwsDeviceFarmHelper implements Serializable {
 			     case 'FAILED':
 			         script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os 
 			             + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
-			         def keys = listJobsArrayList.counters.keySet()
-			         def counterValues = ""
-			         for(def j = 0; j < keys.size()-1; j++){
-			             if(listJobsArrayList.counters.get(keys[j])){
-			                  counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
-			             }
-				 }
-				 counterValues += "total tests: " + listJobsArrayList.counters.get('total')
-				 summaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
-				 completedRunDevicesList[index] = listJobsArrayList.arn
-				 index++
+			         createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
 			         break
 			     default:
 			         break
@@ -491,6 +478,58 @@ class AwsDeviceFarmHelper implements Serializable {
         }
 	testRunResult
     }
+
+    /**
+     * Collect the details that are to be printed in console output at the end of tests execution such as duration, summary specific to each device.
+     * @param listJobsArrayList List that is returned when we run list-jobs aws command
+     * @param testSummaryMap Map used to collect the summary of test cases for each device
+     * @param testEndTimeMap Map used to collect the time at which the tests execution is completed for each device
+     * @param testStartTimeMap Map used to collect the time at which the tests execution is started for each device
+     * @param completedRunDevicesList This holds the list of devices for which the tests execution is completed
+     * @param index This is the index for the list completedRunDevicesList
+     * */
+    protected void createSummaryOfTestCases(def listJobsArrayList, def testSummaryMap, def testStartTimeMap, def testEndTimeMap, def completedRunDevicesList, def index){
+        def keys = listJobsArrayList.counters.keySet()
+        def counterValues = ""
+        for(int j = 0; j < keys.size()-1; j++){
+            counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
+        }
+        counterValues += "total tests: " + listJobsArrayList.counters.get('total')
+        testSummaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
+        Date endTime = new Date()
+        testEndTimeMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, endTime.time)
+        use(groovy.time.TimeCategory) {
+            Long timeDifference = testEndTimeMap[listJobsArrayList.name + " " + listJobsArrayList.device.os] - testStartTimeMap[listJobsArrayList.name + " " + listJobsArrayList.device.os]
+            mapWithTimeFormat.putAll(changeTimeFormat(timeDifference))
+            def value = ""
+            if(mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP))
+                value+=mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP) + " hrs "
+            if(mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP))
+                value+=mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP)  + " mins "
+            if(mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP))
+                value+=mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP) + " secs "
+            durationMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, value)
+        }
+        completedRunDevicesList[index] = listJobsArrayList.arn
+        index++
+    }
+
+    /**
+     * Converts the given time difference into hours, minutes, seconds
+     * @param Time difference between two times
+     * @return a map with a specific time format
+     * */
+    protected Map changeTimeFormat(Long timeDifference){
+        Map mapWithTimeFormat =[:]
+        timeDifference = timeDifference / 1000
+        mapWithTimeFormat.seconds = timeDifference.remainder(60)
+        timeDifference = (timeDifference - mapWithTimeFormat.seconds) / 60
+        mapWithTimeFormat.minutes = timeDifference.remainder(60)
+        timeDifference = (timeDifference - mapWithTimeFormat.minutes) / 60
+        mapWithTimeFormat.hours = timeDifference.remainder(24)
+        return mapWithTimeFormat
+    }
+
 
     /**
      * Queries Device Farm to get test run artifacts.
