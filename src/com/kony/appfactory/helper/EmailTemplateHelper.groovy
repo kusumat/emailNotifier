@@ -430,8 +430,8 @@ class EmailTemplateHelper implements Serializable {
                             }
                             //Create a map with passed, failed, skipped, total test cases correponding to each suite
                             def passedTestCases = 0, failedTestCases = 0, skippedTestCases = 0
-                            passedTestCases = mapForTestCaseAndStatus.count{mapForTestCaseAndStatusVar -> mapForTestCaseAndStatusVar.value == "PASS"}
-                            failedTestCases = mapForTestCaseAndStatus.count{mapForTestCaseAndStatusVar -> mapForTestCaseAndStatusVar.value == "FAIL"}
+                            passedTestCases = mapForTestCaseAndStatus.count { mapForTestCaseAndStatusVar -> mapForTestCaseAndStatusVar.value == "PASS" }
+                            failedTestCases = mapForTestCaseAndStatus.count { mapForTestCaseAndStatusVar -> mapForTestCaseAndStatusVar.value == "FAIL" }
                             skippedTestCases = mapForTestCaseAndStatus.size() - passedTestCases - failedTestCases
                             suiteWiseSummary.put(testNameMapVar.key, [mapForTestCaseAndStatus.size(), passedTestCases, failedTestCases, skippedTestCases])
                         }
@@ -654,7 +654,7 @@ class EmailTemplateHelper implements Serializable {
                         h2 binding.notificationHeader
                     }
                 }
-                
+
                 tr {
                     td(style: "text-align:left", class: "text-color") {
                         h4(class: "subheading", "Build Details")
@@ -670,14 +670,14 @@ class EmailTemplateHelper implements Serializable {
                                     td(class: "table-value", binding.triggeredBy)
                                 }
                             }
-                            
+
                             tr {
                                 td(style: "width:22%;text-align:right", 'Build URL:')
                                 td {
                                     a(href: binding.build.url, "${binding.build.url}")
                                 }
                             }
-                            
+
                             if (binding.gitURL) {
                                 tr {
                                     td(style: "width:22%;text-align:right", 'Repository URL:')
@@ -730,12 +730,12 @@ class EmailTemplateHelper implements Serializable {
                                     td(class: "table-value", binding.fabricEnvironmentName)
                                 }
                             }
-                            
+
                             tr {
                                 td(style: "width:22%;text-align:right", 'Date of build:')
                                 td(class: "table-value", binding.build.started)
                             }
-                            
+
                             tr {
                                 td(style: "width:22%;text-align:right", 'Build duration:')
                                 td(class: "table-value", binding.build.duration)
@@ -743,7 +743,7 @@ class EmailTemplateHelper implements Serializable {
                         }
                     }
                 }
-                
+
                 tr {
                     td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                         h4(style: "margin-bottom:0", "${binding.commandName} Details")
