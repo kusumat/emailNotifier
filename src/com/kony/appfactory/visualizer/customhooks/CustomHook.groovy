@@ -1,6 +1,7 @@
 package com.kony.appfactory.visualizer.customhooks
 
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.AppFactoryException
 import hudson.model.*
 
 class CustomHook implements Serializable {
@@ -87,7 +88,7 @@ class CustomHook implements Serializable {
                                             script.echoCustom("unknown build script",'WARN')
                                         }
                                     } catch (Exception e) {
-                                        script.echoCustom("Hook build execution failed!!",'ERROR')
+                                        throw new AppFactoryException("Hook build execution failed!!",'ERROR')
                                     } finally {
                                         script.stage('Prepare Environment for actual Build Run') {
                                             def customHooksLogDir = [visWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')

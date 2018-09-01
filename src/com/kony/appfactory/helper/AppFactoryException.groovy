@@ -5,12 +5,22 @@ package com.kony.appfactory.helper
  */
 class AppFactoryException extends Exception {
     
+    private String errorType = 'WARN'
+    
     public AppFactoryException(){
         super()
     }
     
     public AppFactoryException(String message){
-        super(message)
+        this(message, 'WARN')
     }
     
+    public AppFactoryException(String message, String errorType){
+        super(message)
+        this.errorType = errorType
+    }
+    
+    public String getErrorType(){
+        return errorType;
+    }
 }

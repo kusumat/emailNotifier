@@ -225,8 +225,14 @@ class AwsDeviceFarmHelper implements Serializable {
         def devicePoolJsons = [:]
         String successMessage = 'Device pools created successfully'
         String errorMessage = 'Failed to create device pools'
-        def deviceNames = (getDevicesInPool(devicePoolName)) ?: script.echoCustom('Device list is empty!','ERROR')
-        def deviceArns = (getDeviceArns(deviceNames)) ?: script.echoCustom('Device ARNs list is empty!','ERROR')
+        def deviceNames = getDevicesInPool(devicePoolName)
+        if(!deviceNames){
+            throw new AppFactoryException('Device list is empty!','ERROR')
+        }
+        def deviceArns = getDeviceArns(deviceNames)
+        if(!deviceArns){
+            throw new AppFactoryException('Device ARNs list is empty!','ERROR')
+        }
 
         script.catchErrorCustom(errorMessage, successMessage) {
             String generateSkeletonScript = "set +x;aws devicefarm create-device-pool --generate-cli-skeleton"
@@ -317,7 +323,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 String uploadMetadata = getUploadJSON.upload.metadata
 
                 if (uploadStatus == 'FAILED') {
-                    script.echoCustom(uploadMetadata,'ERROR')
+                    throw new AppFactoryException(uploadMetadata, 'ERROR')
                 }
 
                 uploadStatus == 'SUCCEEDED'
@@ -371,12 +377,13 @@ class AwsDeviceFarmHelper implements Serializable {
                 /* Schedule the run */
                 runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim() ?: null
             }
-	}
-	//Validate whether pool has android device if artifact is given for Android, else throw error and vice versa for iOS as well    
-	artifactName.toLowerCase().contains('android') ? isAndroidDevicePresentInPool ?:
-                script.echoCustom("Artifacts provided for Android platform, but no android devices were found in the device pool",'ERROR') :
-                isiOSDevicePresentInPool ?: script.echoCustom("Artifacts provided for iOS platform, but no iOS devices were found in the device pool",'ERROR')
-    
+        }
+        //Validate whether pool has android device if artifact is given for Android, else throw error and vice versa for iOS as well    
+        if(artifactName.toLowerCase().contains('android') && !isAndroidDevicePresentInPool){
+            throw new AppFactoryException("Artifacts provided for Android platform, but no android devices were found in the device pool", 'ERROR')
+        }else if(artifactName.toLowerCase().contains('ios') && !isiOSDevicePresentInPool){
+            throw new AppFactoryException("Artifacts provided for iOS platform, but no iOS devices were found in the device pool", 'ERROR')
+        }
         runArn
     }
 

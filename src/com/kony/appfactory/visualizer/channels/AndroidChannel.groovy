@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.AppFactoryException
 import hudson.scm.SCM
 
 
@@ -137,7 +138,7 @@ class AndroidChannel extends Channel {
                         def appIdType = BuildHelper.getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor)
                         mandatoryParameters.add(appIdType)
                     } else {
-                        script.echoCustom("Something went wrong. Unable to figure out valid application id type", 'ERROR')
+                        throw new AppFactoryException("Something went wrong. Unable to figure out valid application id type", 'ERROR')
                     }
                     
                     /* If the build mode is debug not adding the Androiod keystore parameters*/
@@ -208,8 +209,10 @@ class AndroidChannel extends Channel {
                             }
                             build()
                             /* Search for build artifacts */
-                            buildArtifacts = getArtifactLocations(artifactExtension) ?:
-                                    script.echoCustom('Build artifacts were not found!','ERROR')
+                            buildArtifacts = getArtifactLocations(artifactExtension)
+                            if(!buildArtifacts){
+                                throw new AppFactoryException('Build artifacts were not found!','ERROR')
+                            }
                         }
 
                         script.stage("Sign artifacts") {

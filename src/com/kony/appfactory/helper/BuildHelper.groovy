@@ -374,8 +374,12 @@ class BuildHelper implements Serializable {
         def dependencies = []
         def dependenciesFileContent = fetchRequiredDependencies(script, visualizerVersion, dependenciesFileName,
                 dependenciesBaseUrl, dependenciesArchiveFilePrefix, dependenciesArchiveFileExtension)
-        def visualizerDependencies = (parseDependenciesFileContent(script, dependenciesFileContent)) ?:
-                script.echoCustom("Visualizer dependencies object can't be null!",'ERROR')
+        def visualizerDependencies = parseDependenciesFileContent(script, dependenciesFileContent)
+
+        if(!visualizerDependencies){
+            throw new AppFactoryException("Visualizer dependencies object can't be null!",'ERROR')
+        }
+        
         /* Construct installation path */
         def getInstallationPath = { toolPath ->
             ([visualizerHome] + toolPath).join(separator)

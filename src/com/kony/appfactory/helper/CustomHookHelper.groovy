@@ -191,7 +191,7 @@ class CustomHookHelper implements Serializable {
                         linuxACLbeforeRun()
                     }
                     else {
-                        script.echoCustom("Something went wrong.. unable to run hook",'ERROR')
+                        throw new AppFactoryException("Something went wrong.. unable to run hook",'ERROR')
                     }
                 }
 

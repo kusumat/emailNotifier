@@ -3,6 +3,7 @@ package com.kony.appfactory.fabric
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.AppFactoryException
 
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -498,6 +499,10 @@ class Fabric implements Serializable {
     private final void pipelineWrapper(closure) {
         try {
             closure()
+        } catch (AppFactoryException e) {
+            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+            script.echoCustom(exceptionMessage, e.getErrorType(), false)
+            script.currentBuild.result = 'FAILURE'
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
             script.echoCustom(exceptionMessage,'WARN')
@@ -561,7 +566,10 @@ class Fabric implements Serializable {
                 pipelineWrapper {
                     /* Allocate a slave for the run */
                     script.node(nodeLabel) {
-                        isUnixNode = (script.isUnix()) ?: script.echoCustom("Slave's OS type for this run is not supported!",'ERROR')
+                        isUnixNode = script.isUnix()
+                        if(!isUnixNode){
+                            throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
+                        }
                         script.stage('Prepare build-node environment') {
                             script.cleanWs deleteDirs: true
 
@@ -596,11 +604,12 @@ class Fabric implements Serializable {
                                 def fileExist = script.fileExists file: metaFileLocation
 
                                 if (fileExist) {
-                                    validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation) ?:
-                                            script.echoCustom("Repository contains a different version of fabric app. Please select an appropriate branch " +
+                                    if(!validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation)){
+                                        throw new AppFactoryException("Repository contains a different version of fabric app. Please select an appropriate branch " +
                                                     "OR " + errorMessage, "ERROR")
+                                    }
                                 } else {
-                                    script.echoCustom("Repository doesn't contain valid fabric app. \n" + errorMessage, "ERROR")
+                                    throw new AppFactoryException("Repository doesn't contain valid fabric app. \n" + errorMessage, "ERROR")
                                 }
                             }
                         }
@@ -636,7 +645,7 @@ class Fabric implements Serializable {
                                     prettifyJsonFiles rootFolder: exportFolder, files: JSonFilesList
                                     overwriteFilesInGit exportFolder: exportFolder, projectPath: projectName
                                 } else {
-                                    script.echoCustom('JSON files were not found', 'ERROR')
+                                    throw new AppFactoryException('JSON files were not found', 'ERROR')
                                 }
                             }
 
@@ -710,7 +719,10 @@ class Fabric implements Serializable {
                 pipelineWrapper {
                     /* Allocate a slave for the run */
                     script.node(nodeLabel) {
-                        isUnixNode = (script.isUnix()) ?: script.echoCustom("Slave's OS type for this run is not supported!",'ERROR')
+                        isUnixNode = script.isUnix()
+                        if(!isUnixNode){
+                            throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
+                        }
                         /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.
@@ -734,11 +746,13 @@ class Fabric implements Serializable {
                             def metaFileLocation = projectName + '/export/' + "Apps/${fabricAppName}/Meta.json"
                             def fileExist = script.fileExists file: metaFileLocation
 
-                            fileExist ?:
-                                    script.echoCustom("Repository doesn't contain valid fabric app.", "ERROR")
+                            if(!fileExist){
+                                throw new AppFactoryException("Repository doesn't contain valid fabric app.", "ERROR")
+                            }
 
-                            validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation) ?:
-                                    script.echoCustom("This repository contains a different version of Fabric app. Please select the appropriate branch.", "ERROR")
+                            if(!validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation)){
+                                throw new AppFactoryException("This repository contains a different version of Fabric app. Please select the appropriate branch.", "ERROR")
+                            }
 
                         }
 
@@ -816,7 +830,10 @@ class Fabric implements Serializable {
                 pipelineWrapper {
                     /* Allocate a slave for the run */
                     script.node(nodeLabel) {
-                        isUnixNode = (script.isUnix()) ?: script.echoCustom("Slave's OS type for this run is not supported!",'ERROR')
+                        isUnixNode = script.isUnix()
+                        if(!isUnixNode){
+                            throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
+                        }
                         /*
                         Clean workspace, to be sure that we have not any items from previous build,
                         and build environment completely new.

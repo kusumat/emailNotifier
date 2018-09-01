@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
@@ -152,7 +153,7 @@ class IosChannel extends Channel {
                         }
 
                     } else {
-                        script.echoCustom("Failed to find $projectPropFileName file to update Bundle ID!", 'ERROR')
+                        throw new AppFactoryException("Failed to find $projectPropFileName file to update Bundle ID!", 'ERROR')
                     }
                 }
             }
@@ -356,7 +357,7 @@ class IosChannel extends Channel {
             }
             
             if(profileInfo.isProfileExpired())
-                script.echoCustom("Provisioning profile is expired. Please check and upload the new provisioing profile for the app identifier : ${appIdentifier}.", "ERROR")
+                throw new AppFactoryException("Provisioning profile is expired. Please check and upload the new provisioing profile for the app identifier : ${appIdentifier}.", "ERROR")
                 
             appIdentifiers.add(appIdentifier) // this is for the wildcard profiles - fastlane needs this info
             profileEnvVars.add("sigh_${appIdentifier}_${iosDistributionType}_profile-path=${filePath}")

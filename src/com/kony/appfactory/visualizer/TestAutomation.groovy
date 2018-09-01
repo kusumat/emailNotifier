@@ -5,6 +5,7 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
 import com.kony.appfactory.helper.CustomHookHelper
+import com.kony.appfactory.helper.AppFactoryException
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovyx.net.http.*
@@ -175,26 +176,26 @@ class TestAutomation implements Serializable {
            fail the build if both options are provided.
          */
         if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL && (script.env.ANDROID_MOBILE_NATIVE_BINARY_URL || script.env.ANDROID_TABLET_NATIVE_BINARY_URL)) {
-            script.echoCustom("Sorry, You can't run test for Android Universal binary along with Android Mobile/Tablet",'ERROR')
+            throw new AppFactoryException("Sorry, You can't run test for Android Universal binary along with Android Mobile/Tablet",'ERROR')
         }
         if (script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL && (script.env.IOS_MOBILE_NATIVE_BINARY_URL || script.env.IOS_TABLET_NATIVE_BINARY_URL)) {
-            script.echoCustom("Sorry, You can't run test for iOS Universal binary along with iOS Mobile/Tablet",'ERROR')
+            throw new AppFactoryException("Sorry, You can't run test for iOS Universal binary along with iOS Mobile/Tablet",'ERROR')
         }
         if (scmParameters && (nativeTestBinaryUrlParameter || desktopWebTestBinaryUrlParameter)) {
-            script.echoCustom("Please provide only one option for the source of test scripts: GIT or TESTS_URL",'ERROR')
+            throw new AppFactoryException("Please provide only one option for the source of test scripts: GIT or TESTS_URL",'ERROR')
         }
         /* Same if none of the options provided */
         else if (!nativeTestBinaryUrlParameter && !scmParameters && !desktopWebTestBinaryUrlParameter) {
-            script.echoCustom("Please provide at least one source of test binaries",'ERROR')
+            throw new AppFactoryException("Please provide at least one source of test binaries",'ERROR')
         }
 
         /* Fail build if nativeTestBinaryUrlParameter been provided without nativeAppBinaryUrlParameters, similarly for DesktopWeb */
         if ((!nativeAppBinaryUrlParameters && nativeTestBinaryUrlParameter) || (!desktopWebPublishedAppUrlParameters && desktopWebTestBinaryUrlParameter)) {
-            script.echoCustom("Please provide at least one of application binaries URL",'ERROR')
+            throw new AppFactoryException("Please provide at least one of application binaries URL",'ERROR')
         }
         /* Fail build if nativeAppBinaryUrlParameters been provided without test pool */
         else if (!poolNameParameter && nativeAppBinaryUrlParameters) {
-            script.echoCustom("Please provide pool to test on",'ERROR')
+            throw new AppFactoryException("Please provide pool to test on",'ERROR')
         }
     }
 
@@ -222,7 +223,7 @@ class TestAutomation implements Serializable {
             if (parameter.value.contains('//') && isValidUrl(parameter.value))
                 parameter.value=parameter.value.replace(" ", "%20")
             else
-                script.echoCustom("Build parameter ${parameter.key} value is not valid URL!",'ERROR')
+                throw new AppFactoryException("Build parameter ${parameter.key} value is not valid URL!",'ERROR')
         }
     }
 
@@ -559,8 +560,11 @@ class TestAutomation implements Serializable {
             projectArtifacts.'iOS_Tablet'.'url' = devicePoolArns.tablets ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
         }
         /* Prepare parallel steps */
-        def stepsToRun = (prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)) ?:
-                script.echoCustom("No artifacts to upload and run!",'ERROR')
+        def stepsToRun = prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)
+        
+        if(!stepsToRun){
+            throw new AppFactoryException("No artifacts to upload and run!",'ERROR')
+        }
 
         /* Run prepared step in parallel */
         if (stepsToRun) {
@@ -580,7 +584,7 @@ class TestAutomation implements Serializable {
                       browserVersionsMap << ["CHROME":getBrowserVersion('CHROME', script.env.CHROME_BROWSER_PATH)]
                       break
                   default:
-                      script.echoCustom("Unable to find the browser.. might be unknown/unsupported browser selected!!", 'ERROR')
+                      throw new AppFactoryException("Unable to find the browser.. might be unknown/unsupported browser selected!!", 'ERROR')
                       break
               }
           }
@@ -612,7 +616,10 @@ class TestAutomation implements Serializable {
         }
         def stepsToRun = prepareParallelSteps(
                 testPackage << projectArtifacts, 'fetch_', step
-        ) ?: script.echoCustom("No artifacts to fetch!",'ERROR')
+        ) 
+        if(!stepsToRun){
+            throw new AppFactoryException("No artifacts to fetch!",'ERROR')
+        }
 
         /* Run prepared step in parallel */
         if (stepsToRun) {
@@ -799,10 +806,14 @@ class TestAutomation implements Serializable {
                                                 sourceFilePath: "${testFolder}/target", script, true
                                     }
 				     else
-					 script.echoCustom('Failed to find build result artifact!','ERROR')
+					 throw new AppFactoryException('Failed to find build result artifact!','ERROR')
                                 }
                             }
                         }
+                    } catch (AppFactoryException e) {
+                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                        script.echoCustom(exceptionMessage, e.getErrorType(), false)
+                        script.currentBuild.result = 'FAILURE'
                     } catch (Exception e) {
                         String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
                         script.echoCustom(exceptionMessage,'WARN')
@@ -837,15 +848,19 @@ class TestAutomation implements Serializable {
                                                     If not, create new project and return ARN or break the build,
                                                     if ARN equals null
                                                  */
-                                                    deviceFarm.createProject(projectName) ?:
-                                                            script.echoCustom("Project ARN is empty!", 'ERROR')
+                                                    deviceFarm.createProject(projectName)
+                                            if(!deviceFarmProjectArn){
+                                                throw new AppFactoryException("Project ARN is empty!", 'ERROR')
+                                            }
 
                                         }
 
                                         script.stage('Create Device Pools') {
                                             devicePoolArns = deviceFarm.createDevicePools(
-                                                    deviceFarmProjectArn, devicePoolName
-                                            ) ?: script.echoCustom("Device pool ARN list is empty!", 'ERROR')
+                                                    deviceFarmProjectArn, devicePoolName)
+                                            if(!devicePoolArns){ 
+                                                throw new AppFactoryException("Device pool ARN list is empty!", 'ERROR')
+                                            }
 
                                         }
 
@@ -868,11 +883,13 @@ class TestAutomation implements Serializable {
                                     script.stage('Get Test Results') {
                                         if(isNativeApp) {
                                             fetchTestResults()
-                                            deviceFarmTestRunResults ?: script.echoCustom('Tests results are not found as the run result is skipped.', 'ERROR')
+                                            if(!deviceFarmTestRunResults)
+                                                throw new AppFactoryException('Tests results are not found as the run result is skipped.', 'ERROR')
                                         }
                                         if(isDesktopwebApp){
                                             fetchTestResultsforDesktopWeb()
-                                            desktopTestRunResults ?: script.echoCustom('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
+                                            if(!desktopTestRunResults) 
+                                                throw new AppFactoryException('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
                                             publishDesktopWebTestsResults()
                                         }
                                     }
@@ -882,12 +899,14 @@ class TestAutomation implements Serializable {
                                     def desktopWebTestsResultsStatus = true
                                     def nativeTestsResultStatus = true
                                     if (isNativeApp) {
-                                        deviceFarmTestRunResults ?: script.echoCustom('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                        if (!deviceFarmTestRunResults)
+                                            throw new AppFactoryException('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
                                         def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
                                         nativeTestsResultStatus = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
                                     }
                                     if (isDesktopwebApp) {
-                                        desktopTestRunResults ?: script.echoCustom('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                        if (!desktopTestRunResults) 
+                                            throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
                                         desktopWebTestsResultsStatus = !testStatusMap.any {it.value != "PASS"}
                                         desktopWebTestsResultsStatus ?: (script.currentBuild.result = 'UNSTABLE')
                                     }
@@ -913,6 +932,10 @@ class TestAutomation implements Serializable {
                                     }
                                 }
                             }
+                        } catch (AppFactoryException e) {
+                            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                            script.echoCustom(exceptionMessage, e.getErrorType(), false)
+                            script.currentBuild.result = 'FAILURE'
                         } catch (Exception e) {
                             String exceptionMessage = (e.toString()) ?: 'Something went wrong...'
                             script.echoCustom(exceptionMessage,'WARN')

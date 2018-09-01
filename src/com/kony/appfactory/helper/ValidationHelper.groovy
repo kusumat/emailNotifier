@@ -32,7 +32,7 @@ class ValidationHelper implements Serializable {
             String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
             String errorMessage = [emptyParams.keySet().join(', '), message, "can't be null!"].join(' ')
             /* Break the build and print all empty parameters */
-            script.echoCustom(errorMessage, 'ERROR')
+            throw new AppFactoryException(errorMessage, 'ERROR')
         }
 
         /* 
@@ -43,7 +43,9 @@ class ValidationHelper implements Serializable {
             eitherOrParameters.each{ paramSet ->
                 boolean isParam1Valid = (script.params.containsKey(paramSet[0]) && script.params[paramSet[0]] != null && script.params[paramSet[0]] != "null" && script.params[paramSet[0]]?.trim() != "")
                 boolean isParam2Valid = (script.params.containsKey(paramSet[1]) && script.params[paramSet[1]] != null && script.params[paramSet[1]] != "null" && script.params[paramSet[1]]?.trim() != "")
-                (isParam1Valid ^ isParam2Valid) ?: script.echoCustom("One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter.",'ERROR')
+                if(!(isParam1Valid ^ isParam2Valid)){ 
+                    throw new AppFactoryException("One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter.",'ERROR')
+                }
             }
         }
         
@@ -59,7 +61,7 @@ class ValidationHelper implements Serializable {
             /* Forming final error message by adding suggestion message */
             errorMessage = errorMessage + '\n' + suggestionMessage
             /* Break the build and print all not valid parameters */
-            script.echoCustom(errorMessage,'ERROR')
+            throw new AppFactoryException(errorMessage, 'ERROR')
         }
     }
 
@@ -90,8 +92,9 @@ class ValidationHelper implements Serializable {
         // Checking if both Native and Universal Channels are selected, if so failing the build.
         if ((script.params.ANDROID_UNIVERSAL_NATIVE && (script.params.ANDROID_MOBILE_NATIVE || script.params.ANDROID_TABLET_NATIVE)) ||
             (script.params.IOS_UNIVERSAL_NATIVE && (script.params.IOS_MOBILE_NATIVE || script.params.IOS_TABLET_NATIVE))) {
-            script.echoCustom("Build parameters are invalid, We allow to run either universal app or individual Mobile/Tablet native " +
-                "channels build. The universal app just works for both channels, you can skip individual Mobile/Tablet native channel selection.",'ERROR')
+            String errorMessage = "Build parameters are invalid, We allow to run either universal app or individual Mobile/Tablet native " +
+                "channels build. The universal app just works for both channels, you can skip individual Mobile/Tablet native channel selection."
+            throw new AppFactoryException(errorMessage, 'ERROR')
         }
     }
     
@@ -212,9 +215,10 @@ class ValidationHelper implements Serializable {
             def featureKeyInLowers = featureKey.toLowerCase()
             def featureSupportedVersion = libraryProperties."${featureKeyInLowers}.${buildType}.support.base.version"
             if (ValidationHelper.compareVisualizerVersions(script.env["visualizerVersion"], featureSupportedVersion) == -1) {
-                script.echoCustom("Sorry, the ${buildType} build for ${featureProperties.featureDisplayName} is not supported for your Visualizer project " +
-                        "version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
-                        "latest version and build the app.", 'ERROR')
+                String errorMessage = "Sorry, the ${buildType} build for ${featureProperties.featureDisplayName} is not supported for your " +
+                        "Visualizer project version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
+                        "latest version and build the app."
+                throw new AppFactoryException(errorMessage, "ERROR")
             }
         }
     }

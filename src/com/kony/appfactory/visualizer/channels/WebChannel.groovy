@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.AppFactoryException
 import groovy.json.JsonSlurper
 
 /**
@@ -180,7 +181,7 @@ class WebChannel extends Channel {
                                     script.shellCustom(copyArtifactsCmd, isUnixNode)
                                 }
                                 else {
-                                    script.echoCustom('Failed to find build artifact!', 'ERROR')
+                                    throw new AppFactoryException('Failed to find build artifact!', 'ERROR')
                                 }
                             }
                             /* Search for build artifacts */

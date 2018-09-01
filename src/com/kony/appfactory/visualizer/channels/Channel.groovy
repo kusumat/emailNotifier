@@ -7,6 +7,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.AppFactoryException
 
 /**
  * Implements logic for building channels. Contains common methods that are used during the channel build.
@@ -240,7 +241,10 @@ class Channel implements Serializable {
                         libraryProperties.'visualizer.dependencies.base.url',
                         libraryProperties.'visualizer.dependencies.archive.file.prefix',
                         libraryProperties.'visualizer.dependencies.archive.file.extension')
-        ) ?: script.echoCustom('Missing Visualizer dependencies!', 'ERROR')
+        ) 
+        if(!visualizerDependencies){
+            throw new AppFactoryException('Missing Visualizer dependencies!', 'ERROR')
+        }
         /* Expose tool installation path as environment variable */
         def exposeToolPath = { variableName, homePath ->
             script.env[variableName] = homePath
@@ -464,7 +468,10 @@ class Channel implements Serializable {
             artifactLocations.add([name: file.name, path: filePath, extension: artifactExtension])
         }
 
-        artifactLocations ? artifactLocations : script.echoCustom("Failed to find any build artifacts!", 'ERROR')
+        if(!artifactLocations){
+            throw new AppFactoryException("Failed to find any build artifacts!", 'ERROR')
+        }
+        artifactLocations
     }
 
     /**
@@ -505,7 +512,10 @@ class Channel implements Serializable {
             }
         }
 
-        renamedArtifacts ? renamedArtifacts : script.echoCustom("No artifacts found to rename!", 'ERROR')
+        if(!renamedArtifacts){
+            throw new AppFactoryException("No artifacts found to rename!", 'ERROR')
+        }
+        renamedArtifacts
     }
 
     /**
@@ -564,7 +574,9 @@ class Channel implements Serializable {
                     String finKeysFilesPath = [targetProtectedKeysPath, 'fin'].join(separator)
                     script.dir(finKeysFilesPath) {
                         def finKeysFiles = script.findFiles(glob: '**/*.key')
-                        finKeysFiles.size() >= 3 ?: script.echoCustom("Problem found with fin keys.",'ERROR')
+                        if(finKeysFiles.size() < 3 ) {
+                            throw new AppFactoryException("Problem found with fin keys.",'ERROR')
+                        }
                     }
                 }
             }
