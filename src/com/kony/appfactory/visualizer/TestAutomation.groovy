@@ -824,7 +824,6 @@ class TestAutomation implements Serializable {
                         NotificationsHelper.sendEmail(script, 'buildTests')
                         /* Exit in case of test binaries failed, throw error to build console. */
                         if (script.currentBuild.result == 'FAILURE') {
-                            script.echoCustom("Something went wrong... Unable to build Test binary!",'WARN')
                             PrepareMustHaves(false)
                             setBuildDescription()
                         }
