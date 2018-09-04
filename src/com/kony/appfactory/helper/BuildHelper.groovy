@@ -620,11 +620,16 @@ class BuildHelper implements Serializable {
 
         def authArtifactUrl = artifactUrl;
         if (script.env['CLOUD_ENVIRONMENT_GUID'] && script.env['CLOUD_DOMAIN']) {
+
+            //artifactUrl is already encoded but only for spaces. To avoid double encoding, replacing '%20' with space
             def encodedArtifactUrl = artifactUrl
                     .substring(artifactUrl.indexOf(script.env.PROJECT_NAME))
+                    .replace('%20', ' ')
                     .split("/")
                     .collect({ URLEncoder.encode(it, "UTF-8") })
-                    .join('/')  
+                    .join('/')
+                    .replace('+', '%20')
+
             def externalAuthID = (script.env['URL_PATH_INFO']) ? "?&url_path=" + URLEncoder.encode(script.env['URL_PATH_INFO'], "UTF-8") : ''
             authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/" + externalAuthID + "#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + encodedArtifactUrl
         }
