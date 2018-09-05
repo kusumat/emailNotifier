@@ -630,7 +630,7 @@ class BuildHelper implements Serializable {
                     .join('/')
                     .replace('+', '%20')
 
-            def externalAuthID = (script.env['URL_PATH_INFO']) ? "?&url_path=" + URLEncoder.encode(script.env['URL_PATH_INFO'], "UTF-8") : ''
+            def externalAuthID = (script.env['URL_PATH_INFO']) ? "?url_path=" + URLEncoder.encode(script.env['URL_PATH_INFO'], "UTF-8") : ''
             authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/" + externalAuthID + "#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + encodedArtifactUrl
         }
         else {
