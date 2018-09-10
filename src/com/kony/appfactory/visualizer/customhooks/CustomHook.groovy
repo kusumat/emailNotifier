@@ -121,17 +121,19 @@ class CustomHook implements Serializable {
     /* applying ACLs - allow buildslave/jenkins user with read, write permissions on hookslave owned files.*/
     def macACLafterRun()
     {
-        def buildSlaveACLapply_fordirs = 'set +xe;find . -user hookslave -type d -print0 | xargs -0 chmod -R +a "buildslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit"'
-        def buildSlaveACLapply_forfiles = 'set +xe;find . -user hookslave -type f -print0 | xargs -0 chmod -R +a "buildslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity"'
-        def buildSlaveACLapplygroup_forfiles = 'set +xe;find . -user hookslave -type d -print0 | xargs -0 chmod 775'
-
-        script.shellCustom("$buildSlaveACLapply_fordirs", true)
-        script.shellCustom("$buildSlaveACLapply_forfiles", true)
-        script.shellCustom("$buildSlaveACLapplygroup_forfiles", true)
-
-        /* Clean any @tmp files created after build run */
-        def cleanTmpFiles = 'set +xe;find . -user hookslave -type d -name "*@tmp" -empty -delete'
-        script.shellCustom("$cleanTmpFiles", true)
+        script.dir(visWorkspace) {
+            def buildSlaveACLapply_fordirs = 'set +xe;find . -user hookslave -type d -print0 | xargs -0 chmod -R +a "buildslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit"'
+            def buildSlaveACLapply_forfiles = 'set +xe;find . -user hookslave -type f -print0 | xargs -0 chmod -R +a "buildslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity"'
+            def buildSlaveACLapplygroup_forfiles = 'set +xe;find . -user hookslave -type d -print0 | xargs -0 chmod 775'
+    
+            script.shellCustom("$buildSlaveACLapply_fordirs", true)
+            script.shellCustom("$buildSlaveACLapply_forfiles", true)
+            script.shellCustom("$buildSlaveACLapplygroup_forfiles", true)
+    
+            /* Clean any @tmp files created after build run */
+            def cleanTmpFiles = 'set +xe;find . -user hookslave -type d -name "*@tmp" -empty -delete'
+            script.shellCustom("$cleanTmpFiles", true)
+        }
     }
 
     /* applying ACLs - allow buildslave/jenkins user with read, write permissions on hookslave owned files.*/
