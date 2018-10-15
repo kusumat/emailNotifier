@@ -119,7 +119,7 @@ class ValidationHelper implements Serializable {
             String regex
 
             switch(item.key) {
-                case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID', 'IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID']:
+                case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID', 'ANDROID_UNIVERSAL_APP_ID', 'IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID', 'IOS_UNIVERSAL_APP_ID']:
                     regex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+[0-9a-zA-Z_]?$/
                     break
                 case ['ANDROID_APP_VERSION', 'IOS_APP_VERSION', 'IOS_BUNDLE_VERSION', 'SPA_APP_VERSION', 'APP_VERSION', 'WEB_APP_VERSION']:
@@ -153,10 +153,10 @@ class ValidationHelper implements Serializable {
         items.each {
             String parameter_message
             switch(it.key) {
-                case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID']:
+                case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID', 'ANDROID_UNIVERSAL_APP_ID']:
                     parameter_message = it.key + ' : ' + 'Expecting something like <domain_name>.<org_name>.<app_name>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> Android -> Package Name".' + '\n' + 'For Example : com.konyappfactory.KitchenSink'
                     break
-                case ['IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID']:
+                case ['IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID', 'IOS_UNIVERSAL_APP_ID']:
                     parameter_message = it.key + ' : ' + 'Expecting something like <domain_name>.<org_name>.<app_name>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> iPhone/iPad/Watch -> Bundle Identifier".' + '\n' + 'For Example : com.konyappfactory.KitchenSink'
                     break
                 case ['ANDROID_APP_VERSION', 'IOS_APP_VERSION', 'SPA_APP_VERSION', 'APP_VERSION', 'WEB_APP_VERSION']:
