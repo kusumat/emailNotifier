@@ -483,7 +483,8 @@ class TestAutomation implements Serializable {
         String errorMessage = 'Failed to find the version of ' + browserName + ' browser!'
         def version
         script.catchErrorCustom(errorMessage) {
-            version = script.shellCustom("${browserPath} --version", true, [returnStdout: true])
+	      /* Added trim() at the end to avoid any new lines or spaces in browserVersion */	
+            version = script.shellCustom("${browserPath} --version", true, [returnStdout: true]).trim()
         }
         version
     }
@@ -491,8 +492,10 @@ class TestAutomation implements Serializable {
     void publishDesktopWebTestsResults() {
         def s3ArtifactsPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER]
         s3ArtifactsPath.add("DesktopWeb")
-        s3ArtifactsPath.add(desktopTestRunResults["browserName"] + '_' + desktopTestRunResults["browserVersion"])
+	  /* Since the command for browserVersion already contains the browserName, it is not needed to mention the browserName specifically, so we add only browserVersion to artifactsPath */
+        s3ArtifactsPath.add(desktopTestRunResults["browserVersion"])
         def s3PublishPath = s3ArtifactsPath.join('/').replaceAll('\\s', '_')
+	  
         String testng_reportsCSSAndCSS = AwsHelper.publishToS3 bucketPath: s3PublishPath + "/testOutput/Smoke", sourceFileName: "testng.css,testng-reports.css",
                 sourceFilePath: "${testFolderForDesktopWeb}/testOutput/Smoke", script, true
 
