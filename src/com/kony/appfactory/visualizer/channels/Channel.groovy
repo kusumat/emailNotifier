@@ -1,5 +1,7 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.visualizer.BuildStatus
+
 import java.util.regex.Matcher
 
 import com.kony.appfactory.fabric.Fabric
@@ -141,8 +143,8 @@ class Channel implements Serializable {
          */
         fabric = new Fabric(this.script)
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
-        this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
-        this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
+        this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
+        this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
         this.script.env['URL_PATH_INFO'] = (this.script.kony.URL_PATH_INFO) ?: ''
 
@@ -160,7 +162,7 @@ class Channel implements Serializable {
      */
     protected final void pipelineWrapper(closure) {
         /* Expose Fabric configuration */
-        if (fabricAppConfig) {
+        if (fabricAppConfig && !fabricAppConfig.equals("null")) {
             BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                 /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                 to not mask required values during the build we simply need redefine parameter values.
@@ -186,6 +188,7 @@ class Channel implements Serializable {
         projectFullPath = [
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
+
         channelPath = [channelOs, channelFormFactor, channelType].unique().join('/')
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
@@ -205,13 +208,18 @@ class Channel implements Serializable {
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
             script.echoCustom(exceptionMessage, 'ERROR', false)
+            if(script.params.IS_SOURCE_VISUALIZER){
+                throw new AppFactoryException(exceptionMessage)
+            }
             script.currentBuild.result = 'FAILURE'
         } finally {
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                 upstreamJob = BuildHelper.getUpstreamJobName(script)
                 isRebuild = BuildHelper.isRebuildTriggered(script)
-                PrepareMustHaves()
+                if(!script.params.IS_SOURCE_VISUALIZER){
+                    PrepareMustHaves()
+                }
             }
             setBuildDescription()
 
@@ -525,7 +533,7 @@ class Channel implements Serializable {
         String configFileName = libraryProperties.'fabric.config.file.name'
 
         /* Check if FABRIC_APP_CONFIG build parameter is set */
-        if (fabricAppConfig) {
+        if (fabricAppConfig && !fabricAppConfig.equals("null")) {
             script.dir(projectFullPath) {
                 script.dir('modules') {
                     /* Check if appfactory.js file exists */
@@ -815,8 +823,10 @@ class Channel implements Serializable {
     protected final void collectAllInformation() {
         String buildLog = "JenkinsBuild.log"
         script.dir(mustHavePath) {
-            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
-            script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
+            if(!script.params.IS_SOURCE_VISUALIZER) {
+                script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
+                script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
+            }
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
 
             /* APPFACT-858 - Custom hooks will be executed only on MAC Machine. Build will be executed on MAC node
@@ -844,7 +854,7 @@ class Channel implements Serializable {
      * Zips all the files into a single zip file and upload into S3 and give the S3 URL
      * in a map so that Viz job copies later from S3 to create single zip for all builds.
      */
-    protected final void PrepareMustHaves() {
+    protected final String PrepareMustHaves() {
         String mustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
         String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
         try {
@@ -876,6 +886,7 @@ class Channel implements Serializable {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed while collecting the logs (must-gather) for debugging.'
             script.echoCustom(exceptionMessage, 'ERROR')
         }
+        return s3ArtifactPath + "/" + mustHaveFile
     }
     
     /**

@@ -11,31 +11,87 @@ import com.kony.appfactory.helper.ConfigFileHelper
  * Implements logic related to channel build process.
  */
 class BuildHelper implements Serializable {
+
     /**
-     * Clones project from the provided git repository.
+     * Clones project source based on checkoutType. If checkoutType is scm, clone from the provided git repository, If
+     * checkoutType is downloadzip, clones project source from the non-protected zip file download URL
      *
-     * @param args
+     * @param args for checkoutType scm
      *   script pipeline object.
+     *   checkoutType - scm for cloning through git, downloadzip for direct download source from URL
      *   relativeTargetDir path where project should be stored.
      *   scmCredentialsId credentials that will be used to access the repository.
      *   scmUrl URL of the repository.
      *   scmBranch repository branch to clone.
+     *
+     *   @param args for checkoutType downloadzip
+     *   script pipeline object.
+     *   downloadURL from which the source project should be downloaded
+     *   relativeTargetDir path where project should be stored.
      */
     protected static void checkoutProject(Map args) {
         def script = args.script
+        String checkoutType = args.checkoutType
         String relativeTargetDir = args.projectRelativePath
-        String scmCredentialsId = args.scmCredentialsId
-        String scmUrl = args.scmUrl
-        String scmBranch = args.scmBranch
-
-        script.catchErrorCustom('Failed to checkout the project') {
-            script.checkout(
-                    changelog: false,
-                    poll: false,
-                    scm: getScmConfiguration(relativeTargetDir, scmCredentialsId, scmUrl, scmBranch)
-            )
+        String projectFileName = args.projectFileName
+        if (checkoutType.equals("scm")) {
+            String scmCredentialsId = args.scmCredentialsId
+            String scmUrl = args.scmUrl
+            String scmBranch = args.scmBranch
+            script.catchErrorCustom('Failed to checkout the project') {
+                script.checkout(
+                        changelog: false,
+                        poll: false,
+                        scm: getScmConfiguration(relativeTargetDir, scmCredentialsId, scmUrl, scmBranch)
+                )
+            }
+        } else if (checkoutType.equals("downloadzip")) {
+            String downloadURL = args.downloadURL
+            script.dir(relativeTargetDir) {
+                // download the zip from non-protected url
+                downloadFile(script, downloadURL, projectFileName)
+                // extract the final downloaded zip
+                script.unzip zipFile: projectFileName
+            }
+        } else {
+            throw new AppFactoryException("Unknown checkout source type found!!", "ERROR")
         }
     }
+
+    /**
+     * This function deletes the list of directories passed to it
+     * @param script
+     * @param directories list of directories which had to be deleted
+     */
+    public static void deleteDirectories(script, directories) {
+
+        for (directory in directories) {
+            if (script.fileExists(directory)) {
+                script.dir(directory){
+                    script.deleteDir()
+                }
+            }
+        }
+    }
+
+	/**
+	 * This method is responsible for downloading file from a pre signed or pre authenticated or an open url
+	 * @param script
+	 * @param sourceUrl is the target url, from which we want to download the artefact
+	 * @param outputFileName is the fileName for the downloaded artefact
+	 */
+	protected static final void downloadFile(script, String sourceUrl, String outputFileName){
+
+		try{
+			script.httpRequest url: sourceUrl,
+					outputFile: outputFileName, validResponseCodes: '200', timeout:10000
+		}
+		catch(Exception e){
+			throw new AppFactoryException("Failed to download source code project")
+		}
+	}
+
+
 
     /**
      * Returns scm configuration depending on scm type.
@@ -710,5 +766,21 @@ class BuildHelper implements Serializable {
          def customhooksConfigFolder = projectName + libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
          return (runCustomHook && isActiveCustomHookAvailable(customhooksConfigFolder, projectName))
      }
+
+    /**
+     * Collects selected channels to build.
+     *
+     * @param buildParameters job parameters.
+     * @return list of selected channels.
+     */
+    @NonCPS
+    private static getSelectedChannels(buildParameters) {
+        /* Creating a list of boolean parameters that are not Target Channels */
+        buildParameters.findAll {
+            it.value instanceof Boolean && (it.key.matches('^ANDROID_.*_NATIVE$') || it.key.matches('^IOS_.*_NATIVE$')
+                    || it.key.matches('^ANDROID_.*_SPA$') || it.key.matches('^IOS_.*_SPA$')
+                    || it.key.matches('^DESKTOP_WEB')) && it.value
+        }.keySet().collect()
+    }
  
 }

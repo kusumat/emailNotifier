@@ -588,7 +588,9 @@ class Fabric implements Serializable {
                         }
 
                         script.stage('Fetch project from remote git repository') {
+                            // source code checkout from scm
                             BuildHelper.checkoutProject script: script,
+                                    checkoutType: "scm",
                                     projectRelativePath: projectName,
                                     scmBranch: exportRepositoryBranch,
                                     scmCredentialsId: exportRepositoryCredentialsId,
@@ -734,7 +736,9 @@ class Fabric implements Serializable {
                         }
 
                         script.stage('Fetch project from remote git repository') {
+                            // source code checkout from scm
                             BuildHelper.checkoutProject script: script,
+                                    checkoutType: "scm",
                                     projectRelativePath: projectName,
                                     scmBranch: exportRepositoryBranch,
                                     scmCredentialsId: exportRepositoryCredentialsId,

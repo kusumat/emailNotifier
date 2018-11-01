@@ -179,6 +179,7 @@ class IosChannel extends Channel {
             /* Extract Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectBasePath) {
                 script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
+                BuildHelper.deleteDirectories(script,["iOS-plugin","VMAppWithKonylib"])
                 script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/*.zip')
                 script.shellCustom("unzip -q ${dummyProjectArchive[0].path}", true)
@@ -273,7 +274,7 @@ class IosChannel extends Channel {
                     "FASTLANE_SKIP_UPDATE_CHECK=1",
                     "APP_VERSION=${script.env.APP_VERSION}"
                 ]) {
-                    
+
                     if (appleID){
                         script.withCredentials([
                                 script.usernamePassword(
@@ -475,7 +476,9 @@ class IosChannel extends Channel {
                         }
 
                         script.stage('Checkout') {
+                            // source code checkout from scm
                             BuildHelper.checkoutProject script: script,
+                                    checkoutType: "scm",
                                     projectRelativePath: checkoutRelativeTargetFolder,
                                     scmBranch: scmBranch,
                                     scmCredentialsId: scmCredentialsId,
