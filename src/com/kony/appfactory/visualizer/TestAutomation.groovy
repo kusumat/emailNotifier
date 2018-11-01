@@ -108,10 +108,12 @@ class TestAutomation implements Serializable {
                              uploadType: 'IOS_APP',
                              url       : script.env.IOS_TABLET_NATIVE_BINARY_URL]
     ]
+
+    /*Added backward compatibility check here so that it works for both NATIVE_TESTS_URL and TESTS_BINARY_URL */
     private testPackage = [
             "${projectName}_TestApp": [extension : 'zip',
                                        uploadType: 'APPIUM_JAVA_TESTNG_TEST_PACKAGE',
-                                       url       : (script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
+                                       url       : (script.env.NATIVE_TESTS_URL ?: script.env.TESTS_BINARY_URL?: 'jobWorkspace')]
     ]
     public isDesktopwebApp = script.params.findAll { it.key == 'FABRIC_APP_URL' && it.value }
     public isNativeApp =  script.params.findAll { it.key.contains('NATIVE_BINARY_URL') && it.value }
@@ -830,6 +832,11 @@ class TestAutomation implements Serializable {
                             PrepareMustHaves(false)
                             setBuildDescription()
                         }
+                    }
+
+                    /* To make runTests flag true when Tests URL is given instead of passing SCM details */
+                    if (testPackage.get("${projectName}_TestApp").url != 'jobWorkspace') {
+                        runTests = true
                     }
 
                     /* Run tests on provided binaries */
