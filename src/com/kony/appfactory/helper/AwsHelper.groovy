@@ -20,10 +20,7 @@ class AwsHelper implements Serializable {
             For example: http://bucket.s3.amazonaws.com
          */
         String bucketUrl = (script.env.S3_BUCKET_URL) ?: script.echoCustom("S3 bucket URL value can't be null!",'ERROR')
-        String projectName = (script.env.PROJECT_NAME) ?: script.echoCustom("Project name value can't be null!",'ERROR')
-        String s3Path = [projectName, artifactPath].join('/')
-        String s3UrlString = [bucketUrl, s3Path].join('/')
-
+        String s3UrlString = [bucketUrl, artifactPath].join('/')
         script.catchErrorCustom('Artifact S3 URL is not valid!') {
             /* Transform s3 URL into a URL object, to be able to get protocol, host, path for next step */
             s3Url = s3UrlString.toURL()
@@ -39,7 +36,15 @@ class AwsHelper implements Serializable {
     }
 
     /**
-     * Uploads file on S3 to provided location.
+     * Calls S3 Upload with destination path.
+     *
+     * @param args method named arguments.
+     * @param script pipeline object.
+     * @param exposeUrl flag to expose S3 artifact URL.
+     * @return S3 URL for uploaded artifact.
+     */
+    /**
+     * Calls S3 Upload with destination path.
      *
      * @param args method named arguments.
      * @param script pipeline object.
@@ -47,35 +52,53 @@ class AwsHelper implements Serializable {
      * @return S3 URL for uploaded artifact.
      */
     protected static String publishToS3(Map args, script, boolean exposeUrl = false) {
-        String fileName = (args.sourceFileName) ?: script.echoCustom("fileName argument can't be null!",'ERROR')
-        String projectName = (script.env.PROJECT_NAME) ?: script.echoCustom("Project name value can't be null!",'ERROR')
-        String bucketName = (script.env.S3_BUCKET_NAME) ?: script.echoCustom("Bucket name value can't be null!",'ERROR')
         String bucketPath = (args.bucketPath) ?: script.echoCustom("bucketPath argument can't be null!",'ERROR')
-        String bucketRegion = (script.env.S3_BUCKET_REGION) ?: script.echoCustom("Bucket region value can't be null!",'ERROR')
-        String fullBucketPath = [bucketName, projectName, bucketPath].join('/')
-        String artifactFolder = (args.sourceFilePath) ?: script.echoCustom("artifactFolder argument can't be null!",'ERROR')
-        String artifactUrl = getS3ArtifactUrl(script, [bucketPath, fileName].join('/'))
-        String successMessage = fileName + ' published successfully.'
-        String errorMessage = 'Failed to publish ' + fileName + '!' 
+        String projectName = (script.env.PROJECT_NAME) ?: script.echoCustom("Project name value can't be null!",'ERROR')
+        String accountId = (script.env.CLOUD_ACCOUNT_ID) ?: script.echoCustom("Account ID value can't be null!",'ERROR')
 
+        String fullBucketPath = [accountId, projectName, bucketPath].join('/')
+
+        /* Return uploaded artifact S3 URL */
+        publishToS3(args, fullBucketPath, script, exposeUrl)
+    }
+
+    /**
+     * Uploads file to S3 destination path.
+     *
+     * @param srcfileName the file needs to upload.
+     * @param srcDirPath the Dir contains the srcfileName.
+     * @param s3BucketPath destination S3 bucket url.
+     * @param s3BucketRegion region of destination bucket.
+     */
+    protected static String publishToS3(Map args, String finalBucketPath, script, boolean exposeUrl = false) {
+        String fileName = (args.sourceFileName) ?: script.echoCustom("fileName argument can't be null!",'ERROR')
+        String artifactFolder = (args.sourceFilePath) ?: script.echoCustom("artifactFolder argument can't be null!",'ERROR')
+        String s3BucketRegion = (script.env.S3_BUCKET_REGION) ?: script.echoCustom("Bucket region value can't be null!",'ERROR')
+        String bucketName = (script.env.S3_BUCKET_NAME) ?: script.echoCustom("Bucket name value can't be null!",'ERROR')
+
+        finalBucketPath = [bucketName, finalBucketPath].join('/')
+
+        String successMessage = fileName + ' published successfully.'
+        String errorMessage = 'Failed to publish ' + fileName + '!'
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
                 script.step([$class                              : 'S3BucketPublisher',
                              consoleLogLevel                     : 'WARNING',
                              dontWaitForConcurrentBuildCompletion: false,
                              entries                             : [
-                                     [bucket           : fullBucketPath,
+                                     [bucket           : finalBucketPath,
                                       flatten          : true,
                                       keepForever      : true,
                                       managedArtifacts : false,
                                       noUploadOnFailure: false,
-                                      selectedRegion   : bucketRegion,
+                                      selectedRegion   : s3BucketRegion,
                                       sourceFile       : fileName]
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
 
             }
         }
+        String artifactUrl = getS3ArtifactUrl(script, finalBucketPath)
 
         if (exposeUrl) {
             script.echoCustom("Artifact($fileName) URL: ${artifactUrl}")

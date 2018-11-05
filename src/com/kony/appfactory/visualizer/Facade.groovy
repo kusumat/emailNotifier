@@ -1,10 +1,12 @@
 package com.kony.appfactory.visualizer
 
+import com.kony.appfactory.enums.PlatformType
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
+import com.kony.appfactory.helper.CredentialsHelper
 
 /**
  * Implements logic for buildVisualizerApp job.
@@ -25,6 +27,7 @@ class Facade implements Serializable {
     private runList = [:]
     /* List of Pre Build Hooks */
     private preBuildHookList = [:]
+
     /* List of channels to build */
     private channelsToRun
     /*
@@ -39,7 +42,7 @@ class Facade implements Serializable {
     private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    private final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
+    private cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
@@ -48,7 +51,7 @@ class Facade implements Serializable {
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     /* iOS build parameters */
-    private final appleID = script.params.APPLE_ID
+    private appleID = script.params.APPLE_ID
     private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
     private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
@@ -84,6 +87,12 @@ class Facade implements Serializable {
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     /* Protected mode build parameters */
     private final protectedKeys = script.params.PROTECTED_KEYS
+    private appleCredentialsId
+    private buildNumber = script.env.BUILD_NUMBER
+
+    protected CredentialsHelper credentialsHelper
+    protected BuildStatus status
+
     /**
      * Class constructor.
      *
@@ -96,28 +105,15 @@ class Facade implements Serializable {
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         /* Checking if at least one channel been selected. */
-        channelsToRun = (getSelectedChannels(this.script.params)) ?:
+        channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?:
                 /* Note :- script.error has been used instead of script.echoCustom as part of fix for APPFACT-1101. Please do not replace. */
                 script.error('Please select at least one channel to build!')
+        this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
         this.script.env['URL_PATH_INFO'] = (this.script.kony.URL_PATH_INFO) ?: ''
-    }
-
-    /**
-     * Collects selected channels to build.
-     *
-     * @param buildParameters job parameters.
-     * @return list of selected channels.
-     */
-    @NonCPS
-    private static getSelectedChannels(buildParameters) {
-        /* Creating a list of boolean parameters that are not Target Channels */
-        buildParameters.findAll {
-            it.value instanceof Boolean && (it.key.matches('^ANDROID_.*_NATIVE$') || it.key.matches('^IOS_.*_NATIVE$')
-                    || it.key.matches('^ANDROID_.*_SPA$') || it.key.matches('^IOS_.*_SPA$')
-                    || it.key.matches('^DESKTOP_WEB')) && it.value
-        }.keySet().collect()
+        credentialsHelper = new CredentialsHelper()
+        status = new BuildStatus(script, channelsToRun)
     }
 
     /**
@@ -236,10 +232,8 @@ class Facade implements Serializable {
      */
     private final getCommonJobBuildParameters() {
         [
-                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
-                        value: "${projectSourceCodeBranch}"),
-                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
-                        value: "${projectSourceCodeRepositoryCredentialsId}"),
+                script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${projectSourceCodeBranch}"),
+                script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
                 script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
@@ -247,6 +241,23 @@ class Facade implements Serializable {
                 script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
                 script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook)
+        ]
+    }
+
+    /**
+     * Return group of common build parameters for cloudbuild.
+     *
+     * @return group of common build parameters.
+     */
+    private final getCommonJobCloudBuildParameters() {
+        [
+                script.booleanParam(name: 'IS_SOURCE_VISUALIZER', value: script.params.IS_SOURCE_VISUALIZER),
+                script.string(name: 'MF_ACCOUNT_ID', value: "${script.params.MF_ACCOUNT_ID}"),
+                script.string(name: 'MF_ENVIRONMENT_GUID', value: "${script.params.MF_ENVIRONMENT_GUID}"),
+                script.string(name: 'PROJECT_SOURCE_URL', value: "${script.params.PROJECT_SOURCE_URL}"),
+                script.string(name: 'BUILD_STATUS_PATH', value: "${script.params.BUILD_STATUS_PATH}"),
+                script.string(name: 'MF_TOKEN', value: "${script.params.MF_TOKEN}"),
+                script.string(name: 'PROJECT_NAME', value: "${script.params.PROJECT_NAME}")
         ]
     }
 
@@ -285,7 +296,6 @@ class Facade implements Serializable {
     private final getNativeChannelJobBuildParameters(channelName, channelOs = '', channelFormFactor) {
         def channelJobParameters = []
         def commonParameters = getCommonJobBuildParameters()
-
         switch (channelName) {
             case ~/^.*ANDROID.*$/:
                 channelJobParameters = commonParameters + [
@@ -396,7 +406,6 @@ class Facade implements Serializable {
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
         /* Filter SPA channels */
         def spaChannelsToRun = getSpaChannels(channelsToRun)
-
         for (item in nativeChannelsToRun) {
             def channelName = item
             def channelJobName = (getChannelJobName(channelName)) ?:
@@ -436,6 +445,67 @@ class Facade implements Serializable {
             runWebChannels(spaChannelsToRun, desktopWebChannel)
         }
 
+    }
+
+    /**
+     * Prepares run step for Cloud Build Service
+     */
+    private final void prepareCloudBuildRun() {
+
+        /* Set CloudBuild environment variables for multi-tenant AppFactory */
+        //setting CLOUD _ACCOUNT_ID and CLOUD_ENVIRONMENT_GUID with MF_ACCOUNT_ID MF_ENVIRONMENT_GUID build parameter values
+        script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: ''
+        script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: ''
+
+        /* Set CloudBuild environment variables for multi-tenant AppFactory */
+        /* Setting blank credential id so that CloudBuild service won't fail to find Cloud credentials.
+         Note: This account is not relevant for Visualizer CI build to run, just to ensure single-tenant backward flow
+         works. Setting one blank account for this build scope. Post the build, it will get this removed.*/
+        cloudCredentialsID = "CloudID-" + buildNumber
+        credentialsHelper.addUsernamePassword(cloudCredentialsID, "Cloud Creds", "dummyuser", "dummypasswd")
+
+        /* Collect iOS channel parameters to check */
+        def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
+        if(iosChannels) {
+            String appleUsername = script.params.APPLE_USERNAME
+            String applePassword = script.params.APPLE_PASSWORD
+            appleID = PlatformType.IOS.toString() + buildNumber
+            credentialsHelper.addUsernamePassword(appleID, "Apple Credentials", appleUsername, applePassword)
+        }
+
+        // Prepare Status Json with build in-progress
+        status.prepareStatusJson()
+
+        /* Filter Native channels */
+        def channelJobName = 'Channels/buildAll'
+        def channelJobBuildParameters = getCommonJobCloudBuildParameters()
+        def nativeChannelsToRun = getNativeChannels(channelsToRun)
+
+        for (channelName in nativeChannelsToRun) {
+            def channelOs = getChannelOs(channelName)
+            def channelFormFactor = (getChannelFormFactor(channelName)) ?:
+                    script.echoCustom("Channel form factor can't be null", 'ERROR')
+            channelJobBuildParameters = channelJobBuildParameters + [script.booleanParam(name: channelName, value: true)]
+            channelJobBuildParameters = channelJobBuildParameters + (
+                    getNativeChannelJobBuildParameters(channelName, channelOs, channelFormFactor)
+            ) ?: script.echoCustom("Channel job build parameters list can't be null", 'ERROR')
+        }
+
+        channelJobBuildParameters = channelJobBuildParameters.unique()
+
+        runList["cloudbuild"] = {
+            script.stage("cloudbuild") {
+                /* Trigger channel job */
+                def channelJob = script.build job: channelJobName, parameters: channelJobBuildParameters,
+                        propagate: false
+                /* Collect job results */
+                jobResultList.add(channelJob.currentResult)
+
+                /* Collect job artifacts */
+                artifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.CHANNEL_ARTIFACTS))
+
+            }
+        }
     }
 
     /**
@@ -547,7 +617,6 @@ class Facade implements Serializable {
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-
             mustHaveArtifacts.each {
                 if (it.url.trim().length() > 0) {
                     String artifactUrl = it.url.replace(' ', '%20')
@@ -582,181 +651,226 @@ class Facade implements Serializable {
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void createPipeline() {
-        /* Wrapper for injecting timestamp to the build console output */
-        script.timestamps {
-            /* Wrapper for colorize the console output in a pipeline build */
-            script.ansiColor('xterm') {
-                script.stage('Check provided parameters') {
-                    /* Logging build mode */
-                    script.echoCustom("Running the build in ${buildMode} mode..")
-                    /* Check common params */
-                    ValidationHelper.checkBuildConfiguration(script)
-                    /* Check params for universal application build */
-                    if (universalAndroid || universalIos) {
-                        ValidationHelper.checkBuildConfigurationForUniversalApp(script)
+
+        try {
+            /* Wrapper for injecting timestamp to the build console output */
+            script.timestamps {
+                /* Wrapper for colorize the console output in a pipeline build */
+                script.ansiColor('xterm') {
+                    script.stage('Check provided parameters') {
+                        script.echoCustom("Running the build in ${buildMode} mode..")
+
+                        status.prepareBuildServiceEnvironment(channelsToRun)
+                        status.prepareStatusJson()
+
+                        /* Check common params */
+                        ValidationHelper.checkBuildConfiguration(script)
+
+                        /* Check params for universal application build */
+                        if (universalAndroid || universalIos) {
+                            ValidationHelper.checkBuildConfigurationForUniversalApp(script)
+                        }
+						
+                        /* List of required parameters */
+                        def checkParams = [], eitherOrParameters = []
+                        def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
+                        /* Collect Android channel parameters to check */
+                        def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
+                        if (androidChannels) {
+                            def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
+
+                            if (androidChannels.findAll { it.contains('MOBILE') }) {
+                                androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
+                            }
+
+                            if (androidChannels.findAll { it.contains('TABLET') }) {
+                                androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                            }
+
+                            if (androidChannels.findAll { it.contains('UNIVERSAL') }) {
+                                androidMandatoryParams.add('ANDROID_UNIVERSAL_APP_ID')
+                            }
+
+                            if (tempBuildMode != libraryProperties.'buildmode.debug.type') {
+                                androidMandatoryParams.addAll([
+                                        'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
+                                        'ANDROID_KEY_ALIAS'
+                                ])
+                            }
+
+                            if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
+                                androidMandatoryParams.add('PROTECTED_KEYS')
+                            }
+
+                            checkParams.addAll(androidMandatoryParams)
+                        }
+
+                        /* Collect iOS channel parameters to check */
+                        def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
+
+                        if (iosChannels) {
+
+                            def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION']
+                            eitherOrParameters.add(['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES'])
+
+                            if (iosChannels.findAll { it.contains('MOBILE') }) {
+                                iosMandatoryParams.add('IOS_MOBILE_APP_ID')
+                            }
+
+                            if (iosChannels.findAll { it.contains('TABLET') }) {
+                                iosMandatoryParams.add('IOS_TABLET_APP_ID')
+                            }
+
+                            if (iosChannels.findAll { it.contains('UNIVERSAL') }) {
+                                iosMandatoryParams.add('IOS_UNIVERSAL_APP_ID')
+                            }
+
+                            if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
+                                iosMandatoryParams.add('PROTECTED_KEYS')
+                            }
+
+                            if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
+                                iosMandatoryParams.add('IOS_APP_VERSION')
+                            }
+                            checkParams.addAll(iosMandatoryParams)
+                        }
+
+                        /* Collect SPA channel parameters to check */
+                        def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
+
+                        if (spaChannels || desktopWebChannel) {
+                            def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
+
+                            checkParams.addAll(webMandatoryParams)
+                        }
+
+                        /* Check all required parameters depending on user input */
+                        /* For CloudBuild, scan the checkParams list and clean unwanted params */
+                        if (script.params.IS_SOURCE_VISUALIZER) {
+                            def cloudBuildNotExistingParams = [
+                                    'FABRIC_APP_CONFIG', 'PUBLISH_FABRIC_APP', 'RECIPIENTS_LIST',
+                                    'RUN_CUSTOM_HOOKS', 'FORM_FACTOR', 'PROTECTED_KEYS', 'APPLE_ID'
+                            ]
+                            checkParams.removeAll(cloudBuildNotExistingParams)
+                            ValidationHelper.checkBuildConfiguration(script, checkParams)
+                        }
+                        else
+                        {
+                            ValidationHelper.checkBuildConfiguration(script, checkParams, eitherOrParameters)
+
+                        }
                     }
+					
+                    /* Allocate a slave for the run */
+                    script.node(libraryProperties.'facade.node.label') {
 
-                    /* List of required parameters */
-                    def checkParams = [], eitherOrParameters = []
-                    def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
-                    /* Collect Android channel parameters to check */
-                    def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
-                    if (androidChannels) {
-                        def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
-
-                        if (androidChannels.findAll { it.contains('MOBILE') }) {
-                            androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
-                        }
-
-                        if (androidChannels.findAll { it.contains('TABLET') }) {
-                            androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
-                        }
-                        
-                        if (androidChannels.findAll { it.contains('UNIVERSAL') }) {
-                            androidMandatoryParams.add('ANDROID_UNIVERSAL_APP_ID')
-                        }
-
-                        if (tempBuildMode != libraryProperties.'buildmode.debug.type') {
-                            androidMandatoryParams.addAll([
-                                    'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
-                                    'ANDROID_KEY_ALIAS'
-                            ])
-                        }
-
-                        if(tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
-                            androidMandatoryParams.add('PROTECTED_KEYS')
-                        }
-
-                        checkParams.addAll(androidMandatoryParams)
-                    }
-
-                    /* Collect iOS channel parameters to check */
-                    def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
-
-                    if (iosChannels) {
-                        def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION']
-                        eitherOrParameters.add(['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES'])
-
-                        if (iosChannels.findAll { it.contains('MOBILE') }) {
-                            iosMandatoryParams.add('IOS_MOBILE_APP_ID')
-                        }
-
-                        if (iosChannels.findAll { it.contains('TABLET') }) {
-                            iosMandatoryParams.add('IOS_TABLET_APP_ID')
-                        }
-                        
-                        if (iosChannels.findAll { it.contains('UNIVERSAL') }) {
-                            iosMandatoryParams.add('IOS_UNIVERSAL_APP_ID')
-                        }
-
-                        if(tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
-                            iosMandatoryParams.add('PROTECTED_KEYS')
-                        }
-                        
-                        if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
-                            iosMandatoryParams.add('IOS_APP_VERSION')
-                        }
-                        checkParams.addAll(iosMandatoryParams)
-                    }
-
-                    /* Collect SPA channel parameters to check */
-                    def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
-
-                    if (spaChannels || desktopWebChannel) {
-                        def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
-
-                        checkParams.addAll(webMandatoryParams)
-                    }
-
-                    /* Check all required parameters depending on user input */
-                    ValidationHelper.checkBuildConfiguration(script, checkParams, eitherOrParameters)
-                }
-
-                /* Allocate a slave for the run */
-                script.node(libraryProperties.'facade.node.label') {
-                    prepareRun()
-
-                    try {
-                        /* Expose Fabric configuration */
-                        if (fabricAppConfig) {
-                            BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-                                /*
+                        script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun():prepareRun()
+                        try {
+                            /* Expose Fabric configuration */
+                            if (fabricAppConfig && !fabricAppConfig.equals("null")) {
+                                BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                                    /*
                                 Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                                 to not mask required values during the build we simply need redefine parameter values.
                                 Also, because of the case, when user didn't provide some not mandatory values we can get
                                 null value and script.env object returns only String values,
                                 been added elvis operator for assigning variable value as ''(empty).
                             */
-                                script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
-                                        script.echoCustom("Fabric environment value can't be null", 'ERROR')
-                            }
-                        }
-                        /* Run channel builds in parallel */
-                        script.parallel(runList)
-
-                        /* If test pool been provided, prepare build parameters and trigger runTests job */
-                        if (availableTestPools || runDesktopwebTests) {
-                            script.stage('TESTS') {
-                                def testAutomationJobParameters = getTestAutomationJobParameters() ?:
-                                        script.echoCustom("runTests job parameters are missing!", 'ERROR')
-                                def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
-                                        script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
-                                String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
-                                        "${script.env.JOB_BASE_NAME}" -
-                                        'Builds/'
-                                String testAutomationJobName = "${testAutomationJobBasePath}Tests/runTests"
-
-                                /* Trigger runTests job to test build binaries */
-                                def testAutomationJob = script.build job: testAutomationJobName,
-                                        parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
-                                        propagate: false
-                                def testAutomationJobResult = testAutomationJob.currentResult
-
-                                /* Collect job result */
-                                jobResultList.add(testAutomationJobResult)
-
-                                mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
-
-                                /* Notify user that runTests job build failed */
-                                if (testAutomationJobResult != 'SUCCESS') {
-                                    script.echoCustom("Status of the runTests job: ${testAutomationJobResult}", 'WARN')
+                                    script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
+                                            script.echoCustom("Fabric environment value can't be null", 'ERROR')
                                 }
                             }
-                        }
+                            /* Run channel builds in parallel */
+                            script.parallel(runList)
+                            /* If test pool been provided, prepare build parameters and trigger runTests job */
+                            if (availableTestPools || runDesktopwebTests) {
+                                script.stage('TESTS') {
+                                    def testAutomationJobParameters = getTestAutomationJobParameters() ?:
+                                            script.echoCustom("runTests job parameters are missing!", 'ERROR')
+                                    def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
+                                            script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
+                                    String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
+                                            "${script.env.JOB_BASE_NAME}" -
+                                            'Builds/'
+                                    String testAutomationJobName = "${testAutomationJobBasePath}Tests/runTests"
 
-                        /* Check if there are failed or unstable or aborted jobs */
-                        if (jobResultList.contains('FAILURE') ||
-                                jobResultList.contains('UNSTABLE') ||
-                                jobResultList.contains('ABORTED')
-                        ) {
-                            /* Set job result to 'UNSTABLE' if above check is true */
-                            script.currentBuild.result = 'UNSTABLE'
-                        } else {
-                            /* Set job result to 'SUCCESS' if above check is false */
-                            script.currentBuild.result = 'SUCCESS'
-                        }
-                    } catch (Exception e) {
-                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                        script.echoCustom(exceptionMessage, 'WARN')
-                        script.currentBuild.result = 'FAILURE'
-                    } finally {
-                        String s3MustHaveAuthUrl
-                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                            s3MustHaveAuthUrl = PrepareMustHaves()
-                        }
-                        setBuildDescription(s3MustHaveAuthUrl)
-                        /*
+                                    /* Trigger runTests job to test build binaries */
+                                    def testAutomationJob = script.build job: testAutomationJobName,
+                                            parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
+                                            propagate: false
+                                    def testAutomationJobResult = testAutomationJob.currentResult
+
+                                    /* Collect job result */
+                                    jobResultList.add(testAutomationJobResult)
+
+                                    mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
+                                    /* Notify user that runTests job build failed */
+                                    if (testAutomationJobResult != 'SUCCESS') {
+                                        script.echoCustom("Status of the runTests job: ${testAutomationJobResult}", 'WARN')
+                                    }
+                                }
+                            }
+
+                            /* Check if there are failed or unstable or aborted jobs */
+                            if (jobResultList.contains('FAILURE') ||
+                                    jobResultList.contains('UNSTABLE') ||
+                                    jobResultList.contains('ABORTED')
+                            ) {
+                                /* Set job result to 'UNSTABLE' if above check is true */
+                                script.currentBuild.result = 'UNSTABLE'
+                            } else {
+                                /* Set job result to 'SUCCESS' if above check is false */
+                                script.currentBuild.result = 'SUCCESS'
+                            }
+                        } catch (Exception e) {
+                            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                            script.echoCustom(exceptionMessage, 'WARN')
+                            script.currentBuild.result = 'FAILURE'
+                        } finally {
+
+
+                            /*
                             Been agreed to send notification from buildVisualizerApp job only
                             if result not equals 'FAILURE', all notification with failed channel builds
                             will be sent directly from channel job.
-                        */
-
-                        if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                            NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                            */
+                            if(!script.params.IS_SOURCE_VISUALIZER) {
+                                String s3MustHaveAuthUrl
+                                if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                                    s3MustHaveAuthUrl = PrepareMustHaves()
+                                }
+                                setBuildDescription(s3MustHaveAuthUrl)
+                                if (channelsToRun && script.currentBuild.result != 'FAILURE') {
+                                    NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+        catch(Exception e){
+            String exceptionMessage = (e.getMessage()) ?: 'Something went wrong...'
+            script.currentBuild.result='FAILURE'
+            cloudBuildCreateAndUploadLogFileInFailureCase(exceptionMessage)
+        } finally {
+            credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
+        }
+    }
+
+    /**
+     * This function helps in uploading the logfile to the s3 with an exception message, This explicitly allocates a node
+     * Uploads both status json as well as the exception message
+     *
+     * @param message holds the exception message that has to be kept in the log file
+     */
+    public void cloudBuildCreateAndUploadLogFileInFailureCase(String message){
+        if (!script.params.IS_SOURCE_VISUALIZER) {
+            return
+        }
+        script.node(libraryProperties.'facade.node.label') {
+            status.createAndUploadLogFileOnFailureCase(channelsToRun, message)
         }
     }
 }

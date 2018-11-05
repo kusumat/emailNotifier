@@ -13,10 +13,18 @@ class ValidationHelper implements Serializable {
      */
     protected static void checkBuildConfiguration(script, parametersToCheck = [], eitherOrParameters = []) {
         /* List of the parameters that every channel job requires */
-        def commonRequiredParams = [
-                'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
-                'CLOUD_CREDENTIALS_ID', 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER'
-        ]
+        def commonRequiredParams
+        if(script.params.IS_SOURCE_VISUALIZER) {
+            commonRequiredParams = [
+                    'BUILD_MODE', 'PROJECT_NAME', 'PROJECT_SOURCE_URL', 'BUILD_STATUS_PATH', 'MF_ACCOUNT_ID', 'MF_TOKEN'
+            ]
+        }
+        else {
+            commonRequiredParams = [
+                    'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
+                    'CLOUD_CREDENTIALS_ID', 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER'
+            ]
+        }
         /*
             List of the required parameters.
             Please note, that without second(parametersToCheck) argument call - commonRequiredParams list will be used
@@ -43,12 +51,13 @@ class ValidationHelper implements Serializable {
             eitherOrParameters.each{ paramSet ->
                 boolean isParam1Valid = (script.params.containsKey(paramSet[0]) && script.params[paramSet[0]] != null && script.params[paramSet[0]] != "null" && script.params[paramSet[0]]?.trim() != "")
                 boolean isParam2Valid = (script.params.containsKey(paramSet[1]) && script.params[paramSet[1]] != null && script.params[paramSet[1]] != "null" && script.params[paramSet[1]]?.trim() != "")
-                if(!(isParam1Valid ^ isParam2Valid)){ 
-                    throw new AppFactoryException("One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter.",'ERROR')
+                if(!(isParam1Valid ^ isParam2Valid)){
+                    String errorMessage = "One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter."
+                    throw new AppFactoryException("${errorMessage}",'ERROR')
                 }
             }
         }
-        
+
         /* Validate required parameters */
         def notValidPrams = checkIfValid(buildConfiguration)
         /* If there are not valid parameters */

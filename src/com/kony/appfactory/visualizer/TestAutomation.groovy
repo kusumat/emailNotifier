@@ -485,8 +485,7 @@ class TestAutomation implements Serializable {
         String errorMessage = 'Failed to find the version of ' + browserName + ' browser!'
         def version
         script.catchErrorCustom(errorMessage) {
-	      /* Added trim() at the end to avoid any new lines or spaces in browserVersion */	
-            version = script.shellCustom("${browserPath} --version", true, [returnStdout: true]).trim()
+            version = script.shellCustom("${browserPath} --version", true, [returnStdout: true])
         }
         version
     }
@@ -494,10 +493,8 @@ class TestAutomation implements Serializable {
     void publishDesktopWebTestsResults() {
         def s3ArtifactsPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER]
         s3ArtifactsPath.add("DesktopWeb")
-	  /* Since the command for browserVersion already contains the browserName, it is not needed to mention the browserName specifically, so we add only browserVersion to artifactsPath */
-        s3ArtifactsPath.add(desktopTestRunResults["browserVersion"])
+        s3ArtifactsPath.add(desktopTestRunResults["browserName"] + '_' + desktopTestRunResults["browserVersion"])
         def s3PublishPath = s3ArtifactsPath.join('/').replaceAll('\\s', '_')
-	  
         String testng_reportsCSSAndCSS = AwsHelper.publishToS3 bucketPath: s3PublishPath + "/testOutput/Smoke", sourceFileName: "testng.css,testng-reports.css",
                 sourceFilePath: "${testFolderForDesktopWeb}/testOutput/Smoke", script, true
 
@@ -783,7 +780,9 @@ class TestAutomation implements Serializable {
                         /* Build test automation scripts if URL with test binaries was not provided */
                         if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
                             script.stage('Checkout') {
+                                // source code checkout from scm
                                 BuildHelper.checkoutProject script: script,
+                                        checkoutType: "scm",
                                         projectRelativePath: checkoutRelativeTargetFolder,
                                         scmBranch: scmBranch,
                                         scmCredentialsId: scmCredentialsId,
