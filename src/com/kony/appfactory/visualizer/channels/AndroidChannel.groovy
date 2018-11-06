@@ -18,6 +18,7 @@ class AndroidChannel extends Channel {
     private final keystorePasswordId = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+    private boolean doAndroidSigning = false
     /* At least one of application id parameters should be set */
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
@@ -64,6 +65,11 @@ class AndroidChannel extends Channel {
      * @param buildArtifacts build artifacts list.
      */
     private final void signArtifacts(buildArtifacts) {
+        if (!doAndroidSigning) {
+            script.echoCustom("Skipping Android" +
+                    "binaries signing, since required keystore signing parameters are not fully provided. Unsigned release mode apks are provided to sign it locally.", 'WARN')
+            return
+        }
 
         String errorMessage = 'Failed to sign artifact'
         String signer = libraryProperties.'android.signer.name'
@@ -140,13 +146,19 @@ class AndroidChannel extends Channel {
                     } else {
                         throw new AppFactoryException("Something went wrong. Unable to figure out valid application id type", 'ERROR')
                     }
-                    
-                    /* If the build mode is debug not adding the Androiod keystore parameters*/
+
                     if (buildMode != libraryProperties.'buildmode.debug.type') {
-                        mandatoryParameters.addAll([
+                        def androidSigningBuildParams = [
                                 'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
                                 'ANDROID_KEY_ALIAS'
-                        ])
+                        ]
+                        /* Collect(filter) build parameters and environment variables to check */
+                        def androidSigningBuildConfiguration = ValidationHelper.collectEnvironmentVariables(script.env, androidSigningBuildParams)
+                        /* Check if there are empty parameters among required parameters */
+                        def emptyParams = ValidationHelper.checkForNull(androidSigningBuildConfiguration)
+                        if (!emptyParams) {
+                            doAndroidSigning = true
+                        }
                     }
                     if(buildMode == libraryProperties.'buildmode.release.protected.type') {
                         mandatoryParameters.add('PROTECTED_KEYS')

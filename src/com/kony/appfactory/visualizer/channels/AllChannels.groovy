@@ -42,6 +42,7 @@ class AllChannels implements Serializable {
     /* Create a list with artifact objects for e-mail template */
     private channelArtifacts = []
     private channelObjects = [:]
+    protected channelObject
 
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
@@ -50,14 +51,11 @@ class AllChannels implements Serializable {
     final projectWorkspaceFolderName
     /* Target folder for checkout, default value vis_ws/<project_name> */
     protected checkoutRelativeTargetFolder
-
-    /* Common environment variables */
-    protected final projectName = script.env.PROJECT_NAME
     protected separator = '/'
 
-    protected String logFileUrl
+    /* Common variables */
+    protected final projectName = script.env.PROJECT_NAME
     protected String projectFileName = "project.zip"
-    protected channelObject
 
     /**
      * Class constructor.
@@ -213,7 +211,7 @@ class AllChannels implements Serializable {
                                                 script.echoCustom('Build artifacts for Android were not found!', 'ERROR')
 
                                         if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
-                                            android_channel.signArtifacts(android_channel.buildArtifacts)
+                                            android_channel.signArtifacts(buildArtifacts)
                                         } else {
                                             script.echoCustom("Build mode is ${android_channel.buildMode}, " +
                                                     "skipping signing (artifact already signed with debug certificate)!")

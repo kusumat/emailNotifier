@@ -543,9 +543,16 @@ class Channel implements Serializable {
                 String artifactName = artifact.name
                 String artifactPath = artifact.path
                 String artifactExtension = artifact.extension
-                String artifactTargetName = projectName + '_' +
+                String artifactPackageName = projectName
+
+                if (channelVariableName?.contains('ANDROID') && artifactName.contains('-unsigned.apk')) {
+                    artifactPackageName = projectName + '_unsigned'
+                }
+
+                String artifactTargetName = artifactPackageName  + '_' +
                         getArtifactArchitecture([artifactPath, artifactName].join(separator)) +
                         jobBuildNumber + '.' + artifactExtension
+
                 String command = [shellCommand, artifactName, artifactTargetName].join(' ')
 
                 /*

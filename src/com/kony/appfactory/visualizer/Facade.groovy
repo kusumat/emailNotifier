@@ -686,13 +686,6 @@ class Facade implements Serializable {
                                 androidMandatoryParams.add('ANDROID_UNIVERSAL_APP_ID')
                             }
 
-                            if (tempBuildMode != libraryProperties.'buildmode.debug.type') {
-                                androidMandatoryParams.addAll([
-                                        'ANDROID_KEYSTORE_FILE', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD',
-                                        'ANDROID_KEY_ALIAS'
-                                ])
-                            }
-
                             if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
                                 androidMandatoryParams.add('PROTECTED_KEYS')
                             }
