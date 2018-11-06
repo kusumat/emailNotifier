@@ -98,7 +98,7 @@ class AwsHelper implements Serializable {
 
             }
         }
-        String artifactUrl = getS3ArtifactUrl(script, finalBucketPath)
+        String artifactUrl = getS3ArtifactUrl(script, [finalBucketPath, fileName].join('/'))
 
         if (exposeUrl) {
             script.echoCustom("Artifact($fileName) URL: ${artifactUrl}")

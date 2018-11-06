@@ -668,8 +668,9 @@ class TestAutomation implements Serializable {
             try {
                 script.catchErrorCustom("Failed to create the zip file") {
                     if(script.fileExists(mustHaveFilePath)){
-                        String s3MustHaveUrl = AwsHelper.publishToS3  bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
-                                        sourceFilePath: projectFullPath, script
+                        String s3FullMustHavePath = [script.env.CLOUD_ACCOUNT_ID, projectName, s3ArtifactPath].join('/')
+                        String s3MustHaveUrl = AwsHelper.publishToS3  sourceFileName: mustHaveFile,
+                                        sourceFilePath: projectFullPath, s3FullMustHavePath, script
                         upstreamJob = BuildHelper.getUpstreamJobName(script)
                         isRebuild = BuildHelper.isRebuildTriggered(script)
                         s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
@@ -680,7 +681,7 @@ class TestAutomation implements Serializable {
                          */
                         if(upstreamJob != null && !isRebuild) {
                             mustHaves.add([
-                                channelVariableName: "Tests", name: mustHaveFile, url: s3MustHaveUrl
+                                channelVariableName: "Tests", name: mustHaveFile, path: s3FullMustHavePath
                             ])
                             script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
                         }

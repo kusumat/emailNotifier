@@ -618,16 +618,11 @@ class Facade implements Serializable {
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
             mustHaveArtifacts.each {
-                if (it.url.trim().length() > 0) {
-                    String artifactUrl = it.url.replace(' ', '%20')
-                    // Converting the https url into s3 url to download the musthaves for the channel jobs
-                    artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
-                            artifactUrl.replaceAll('https://' + script.env.S3_BUCKET_NAME + '(.*)amazonaws.com',
-                                    's3://' + script.env.S3_BUCKET_NAME) : artifactUrl) : ''
-                    String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
-
-                    String cpS3Cmd = "set +x;aws s3 mv \"${artifactUrlDecoded}\" \"${it.name}\" --only-show-errors"
-                    script.shellCustom(cpS3Cmd, true)
+                if (it.path.trim().length() > 0) {
+                    script.withAWS(region: script.env.S3_BUCKET_REGION) {
+                        script.s3Download(file: it.name, bucket: script.env.S3_BUCKET_NAME, path: [it.path, it.name].join('/'))
+                        script.s3Delete(bucket: script.env.S3_BUCKET_NAME, path: [it.path, it.name].join('/'))
+                    }
                 }
             }
         }
