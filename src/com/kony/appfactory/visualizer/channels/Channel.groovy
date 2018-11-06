@@ -237,9 +237,17 @@ class Channel implements Serializable {
      * @param closure block of code.
      */
     protected final void visualizerEnvWrapper(closure) {
+
+        /* Project will be considered as Starter Project on below case if  konyplugins.xml  doesn't exist */
+        def konyPluginExists = script.fileExists file: "konyplugins.xml"
+        script.env.IS_STARTER_PROJECT = !konyPluginExists
+
+
         /* Get Visualizer version */
-        visualizerVersion = getVisualizerVersion(script.readFile('konyplugins.xml'))
+        visualizerVersion = getVisualizerVersion()
+
         script.env.visualizerVersion = visualizerVersion
+        script.echoCustom("Current Project version: " + visualizerVersion)
         setVersionBasedProperties(visualizerVersion)
 
         /* Get Visualizer dependencies */
@@ -249,7 +257,7 @@ class Channel implements Serializable {
                         libraryProperties.'visualizer.dependencies.base.url',
                         libraryProperties.'visualizer.dependencies.archive.file.prefix',
                         libraryProperties.'visualizer.dependencies.archive.file.extension')
-        ) 
+        )
         if(!visualizerDependencies){
             throw new AppFactoryException('Missing Visualizer dependencies!', 'ERROR')
         }
@@ -309,6 +317,12 @@ class Channel implements Serializable {
 
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
+                    /* Download Visualizer Starter feature XML*/
+                    if (script.env.IS_STARTER_PROJECT) {
+                        /* TODO: currently basePath is only valid for PROD, later release will add support for SIT, QA & Dev */
+                        fetchFeatureXML(script.env.visualizerVersion, libraryProperties.'visualizer.dependencies.feature.xml.base.url')
+                    }
+
                     if (script.env.isCIBUILD) {
                         /** Check CI build support exist for few features.
                          *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
@@ -373,7 +387,14 @@ class Channel implements Serializable {
      * @param konyPluginsXmlFileContent content of the konyplugins.xml.
      * @return Visualizer version.
      */
-    protected final getVisualizerVersion(konyPluginsXmlFileContent) {
+    protected final getVisualizerVersion() {
+        if(script.env.IS_STARTER_PROJECT){
+            def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
+            return projectPropertiesJsonContent['currentgaversion']
+        }
+
+        def konyPluginsXmlFileContent = script.readFile('konyplugins.xml')
+
         String visualizerVersion = ''
         def plugins = [
                 'Branding'       : /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.ide.paas.branding"/,
@@ -396,6 +417,31 @@ class Channel implements Serializable {
 
         visualizerVersion
     }
+
+    protected void fetchFeatureXML(vizVersion, basePath) {
+
+        String failureMsg = 'Failed to downloaded versions file (feature.xml) for Starter Project.'
+        String successMsg = 'Successfully downloaded plugins versions file (feature.xml) for Starter Project.'
+
+        script.catchErrorCustom(failureMsg, successMsg) {
+            String downloaderRelativePath = "com/kony/appfactory/feature.xml.downloader/";
+
+            def featureDownloadScriptContent =
+                    script.libraryResource(downloaderRelativePath + 'downloadFeaturesXml.js')
+            def packageJsonContent =
+                    script.libraryResource(downloaderRelativePath + 'package.json')
+
+            script.dir("FeatureXMLDownloader") {
+                script.writeFile file: "downloadFeaturesXml.js", text: featureDownloadScriptContent
+                script.writeFile file: "package.json", text: packageJsonContent
+
+                /* Scripts are packaged into external Dependencies zip with name */
+                script.shellCustom('npm install', isUnixNode)
+                script.shellCustom(['node downloadFeaturesXml.js', vizVersion, basePath, '../'].join(' '), isUnixNode)
+            }
+        }
+    }
+
     /**
      * Set properties that vary based upon the Visualizer Version of users' app.
      *

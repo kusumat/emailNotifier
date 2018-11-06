@@ -250,7 +250,39 @@
         <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}" />
     </target>
 
-    <target name="plugins" description="-> generate ivy.xml from konyplugins.xml">
+    <target name="generateIvyFromFeatureXML" description="-> generate ivy.xml from feature.xml" if="${env.IS_STARTER_PROJECT}">
+        <condition property="plugin.os.ver" value="mac64" else="win64">
+            <os family="mac"/>
+        </condition>
+        <copy file="feature.xml" tofile="ivy.xml" overwrite="true"/>
+
+        <!-- Replace the old property names with new one -->
+        <replaceregexp file="ivy.xml" match="&lt;\?xml.*\?&gt;" replace="" byline="true"/>
+        <replace file="ivy.xml" token="plugin" value="dependency"/>
+        <replace file="ivy.xml" token="id=" value="name="/>
+        <replace file="ivy.xml" token="version=" value="rev="/>
+        <replaceregexp  file="ivy.xml"  match="&lt;feature(.+?)&gt;" replace='&lt;ivy-module version=\"2.4\"&gt; &lt;info organisation=\"com.kony\" module=\"AppFactory\"/&gt;&#10;&lt;dependencies&gt;' flags="s"/>
+        <replace file="ivy.xml">
+            <replacetoken><![CDATA[</feature>]]></replacetoken>
+            <replacevalue><![CDATA[</dependencies>]]>&#10;<![CDATA[</ivy-module>]]>
+            </replacevalue>
+        </replace>
+        <replace file="ivy.xml" token="win64" value="${plugin.os.ver}"/>
+        <replace file="ivy.xml" token="mac64" value="${plugin.os.ver}"/>
+
+        <!-- Remove the unwanted tags from feature.xml -->
+        <replaceregexp file="ivy.xml" match="&lt;description(.*)description&gt;" replace="" flags="gs"/>
+        <replaceregexp file="ivy.xml" match="&lt;copyright(.*)copyright&gt;" replace="" flags="gs"/>
+        <replaceregexp file="ivy.xml" match="&lt;license(.*)license&gt;" replace="" flags="gs"/>
+        <replaceregexp file="ivy.xml" match="&lt;url(.*)url&gt;" replace="" flags="gs"/>
+        <replaceregexp file="ivy.xml" match=" unpack=&quot;(.*)&quot;" replace="" flags="gm"/>
+
+        <!-- Remove empty lines and format ivy.xml -->
+        <replaceregexp file="ivy.xml" match="(\r?\n)\s*\r?\n" flags="g" replace="\1" />
+    </target>
+
+
+    <target name="plugins" description="-> generate ivy.xml from konyplugins.xml" unless="${env.IS_STARTER_PROJECT}">
         <condition property="plugin.os.ver" value="mac64" else="win64">
             <os family="mac"/>
         </condition>
@@ -265,7 +297,7 @@
         <replace file="ivy.xml" token="plugin-id" value="name"/>
         <replace file="ivy.xml" token="version-no" value="rev"/>
         <replaceregexp file="ivy.xml" match="plugin-name.*$" replace="/>" flags="gm"/>
-        <replace file="ivy.xml"> 
+        <replace file="ivy.xml">
             <replacetoken><![CDATA[</plugins>]]></replacetoken>
             <replacevalue><![CDATA[    </dependencies>
 </ivy-module>]]></replacevalue>
@@ -274,7 +306,7 @@
         <replace file="ivy.xml" token="mac64" value="${plugin.os.ver}"/>
 	</target>
 
-    <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
+    <target name="retrieve" depends="generateIvyFromFeatureXML, plugins" description="-> retrieve dependencies with ivy">
         <ivy:retrieve pattern="${pluginDir}/[artifact]_[revision].[ext]"/>
     </target>
 
