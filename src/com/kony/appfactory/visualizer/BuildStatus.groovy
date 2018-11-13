@@ -190,14 +190,11 @@ class BuildStatus implements Serializable {
      * @param value is the build status value for the list of channels
      */
     private void prepareBuildServiceEnvironment(channels, value = false) {
-
         if (!channels || !script.params.IS_SOURCE_VISUALIZER)
             return
         for (item in channels) {
             script.env[buildService.concat(item)] = value
         }
-        // Sample StatusFilePath: 100000170/DemoProj/status/eyJidWlsZF9ndWlkIjoiNTEyNGY1NGUtNmE0Yy00OTgyLWE3NWUtMDIzNDIzM2IzN2QzIn0=/buildStatus.json
-        script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: ''
     }
 
     /**
@@ -209,11 +206,11 @@ class BuildStatus implements Serializable {
     }
 
     /**
-     * Once the build for a particular channel gets completed this function gets called to update the status on to s3
-     * @param artefactURL contians the aftefacts url that has been uploaded to s3
+     * This function is used to update channel (Platform) env status to SUCCESS, update the json with status and channel artifact link on S3.
      * @param channelType contains the channel for which the status has to be updated
+     * @param artefactURL contains the artifacts url that has been uploaded to s3
      */
-    void updateSuccessBuildStatus(String artefactURL, ChannelType channelType) {
+    void updateSuccessBuildStatusOnS3(ChannelType channelType, String artefactURL) {
         updateDownloadLink(artefactURL, channelType)
         prepareBuildServiceEnvironment([channelType.toString()], true)
         updatePlatformStatus(Status.SUCCESS, channelType)
@@ -221,16 +218,13 @@ class BuildStatus implements Serializable {
     }
 
     /**
-     * This method is called when the build got failed globally. Before calling the actual build, the job got failed.
+     * This function is used to update channel (Platform) env status to FAILED, update the json with status on S3.
      * This sets all the selected platforms to Failed and updates the global status to Failed as well
-     * @param channelsToRun has the list of channels that has been selected by the user to build
+     * @param channelType contains the channel for which the status has to be updated
      */
-    void updateFailureBuildStatus(channelsToRun) {
-
-        for (channel in channelsToRun) {
-            updatePlatformStatus(Status.FAILED, ChannelType.valueOf(channel))
-        }
-        updateGlobalStatus(Status.FAILED)
+    void updateFailureBuildStatusOnS3(ChannelType channelType) {
+        updatePlatformStatus(Status.FAILED, ChannelType.valueOf(channel))
+        updateBuildStatusOnS3()
     }
 
     /**
@@ -267,6 +261,7 @@ class BuildStatus implements Serializable {
                 failureFlag = false
             }
         }
+
         successFlag ? updateGlobalStatus(Status.SUCCESS) : failureFlag ? updateGlobalStatus(Status.FAILED) : updateGlobalStatus(Status.UNSTABLE)
         if (failureFlag)
             script.currentBuild.result = 'FAILURE'

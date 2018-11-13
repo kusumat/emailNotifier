@@ -6,6 +6,7 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.visualizer.BuildStatus
+import com.kony.appfactory.helper.AppFactoryException
 
 /**
  * Implements logic for all channel builds.
@@ -145,162 +146,211 @@ class AllChannels implements Serializable {
                     Clean workspace, to be sure that we have not any items from previous build,
                     and build environment completely new.
                     */
-                    try {
-                        script.echoCustom("The fabric app config is ${script.params.FABRIC_APP_CONFIG}")
-                        buildStatus.prepareBuildServiceEnvironment(channelsToRun, false)
-                        buildStatus.prepareStatusJson(true)
-                        script.cleanWs deleteDirs: true
-                        script.stage('Checkout') {
-                            String url = script.params.PROJECT_SOURCE_URL
-                            // source code checkout from downloadZipUrl
-                            BuildHelper.checkoutProject script: script,
-                                    checkoutType: "downloadzip",
-                                    projectRelativePath: checkoutRelativeTargetFolder,
-                                    downloadURL: url,
-                                    projectFileName: projectFileName
-                        }
+                    buildStatus.prepareBuildServiceEnvironment(channelsToRun)
+                    buildStatus.prepareStatusJson(true)
+                    script.cleanWs deleteDirs: true
+                    script.stage('Checkout') {
+                        String url = script.params.PROJECT_SOURCE_URL
+                        // source code checkout from downloadZipUrl
+                        BuildHelper.checkoutProject script: script,
+                                checkoutType: "downloadzip",
+                                projectRelativePath: checkoutRelativeTargetFolder,
+                                downloadURL: url,
+                                projectFileName: projectFileName
+                    }
 
-                        script.stage('Android preSetup') {
-                            if (androidChannels) {
-                                for (item in androidPipelineChannels) {
-                                    item.pipelineWrapper {
-                                        /* reserving space for any pre-setups needed for any android builds */
+                    script.stage('Pre Build') {
+                        try {
+                            script.parallel(
+                                    'Android preBuildSetup': {
+                                        script.stage('Android Task') {
+                                            if (androidChannels) {
+                                                for (item in androidPipelineChannels) {
+                                                    item.pipelineWrapper {
+                                                        /* reserving space for any pre-setups needed for any android builds */
+                                                    }
+                                                }
+                                            } else {
+                                                script.echoCustom("Skipping as there is no Android channel selected for build.")
+                                            }
+                                        }
+                                    },
+                                    'iOS preBuildSetup': {
+                                        script.stage('Update iOS Bundle ID') {
+                                            if (iosChannels) {
+                                                for (item in iOSPipelineChannels) {
+                                                    item.pipelineWrapper {
+                                                        item.updateIosBundleId()
+                                                    }
+                                                }
+                                            } else {
+                                                script.echoCustom("Skipping as there is no iOS channel selected for build.")
+                                            }
+                                        }
                                     }
-                                }
-                            } else {
-                                script.echoCustom("Skipping as there is no Android channel selected for build.")
-                            }
+                            )
                         }
-
-                        script.stage('iOS preSetup') {
-                            if (iosChannels) {
-                                for (item in iOSPipelineChannels) {
-                                    item.pipelineWrapper {
-                                        item.updateIosBundleId()
-                                    }
-                                }
-                            } else {
-                                script.echoCustom("Skipping as there is no iOS channel selected for build.")
-                            }
+                        catch(AppFactoryException e) {
+                            String exceptionMessage = "Exception Found while running preSetup!!"
+                            script.echoCustom(exceptionMessage, 'ERROR', false)
                         }
+                    }
 
-
-                        script.stage("Build") {
-
-                            /* Since CI tool is same for both android and ios, we can use any channel wrapper to initiate actual build */
-                            /* preferring to use first channel object, can be one of MobileChannel and TabletChannel of Android and iOS */
-                            def channelObjectsFirstKey = channelObjects.keySet().toArray()[0];
-                            def channelObjectsFirstVal = channelObjects.get(channelObjectsFirstKey)
-                            channelObject = channelObjectsFirstVal
-                            channelObjectsFirstVal.pipelineWrapper {
+                    script.stage("Build") {
+                        /* Since CI tool is same for both android and ios, we can use any channel wrapper to initiate actual build */
+                        /* preferring to use first channel object, can be one of MobileChannel and TabletChannel of Android and iOS */
+                        def channelObjectsFirstKey = channelObjects.keySet().toArray()[0];
+                        def channelObjectsFirstVal = channelObjects.get(channelObjectsFirstKey)
+                        channelObject = channelObjectsFirstVal
+                        channelObjectsFirstVal.pipelineWrapper {
+                            try {
                                 channelObjectsFirstVal.build()
                             }
+                            catch(Exception e) {
+                                String exceptionMessage = "CI build failed for this project, script returned with exit code"
+                                script.echoCustom(exceptionMessage, 'ERROR', false)
+                            }
                         }
+                    }
 
-                        /* Search for build artifacts for Android and publish to S3 */
-                        script.stage("Sign and Publish Android artifacts") {
-                            if (androidChannels) {
-                                channelObjects.findAll { channelid, channelobject -> channelid.contains('ANDROID') }.each {
+                    script.stage('Post Build') {
+                        script.parallel (
+                                'Android postBuildSetup': {
+                                    script.stage('Sign and Publish Android artifacts') {
+                                        if (androidChannels) {
+                                            channelObjects.findAll { channelid, channelobject -> channelid.contains('ANDROID') }.each {
+                                                def android_channel_id = it.key
+                                                def android_channel = it.value
 
-                                    def android_channel_id = it.key
-                                    def android_channel = it.value
+                                                try {
+                                                    script.stage("Sign Android artifacts") {
+                                                        android_channel.pipelineWrapper {
+                                                            def androidArtifactExtension = android_channel.getArtifactExtension(android_channel_id)
+                                                            android_channel.buildArtifacts = android_channel.getArtifactLocations(androidArtifactExtension) ?:
+                                                                    script.echoCustom('Build artifacts for Android were not found!', 'ERROR')
 
-                                    android_channel.pipelineWrapper {
-                                        def androidArtifactExtension = android_channel.getArtifactExtension(android_channel_id)
-                                        android_channel.buildArtifacts = android_channel.getArtifactLocations(androidArtifactExtension) ?:
-                                                script.echoCustom('Build artifacts for Android were not found!', 'ERROR')
+                                                            if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
+                                                                android_channel.signArtifacts(buildArtifacts)
+                                                            } else {
+                                                                script.echoCustom("Build mode is ${android_channel.buildMode}, " +
+                                                                        "skipping signing (artifact already signed with debug certificate)!")
+                                                            }
+                                                        }
+                                                    }
 
-                                        if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
-                                            android_channel.signArtifacts(buildArtifacts)
+                                                    script.stage("Publish Android artifacts") {
+                                                        android_channel.pipelineWrapper {
+                                                            /* Rename artifacts for publishing */
+                                                            android_channel.artifacts = android_channel.renameArtifacts(android_channel.buildArtifacts).first()
+
+                                                            /* Publish Android artifact to S3 */
+                                                            String artifactUrl = AwsHelper.publishToS3 bucketPath: android_channel.s3ArtifactPath,
+                                                                    sourceFileName: android_channel.artifacts.name, sourceFilePath: android_channel.artifacts.path, script
+
+                                                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                                                            channelArtifacts.add([
+                                                                    channelPath: android_channel.channelPath, name: android_channel.artifacts.name, url: artifactUrl, authurl: authenticatedArtifactUrl
+                                                            ])
+
+                                                            String artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, android_channel.s3ArtifactPath, android_channel.artifacts.name].join('/')
+                                                            buildStatus.updateSuccessBuildStatusOnS3(ChannelType.valueOf(android_channel_id), artifactPath)
+                                                        }
+                                                    }
+                                                }
+                                                catch(AppFactoryException e) {
+                                                    String exceptionMessage = "Exception Found while Sign and Publishing Android artifact!!"
+                                                    script.echoCustom(exceptionMessage, 'ERROR', false)
+                                                    buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(android_channel_id))
+                                                }
+                                            }
                                         } else {
-                                            script.echoCustom("Build mode is ${android_channel.buildMode}, " +
-                                                    "skipping signing (artifact already signed with debug certificate)!")
+                                            script.echoCustom("Skipping as there is no Android channel selected for build.")
                                         }
+                                    }
+                                },
+                                'iOS postBuildSetup': {
+                                    script.stage("IPA generate and Publish iOS artifacts") {
+                                        if (iosChannels) {
+                                            /* Search for build artifacts for iOS and publish to S3 */
+                                            channelObjects.findAll { channelid, channelobject -> channelid.contains('IOS') }.each {
+                                                def ios_channel_id = it.key
+                                                def ios_channel = it.value
 
-                                        /* Rename artifacts for publishing */
-                                        android_channel.artifacts = android_channel.renameArtifacts(android_channel.buildArtifacts).first()
+                                                try
+                                                {
+                                                    script.stage("Generate IPA file") {
+                                                        ios_channel.pipelineWrapper {
+                                                            ios_channel.fetchFastlaneConfig()
+                                                            def iosArtifactExtension = ios_channel.getArtifactExtension(ios_channel_id)
+                                                            ios_channel.karArtifact = ios_channel.getArtifactLocations(iosArtifactExtension).first() ?:
+                                                                    script.echoCustom('Build artifacts were not found!', 'ERROR')
+                                                            ios_channel.createIPA()
 
-                                        /* Publish Android artifact to S3 */
-                                        String artifactUrl =  AwsHelper.publishToS3 bucketPath: android_channel.s3ArtifactPath,
-                                                sourceFileName: android_channel.artifacts.name, sourceFilePath: android_channel.artifacts.path, script
+                                                            /* Get ipa file name and path */
+                                                            def foundArtifacts = ios_channel.getArtifactLocations('ipa')
 
-                                        String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
-                                        channelArtifacts.add([
-                                                channelPath: android_channel.channelPath, name: android_channel.artifacts.name, url: artifactUrl, authurl: authenticatedArtifactUrl
-                                        ])
-                                        String artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, android_channel.s3ArtifactPath, android_channel.artifacts.name].join('/')
-                                        buildStatus.updateSuccessBuildStatus(artifactPath, ChannelType.valueOf(android_channel_id))
+                                                            /* Rename artifacts for publishing */
+                                                            ios_channel.ipaArtifact = ios_channel.renameArtifacts(foundArtifacts).first()
+
+                                                            /* Publish iOS ipa artifact to S3 */
+                                                            ios_channel.ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: ios_channel.s3ArtifactPath,
+                                                                    sourceFileName: ios_channel.ipaArtifact.name, sourceFilePath: ios_channel.ipaArtifact.path, script
+
+                                                            ios_channel.authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ios_channel.ipaArtifactUrl, script, false);
+
+                                                            /* Get plist artifact */
+                                                            ios_channel.plistArtifact = ios_channel.createPlist(ios_channel.authenticatedIPAArtifactUrl)
+                                                        }
+                                                    }
+
+                                                    script.stage("Publish iOS artifacts") {
+                                                        ios_channel.pipelineWrapper {
+                                                            String artifactName = ios_channel.plistArtifact.name
+                                                            String artifactPath = ios_channel.plistArtifact.path
+
+                                                            /* Publish iOS plist artifact to S3 */
+                                                            String artifactUrl = AwsHelper.publishToS3 bucketPath: ios_channel.s3ArtifactPath,
+                                                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script
+
+                                                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                                                            String plistArtifactOTAUrl = authenticatedArtifactUrl
+
+                                                            channelArtifacts.add([
+                                                                    channelPath: ios_channel.channelPath, name: artifactName, url: artifactUrl, otaurl: plistArtifactOTAUrl, ipaName: ios_channel.ipaArtifact.name, ipaAuthUrl: ios_channel.authenticatedIPAArtifactUrl
+                                                            ])
+
+                                                            artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.s3ArtifactPath, ios_channel.ipaArtifact.name].join('/')
+                                                            buildStatus.updateSuccessBuildStatusOnS3(ChannelType.valueOf(ios_channel_id), artifactPath)
+                                                        }
+                                                    }
+                                                }
+                                                catch(AppFactoryException e) {
+                                                    String exceptionMessage = "Exception Found while Sign and Publishing iOS artifact!! ${ios_channel_id}"
+                                                    script.echoCustom(exceptionMessage, 'ERROR', false)
+                                                    buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(ios_channel_id))
+                                                }
+                                            }
+                                        } else {
+                                            script.echoCustom("Skipping as there is no iOS channel selected for build.")
+                                        }
                                     }
                                 }
-                            } else {
-                                script.echoCustom("Skipping as there is no Android channel selected for build.")
-                            }
-                        }
+                        )
+                    }
 
-
-                        script.stage("IPA generate and Publish iOS artifacts") {
-                            if (iosChannels) {
-                                /* Search for build artifacts for iOS and publish to S3 */
-                                channelObjects.findAll { channelid, channelobject -> channelid.contains('IOS') }.each {
-                                    def ios_channel_id = it.key
-                                    def ios_channel = it.value
-                                    ios_channel.pipelineWrapper {
-                                        ios_channel.fetchFastlaneConfig()
-                                        def iosArtifactExtension = ios_channel.getArtifactExtension(ios_channel_id)
-                                        ios_channel.karArtifact = ios_channel.getArtifactLocations(iosArtifactExtension).first() ?:
-                                                script.echoCustom('Build artifacts were not found!', 'ERROR')
-
-                                        ios_channel.createIPA()
-                                        /* Get ipa file name and path */
-                                        def foundArtifacts = ios_channel.getArtifactLocations('ipa')
-                                        /* Rename artifacts for publishing */
-                                        ios_channel.ipaArtifact = ios_channel.renameArtifacts(foundArtifacts).first()
-
-                                        /* Publish iOS ipa artifact to S3 */
-                                        ios_channel.ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: ios_channel.s3ArtifactPath,
-                                                sourceFileName: ios_channel.ipaArtifact.name, sourceFilePath: ios_channel.ipaArtifact.path, script
-
-                                        ios_channel.authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ios_channel.ipaArtifactUrl, script, false);
-
-                                        /* Get plist artifact */
-                                        ios_channel.plistArtifact = ios_channel.createPlist(ios_channel.authenticatedIPAArtifactUrl)
-
-                                        String artifactName = ios_channel.plistArtifact.name
-                                        String artifactPath = ios_channel.plistArtifact.path
-
-                                        /* Publish iOS plist artifact to S3 */
-                                        String artifactUrl = AwsHelper.publishToS3 bucketPath: ios_channel.s3ArtifactPath,
-                                                sourceFileName: artifactName, sourceFilePath: artifactPath, script
-
-                                        String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
-                                        String plistArtifactOTAUrl = authenticatedArtifactUrl
-
-                                        channelArtifacts.add([
-                                                channelPath: ios_channel.channelPath, name: artifactName, url: artifactUrl, otaurl: plistArtifactOTAUrl, ipaName: ios_channel.ipaArtifact.name, ipaAuthUrl: ios_channel.authenticatedIPAArtifactUrl
-                                        ])
-                                        artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.s3ArtifactPath, ios_channel.ipaArtifact.name].join('/')
-                                        buildStatus.updateSuccessBuildStatus(artifactPath, ChannelType.valueOf(ios_channel_id))
-                                    }
-                                }
-                            } else {
-                                script.echoCustom("Skipping as there is no iOS channel selected for build.")
-                            }
-                        }
+                    if (!channelArtifacts.isEmpty()) {
                         script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                         script.echoCustom("Total artifacts: ${script.env['CHANNEL_ARTIFACTS']}")
-                    }
-                    catch (Exception e) {
-                        script.echoCustom("The exception is ${e.getStackTrace().toString()}")
-                        script.echoCustom("Localized message ${e.getLocalizedMessage()}")
+                    } else {
                         script.currentBuild.result = 'FAILURE'
-                        boolean uploadFlag = channelObject ? false : true
-                        buildStatus.createAndUploadLogFileOnFailureCase(channelsToRun, e.getLocalizedMessage(), uploadFlag)
                     }
-                    finally {
-                        prepareMustHaves()
-                        buildStatus.updateBuildStatusOnS3()
-                        buildStatus.deriveBuildStatus(channelsToRun)
-                    }
+
+                    // prepare Log for CloudBuild
+                    prepareMustHaves()
+                    // update status file on S3 with Logs Link
+                    buildStatus.updateBuildStatusOnS3()
+                    // finally update the global status of the build and update status file on S3
+                    buildStatus.deriveBuildStatus(channelsToRun)
                 }
             }
         }
