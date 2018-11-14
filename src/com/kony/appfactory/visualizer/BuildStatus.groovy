@@ -7,7 +7,9 @@ import com.kony.appfactory.dto.buildstatus.BuildStatusDTO
 import com.kony.appfactory.enums.Status
 import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
-import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.sanitizers.RegexSanitizer
+import com.kony.appfactory.sanitizers.RemoveLinesSanitizer
+import com.kony.appfactory.sanitizers.TextSanitizer
 
 /**
  * This class acts as an interface for the json, any update on the json is done through this class
@@ -19,6 +21,7 @@ class BuildStatus implements Serializable {
     private static String buildService = "BS"
     private static String statusFilePath
     private channelsToRun
+    protected final String CLOUD_BUILD_LOG_FILENAME = 'consolelog_' + script.env.BUILD_NUMBER + '.txt'
 
     BuildStatus(script, channelsToRun) {
         buildJson = BuildStatusDTO.getInstance()
@@ -66,24 +69,24 @@ class BuildStatus implements Serializable {
     /**
      * This function sets the value for the status at the platform level
      *
-     * @param value The value refers to the build status value { IN_PROGRESS, SUCCESSFUL, FAILED}* @param type This refers to the platform type for which the status has to be set
+     * @param buildStatus The value refers to the build status value { IN_PROGRESS, SUCCESSFUL, FAILED}* @param type This refers to the platform type for which the status has to be set
      */
     @NonCPS
-    void updatePlatformStatus(Status value, ChannelType channelType) {
+    void updatePlatformStatus(ChannelType channelType, Status buildStatus) {
         PlatformType platformType = channelType.toString().contains("IOS") ? PlatformType.IOS : PlatformType.ANDROID
         PlatformsDTO platformDTO = getPlatformByType(platformType)
-        channelType.toString().contains("TABLET") ? platformDTO.setTabletStatus(value) : channelType.toString().contains("MOBILE") ? platformDTO.setMobileStatus(value) : platformDTO.setUniversalStatus(value)
+        channelType.toString().contains("TABLET") ? platformDTO.setTabletStatus(buildStatus) : channelType.toString().contains("MOBILE") ? platformDTO.setMobileStatus(buildStatus) : platformDTO.setUniversalStatus(buildStatus)
         updatePlatformInStatusJSON(platformType, platformDTO)
     }
 
     /**
      * This function sets the value for the download link at the platform level
      *
-     * @param downloadURI The value refers to the tablet download link of the specified platform
      * @param type This refers to the platform type for which the status has to be set
+     * @param downloadURI The value refers to the tablet download link of the specified platform *
      */
     @NonCPS
-    void updateDownloadLink(String downloadURI, ChannelType channelType) {
+    void updateDownloadLink(ChannelType channelType, String downloadURI) {
         PlatformType platformType = channelType.toString().contains("IOS") ? PlatformType.valueOf("IOS") : PlatformType.valueOf("ANDROID")
         PlatformsDTO platformDTO = getPlatformByType(platformType)
         channelType.toString().contains("TABLET") ? platformDTO.setTabletDownloadLink(downloadURI) : channelType.toString().contains("MOBILE") ? platformDTO.setMobileDownloadLink(downloadURI) : platformDTO.setUniversalDownloadLink(downloadURI)
@@ -211,9 +214,9 @@ class BuildStatus implements Serializable {
      * @param artefactURL contains the artifacts url that has been uploaded to s3
      */
     void updateSuccessBuildStatusOnS3(ChannelType channelType, String artefactURL) {
-        updateDownloadLink(artefactURL, channelType)
+        updateDownloadLink(channelType, artefactURL)
         prepareBuildServiceEnvironment([channelType.toString()], true)
-        updatePlatformStatus(Status.SUCCESS, channelType)
+        updatePlatformStatus(channelType, Status.SUCCESS)
         updateBuildStatusOnS3()
     }
 
@@ -223,7 +226,7 @@ class BuildStatus implements Serializable {
      * @param channelType contains the channel for which the status has to be updated
      */
     void updateFailureBuildStatusOnS3(ChannelType channelType) {
-        updatePlatformStatus(Status.FAILED, ChannelType.valueOf(channel))
+        updatePlatformStatus(channelType, Status.FAILED)
         updateBuildStatusOnS3()
     }
 
@@ -245,7 +248,7 @@ class BuildStatus implements Serializable {
      * This function is called at the end of the build, it figures out the status of the build based on individual platforms result
      * @param channelsToRun
      */
-    private void deriveBuildStatus(channelsToRun) {
+    private void deriveGlobalBuildStatus(channelsToRun) {
 
         boolean successFlag = true
         boolean failureFlag = true
@@ -256,7 +259,7 @@ class BuildStatus implements Serializable {
             String buildValue = script.env[buildService.concat(channel)]
             if (buildValue.equals("false")) {
                 successFlag = false
-                updatePlatformStatus(Status.FAILED, ChannelType.valueOf(channel))
+                updatePlatformStatus(ChannelType.valueOf(channel), Status.FAILED)
             } else {
                 failureFlag = false
             }
@@ -273,18 +276,36 @@ class BuildStatus implements Serializable {
      * Uploads both status json as well as the exception message
      *
      * @param channelsToRun contains the list of channels selected by the user to build
-     * @param message holds the exception message that has to be kept in the log file
-     * @param uploadFlag by default we set it to true, if sent false we wont trigger an email
+     * @param buildLog holds the the console log of jobs.
      */
-    void createAndUploadLogFileOnFailureCase(channelsToRun, String message, boolean uploadFlag = true) {
-        deriveBuildStatus(channelsToRun)
-        script.writeFile file: "error.log", text: message, encoding: 'UTF-8'
-        if (!uploadFlag)
-            return
-        String s3ArtifactPath = [script.env.CLOUD_ACCOUNT_ID, 'Builds', script.env.PROJECT_NAME].join('/')
-        String s3Url = AwsHelper.publishToS3 sourceFileName: "error.log",
+    void createAndUploadLogFile(channelsToRun, String buildLog) {
+
+        String projectWorkspacePath = script.env.WORKSPACE
+
+        /*
+         * Filtering AppFactory build console log for CloudBuildService. In cloud build
+         *
+         * we aren't exposing git logs, for this case, we will remove top lines 5 to 30,
+         * which contains GIT code checkout of kony-commons repo.
+         * Same time, removing all occurrences of AppFactory workspace path in build log.
+         */
+
+        def gitCheckoutStartLineNumber = 6
+        def gitCheckoutEndLineNumber = 30
+
+        def sanitizer = new RegexSanitizer(projectWorkspacePath, "CloudBuildService",
+                new RemoveLinesSanitizer(
+                        gitCheckoutStartLineNumber,
+                        gitCheckoutEndLineNumber,
+                        new TextSanitizer())
+        )
+
+        String sanitizedLogs = sanitizer.sanitize(buildLog)
+        script.writeFile file: CLOUD_BUILD_LOG_FILENAME, text: sanitizedLogs, encoding: 'UTF-8'
+        String s3ArtifactPath = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME, 'Builds', 'logs'].join('/')
+        String s3Url = AwsHelper.publishToS3 sourceFileName: CLOUD_BUILD_LOG_FILENAME,
                 sourceFilePath: "./", s3ArtifactPath, script
-        updateLogsLink(s3ArtifactPath + "/error.log")
+        updateLogsLink(s3ArtifactPath + "/" + CLOUD_BUILD_LOG_FILENAME)
         updateBuildStatusOnS3()
     }
 }

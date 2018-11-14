@@ -4,7 +4,6 @@ import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
-import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.visualizer.BuildStatus
 import com.kony.appfactory.helper.AppFactoryException
 
@@ -76,7 +75,7 @@ class AllChannels implements Serializable {
         channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?:
                 script.echoCustom('Please select at least one channel to build!', 'ERROR')
 
-        buildStatus = new BuildStatus(script,channelsToRun)
+        buildStatus = new BuildStatus(script, channelsToRun)
     }
 
     /**
@@ -345,28 +344,19 @@ class AllChannels implements Serializable {
                         script.currentBuild.result = 'FAILURE'
                     }
 
-                    // prepare Log for CloudBuild
-                    prepareMustHaves()
+                    /* Prepare log for cloud build and publish to s3 */
+                    String buildLogs = BuildHelper.getBuildLogText(
+                            script.env.JOB_NAME,
+                            script.env.BUILD_ID,
+                            script)
+                    buildStatus.createAndUploadLogFile(channelsToRun, buildLogs)
+                    
                     // update status file on S3 with Logs Link
                     buildStatus.updateBuildStatusOnS3()
                     // finally update the global status of the build and update status file on S3
-                    buildStatus.deriveBuildStatus(channelsToRun)
+                    buildStatus.deriveGlobalBuildStatus(channelsToRun)
                 }
             }
         }
-    }
-
-    private String prepareMustHaves(){
-        if(!channelObject)
-            return
-        //clearing all the must haves in the list which are intended for single tenant
-        channelObject.mustHaveArtifacts.clear()
-        channelObject.mustHaveArtifacts.add([name: "error.log", path: channelObject.workspace])
-        //This is the ci build log file stored under vis_ws/Project/.cilogs/konyvizci.log
-        String logFilePath = channelObject.projectFullPath + "/.cilogs"
-        channelObject.mustHaveArtifacts.add([name: "konyvizci.log", path: logFilePath])
-        String path = channelObject.PrepareMustHaves()
-        path = [script.env['CLOUD_ACCOUNT_ID'], projectName, path].join('/')
-        buildStatus.updateLogsLink(path)
     }
 }

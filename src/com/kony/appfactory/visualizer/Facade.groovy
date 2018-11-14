@@ -840,8 +840,14 @@ class Facade implements Serializable {
         }
         catch(Exception e){
             String exceptionMessage = (e.getMessage()) ?: 'Something went wrong...'
-            script.currentBuild.result='FAILURE'
-            cloudBuildCreateAndUploadLogFileInFailureCase(exceptionMessage)
+            script.echoCustom(exceptionMessage, "ERROR", false)
+            script.currentBuild.result = 'FAILURE'
+
+            String buildLogs = BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
+
+            // build logs doesn't contain full logs sometime, so appending exception explicitly.
+            if (script.params.IS_SOURCE_VISUALIZER)
+                cloudBuildCreateAndUploadLogFile(buildLogs + '\n' + exceptionMessage)
         } finally {
             credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
         }
@@ -853,12 +859,11 @@ class Facade implements Serializable {
      *
      * @param message holds the exception message that has to be kept in the log file
      */
-    public void cloudBuildCreateAndUploadLogFileInFailureCase(String message){
-        if (!script.params.IS_SOURCE_VISUALIZER) {
-            return
-        }
+    public void cloudBuildCreateAndUploadLogFile(String message){
         script.node(libraryProperties.'facade.node.label') {
-            status.createAndUploadLogFileOnFailureCase(channelsToRun, message)
+            status.createAndUploadLogFile(channelsToRun, message)
+            // finally update the global status of the build and update status file on S3
+            status.deriveGlobalBuildStatus(channelsToRun)
         }
     }
 }
