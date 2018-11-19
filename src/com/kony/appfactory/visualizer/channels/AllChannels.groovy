@@ -131,7 +131,6 @@ class AllChannels implements Serializable {
 
         def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
         def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
-        script.echoCustom("android and ios channels list - ${androidChannels} and ${iosChannels} and total channelsToRun ${channelsToRun}")
 
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
