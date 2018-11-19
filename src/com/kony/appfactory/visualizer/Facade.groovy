@@ -108,8 +108,9 @@ class Facade implements Serializable {
         channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?:
                 /* Note :- script.error has been used instead of script.echoCustom as part of fix for APPFACT-1101. Please do not replace. */
                 script.error('Please select at least one channel to build!')
-        this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
-        this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
+
+        this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
+        this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
         this.script.env['URL_PATH_INFO'] = (this.script.kony.URL_PATH_INFO) ?: ''
         credentialsHelper = new CredentialsHelper()
@@ -452,12 +453,6 @@ class Facade implements Serializable {
      */
     private final void prepareCloudBuildRun() {
 
-        /* Set CloudBuild environment variables for multi-tenant AppFactory */
-        //setting CLOUD _ACCOUNT_ID and CLOUD_ENVIRONMENT_GUID with MF_ACCOUNT_ID MF_ENVIRONMENT_GUID build parameter values
-        script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: ''
-        script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: ''
-
-        /* Set CloudBuild environment variables for multi-tenant AppFactory */
         /* Setting blank credential id so that CloudBuild service won't fail to find Cloud credentials.
          Note: This account is not relevant for Visualizer CI build to run, just to ensure single-tenant backward flow
          works. Setting one blank account for this build scope. Post the build, it will get this removed.*/
