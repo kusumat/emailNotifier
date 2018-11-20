@@ -253,8 +253,12 @@ class BuildStatus implements Serializable {
         boolean successFlag = true
         boolean failureFlag = true
 
-        if (channelsToRun == null)
+        if (!channelsToRun) {
+            updateGlobalStatus(Status.FAILED)
+            updateBuildStatusOnS3()
             return
+        }
+
         for (channel in channelsToRun) {
             String buildValue = script.env[buildService.concat(channel)]
             if (buildValue.equals("false")) {

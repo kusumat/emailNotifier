@@ -105,9 +105,7 @@ class Facade implements Serializable {
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         /* Checking if at least one channel been selected. */
-        channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?:
-                /* Note :- script.error has been used instead of script.echoCustom as part of fix for APPFACT-1101. Please do not replace. */
-                script.error('Please select at least one channel to build!')
+        channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?: []
 
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
@@ -653,6 +651,8 @@ class Facade implements Serializable {
                         status.prepareBuildServiceEnvironment(channelsToRun)
                         status.prepareStatusJson()
 
+                        channelsToRun ?: script.echoCustom('Please select at least one channel to build!', 'ERROR');
+
                         /* Check common params */
                         ValidationHelper.checkBuildConfiguration(script)
 
@@ -835,14 +835,16 @@ class Facade implements Serializable {
         }
         catch(Exception e){
             String exceptionMessage = (e.getMessage()) ?: 'Something went wrong...'
-            script.echoCustom(exceptionMessage, "ERROR", false)
-            script.currentBuild.result = 'FAILURE'
+            script.ansiColor('xterm') {
+                script.echoCustom(exceptionMessage, "ERROR", false)
+                script.currentBuild.result = 'FAILURE'
 
-            String buildLogs = BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
+                String buildLogs = BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
 
-            // build logs doesn't contain full logs sometime, so appending exception explicitly.
-            if (script.params.IS_SOURCE_VISUALIZER)
-                cloudBuildCreateAndUploadLogFile(buildLogs + '\n' + exceptionMessage)
+                // build logs doesn't contain full logs sometime, so appending exception explicitly.
+                if (script.params.IS_SOURCE_VISUALIZER)
+                    cloudBuildCreateAndUploadLogFile(buildLogs + '\n' + exceptionMessage)
+            }
         } finally {
             credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
         }
