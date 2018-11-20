@@ -228,7 +228,7 @@ class AllChannels implements Serializable {
                                                                     script.echoCustom('Build artifacts for Android were not found!', 'ERROR')
 
                                                             if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
-                                                                android_channel.signArtifacts(buildArtifacts)
+                                                                android_channel.signArtifacts(android_channel.buildArtifacts)
                                                             } else {
                                                                 script.echoCustom("Build mode is ${android_channel.buildMode}, " +
                                                                         "skipping signing (artifact already signed with debug certificate)!")
