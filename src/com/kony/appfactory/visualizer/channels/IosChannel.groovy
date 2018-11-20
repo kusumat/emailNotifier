@@ -76,9 +76,9 @@ class IosChannel extends Channel {
                 fastlaneFastfileName
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
         String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
-        String awsIAMRole = script.env.AWS_IAM_ROLE
+        String awsIAMRole = script.env.S3_CONFIG_BUCKET_IAM_ROLE
         String configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
-        String configBucketName = script.env.S3_CONFIG_BUCKET
+        String configBucketName = script.env.S3_CONFIG_BUCKET_NAME
 
         script.catchErrorCustom('Failed to fetch fastlane configuration') {
             /* Switch to configuration bucket region, and use role to pretend aws instance that has S3 access */

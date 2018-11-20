@@ -49,7 +49,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
                 String artifactNameDecoded = URLDecoder.decode(artifactName, "UTF-8")
 
-                String cpS3Cmd="set +x;aws s3 cp \"${artifactUrlDecoded}\" \"${artifactNameDecoded}\" --only-show-errors"
+                String cpS3Cmd = "set +x;aws --region " + script.env.S3_BUCKET_REGION + " s3 cp \"${artifactUrlDecoded}\" \"${artifactNameDecoded}\" --only-show-errors"
                 script.shellCustom(cpS3Cmd, true)
             }
 

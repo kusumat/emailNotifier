@@ -99,8 +99,8 @@ class CustomHookHelper implements Serializable {
     protected final void fetchHook(buildScriptUrl){
         def customhookBucketURL = script.env.S3_BUCKET_URL
         def customhookBucketName = script.env.S3_BUCKET_NAME
-        def customhookBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
-        def awsIAMRole = script.env.AWS_IAM_ROLE
+        def customhookBucketRegion = script.env.S3_BUCKET_REGION
+        def awsIAMRole = script.env.S3_BUCKET_IAM_ROLE
         def hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
 
         def hookScriptFileBucketPath = (buildScriptUrl - customhookBucketURL).substring(1)
