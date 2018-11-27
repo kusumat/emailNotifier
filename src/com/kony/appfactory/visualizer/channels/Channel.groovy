@@ -4,7 +4,6 @@ import com.kony.appfactory.visualizer.BuildStatus
 
 import java.util.regex.Matcher
 
-import com.kony.appfactory.fabric.Fabric
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
@@ -49,7 +48,6 @@ class Channel implements Serializable {
         Contains instance of Fabric class for publishing Fabric application,
         if PUBLISH_FABRIC_APP build parameter set to true.
      */
-    protected fabric
     protected fabricEnvName
     private fabricCliFileName
     /*
@@ -108,8 +106,6 @@ class Channel implements Serializable {
     protected final buildMode = (script.params.BUILD_MODE == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     protected channelFormFactor = script.params.FORM_FACTOR
-    protected final universalAndroidNative = script.params.ANDROID_UNIVERSAL_NATIVE
-    protected final universalIosNative = script.params.IOS_UNIVERSAL_NATIVE
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
     protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
@@ -136,12 +132,7 @@ class Channel implements Serializable {
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         resourceBasePath = libraryProperties.'project.resources.base.path'
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
-        /*
-            Instantiate Fabric object for publishing Fabric apps,
-            because of lack of information about publishing native apps,
-            this step been moved here to be able to add support for publishing native applications if needed.
-         */
-        fabric = new Fabric(this.script)
+        
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
@@ -277,7 +268,7 @@ class Channel implements Serializable {
 
         script.withEnv(["PATH+TOOLS=${script.env.NODE_HOME}${pathSeparator}${toolBinPath}"]) {
             script.withCredentials(credentialsTypeList) {
-                def password = script.env.CLOUD_PASSWORD.replace('$', '$$');
+                def password = script.env.CLOUD_PASSWORD.replace('$', '$$')
                 script.withEnv(["CLOUD_PASSWORD=$password"]) {
                     closure()
                 }
@@ -424,7 +415,7 @@ class Channel implements Serializable {
         String successMsg = 'Successfully downloaded plugins versions file (feature.xml) for Starter Project.'
 
         script.catchErrorCustom(failureMsg, successMsg) {
-            String downloaderRelativePath = "com/kony/appfactory/feature.xml.downloader/";
+            String downloaderRelativePath = "com/kony/appfactory/feature.xml.downloader/"
 
             def featureDownloadScriptContent =
                     script.libraryResource(downloaderRelativePath + 'downloadFeaturesXml.js')

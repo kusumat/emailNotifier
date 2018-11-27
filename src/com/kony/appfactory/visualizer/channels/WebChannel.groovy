@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.FabricHelper
 import com.kony.appfactory.helper.AppFactoryException
 import groovy.json.JsonSlurper
 
@@ -89,7 +90,7 @@ class WebChannel extends Channel {
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
      */
-    protected final void createPipeline() {
+    protected void createPipeline() {
         pipelineWrapperForWebChannels("WEB")
     }
 
@@ -152,9 +153,7 @@ class WebChannel extends Channel {
                         
                         script.stage('Check PreBuild Hook Points') {
                             if (isCustomHookRunBuild) {
-                                def projectStage
-                                def projectsToRun = []
-                                triggerHooksBasedOnSelectedChannels(webChannelType, projectsToRun, projectStage, libraryProperties.'customhooks.prebuild.name')
+                                triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.prebuild.name')
 
                             } else {
                                 script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
@@ -202,13 +201,13 @@ class WebChannel extends Channel {
                                 if (webChannelType.equalsIgnoreCase("WEB")) {
                                     script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Fabric environment you've chosen.")
                                 }
-                                fabric.fetchFabricCli(libraryProperties.'fabric.cli.version')
+                                FabricHelper.fetchFabricCli(script, libraryProperties, libraryProperties.'fabric.cli.version')
                                 /* Fabric option for cliCommands */
                                 def fabricCommandOptions = ['-t': "\"${script.env.CLOUD_ACCOUNT_ID}\"",
                                                             '-a': "\"${script.env.FABRIC_APP_NAME}\"",
                                                             '-e': "\"${script.env.FABRIC_ENV_NAME}\"",]
                                 /* Prepare string with shell script to run */
-                                fabric.fabricCli('publish', cloudCredentialsID, isUnixNode, fabricCommandOptions)
+                                FabricHelper.fabricCli(script, 'publish', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions)
                                 script.echoCustom("Published to Fabric Successfully, Fetching AppInfo")
                                 webAppUrl = getWebAppUrl("appinfo", fabricCommandOptions)
                                 script.echoCustom("Your published app is accessible at : " + webAppUrl)
@@ -233,7 +232,7 @@ class WebChannel extends Channel {
                                 String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                         sourceFileName: artifactName, sourceFilePath: artifactPath, script
 
-                                String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                                String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
                                 /* Add War/Zip to MustHaves Artifacts */
                                 mustHaveArtifacts.add([name: artifact.name, path: artifactPath])
                                 channelArtifacts.add([
@@ -247,9 +246,7 @@ class WebChannel extends Channel {
                         script.stage('Check PostBuild Hook Points') {
                             if (script.currentBuild.currentResult == 'SUCCESS') {
                                 if (isCustomHookRunBuild) {
-                                    def projectStage
-                                    def projectsToRun = []
-                                    triggerHooksBasedOnSelectedChannels(webChannelType, projectsToRun, projectStage, libraryProperties.'customhooks.postbuild.name')
+                                    triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.postbuild.name')
                                 } else {
                                     script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }
@@ -267,11 +264,11 @@ class WebChannel extends Channel {
      * In this method, we will prepare a list of channels for which we need to run the hooks, 
      * depending upon the webChannelType and then call runCustomHooks
      * @param webChannelType tells us whether the channel is SPA or WEB or DESKTOP_WEB
-     * @param projectsToRun is a list which will contain the channels that will be passed to runCustomHooks method
-     * @param projectStage is the stage for which hooks will be executed, for ex: IOS_MOBILE_SPA
      * @param buildStage is the hook stage such as PRE_BUILD, POST_BUILD, POST_TEST
      */
-    protected triggerHooksBasedOnSelectedChannels(webChannelType, projectsToRun, projectStage, buildStage){
+    protected triggerHooksBasedOnSelectedChannels(webChannelType, buildStage){
+        
+        def projectsToRun = [], projectStage
         //In order to avoid duplication of code, added OR condition to trigger hooks of SPA and DESTOPWEB channel in WEB channel
         if (webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("WEB")) {
             projectsToRun << "DESKTOP_WEB"
@@ -291,49 +288,22 @@ class WebChannel extends Channel {
             if (project.contains('DESKTOP_WEB')) {
                 projectStage = project + "_STAGE"
             }
-            def isSuccess = hookHelper.runCustomHooks(projectName, buildStage, projectStage)
-            if (!isSuccess)
-                throw new Exception("Something went wrong with the Custom hooks execution.")
-            
+            hookHelper.runCustomHooks(projectName, buildStage, projectStage)
         }
     }
 
     /**
      * Runs Fabric CLI commands which have to return something.
-     * @params cliCommand , cloudCredentialsID , fabricCommandOptions cliCommand for fabric command,cloudCredentialsID for accessing the fabric credentials,fabricCommandOptions other options to be provided.
+     * @param cliCommand cliCommand for fabric cli command that need to be executed.
+     * @param fabricCommandOptions other fabric cli command options that can be provided.
      * @return WebAppUrl of the web app.
      */
-    protected getWebAppUrl(cliCommand, fabricCommandOptions = [:]) {
+    protected getWebAppUrl(cliCommand = "appinfo", fabricCommandOptions = [:]) {
         def webAppUrlText
         String errorMessage = ['Failed to run', cliCommand, 'command'].join(' ')
-        script.catchErrorCustom(errorMessage) {
-            script.withCredentials([
-                    [$class          : 'UsernamePasswordMultiBinding',
-                     credentialsId   : cloudCredentialsID,
-                     passwordVariable: 'fabricPassword',
-                     usernameVariable: 'fabricUsername']
-            ]) {
+        
+        webAppUrlText = FabricHelper.fabricCli(script, cliCommand, cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions, [returnStdout: true])
 
-                //  Adding the cloud type if the domain contains other than kony.com
-                if (script.env.CLOUD_DOMAIN && script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0) {
-                    def domainParam = script.env.CLOUD_DOMAIN.substring(0, script.env.CLOUD_DOMAIN.indexOf("-kony.com") + 1)
-                    fabricCommandOptions['--cloud-type'] = "\"${domainParam}\""
-                }
-                /* Collect Fabric command options */
-                String options = fabricCommandOptions?.collect { option, value ->
-                    [option, value].join(' ')
-                }?.join(' ')
-                /* Prepare string with shell script to run */
-                String shellString = [
-                        'java -jar', fabricCliFileName, cliCommand,
-                        '-u', (isUnixNode) ? '$fabricUsername' : '%fabricUsername%',
-                        '-p', (isUnixNode) ? '$fabricPassword' : '%fabricPassword%',
-                        options
-                ].join(' ')
-
-                webAppUrlText = script.shellCustom(shellString, isUnixNode, [returnStdout: true])
-            }
-        }
         def jsonSlurper = new JsonSlurper()
         webAppUrlText = webAppUrlText.substring(webAppUrlText.indexOf("{"), webAppUrlText.lastIndexOf("}") + 1)
         webAppUrlText.trim()

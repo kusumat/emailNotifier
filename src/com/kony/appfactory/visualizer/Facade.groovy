@@ -266,20 +266,16 @@ class Facade implements Serializable {
      * @return WEB specific build parameters.
      */
     private final getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters = null) {
+        def commonWebParameters = getCommonJobBuildParameters() +
+        [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
+        [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+        
         if (spaChannelsToBuildJobParameters && desktopWebChannel) {
-            getCommonJobBuildParameters() +
-                    [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
-                    [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)] +
-                    spaChannelsToBuildJobParameters
+            commonWebParameters +
+                [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + 
+                spaChannelsToBuildJobParameters
         } else if (spaChannelsToBuildJobParameters) {
-            getCommonJobBuildParameters() +
-                    [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
-                    [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)] +
-                    spaChannelsToBuildJobParameters
-        } else {
-            getCommonJobBuildParameters() +
-                    [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
-                    [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+            commonWebParameters +  spaChannelsToBuildJobParameters
         }
 
     }
