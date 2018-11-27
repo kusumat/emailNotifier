@@ -66,7 +66,7 @@ class AndroidChannel extends Channel {
      */
     private final void signArtifacts(buildArtifacts) {
         if (!doAndroidSigning) {
-            script.echoCustom("Skipping Android" +
+            script.echoCustom("Skipping Android " +
                     "binaries signing, since required keystore signing parameters are not fully provided. Unsigned release mode apks are provided to sign it locally.", 'WARN')
             return
         }
