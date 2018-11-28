@@ -462,13 +462,17 @@ class TestAutomation implements Serializable {
                     testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method".each {
                         if(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount]."@is-config".join("") != "true"){
                             testStatusMap.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""), testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@status.join(""))
-                            testMethodMap.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""),testng_results.suite[suiteNo].test[testsCount].class[classCount].@name.join(""))
+                            testMethodMap.put(testng_results.suite[suiteNo].test[testsCount].class[classCount]."test-method"[testMethodCount].@name.join(""), testng_results.suite[suiteNo].test[testsCount].class[classCount].@name.join(""))
                         }
                         testMethodCount++
                     }
                     classCount++
+                    /* Once we finsh fetching the results for one class and start moving to another class, we need to reset the test methods count variable (testMethodCount) to 0 */
+                    testMethodCount = 0
                 }
                 testsCount++
+                /* Once we finsh fetching the results for one test and start moving to another test, we need to reset the classes count variable (classCount) to 0 */
+                classCount = 0
             }
             suiteNo++
         }
