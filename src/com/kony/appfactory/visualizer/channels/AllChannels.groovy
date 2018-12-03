@@ -4,6 +4,7 @@ import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
+import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.visualizer.BuildStatus
 import com.kony.appfactory.helper.AppFactoryException
 
@@ -176,6 +177,7 @@ class AllChannels implements Serializable {
                             catch(Exception ignored) {
                                 String exceptionMessage = "CI build failed for this project, script returned with exit code"
                                 script.echoCustom(exceptionMessage, 'ERROR', false)
+                                script.currentBuild.result = "UNSTABLE"
                             }
                         }
                     }
@@ -192,8 +194,10 @@ class AllChannels implements Serializable {
                                 }
                                 catch (AppFactoryException ignored) {
                                     String exceptionMessage = "Build artifacts for ${it.key} were not found!!"
-                                    channelObjects.remove(it.key)
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
+                                    channelArtifacts.add([channelPath: it.value.channelPath, extensionType: 'APK'])
+                                    channelObjects.remove(it.key)
+                                    script.currentBuild.result = "UNSTABLE"
                                 }
                             }
                         }
@@ -209,8 +213,10 @@ class AllChannels implements Serializable {
                                 }
                                 catch (AppFactoryException ignored) {
                                     String exceptionMessage = "Build artifacts for ${it.key} were not found!!"
-                                    channelObjects.remove(it.key)
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
+                                    channelArtifacts.add([channelPath: it.value.channelPath, extensionType: 'KAR'])
+                                    channelObjects.remove(it.key)
+                                    script.currentBuild.result = "UNSTABLE"
                                 }
                             }
                         }
@@ -251,6 +257,8 @@ class AllChannels implements Serializable {
                                     String exceptionMessage = "Exception Found while Sign and Publishing Android artifact!!"
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
                                     buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(android_channel_id))
+                                    channelArtifacts.add([channelPath: android_channel.channelPath, extensionType: 'APK'])
+                                    script.currentBuild.result = "UNSTABLE"
                                 }
                             }
                         }
@@ -304,16 +312,19 @@ class AllChannels implements Serializable {
                                     String exceptionMessage = "Exception Found while Sign and Publishing iOS artifact!! ${ios_channel_id}"
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
                                     buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(ios_channel_id))
+                                    channelArtifacts.add([channelPath: ios_channel.channelPath, extensionType: 'IPA'])
+                                    script.currentBuild.result = "UNSTABLE"
                                 }
                             }
                         }
                     }
 
-                    if (!channelArtifacts.isEmpty()) {
+                    /* check in case all the builds got failed */
+                    if (channelArtifacts.every { channel -> !channel.containsKey('name') }) {
+                        script.currentBuild.result = 'FAILURE'
+                    } else {
                         script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                         script.echoCustom("Total artifacts: ${script.env['CHANNEL_ARTIFACTS']}")
-                    } else {
-                        script.currentBuild.result = 'FAILURE'
                     }
 
                     /* Prepare log for cloud build and publish to s3 */
@@ -321,12 +332,15 @@ class AllChannels implements Serializable {
                             script.env.JOB_NAME,
                             script.env.BUILD_ID,
                             script)
-                    buildStatus.createAndUploadLogFile(channelsToRun, buildLogs)
-                    
+                    def consoleLogUrl = buildStatus.createAndUploadLogFile(channelsToRun, buildLogs)
+
                     // update status file on S3 with Logs Link
                     buildStatus.updateBuildStatusOnS3()
                     // finally update the global status of the build and update status file on S3
                     buildStatus.deriveGlobalBuildStatus(channelsToRun)
+                    // send build results email notification
+
+                    NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: channelArtifacts, consolelogs: consoleLogUrl])
                 }
             }
         }

@@ -7,6 +7,7 @@ import com.kony.appfactory.dto.buildstatus.BuildStatusDTO
 import com.kony.appfactory.enums.Status
 import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.sanitizers.RegexSanitizer
 import com.kony.appfactory.sanitizers.RemoveLinesSanitizer
 import com.kony.appfactory.sanitizers.TextSanitizer
@@ -282,7 +283,7 @@ class BuildStatus implements Serializable {
      * @param channelsToRun contains the list of channels selected by the user to build
      * @param buildLog holds the the console log of jobs.
      */
-    void createAndUploadLogFile(channelsToRun, String buildLog) {
+    def createAndUploadLogFile(channelsToRun, String buildLog) {
 
         String projectWorkspacePath = script.env.WORKSPACE
 
@@ -311,5 +312,7 @@ class BuildStatus implements Serializable {
                 sourceFilePath: "./", s3ArtifactPath, script
         updateLogsLink(s3ArtifactPath + "/" + CLOUD_BUILD_LOG_FILENAME)
         updateBuildStatusOnS3()
+
+        return BuildHelper.createAuthUrl(s3Url, script, true);
     }
 }

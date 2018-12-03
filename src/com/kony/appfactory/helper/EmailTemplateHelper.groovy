@@ -1,7 +1,6 @@
 package com.kony.appfactory.helper
 
 import groovy.xml.MarkupBuilder
-import com.kony.appfactory.visualizer.TestAutomation
 import org.apache.commons.lang.StringUtils
 
 /**
@@ -33,136 +32,34 @@ class EmailTemplateHelper implements Serializable {
      * @return HTML content as a string.
      */
     @NonCPS
-    protected static String createBuildVisualizerAppContent(Map binding) {
+    protected static String createBuildVisualizerAppContent(Map binding, templateType) {
         markupBuilderWrapper { MarkupBuilder htmlBuilder ->
             htmlBuilder.table(style: "width:100%") {
-                tr {
-                    td(style: "text-align:center", class: "text-color") {
-                        h2 binding.notificationHeader
-                    }
-                }
-
+                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
                 tr {
                     td(style: "text-align:left", class: "text-color") {
                         h4(class: "subheading", "Build Details")
                     }
                 }
-
                 tr {
                     td {
                         table(style: "width:100%", class: "text-color table-border cell-spacing") {
-                            if (binding.triggeredBy) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Triggered by:')
-                                    td(class: "table-value", binding.triggeredBy)
-                                }
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
+                            if (binding.triggeredBy)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
+
+                            if(templateType.equals('buildVisualizerApp')) {
+                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', binding.build.number)
                             }
 
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build URL:')
-                                td {
-                                    a(href: binding.build.url, "${binding.build.url}")
-                                }
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Project:')
-                                td(class: "table-value", binding.projectName)
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build number:')
-                                td(class: "table-value", binding.build.number)
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Date of build:')
-                                td(class: "table-value", binding.build.started)
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build duration:')
-                                td(class: "table-value", binding.build.duration)
-                            }
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
                         }
                     }
                 }
 
-                if (binding.build.result != 'FAILURE') {
-                    tr {
-                        td(style: "text-align:left", class: "text-color") {
-                            h4(class: "subheading", 'Build Information')
-                        }
-                    }
-                    tr {
-                        td {
-                            table(style: "width:100%;text-align:left", class: "text-color table-border-channels") {
-                                thead {
-                                    tr {
-                                        th(style: "text-align:center", 'Channel')
-                                        th(style: "text-align:center", colspan:"2", 'INSTALLER')
-                                    }
-                                }
-                                tbody {
-                                    for (artifact in binding.artifacts) {
-                                        if (artifact.name) {
-                                            /* iOS */
-                                            if (artifact.otaurl) {
-                                                tr {
-                                                    th(rowspan: "2", artifact.channelPath.replaceAll('/', ' '))
-                                                    td(style: "border-right: 1px dotted #e8e8e8; width: 65px;", "OTA")
-                                                    td {
-                                                        a(href: artifact.otaurl, target: '_blank', artifact.name)
-                                                    }
-                                                }
-                                                tr {
-                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", "IPA")
-                                                    td {
-                                                        a(href: artifact.ipaAuthUrl, target: '_blank', artifact.ipaName)
-                                                    }
-                                                }
-                                            }
-
-                                            /* Web */
-                                            else if (artifact.webappurl) {
-                                                def artifactNameUpperCase = (artifact.name).toUpperCase()
-                                                def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
-                                                tr {
-                                                    th(rowspan: "2", artifact.channelPath.replaceAll('/', ' '))
-                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", artifactExtension)
-                                                    td {
-                                                        a(href: artifact.authurl, target: '_blank', artifact.name)
-                                                    }
-                                                }
-                                                tr {
-                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", "APP URL")
-                                                    td {
-                                                        a(href: artifact.webappurl, target: '_blank', artifact.webappurl)
-                                                    }
-                                                }
-                                            }
-
-                                            /* Android or channels - SPA/DesktopWeb/Web without publish enabled */
-                                            else {
-                                                def artifactNameUpperCase = (artifact.name).toUpperCase()
-                                                def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
-                                                tr {
-                                                    th(artifact.channelPath.replaceAll('/', ' '))
-                                                    td(style: "border-right: 1px solid #e8e8e8; width: 65px;", artifactExtension)
-                                                    td {
-                                                        a(href: artifact.authurl, target: '_blank', artifact.name)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        else {
-                                            tr {
-                                                th(artifact.channelPath.replaceAll('/', ' '))
-                                                td(colspan:"2", "Build failed")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
+                if (binding.build.result == 'FAILURE' && templateType.equals('buildVisualizerApp')) {
                     tr {
                         td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
@@ -171,10 +68,116 @@ class EmailTemplateHelper implements Serializable {
                             }
                         }
                     }
+                } else {
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            h4(class: "subheading", 'Build Information')
+                        }
+                    }
+                    tr {
+                        td {
+                            if(binding.artifacts != null && !binding.artifacts.isEmpty()) {
+                                table(style: "width:100%;text-align:left", class: "text-color table-border-channels") {
+                                    thead {
+                                        tr {
+                                            th(style: "text-align:center", 'Channel')
+                                            th(style: "text-align:center", colspan: "2", 'INSTALLER')
+                                        }
+                                    }
+                                    tbody {
+                                        prepareMailBody(htmlBuilder, binding.artifacts, templateType)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (templateType.equals('cloudBuild'))
+                        EmailBuilder.addBuildConsoleLogFields(htmlBuilder, [consolelogs: binding.consolelogs])
                 }
             }
         }
     }
+
+    @NonCPS
+    static void prepareMailBody(htmlBuilder, artifacts, templateType) {
+        for (artifact in artifacts) {
+            if (artifact.name) {
+                /* iOS */
+                if (artifact.otaurl) {
+                    def map = [
+                            channelPath: artifact.channelPath,
+                            artifacts  : [
+                                    [
+                                            name     : artifact.name,
+                                            url      : artifact.otaurl,
+                                            extension: 'OTA',
+                                    ],
+                                    [
+                                            name     : artifact.ipaName,
+                                            url      : artifact.ipaAuthUrl,
+                                            extension: 'IPA',
+                                    ]
+                            ]
+                    ]
+
+                    EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
+                }
+
+                /* Web */
+                else if (artifact.webappurl) {
+                    def artifactNameUpperCase = (artifact.name).toUpperCase()
+                    def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+
+                    def map = [
+                            channelPath: artifact.channelPath,
+                            artifacts  : [
+                                    [
+                                            name     : artifact.name,
+                                            url      : artifact.authurl,
+                                            extension: artifactExtension,
+                                    ],
+                                    [
+                                            name     : artifact.webappurl,
+                                            url      : artifact.webappurl,
+                                            extension: 'APP URL',
+                                    ]
+                            ]
+                    ]
+
+                    EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
+                }
+
+                /* Android or channels - SPA/DesktopWeb/Web without publish enabled */
+                else {
+                    def artifactNameUpperCase = (artifact.name).toUpperCase()
+                    def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+                    def map = [
+                            name       : artifact.name,
+                            extension  : artifactExtension,
+                            url        : artifact.authurl,
+                            channelPath: artifact.channelPath
+                    ]
+                    EmailBuilder.addSimpleArtifactTableRowSuccess(htmlBuilder, map)
+                }
+            }
+            else {
+                if(templateType.equals('cloudBuild')) {
+                    def map = [
+                            extension  : artifact.extensionType,
+                            channelPath: artifact.channelPath
+                    ]
+                    EmailBuilder.addSimpleArtifactTableRowFailed(htmlBuilder, map)
+                }
+                else {
+                    tr {
+                        th(artifact.channelPath.replaceAll('/', ' '))
+                        td(colspan:"2", "Build failed")
+                    }
+                }
+            }
+        }
+    }
+
 
     /**
      * Creates HTML content for runTests job, build of the test binaries part.

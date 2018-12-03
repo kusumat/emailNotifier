@@ -838,8 +838,10 @@ class Facade implements Serializable {
                 String buildLogs = BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
 
                 // build logs doesn't contain full logs sometime, so appending exception explicitly.
-                if (script.params.IS_SOURCE_VISUALIZER)
-                    cloudBuildCreateAndUploadLogFile(buildLogs + '\n' + exceptionMessage)
+                if (script.params.IS_SOURCE_VISUALIZER) {
+                    def consoleLogsLink = cloudBuildCreateAndUploadLogFile(buildLogs + '\n' + exceptionMessage)
+                    NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+                }
             }
         } finally {
             credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
@@ -852,11 +854,13 @@ class Facade implements Serializable {
      *
      * @param message holds the exception message that has to be kept in the log file
      */
-    public void cloudBuildCreateAndUploadLogFile(String message){
+    def cloudBuildCreateAndUploadLogFile(String message){
         script.node(libraryProperties.'facade.node.label') {
-            status.createAndUploadLogFile(channelsToRun, message)
+            def buildLogsLink = status.createAndUploadLogFile(channelsToRun, message)
             // finally update the global status of the build and update status file on S3
             status.deriveGlobalBuildStatus(channelsToRun)
+
+            return buildLogsLink
         }
     }
 }

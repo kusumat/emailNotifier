@@ -224,7 +224,7 @@
                         <td style="width:110px;color:#fff">
                             <div style="line-height:25px;margin-left:20px;font-size:25px;"> Kony </div>
                         <td style="color:#fff">
-                            <div style="line-height:25px;margin-left:0px;border-left: 1px solid;text-indent:20px"> App Factory</div>
+                            <div style="line-height:25px;margin-left:0px;border-left: 1px solid;text-indent:20px"> $productName</div>
                         </td>
                     </tr>
                 </table>

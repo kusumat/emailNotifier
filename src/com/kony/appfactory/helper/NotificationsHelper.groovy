@@ -107,8 +107,10 @@ class NotificationsHelper implements Serializable {
         String baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
         /* Get template content depending on templateType(job name) */
         String templateContent = getTemplateContent(script, templateType, templateData)
+
+        def productName = templateType.equals('cloudBuild') ? 'Build Service' : 'App Factory'
         /* Populate binding values in the base template */
-        String body = populateTemplate(baseTemplate, [title: subject, contentTable: templateContent])
+        String body = populateTemplate(baseTemplate, [title: subject, contentTable: templateContent, productName: productName])
 
         /* Return e-mail data */
         [body: body, subject: subject, recipients: recipients]
@@ -229,7 +231,7 @@ class NotificationsHelper implements Serializable {
     private static String getTemplateContent(script, templateType, templateData = [:]) {
         String templateContent
         /* Common properties for content */
-	 String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
+        String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
@@ -239,14 +241,17 @@ class NotificationsHelper implements Serializable {
                         number  : script.currentBuild.number,
                         result  : script.currentBuild.currentResult,
                         url     : script.env.BUILD_URL,
-                        started : script.currentBuild.rawBuild.getTime().toLocaleString(),
+
+                        started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
+                                System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100)
                 ]
         ] + templateData
 
         switch (templateType) {
             case 'buildVisualizerApp':
-                templateContent = EmailTemplateHelper.createBuildVisualizerAppContent(commonBinding)
+            case 'cloudBuild':
+                templateContent = EmailTemplateHelper.createBuildVisualizerAppContent(commonBinding, templateType)
                 break
             case 'buildTests':
                 templateContent = EmailTemplateHelper.createBuildTestsContent(commonBinding)
@@ -304,7 +309,10 @@ class NotificationsHelper implements Serializable {
                 modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-Native-Tests")
             }
 		break
-	    case 'Export':
+        case 'cloudBuild':
+            modifiedBuildTag = 'Build Service';
+            break
+        case 'Export':
 	    case 'Import':
 	    case 'Publish':
 		break
