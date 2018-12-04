@@ -5,8 +5,8 @@
     <property name="ivy.jar.file" value="${ivy.home}/ivy.jar"/>
 
     <target name="main"
-            depends="init-ivy,property,clean,retrieve,plugins"
-            description="-> generate properties, generate ivy.xml, retrieve artifacts, delete duplicates"/>
+            depends="init-ivy,property,cloudpropertyOverwriteOnExist,clean,retrieve,plugins"
+            description="-> generate properties, cloudpropertyOverwriteOnExist, generate ivy.xml, retrieve artifacts, delete duplicates"/>
 
     <target name="download-ivy" unless="offline">
         <get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
@@ -248,6 +248,12 @@
 
         <!--APPFACT-545: propertyfile appends escape character to Special Characters, workaround to use exact same password -->
         <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}" />
+    </target>
+
+    <target name="cloudpropertyOverwriteOnExist" if="${env.IS_STARTER_PROJECT}">
+        <propertyfile file="HeadlessBuild.properties">
+            <entry key="mf.app.version" value="${env.FABRIC_APP_VERSION}"/>
+        </propertyfile>
     </target>
 
     <target name="generateIvyFromFeatureXML" description="-> generate ivy.xml from feature.xml" if="${env.IS_STARTER_PROJECT}">
