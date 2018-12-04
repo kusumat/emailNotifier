@@ -158,7 +158,7 @@ class AllChannels implements Serializable {
                         script.stage('Update iOS Bundle ID') {
                             channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
                                 it.value.pipelineWrapper {
-                                    it.value.updateIosBundleId()
+                                    /* reserving space for any pre-setups needed for any ios builds */
                                 }
                             }
                         }
