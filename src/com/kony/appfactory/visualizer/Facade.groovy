@@ -807,8 +807,6 @@ class Facade implements Serializable {
                             script.echoCustom(exceptionMessage, 'WARN')
                             script.currentBuild.result = 'FAILURE'
                         } finally {
-
-
                             /*
                             Been agreed to send notification from buildVisualizerApp job only
                             if result not equals 'FAILURE', all notification with failed channel builds
@@ -834,7 +832,6 @@ class Facade implements Serializable {
             script.ansiColor('xterm') {
                 script.echoCustom(exceptionMessage, "ERROR", false)
                 script.currentBuild.result = 'FAILURE'
-
                 String buildLogs = BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
 
                 // build logs doesn't contain full logs sometime, so appending exception explicitly.

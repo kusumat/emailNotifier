@@ -148,6 +148,18 @@ class AllChannels implements Serializable {
                     }
 
                     script.stage('Pre Build') {
+                        // setting project root folder path
+                        def propertyFileName = libraryProperties.'ios.project.props.xml.file.name'
+                        if (!script.fileExists([checkoutRelativeTargetFolder, propertyFileName].join(separator))) {
+                            script.dir(checkoutRelativeTargetFolder) {
+                                def projectRoot = script.findFiles glob: '**/' + propertyFileName
+                                if(projectRoot)
+                                    script.env.PROJECT_ROOT_FOLDER_NAME = projectRoot[0].path.minus(separator + propertyFileName)
+                                else
+                                    script.echoCustom("Unable to recognize Visualizer project source code.", 'ERROR')
+                            }
+                        }
+
                         script.stage('Android Task') {
                             channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
                                 it.value.pipelineWrapper {

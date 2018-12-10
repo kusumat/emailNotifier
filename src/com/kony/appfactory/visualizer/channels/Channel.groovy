@@ -1,7 +1,5 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.visualizer.BuildStatus
-
 import java.util.regex.Matcher
 
 import com.kony.appfactory.helper.AwsHelper
@@ -63,6 +61,7 @@ class Channel implements Serializable {
         If projectRoot value has been provide, than value of this property
         will be set to <job_workspace>/vis_ws/<project_name> otherwise it will be set to <job_workspace>/vis_ws
      */
+    protected projectRoot
     protected projectWorkspacePath
     /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     protected projectFullPath
@@ -108,7 +107,6 @@ class Channel implements Serializable {
     protected channelFormFactor = script.params.FORM_FACTOR
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
-    protected final projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
     protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected final jobBuildNumber = script.env.BUILD_NUMBER
     protected final protectedKeys = script.params.PROTECTED_KEYS
@@ -171,6 +169,7 @@ class Channel implements Serializable {
         workspace = script.env.WORKSPACE
         visualizerHome = script.env.VISUALIZER_HOME
         checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
+        projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
         projectWorkspacePath = (projectRoot) ?
                 ([workspace, checkoutRelativeTargetFolder] + projectRoot.dropRight(1))?.join(separator) :
                 [workspace, projectWorkspaceFolderName]?.join(separator)
