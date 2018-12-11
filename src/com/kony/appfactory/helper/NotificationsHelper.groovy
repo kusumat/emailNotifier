@@ -306,15 +306,15 @@ class NotificationsHelper implements Serializable {
             if(templateData.deviceruns){
                 modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-Native-Tests")
             }
-		break
-    case 'cloudBuild':
+        break
+        case 'cloudBuild':
             modifiedBuildTag = 'Build Service';
-    break
-    case 'fabric':
-		break
-	  default:
+        break
+        case 'fabric':
+        break
+        default:
 	        modifiedBuildTag = ''
-		break
+        break
 	    }
 	    return modifiedBuildTag
        }
