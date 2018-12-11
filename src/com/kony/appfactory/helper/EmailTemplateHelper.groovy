@@ -809,7 +809,7 @@ class EmailTemplateHelper implements Serializable {
                             }
                             if (binding.commitMessage) {
                                 tr {
-                                    td(style: "width:22%;text-align:right", 'Message:')
+                                    td(style: "width:22%;text-align:right", 'Commit Message:')
                                     td(class: "table-value", binding.commitMessage)
                                 }
                             }
@@ -827,11 +827,23 @@ class EmailTemplateHelper implements Serializable {
                             }
                             if (binding.fabricEnvironmentName) {
                                 tr {
-                                    td(style: "width:22%;text-align:right", 'Environment:')
+                                    td(style: "width:22%;text-align:right", 'Published On Environment:')
                                     td(class: "table-value", binding.fabricEnvironmentName)
                                 }
                             }
-
+                            if (binding.exportCloudAccountId) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Exported From:')
+                                    td(class: "table-value", binding.exportCloudAccountId)
+                                }
+                            }
+                            if (binding.exportCloudAccountId) {
+                                tr {
+                                    td(style: "width:22%;text-align:right", 'Imported To:')
+                                    td(class: "table-value", binding.importCloudAccountId)
+                                }
+                            }
+                            
                             tr {
                                 td(style: "width:22%;text-align:right", 'Date of build:')
                                 td(class: "table-value", binding.build.started)

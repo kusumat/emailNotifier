@@ -159,7 +159,7 @@ class TestAutomation implements Serializable {
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
         /* Filter test binaries build parameter. This check is needed to maintain backward compatibility*/
-        def nativeTestsUrl = script.params.containsKey('NATIVE_TESTS_URL') ? 'NATIVE_TESTS_URL' : 'TESTS_BINARY_URL'
+        def nativeTestsUrl = BuildHelper.getCurrentParamName(script, 'NATIVE_TESTS_URL', 'TESTS_BINARY_URL')
         def nativeTestBinaryUrlParameter = buildParameters.findAll { it.key == nativeTestsUrl && it.value }
         /* Filter desktopWeb test binaries build parameter */
         def desktopWebTestBinaryUrlParameter = buildParameters.findAll { it.key == 'DESKTOPWEB_TESTS_URL' && it.value }

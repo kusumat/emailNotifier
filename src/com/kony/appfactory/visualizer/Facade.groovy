@@ -75,7 +75,7 @@ class Facade implements Serializable {
     private
     final webAppVersion = script.params.WEB_APP_VERSION ? script.params.WEB_APP_VERSION : script.params.SPA_APP_VERSION ? script.params.SPA_APP_VERSION : null
     private
-    final webVersionParameterName = script.params.containsKey('WEB_APP_VERSION') ? 'WEB_APP_VERSION' : 'SPA_APP_VERSION'
+    final webVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     private final desktopWebChannel = script.params.DESKTOP_WEB
     private final compatibilityMode = script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE
     /* TestAutomation build parameters */

@@ -782,5 +782,26 @@ class BuildHelper implements Serializable {
                     || it.key.matches('^DESKTOP_WEB')) && it.value
         }.keySet().collect()
     }
- 
+    
+    /* Get the param based on DSL job availability */
+    @NonCPS
+    private static getCurrentParamName(script, newParam, oldParam) {
+        def paramName = script.params.containsKey(newParam) ? newParam : oldParam
+        return paramName
+    }
+    
+    /* Get the param value based on DSL job param availability */
+    @NonCPS
+    private static getCurrentParamValue(script, newParam, oldParam) {
+        def paramValue = script.params[getCurrentParamName(script, newParam, oldParam)]
+        return paramValue
+    }
+    
+    /* Get the param value if exists other wise send the default value that is being passed */
+    @NonCPS
+    private static getParamValueOrDefault(script, param, defaultValue) {
+        def paramValue = script.params.containsKey(param) ? script.params[param] : defaultValue
+        return paramValue
+    }
 }
+

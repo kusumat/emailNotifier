@@ -259,9 +259,7 @@ class NotificationsHelper implements Serializable {
             case 'runTests':
                 templateContent = EmailTemplateHelper.createRunTestContent(commonBinding)
                 break
-            case 'Export':
-            case 'Import':
-            case 'Publish':
+            case 'fabric':
                 templateContent = EmailTemplateHelper.fabricContent(commonBinding)
                 break
             default:
@@ -309,14 +307,12 @@ class NotificationsHelper implements Serializable {
                 modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-Native-Tests")
             }
 		break
-        case 'cloudBuild':
+    case 'cloudBuild':
             modifiedBuildTag = 'Build Service';
-            break
-        case 'Export':
-	    case 'Import':
-	    case 'Publish':
+    break
+    case 'fabric':
 		break
-	    default:
+	  default:
 	        modifiedBuildTag = ''
 		break
 	    }
