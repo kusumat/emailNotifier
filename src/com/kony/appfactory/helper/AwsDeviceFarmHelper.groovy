@@ -553,7 +553,7 @@ class AwsDeviceFarmHelper implements Serializable {
         switch (arn) {
             case ~/^.*run.*$/:
                 queryParameters = [
-                        queryScript                : "set +x;aws devicefarm list-jobs --arn ${arn} --no-paginate",
+                        queryScript                : ["set +x;aws devicefarm list-jobs --arn ${arn} --no-paginate"],
                         queryProperty              : 'jobs',
                         resultStructure            : ['result', 'device', 'totalSuites'],
                         resultStructureNextProperty: 'suites'
@@ -561,7 +561,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 break
             case ~/^.*job.*$/:
                 queryParameters = [
-                        queryScript                : "set +x;aws devicefarm list-suites --arn ${arn} --no-paginate",
+                        queryScript                : ["set +x;aws devicefarm list-suites --arn ${arn} --no-paginate"],
                         queryProperty              : 'suites',
                         resultStructure            : ['name', 'totalTests'],
                         resultStructureNextProperty: 'tests'
@@ -569,7 +569,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 break
             case ~/^.*suite.*$/:
                 queryParameters = [
-                        queryScript                : "set +x;aws devicefarm list-tests --arn ${arn} --no-paginate",
+                        queryScript                : ["set +x;aws devicefarm list-tests --arn ${arn} --no-paginate"],
                         queryProperty              : 'tests',
                         resultStructure            : ['name', 'result'],
                         resultStructureNextProperty: 'artifacts'
@@ -577,7 +577,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 break
             case ~/^.*test.*$/:
                 queryParameters = [
-                        queryScript    : "set +x;aws devicefarm list-artifacts --arn ${arn} --no-paginate --type FILE",
+                        queryScript    : ["set +x;aws devicefarm list-artifacts --arn ${arn} --no-paginate --type FILE", "set +x;aws devicefarm list-artifacts --arn ${arn} --no-paginate --type SCREENSHOT"],
                         queryProperty  : 'artifacts',
                         resultStructure: ['name', 'url', 'extension']
                 ]
@@ -587,67 +587,79 @@ class AwsDeviceFarmHelper implements Serializable {
         }
         /* If we have an ARN that match our requirements */
         if (queryParameters) {
-            /* Convert command JSON string result to map */
-            def queryOutput = script.readJSON text: script.shellCustom(
-                    queryParameters.queryScript, true, [returnStdout: true]).trim()
+            def queryOutput = []
 
-            /* If we do have result */
-            if (queryOutput) {
-                def queryProperty = queryParameters.queryProperty
-                def nextProperty = queryParameters.resultStructureNextProperty
+            for(def i=0; i<queryParameters.queryScript.size(); i++) {
+                /* Convert command JSON string result to map */
+                queryOutput[i] = script.readJSON text: script.shellCustom(
+                        queryParameters.queryScript[i], true, [returnStdout: true]).trim()
 
-                /* Check if result map has required properties */
-                if (queryOutput.containsKey(queryProperty)) {
-                    /* Iterate over required properties, filter and get values */
-                    for (item in queryOutput[queryProperty]) {
-                        def resultStructureProperties = queryParameters.resultStructure
-                        def queryResultStructure = [:]
+                /* If we do have result */
+                (queryOutput[i]) ? (resultStructure.addAll(parseQueryOutput(queryOutput[i], queryParameters))) : script.echoCustom("Failed to query Device Farm!", 'WARN')
 
-                        /* Main loop for filtering and fetching values from result map */
-                        for (property in resultStructureProperties) {
-                            def keyValue
-
-                            switch (property) {
-                                case 'totalSuites':
-                                    keyValue = (item.counters.total) ?: ''
-                                    break
-                                case 'device':
-                                    keyValue = ([formFactor: item.device.formFactor,
-                                                 name      : item.device.name,
-                                                 os        : item.device.os,
-                                                 platform  : item.device.platform]) ?: ''
-                                    break
-                                case 'totalTests':
-                                    keyValue = (item.counters.total) ?: ''
-                                    break
-                                default:
-                                    keyValue = item[property]
-                                    break
-                            }
-
-                            queryResultStructure[property] = keyValue
-                        }
-
-                        /*
-                            If we do have nextProperty in result map,
-                            call this method recursively with updated arguments
-                         */
-                        if (nextProperty) {
-                            queryResultStructure.get(nextProperty, getTestRunArtifacts(item.arn))
-                        }
-
-                        /* Accumulate generated from result map structures */
-                        resultStructure.add(queryResultStructure)
-                    }
-                } else {
-                    script.echoCustom("Failed to find query property!",'WARN')
-                }
-            } else {
-                script.echoCustom("Failed to query Device Farm!",'WARN')
             }
         }
-
         resultStructure
+    }
+
+    /**
+     * Parse the output of AWS command and form the result structure so that this can be used to display artifacts in emails.
+     *
+     * @param queryOutput Contains the output of AWS command as a Map.
+     * @param queryParameters Map that contains the AWS command and the required fields.
+     * @return finalQueryResult The result that is obtained once the query execution is completed.
+     */
+    protected def parseQueryOutput(queryOutput, queryParameters) {
+
+        def queryProperty = queryParameters.queryProperty
+        def nextProperty = queryParameters.resultStructureNextProperty
+
+        /* Check if result map has required properties */
+        if (queryOutput.containsKey(queryProperty)) {
+            def finalQueryResult = []
+            /* Iterate over required properties, filter and get values */
+            for (item in queryOutput[queryProperty]) {
+                def resultStructureProperties = queryParameters.resultStructure
+                def queryResultStructure = [:]
+
+                /* Main loop for filtering and fetching values from result map */
+                for (property in resultStructureProperties) {
+                    def keyValue
+
+                    switch (property) {
+                        case 'totalSuites':
+                            keyValue = (item.counters.total) ?: ''
+                            break
+                        case 'device':
+                            keyValue = ([formFactor: item.device.formFactor,
+                                         name      : item.device.name,
+                                         os        : item.device.os,
+                                         platform  : item.device.platform]) ?: ''
+                            break
+                        case 'totalTests':
+                            keyValue = (item.counters.total) ?: ''
+                            break
+                        default:
+                            keyValue = item[property]
+                            break
+                    }
+
+                    queryResultStructure[property] = keyValue
+                }
+
+                /*
+                    If we do have nextProperty in result map,
+                    call this method recursively with updated arguments
+                 */
+                if (nextProperty) {
+                    queryResultStructure.get(nextProperty, getTestRunArtifacts(item.arn))
+                }
+                finalQueryResult.addAll(queryResultStructure)
+            }
+            finalQueryResult
+        } else {
+            script.echoCustom("Failed to find query property!",'WARN')
+        }
     }
 
     /**
