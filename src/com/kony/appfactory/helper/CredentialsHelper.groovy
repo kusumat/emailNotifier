@@ -2,14 +2,15 @@ package com.kony.appfactory.helper
 
 import com.cloudbees.plugins.credentials.impl.*;
 import com.cloudbees.plugins.credentials.*
-import org.jenkinsci.plugins.plaincredentials.*
+import jenkins.model.Jenkins
 import org.jenkinsci.plugins.plaincredentials.impl.*
-import com.cloudbees.plugins.credentials.common.*
 import com.cloudbees.jenkins.plugins.sshcredentials.impl.*
 import com.kony.AppFactory.Jenkins.credentials.impl.ProtectedModeTriplet
-import com.kony.AppFactory.Jenkins.credentials.impl.MobileFabricAppTriplet
 import org.apache.commons.fileupload.FileItem
-import com.cloudbees.plugins.credentials.domains.*;
+import com.cloudbees.plugins.credentials.domains.*
+import hudson.util.Secret
+import hudson.FilePath
+import org.apache.commons.io.IOUtils
 
 /**
  * This class helps in creating the credentials at run time
@@ -25,7 +26,7 @@ class CredentialsHelper implements Serializable{
      * This function helps in adding the credentials
      * @param credentials holds the credential object that has to be added
      */
-    private void addUserCredentials(Credentials credentials) {
+    private void addCredentials(Credentials credentials) {
         if (credentials) {
             SystemCredentialsProvider.getInstance().getStore().addCredentials(Domain.global(), credentials)
         }
@@ -68,6 +69,8 @@ class CredentialsHelper implements Serializable{
         return null
     }
 
+
+
     /**
      * This will return the file item object for the given file
      * @param filePath  location of the file
@@ -93,7 +96,7 @@ class CredentialsHelper implements Serializable{
         if(validParams.size() != checkParams.size())
             return
         credentials = (Credentials) new ProtectedModeTriplet(CredentialsScope.GLOBAL, id, publicKey, privateKey, finKey, description)
-        addUserCredentials(credentials)
+        addCredentials(credentials)
     }
 
     /** This function helps in adding the protected mode triplet
@@ -109,6 +112,8 @@ class CredentialsHelper implements Serializable{
         addProtectedModeTripletCredentials(id, getFileItem(publicKeyFilePath, protectedModePublicKeyFileName), getFileItem(privateKeyFilePath, protectedModePrivateKeyFileName), getFileItem(finKeysFilePath, protectedModeFinKeysFileName), description)
     }
 
+
+
     /**
      * This function helps in adding the username and password credential type
      * @param id This parameter refers to the credential ID
@@ -118,13 +123,61 @@ class CredentialsHelper implements Serializable{
      */
     String addUsernamePassword(String id, String description, String username, String password) {
         Credentials credentials = (Credentials) new UsernamePasswordCredentialsImpl(CredentialsScope.GLOBAL, id, description, username, password)
-        addUserCredentials(credentials)
+        addCredentials(credentials)
+        return id
+    }
+
+
+    /**
+     * This function helps in adding the secret text credential type
+     * @param id This parameter refers to the credential ID
+     * @param description This parameter refers to the description for the credential description
+     * @param secretText This is the text to be store as secretText
+     */
+    String addSecretText(String id, String description, String secretText) {
+        addCredentials((Credentials) new StringCredentialsImpl(
+                CredentialsScope.GLOBAL, id, description, Secret.fromString(secretText)))
+        return id
+    }
+
+
+    /**
+     * This function helps in adding the secret File as credential type
+     * @param id This parameter refers to the credential ID
+     * @param description This parameter refers to the description for the credential description
+     * @param absFilePath This is the absolute location of file to be store as secret File
+     * @param script This is the current build instance
+     */
+    String addSecretFile(id, description, absFilePath, script) {
+
+        def currentComputerName = script.env['NODE_NAME']
+        def currentComputer = getCurrentComputer(currentComputerName);
+
+        FilePath filePath = new FilePath(currentComputer.getChannel(), absFilePath);
+
+        byte[] bytes = IOUtils.toByteArray(filePath.read())
+        def secretBytes = SecretBytes.fromBytes(bytes)
+
+        def credentials = new FileCredentialsImpl(CredentialsScope.GLOBAL, id, description, 'file.txt', secretBytes)
+
+        addCredentials((Credentials) credentials)
         return id
     }
 
     /**
-     *   This function helps in deleting the list of credential id's passed
-     *   @param credentialIds   This parameter is the id of the credential
+     * This function helps in getting current Computer(Slave) instance in which build is currently running
+     * @param computerName This parameter refers to Computer name
+     */
+    def getCurrentComputer(computerName) {
+        def myComputer = Jenkins.getInstance().getComputers().find { computer ->
+            return computer.getDisplayName().equals(computerName)
+        }
+        return myComputer
+    }
+
+    /**
+     * This function helps in deleting the list of credential id's passed
+     * @param credentialIds This parameter is the id of the credential
      */
     void deleteUserCredentials(credentialIds) {
 
@@ -134,5 +187,30 @@ class CredentialsHelper implements Serializable{
                 removeCredentials(credential)
             }
         }
+    }
+
+    /**
+     * This function return static credential metadata which is being used to create
+     * credential dynamically
+     * @param suffix This is option parameter. If specified credential Id will be suffixed by given string
+     */
+    def getSigningIdMap(suffix = "") {
+        return [
+                android: [
+                        KSPASS   : [id: addSuffix("KSPASS_SECRET_TEXT_ID", suffix), description: "Keystore password"],
+                        KEYPASS  : [id: addSuffix("KEYPASS_SECRET_TEXT_ID", suffix), description: "Key password"],
+                        KEY_ALIAS: [id: addSuffix("KEY_ALIAS_SECRET_TEXT_ID", suffix), description: "Key alias of keystore"],
+                        KSFILE   : [id: addSuffix("KSFILE_SECRET_TEXT_ID", suffix), description: "Key store file"]
+                ]
+        ]
+    }
+
+    /**
+     * This function helps in appending suffix to credential id
+     * @param credentialId This parameter is the id of the credential
+     * @param suffix This parameter is suffix which will be appended to credential id
+     */
+    def addSuffix(String credentialId, String suffix) {
+        return (suffix) ? [credentialId, suffix].join('-') : credentialId
     }
 }

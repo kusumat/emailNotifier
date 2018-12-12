@@ -5,8 +5,6 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.AppFactoryException
-import hudson.scm.SCM
-
 
 /**
  * Implements logic for Android channel builds.
@@ -17,7 +15,6 @@ class AndroidChannel extends Channel {
     private final keystoreFileId = script.params.ANDROID_KEYSTORE_FILE
     private final keystorePasswordId = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
-    private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
     private boolean doAndroidSigning = false
     /* At least one of application id parameters should be set */
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
@@ -65,65 +62,62 @@ class AndroidChannel extends Channel {
      * @param buildArtifacts build artifacts list.
      */
     private final void signArtifacts(buildArtifacts) {
-        if (!doAndroidSigning) {
-            script.echoCustom("Skipping Android " +
-                    "binaries signing, since required keystore signing parameters are not fully provided. Unsigned release mode apks are provided to sign it locally.", 'WARN')
-            return
-        }
-
         String errorMessage = 'Failed to sign artifact'
         String signer = libraryProperties.'android.signer.name'
-        String androidBuildToolsPath = script.env.isCIBUILD ? [script.env.ANDROID_HOME, 'build-tools', libraryProperties.'android.build-tools.zipalign.version'].join(separator) : (
-                visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath
-        ) ?: script.echoCustom('Android build tools path is missing!','ERROR')
+
+        androidSigningEnvWrapper {
+            script.catchErrorCustom(errorMessage) {
+                for (artifact in buildArtifacts) {
+                    script.dir(artifact.path) {
+                        def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
+
+                        script.shellCustom(
+                                [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
+                                 '-keystore', "${script.env.KSFILE}",
+                                 '-storepass', "${script.env.KSPASS}",
+                                 '-keypass', "${script.env.KEYPASS}", artifact.name, script.env.KEY_ALIAS].join(' '),
+                                isUnixNode
+                        )
+
+                        script.shellCustom(
+                                [signer, '-verify -certs', artifact.name, script.env.KEY_ALIAS].join(' '),
+                                isUnixNode
+                        )
+
+                        script.shellCustom(
+                                ['zipalign', '-v 4', artifact.name, finalArtifactName].join(' '),
+                                isUnixNode
+                        )
+
+                        script.shellCustom(
+                                ['zipalign', '-c -v 4', finalArtifactName].join(' '),
+                                isUnixNode
+                        )
+
+                        /* Update artifact name */
+                        artifact.name = finalArtifactName
+                    }
+                }
+            }
+        }
+    }
+
+    private void androidSigningEnvWrapper(closure) {
+        String zipAlignUtilVersion = libraryProperties.'android.build-tools.zipalign.version'
+
+        String androidBuildToolsPath = script.env.isCIBUILD ?
+                [script.env.ANDROID_HOME, 'build-tools', zipAlignUtilVersion].join(separator) :
+                (visualizerDependencies.find { it.variableName == 'ANDROID_BUILD_TOOLS'} ?.homePath) ?:
+                        script.echoCustom('Android build tools path is missing!','ERROR')
 
         script.echoCustom("androidBuildToolsPath is $androidBuildToolsPath ")
 
         String javaBinPath = (visualizerDependencies.find { it.variableName == 'JAVA_HOME' } ?.binPath) ?:
                 script.echoCustom('Java binaries path is missing!','ERROR')
 
-        script.catchErrorCustom(errorMessage) {
-            for (artifact in buildArtifacts) {
-                script.dir(artifact.path) {
-                    /* Add Java binaries and Android build tools home folder to the PATH variables */
-                    script.withEnv(["PATH+TOOLS=${javaBinPath}${pathSeparator}${androidBuildToolsPath}"]) {
-                        def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
-
-                        /* Inject keystoreFileId, keystorePasswordId, privateKeyPassword environment variables */
-                        script.withCredentials([
-                                script.file(credentialsId: "${keystoreFileId}", variable: 'KSFILE'),
-                                script.string(credentialsId: "${keystorePasswordId}", variable: 'KSPASS'),
-                                script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
-                        ]) {
-                            script.shellCustom(
-                                    [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
-                                     '-keystore', "${script.env.KSFILE}",
-                                     '-storepass', "${script.env.KSPASS}",
-                                     '-keypass', "${script.env.KEYPASS}", artifact.name, keystoreAlias].join(' '),
-                                    isUnixNode
-                            )
-
-                            script.shellCustom(
-                                    [signer, '-verify -certs', artifact.name, keystoreAlias].join(' '),
-                                    isUnixNode
-                            )
-
-                            script.shellCustom(
-                                    ['zipalign', '-v 4', artifact.name, finalArtifactName].join(' '),
-                                    isUnixNode
-                            )
-
-                            script.shellCustom(
-                                    ['zipalign', '-c -v 4', finalArtifactName].join(' '),
-                                    isUnixNode
-                            )
-
-                            /* Update artifact name */
-                            artifact.name = finalArtifactName
-                        }
-                    }
-                }
-            }
+        /* Add Java binaries and Android build tools home folder to the PATH variables */
+        script.withEnv(["PATH+TOOLS=${javaBinPath}${pathSeparator}${androidBuildToolsPath}"]) {
+            closure()
         }
     }
 
@@ -231,7 +225,23 @@ class AndroidChannel extends Channel {
 
                         script.stage("Sign artifacts") {
                             if (buildMode != libraryProperties.'buildmode.debug.type') {
-                                signArtifacts(buildArtifacts)
+                                /* Inject keystoreFileId, keystorePasswordId, privateKeyPassword environment variables */
+                                if (doAndroidSigning) {
+                                    script.withCredentials([
+                                            script.file(credentialsId: "${keystoreFileId}", variable: 'KSFILE'),
+                                            script.string(credentialsId: "${keystorePasswordId}", variable: 'KSPASS'),
+                                            script.string(credentialsId: "${privateKeyPassword}", variable: 'KEYPASS')
+                                    ]) {
+                                        script.withEnv(["KEY_ALIAS=$script.params.ANDROID_KEY_ALIAS"]) {
+                                            signArtifacts(buildArtifacts)
+                                        }
+                                    }
+                                } else {
+                                    def signingWarning = 'Skipping Android binaries signing, since required keystore ' +
+                                            'signing parameters are not fully provided. Unsigned release mode apks ' +
+                                            'are provided to sign it locally.'
+                                    script.echoCustom(signingWarning, 'WARN')
+                                }
                             } else {
                                 script.echoCustom("Build mode is ${buildMode}, " +
                                         "skipping signing (artifact already signed with debug certificate)!")

@@ -3,6 +3,7 @@ package com.kony.appfactory.visualizer.channels
 import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.CredentialsHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.visualizer.BuildStatus
@@ -55,6 +56,7 @@ class AllChannels implements Serializable {
     protected final projectName = script.env.PROJECT_NAME
     protected String projectFileName = "project.zip"
 
+    protected CredentialsHelper credentialsHelper
     /**
      * Class constructor.
      *
@@ -74,6 +76,7 @@ class AllChannels implements Serializable {
                 script.echoCustom('Please select at least one channel to build!', 'ERROR')
 
         buildStatus = new BuildStatus(script, channelsToRun)
+        credentialsHelper = new CredentialsHelper()
     }
 
     /**
@@ -243,7 +246,9 @@ class AllChannels implements Serializable {
                                 try {
                                     android_channel.pipelineWrapper {
                                         if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
-                                            android_channel.signArtifacts(android_channel.buildArtifacts)
+                                            androidSigningCloudWrapper(script) {
+                                                android_channel.signArtifacts(android_channel.buildArtifacts)
+                                            }
                                         } else {
                                             script.echoCustom("Build mode is ${android_channel.buildMode}, " +
                                                     "skipping signing (artifact already signed with debug certificate)!")
@@ -354,6 +359,61 @@ class AllChannels implements Serializable {
 
                     NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: channelArtifacts, consolelogs: consoleLogUrl])
                 }
+            }
+        }
+    }
+
+    protected final void androidSigningCloudWrapper(script, closure) {
+
+        script.dir(checkoutRelativeTargetFolder) {
+
+            def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
+
+            def keyStoreFilePath = projectPropertiesJsonContent['keyStoreFilePath']
+            def KSFILE = [script.pwd(), keyStoreFilePath].join('/')
+            def KSPASS = projectPropertiesJsonContent[libraryProperties.'cloudbuild.android.keystorePassword.property']
+            def KEYPASS = projectPropertiesJsonContent[libraryProperties.'cloudbuild.android.keyPassword.property']
+            def KEY_ALIAS = projectPropertiesJsonContent[libraryProperties.'cloudbuild.android.keystoreAlias.property']
+
+
+            if (!keyStoreFilePath || !script.fileExists(keyStoreFilePath)) {
+                script.echoCustom('Failed to locate keystore in project. Skipping android apk signing and ' +
+                        'unsigned apk will be shared.', 'WARN')
+                return
+            }
+
+            if (KSPASS && KEYPASS && KEY_ALIAS) {
+                def signingInfo = credentialsHelper.getSigningIdMap(script.env['BUILD_NUMBER'])
+                def androidSigningInfo = signingInfo['android']
+
+                try {
+                    credentialsHelper.addSecretText(androidSigningInfo['KSPASS'].id, androidSigningInfo['KSPASS'].description, KSPASS)
+                    credentialsHelper.addSecretText(androidSigningInfo['KEYPASS'].id, androidSigningInfo['KEYPASS'].description, KEYPASS)
+                    credentialsHelper.addSecretText(androidSigningInfo['KEY_ALIAS'].id, androidSigningInfo['KEY_ALIAS'].description, KEY_ALIAS)
+                    credentialsHelper.addSecretFile(androidSigningInfo['KSFILE'].id, androidSigningInfo['KSFILE'].description, KSFILE, script)
+
+                    script.withCredentials([
+                            script.string(credentialsId: androidSigningInfo['KSPASS'].id, variable: 'KSPASS'),
+                            script.string(credentialsId: androidSigningInfo['KEYPASS'].id, variable: 'KEYPASS'),
+                            script.string(credentialsId: androidSigningInfo['KEY_ALIAS'].id, variable: 'KEY_ALIAS'),
+                            script.file(credentialsId: androidSigningInfo['KSFILE'].id, variable: 'KSFILE')
+                    ]) {
+                        closure()
+                    }
+                }
+                finally {
+                    credentialsHelper.deleteUserCredentials(
+                            [androidSigningInfo['KSPASS'].id,
+                             androidSigningInfo['KEYPASS'].id,
+                             androidSigningInfo['KEY_ALIAS'].id,
+                             androidSigningInfo['KSFILE'].id
+                            ])
+                }
+            }
+            else {
+                script.echoCustom("Please specify keyStorePassword, keyAlias and keyPassword " +
+                        "in projectProperties.json file properly. Skipping android apk signing and " +
+                        "unsigned apk will be shared.", 'WARN')
             }
         }
     }
