@@ -1,8 +1,8 @@
 package com.kony.appfactory.helper
 
 import groovy.json.JsonOutput
-import groovy.text.SimpleTemplateEngine
 import groovy.json.JsonSlurper
+import com.kony.appfactory.helper.BuildHelper
 /**
  * Implements logic required for sending notifications.
  */
@@ -110,8 +110,7 @@ class NotificationsHelper implements Serializable {
 
         def productName = templateType.equals('cloudBuild') ? 'Build Service' : 'App Factory'
         /* Populate binding values in the base template */
-        String body = populateTemplate(baseTemplate, [title: subject, contentTable: templateContent, productName: productName])
-
+        String body = BuildHelper.populateTemplate(baseTemplate, [title: subject, contentTable: templateContent, productName: productName])
         /* Return e-mail data */
         [body: body, subject: subject, recipients: recipients]
     }
@@ -270,20 +269,6 @@ class NotificationsHelper implements Serializable {
         templateContent
     }
 
-    /**
-     * Populates provided binding in template.
-     *
-     * @param text template with template tags.
-     * @param binding values to populate, key of the value should match to the key in template (text argument).
-     * @return populated template.
-     */
-    @NonCPS
-    private static String populateTemplate(text, binding) {
-        SimpleTemplateEngine engine = new SimpleTemplateEngine()
-        Writable template = engine.createTemplate(text).make(binding)
-
-        (template) ? template.toString() : null
-    }
 	
     private static String modifySubjectOfMail(script, templateType, templateData) {
 	String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");

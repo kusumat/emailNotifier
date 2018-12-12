@@ -5,6 +5,7 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
 import com.kony.appfactory.helper.CustomHookHelper
+import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.AppFactoryException
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -64,6 +65,9 @@ class TestAutomation implements Serializable {
     private scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
     protected scriptArgumentsForDesktopWeb = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
+    protected runInCustomTestEnvironment = script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
+    protected appiumVersion = script.params.APPIUM_VERSION
+    protected testngFiles = script.params.TESTNG_FILES
     /* Environment variables */
     private projectName = script.env.PROJECT_NAME
     private projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
@@ -76,6 +80,7 @@ class TestAutomation implements Serializable {
     private deviceFarmProjectArn
     private devicePoolArns
     private deviceFarmTestUploadArtifactArn
+    private deviceFarmTestSpecUploadArtifactArn
     private deviceFarmUploadArns = []
     private deviceFarmTestRunArns = [:]
     private deviceFarmTestRunResults = []
@@ -113,10 +118,19 @@ class TestAutomation implements Serializable {
     private testPackage = [
             "${projectName}_TestApp": [extension : 'zip',
                                        uploadType: 'APPIUM_JAVA_TESTNG_TEST_PACKAGE',
-                                       url       : (script.env.NATIVE_TESTS_URL ?: script.env.TESTS_BINARY_URL?: 'jobWorkspace')]
+                                       url       : (script.env.NATIVE_TESTS_URL ?: script.env.TESTS_BINARY_URL ?: 'jobWorkspace')]
     ]
+    private testSpec = [
+            "${projectName}_TestSpec": [extension : 'yml',
+                                        uploadType: 'APPIUM_JAVA_TESTNG_TEST_SPEC',
+                                        url       : '']
+    ]
+    protected ymlTemplate = 'com/kony/appfactory/configurations/KonyYamlTestSpec.template'
+    protected testSpecUploadFileName = "TestSpec.yml"
+    protected mustHaveArtifacts = []
     public isDesktopwebApp = script.params.findAll { it.key == 'FABRIC_APP_URL' && it.value }
     public isNativeApp =  script.params.findAll { it.key.contains('NATIVE_BINARY_URL') && it.value }
+    public testSpecUploadFilePath
 
     /* CustomHookHelper object */
     protected hookHelper
@@ -153,6 +167,13 @@ class TestAutomation implements Serializable {
         def nativeAppBinaryUrlParameters = buildParameters.findAll {
             it.key.contains('NATIVE_BINARY_URL') && it.value
         }
+        if (runInCustomTestEnvironment) {
+            /*Filter AWS Test Environment related parameters */
+            def awsCustomEnvMandatoryParameters = ['TESTNG_FILES']
+            /* Check all required parameters depending on user input */
+            ValidationHelper.checkBuildConfiguration(script, awsCustomEnvMandatoryParameters)
+        }
+
         /* Filter desktopWeb application binaries build parameters */
         def desktopWebPublishedAppUrlParameters = buildParameters.findAll { it.key.contains('FABRIC_APP_URL') && it.value }
 
@@ -307,6 +328,10 @@ class TestAutomation implements Serializable {
                 }
             }
         }
+            if (deviceFarmTestSpecUploadArtifactArn){
+                def cleanTestSpecFile = "rm -f ${testSpecUploadFileName}"
+                script.shellCustom("$cleanTestSpecFile", true)
+            }
     }
 
     /**
@@ -527,9 +552,44 @@ class TestAutomation implements Serializable {
     }
 
     /**
+     * Prepares the Test Spec YAML and uploads it to AWS.
+     */
+    private final void prepareAndUploadTestSpec() {
+        def testSpecUploadType = testSpec.get("${projectName}_TestSpec").uploadType
+        def testSpecExtension = testSpec.get("${projectName}_TestSpec").extension
+        String configFolderPath = 'com/kony/appfactory/configurations'
+        /* If Test Spec File is not available inside the source, create one from template. */
+        if (!testSpecUploadFilePath) {
+            script.echoCustom("Value of Appium Version is :" + appiumVersion)
+            /* Load YAML Template */
+            ymlTemplate = script.loadLibraryResource(configFolderPath + '/KonyYamlTestSpec.template')
+            def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles])
+            /* Create YAML file from template */
+            testSpecUploadFileName = "${projectName}_TestSpec.${testSpecExtension}"
+            script.writeFile file: testSpecUploadFileName, text: template
+            testSpecUploadFilePath = script.pwd() + "/${testSpecUploadFileName}"
+        }
+        else{
+            script.shellCustom("cp ${testSpecUploadFilePath} .", true)
+        }
+        mustHaveArtifacts.add(testSpecUploadFilePath)
+
+        /* Upload test spec and get upload ARN */
+        deviceFarmTestSpecUploadArtifactArn = deviceFarm.uploadArtifact(
+                deviceFarmProjectArn,
+                testSpecUploadType,
+                testSpecUploadFileName
+        )
+        script.echoCustom("Device Farm Test Spec Arn : " + deviceFarmTestSpecUploadArtifactArn)
+        /* Add test spec upload ARN to upload ARNs list */
+        deviceFarmUploadArns.add(deviceFarmTestSpecUploadArtifactArn)
+    }
+
+    /**
      * Uploads application binaries and Schedules the run.
      */
     private final void uploadAndRun() {
+
         /* Prepare step to run in parallel */
         def step = { artifactName, artifactURL, artifactExt, uploadType ->
             /* Upload application binaries to Device Farm */
@@ -541,19 +601,20 @@ class TestAutomation implements Serializable {
             /* Depending on artifact name we need to chose appropriate pool for the run */
             def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
                     (devicePoolArns.phones) ?: script.echoCustom("Artifacts provided " +
-                            "for phones, but no phones were found in the device pool",'ERROR') :
+                            "for phones, but no phones were found in the device pool", 'ERROR') :
                     (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
-                            "tablets, but no tablets were found in the device pool",'ERROR'))
+                            "tablets, but no tablets were found in the device pool", 'ERROR'))
 
-            /* If we have application binaries and test binaries, schedule the run */
+            /* If we have application binaries and test binaries, schedule the custom run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
+                deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
                 /* Once all parameters gotten, schedule the Device Farm run */
                 def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn,
-                        'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName)
+                        'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn)
                 deviceFarmTestRunArns["$artifactName"] = runArn
                 /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
             } else {
-                script.echoCustom("Failed to get uploadArn",'WARN')
+                script.echoCustom("Failed to get uploadArn", 'WARN')
             }
         }
         /* Setting the Universal binary url to respective platform input run test job paramaters*/
@@ -567,9 +628,9 @@ class TestAutomation implements Serializable {
         }
         /* Prepare parallel steps */
         def stepsToRun = prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)
-        
-        if(!stepsToRun){
-            throw new AppFactoryException("No artifacts to upload and run!",'ERROR')
+
+        if (!stepsToRun) {
+            throw new AppFactoryException("No artifacts to upload and run!", 'ERROR')
         }
 
         /* Run prepared step in parallel */
@@ -645,7 +706,7 @@ class TestAutomation implements Serializable {
         """.stripIndent()
         }
     }
-    
+
     /**
      * Prepare must haves for the debugging
      */
@@ -656,13 +717,16 @@ class TestAutomation implements Serializable {
         String s3ArtifactPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
         def mustHaves = []
         def chBuildLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
-        script.dir(mustHaveFolderPath){
+        script.dir(mustHaveFolderPath) {
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
             script.writeFile file: "runTestBuildLog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
+            for (artifact in mustHaveArtifacts) {
+                    script.shellCustom("cp ${artifact} .", true)
+            }
         }
-        if(runCustomHook){
-            script.dir(chBuildLogs){
+        if (runCustomHook) {
+            script.dir(chBuildLogs) {
                 script.shellCustom("find \"${chBuildLogs}\" -name \"*.log\" -exec cp -f {} \"${mustHaveFolderPath}\" \\;", true)
             }
         }
@@ -795,6 +859,14 @@ class TestAutomation implements Serializable {
                             }
 
                             script.stage('Build') {
+                                if(runInCustomTestEnvironment && !appiumVersion) {
+                                    if (script.fileExists("${testFolder}/src/test/resources/${testSpecUploadFileName}")) {
+                                        testSpecUploadFilePath = "${testFolder}/src/test/resources/${testSpecUploadFileName}"
+                                    }
+                                    else {
+                                        script.echoCustom("No Appium Version entered and no TestSpec file present in the test folder.", 'ERROR')
+                                    }
+                                }
                                 /* Build Test Automation scripts */
                                 if(isNativeApp)
                                     buildTestScripts("Native")
@@ -879,6 +951,12 @@ class TestAutomation implements Serializable {
 
                                         script.stage('Upload test package') {
                                             uploadTestBinaries()
+                                        }
+                                        script.stage('Upload test spec') {
+                                            script.when(runInCustomTestEnvironment, 'Upload test spec')
+                                                    {
+                                                        prepareAndUploadTestSpec()
+                                                    }
                                         }
                                     }
                                     if(isNativeApp) {
@@ -968,7 +1046,9 @@ class TestAutomation implements Serializable {
                                         binaryName    : getBinaryNameForEmail(projectArtifacts),
                                         missingDevices: script.env.MISSING_DEVICES,
                                         summaryofResults: summary,
-                                        duration      : duration
+                                        duration      : duration,
+                                        appiumVersion : appiumVersion,
+                                        runInCustomTestEnvironment : runInCustomTestEnvironment
                                 ], true)
                             }
                             if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED'){
@@ -1001,24 +1081,20 @@ class TestAutomation implements Serializable {
     /**
      * This runs the custom hooks available for DesktopWeb stage in runTest job.
      * This method is called when "runCustomHook" flag and "desktopWebTestsResultsStatus" is true.
-     * @exception Exception saying "Something wrong with custom hooks execution" when hooks execution failed
+     * @exception An Exception saying "Something wrong with custom hooks execution" when hooks execution failed
      */
     private void runCustomHookForDesktopWebApp() {
-        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
-        if (!isSuccess)
-            throw new Exception("Something went wrong with the Custom hooks execution.")
+        hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
     }
     /**
      * This runs the custom hooks available for Native channels in runTest job.
      * This method is called when "runCustomHook" flag and "nativeTestsResultStatus" is true.
-     * @exception Exception saying "Something wrong with custom hooks execution" when hooks execution failed
+     * @exception An exception saying "Something wrong with custom hooks execution" when hooks execution failed
      */
     private void runCutomHookForNativeChannels() {
         ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
             if (projectArtifacts."$project".'binaryName') {
-                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
-                if (!isSuccess)
-                    throw new Exception("Something went wrong with the Custom hooks execution.")
+                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
             }
         }
         runCustomHookForUniversalBinaryRunTest()

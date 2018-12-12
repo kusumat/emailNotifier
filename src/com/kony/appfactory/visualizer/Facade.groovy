@@ -89,9 +89,13 @@ class Facade implements Serializable {
     private final protectedKeys = script.params.PROTECTED_KEYS
     private appleCredentialsId
     private buildNumber = script.env.BUILD_NUMBER
-
     protected CredentialsHelper credentialsHelper
     protected BuildStatus status
+
+    /* AWS Custom Test Environment parameters */
+    private runInCustomTestEnvironment = script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
+    private appiumVersion = script.params.APPIUM_VERSION
+    private testngFiles = script.params.TESTNG_FILES
 
     /**
      * Class constructor.
@@ -759,37 +763,45 @@ class Facade implements Serializable {
                                             script.echoCustom("Fabric environment value can't be null", 'ERROR')
                                 }
                             }
-                            /* Run channel builds in parallel */
-                            script.parallel(runList)
-                            /* If test pool been provided, prepare build parameters and trigger runTests job */
-                            if (availableTestPools || runDesktopwebTests) {
-                                script.stage('TESTS') {
-                                    def testAutomationJobParameters = getTestAutomationJobParameters() ?:
-                                            script.echoCustom("runTests job parameters are missing!", 'ERROR')
-                                    def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
-                                            script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
-                                    String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
-                                            "${script.env.JOB_BASE_NAME}" -
-                                            'Builds/'
-                                    String testAutomationJobName = "${testAutomationJobBasePath}Tests/runTests"
-
-                                    /* Trigger runTests job to test build binaries */
-                                    def testAutomationJob = script.build job: testAutomationJobName,
-                                            parameters: testAutomationJobParameters + testAutomationJobBinaryParameters,
-                                            propagate: false
-                                    def testAutomationJobResult = testAutomationJob.currentResult
-
-                                    /* Collect job result */
-                                    jobResultList.add(testAutomationJobResult)
-
-                                    mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
-
-                                    /* Notify user that runTests job build failed */
-                                    if (testAutomationJobResult != 'SUCCESS') {
-                                        script.echoCustom("Status of the runTests job: ${testAutomationJobResult}", 'WARN')
+                        /* Run channel builds in parallel */
+                        script.parallel(runList)
+                        /* If test pool been provided, prepare build parameters and trigger runTests job */
+                        if (availableTestPools || runDesktopwebTests) {
+                            script.stage('TESTS') {
+                                def testAutomationJobParameters = getTestAutomationJobParameters() ?:
+                                        script.echoCustom("runTests job parameters are missing!", 'ERROR')
+                                def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
+                                        script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
+                                def awsCustomEnvParameters
+                                if (runInCustomTestEnvironment) {
+                                    /* Filter AWS Test Environment related parameters */
+                                    awsCustomEnvParameters = [script.string(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: "${runInCustomTestEnvironment}"),
+                                                                  script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"),
+                                                                  script.string(name: 'TESTNG_FILES', value: "${testngFiles}")
+                                    ]
                                     }
+                                String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
+                                        "${script.env.JOB_BASE_NAME}" -
+                                        'Builds/'
+                                String testAutomationJobName = "${testAutomationJobBasePath}Tests/runTests"
+
+                                /* Trigger runTests job to test build binaries */
+                                def testAutomationJob = script.build job: testAutomationJobName,
+                                        parameters: testAutomationJobParameters + testAutomationJobBinaryParameters + awsCustomEnvParameters,
+                                        propagate: false
+                                def testAutomationJobResult = testAutomationJob.currentResult
+
+                                /* Collect job result */
+                                jobResultList.add(testAutomationJobResult)
+
+                                mustHaveArtifacts.addAll(getArtifactObjects("Tests", testAutomationJob.buildVariables.MUSTHAVE_ARTIFACTS))
+
+                                /* Notify user that runTests job build failed */
+                                if (testAutomationJobResult != 'SUCCESS') {
+                                    script.echoCustom("Status of the runTests job: ${testAutomationJobResult}", 'WARN')
                                 }
                             }
+                        }
 
                             /* Check if there are failed or unstable or aborted jobs */
                             if (jobResultList.contains('FAILURE') ||

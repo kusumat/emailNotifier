@@ -266,6 +266,7 @@ class EmailTemplateHelper implements Serializable {
      */
     @NonCPS
     protected static String createRunTestContent(Map binding) {
+        def suppressedArtifacts = ['Customer Artifacts Log', 'Test spec shell script', 'Test spec file']
         markupBuilderWrapper { MarkupBuilder htmlBuilder ->
             htmlBuilder.table(style: "width:100%") {
                 tr {
@@ -292,6 +293,18 @@ class EmailTemplateHelper implements Serializable {
                                 tr {
                                     td(style: "width:30%;text-align:right", 'Devices not available in pool: ')
                                     td("${(binding.missingDevices) ?: 'None'}")
+                                }
+                                if (binding.appiumVersion) {
+                                    tr {
+                                        td(style: "width:30%;text-align:right", 'Appium Version: ')
+                                        td("${binding.appiumVersion}")
+                                    }
+                                }
+                                if (binding.runInCustomTestEnvironment) {
+                                    tr {
+                                        td(style: "width:30%;text-align:right", 'Run in Custom AWS Environment: ')
+                                        td("${binding.runInCustomTestEnvironment}")
+                                    }
                                 }
                             }
                         }
@@ -438,20 +451,25 @@ class EmailTemplateHelper implements Serializable {
                                                             test.result
                                                     )
                                                 }
-                                                for (artifact in test.artifacts) {
-                                                    tr {
-                                                        th(
-                                                                class: "testresults-left-aligned",
-                                                                artifact.name + '.' + artifact.extension
-                                                        )
-                                                        th(
-                                                                class: "testresults-left-aligned",
-                                                                {a(href: artifact.authurl, target:'_blank', 'Download File')}
-                                                        )
+                                                for (artifact in test.artifacts.sort { a, b -> a.name <=> b.name }) {
+                                                    if (!suppressedArtifacts.contains(artifact.name)) {
+                                                        tr {
+                                                            th(
+                                                                    class: "testresults-left-aligned",
+                                                                    artifact.name + '.' + artifact.extension
+                                                            )
+                                                            th(
+                                                                    class: "testresults-left-aligned",
+                                                                    {
+                                                                        a(href: artifact.authurl, target: '_blank', 'Download File')
+                                                                    }
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
+
                                     }
                                 }
                             }

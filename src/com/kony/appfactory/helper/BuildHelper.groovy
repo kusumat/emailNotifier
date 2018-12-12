@@ -6,6 +6,7 @@ import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
 import org.jenkins.plugins.lockableresources.LockableResources
 import com.kony.appfactory.helper.ConfigFileHelper
+import groovy.text.SimpleTemplateEngine
 
 /**
  * Implements logic related to channel build process.
@@ -90,6 +91,21 @@ class BuildHelper implements Serializable {
 			throw new AppFactoryException("Failed to download source code project")
 		}
 	}
+
+    /**
+     * Populates provided binding in template.
+     *
+     * @param text template with template tags.
+     * @param binding values to populate, key of the value should match to the key in template (text argument).
+     * @return populated template.
+     */
+    @NonCPS
+    private static String populateTemplate(text, binding) {
+        SimpleTemplateEngine engine = new SimpleTemplateEngine()
+        Writable template = engine.createTemplate(text).make(binding)
+
+        (template) ? template.toString() : null
+    }
 
 
 

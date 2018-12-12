@@ -341,10 +341,11 @@ class AwsDeviceFarmHelper implements Serializable {
      * @param runType Device Farm run type.
      * @param uploadArtifactArn application binaries upload ARN.
      * @param testPackageArn test binaries upload ARN.
+     * @param testSpecArn test spec upload ARN (if custom test environment).
      * @return scheduled run ARN.
      */
     protected final scheduleRun(
-            String projectArn, String devicePoolArn, String runType, String uploadArtifactArn, String testPackageArn, String artifactName
+            String projectArn, String devicePoolArn, String runType, String uploadArtifactArn, String testPackageArn, String artifactName, String testSpecArn = null
     ) {
         def runArn
         String getDevicePoolScript = "set +x;aws devicefarm get-device-pool --arn ${devicePoolArn}"
@@ -371,7 +372,7 @@ class AwsDeviceFarmHelper implements Serializable {
                         "--project-arn ${projectArn}",
                         "--app-arn ${uploadArtifactArn}",
                         "--device-pool-arn ${devicePoolArn}",
-                        "--test type=${runType},testPackageArn=${testPackageArn}",
+                        "--test type=${runType},testPackageArn=${testPackageArn}" + (testSpecArn ? ",testSpecArn=${testSpecArn}" : ""),
                         "--query run.arn"
                 ].join(' ')
                 /* Schedule the run */
