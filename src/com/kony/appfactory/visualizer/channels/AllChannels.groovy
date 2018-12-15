@@ -152,7 +152,7 @@ class AllChannels implements Serializable {
 
                     script.stage('Pre Build') {
                         // setting project root folder path
-                        def propertyFileName = libraryProperties.'ios.project.props.xml.file.name'
+                        def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
                         if (!script.fileExists([checkoutRelativeTargetFolder, propertyFileName].join(separator))) {
                             script.dir(checkoutRelativeTargetFolder) {
                                 def projectRoot = script.findFiles glob: '**/' + propertyFileName

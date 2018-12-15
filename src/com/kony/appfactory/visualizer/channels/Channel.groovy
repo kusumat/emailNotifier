@@ -232,7 +232,6 @@ class Channel implements Serializable {
         def konyPluginExists = script.fileExists file: "konyplugins.xml"
         script.env.IS_STARTER_PROJECT = !konyPluginExists
 
-
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion()
 
@@ -308,7 +307,7 @@ class Channel implements Serializable {
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
                     /* Download Visualizer Starter feature XML*/
-                    if (script.env.IS_STARTER_PROJECT) {
+                    if (script.env.IS_STARTER_PROJECT.equals("true")) {
                         /* TODO: currently basePath is only valid for PROD, later release will add support for SIT, QA & Dev */
                         fetchFeatureXML(script.env.visualizerVersion, libraryProperties.'visualizer.dependencies.feature.xml.base.url')
                     }
@@ -378,7 +377,7 @@ class Channel implements Serializable {
      * @return Visualizer version.
      */
     protected final getVisualizerVersion() {
-        if(script.env.IS_STARTER_PROJECT){
+        if(script.env.IS_STARTER_PROJECT.equals("true")){
             def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
             return projectPropertiesJsonContent['currentgaversion']
         }
@@ -427,6 +426,7 @@ class Channel implements Serializable {
 
                 /* Scripts are packaged into external Dependencies zip with name */
                 script.shellCustom('npm install', isUnixNode)
+                basePath = basePath.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
                 script.shellCustom(['node downloadFeaturesXml.js', vizVersion, basePath, '../'].join(' '), isUnixNode)
             }
         }

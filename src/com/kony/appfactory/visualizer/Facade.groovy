@@ -369,7 +369,7 @@ class Facade implements Serializable {
      * @return list of channel artifacts.
      */
     private final getArtifactObjects(channelPath, artifacts) {
-        (artifacts) ? Eval.me(artifacts) : [[name: '', url: '', channelPath: channelPath]]
+        (artifacts) ? Eval.me(artifacts) : [[name: '', url: '', path: '', channelPath: channelPath]]
     }
 
     /**
