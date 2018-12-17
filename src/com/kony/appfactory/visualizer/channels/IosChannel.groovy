@@ -22,8 +22,8 @@ class IosChannel extends Channel {
     private fastlaneConfigStashName
 
     /* Build parameters */
-    private final appleID = script.params.APPLE_ID
-    private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
+    private appleID = script.params.APPLE_ID
+    private appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
     private final appleDeveloperTeamId = script.params.APPLE_DEVELOPER_TEAM_ID
     /* At least one of application id parameters should be set */
     private final iosMobileAppId = script.params.IOS_MOBILE_APP_ID
@@ -31,7 +31,7 @@ class IosChannel extends Channel {
     private final iosUniversalAppId = script.params.IOS_UNIVERSAL_APP_ID
     private final iosAppVersion = script.params.IOS_APP_VERSION
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
-    private final iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
+    private iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
     private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
         iosMobileAppId : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
         iosTabletAppId : iosUniversalAppId
@@ -50,6 +50,18 @@ class IosChannel extends Channel {
     /* CustomHookHelper object */
     protected hookHelper
     private boolean isCustomHookRunBuild
+
+    void setAppleCertID(appleCertID) {
+        this.appleCertID = appleCertID
+    }
+
+    void setAppleID(appleID) {
+        this.appleID = appleID
+    }
+
+    void setIosDistributionType(iosDistributionType) {
+        this.iosDistributionType = iosDistributionType
+    }
 
     /**
      * Class constructor.

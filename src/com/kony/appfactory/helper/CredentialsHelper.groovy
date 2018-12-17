@@ -1,15 +1,21 @@
 package com.kony.appfactory.helper
 
-import com.cloudbees.plugins.credentials.impl.*;
-import com.cloudbees.plugins.credentials.*
-import jenkins.model.Jenkins
 import org.jenkinsci.plugins.plaincredentials.impl.*
+import com.cloudbees.plugins.credentials.impl.*
+import com.cloudbees.plugins.credentials.*
 import com.cloudbees.jenkins.plugins.sshcredentials.impl.*
-import com.kony.AppFactory.Jenkins.credentials.impl.ProtectedModeTriplet
-import org.apache.commons.fileupload.FileItem
 import com.cloudbees.plugins.credentials.domains.*
+
+import com.kony.AppFactory.Jenkins.credentials.impl.ProtectedModeTriplet
+import com.kony.AppFactory.Jenkins.credentials.impl.AppleSigningCertificateConfigImpl
+
+import jenkins.model.Jenkins
+import hudson.model.FileParameterValue
 import hudson.util.Secret
 import hudson.FilePath
+import hudson.remoting.VirtualChannel
+
+import org.apache.commons.fileupload.FileItem
 import org.apache.commons.io.IOUtils
 
 /**
@@ -165,6 +171,78 @@ class CredentialsHelper implements Serializable{
     }
 
     /**
+     * Add apple manual cert as global jenkins credential
+     * @param id - Credential id for apple cert credential
+     * @param description - description for apple cert credential
+     * @param provCertPwd - password for apple p12 cert
+     * @param absProvCertPath - absolute path to apple p12 cert
+     * @param absMobileProvisionPath - absolute path to apple provisioning profile
+     * @param script - current build instance
+     * @return
+     */
+    def addAppleCert(String id,
+                     String description,
+                     String provCertPwd,
+                     String absProvCertPath,
+                     String absMobileProvisionPath,
+                     script) {
+
+        def currentComputerName = script.env['NODE_NAME']
+        def currentComputer = getCurrentComputer(currentComputerName)
+
+        FileItem provCertKey = getFileItemFromChannelWSPath(
+                currentComputer.getChannel(),
+                absProvCertPath,
+                'temp.p12')
+        FileItem mobileProvision = getFileItemFromChannelWSPath(
+                currentComputer.getChannel(),
+                absMobileProvisionPath,
+                'temp1.mobileprovision')
+
+        addAppleCertToJenkins(id, description, new Secret(provCertPwd), provCertKey, mobileProvision)
+    }
+
+    /**
+     * Helps in reading file from Slave workspace as FileItem
+     * @param channel : this is channel using which jenkins talk to process running in agent
+     * @param absFilePath : absolute target file path in agent file system
+     * @param fileName : name of file with extension
+     * @return
+     */
+    def getFileItemFromChannelWSPath(VirtualChannel channel, String absFilePath, String fileName) {
+
+        FilePath filePath = new FilePath(channel, absFilePath)
+        byte[] bytes = IOUtils.toByteArray(filePath.read())
+
+        String[] splitFileName = fileName.split('\\.')
+        String prefix = splitFileName[0]
+        String suffix = '.' + splitFileName[1]
+
+        File tempFile = File.createTempFile(prefix, suffix, null)
+        FileOutputStream fos = new FileOutputStream(tempFile)
+        fos.write(bytes)
+
+        return new FileParameterValue.FileItemImpl(tempFile)
+    }
+
+    /**
+     * This is helper method for addAppleCert method. Please use addAppleCert method to
+     * add apple credential.
+     * This is private method which is responsible for creating and uploading credential in Jenkins.
+     */
+    private final String addAppleCertToJenkins(String id, String description, Secret provCertPwd, FileItem provCertKey, FileItem mobileProvision) {
+        Credentials appleCert = new AppleSigningCertificateConfigImpl(
+                CredentialsScope.GLOBAL,
+                id,
+                provCertKey,
+                provCertPwd,
+                mobileProvision,
+                description)
+        addCredentials(appleCert)
+        return id
+    }
+
+    /**
      * This function helps in getting current Computer(Slave) instance in which build is currently running
      * @param computerName This parameter refers to Computer name
      */
@@ -201,6 +279,9 @@ class CredentialsHelper implements Serializable{
                         KEYPASS  : [id: addSuffix("KEYPASS_SECRET_TEXT_ID", suffix), description: "Key password"],
                         KEY_ALIAS: [id: addSuffix("KEY_ALIAS_SECRET_TEXT_ID", suffix), description: "Key alias of keystore"],
                         KSFILE   : [id: addSuffix("KSFILE_SECRET_TEXT_ID", suffix), description: "Key store file"]
+                ],
+                iOS : [
+                        APPLE_SIGNING_CERT : [id: addSuffix("APPLE_SIGNING_CERT_ID", suffix), description: "Apple cert to sign ios binary"]
                 ]
         ]
     }

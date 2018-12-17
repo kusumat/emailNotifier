@@ -1,10 +1,12 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.dto.visualizer.ProjectPropertiesDTO
 import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CredentialsHelper
 import com.kony.appfactory.helper.CustomHookHelper
+import com.kony.appfactory.helper.JsonHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.visualizer.BuildStatus
 import com.kony.appfactory.helper.AppFactoryException
@@ -156,7 +158,7 @@ class AllChannels implements Serializable {
                         if (!script.fileExists([checkoutRelativeTargetFolder, propertyFileName].join(separator))) {
                             script.dir(checkoutRelativeTargetFolder) {
                                 def projectRoot = script.findFiles glob: '**/' + propertyFileName
-                                if(projectRoot)
+                                if (projectRoot)
                                     script.env.PROJECT_ROOT_FOLDER_NAME = projectRoot[0].path.minus(separator + propertyFileName)
                                 else
                                     script.echoCustom("Unable to recognize Visualizer project source code.", 'ERROR')
@@ -189,7 +191,7 @@ class AllChannels implements Serializable {
                             try {
                                 channelObjectsFirstVal.build()
                             }
-                            catch(Exception ignored) {
+                            catch (Exception ignored) {
                                 String exceptionMessage = "CI build failed for this project, script returned with exit code"
                                 script.echoCustom(exceptionMessage, 'ERROR', false)
                                 script.currentBuild.result = "UNSTABLE"
@@ -270,7 +272,7 @@ class AllChannels implements Serializable {
                                         buildStatus.updateSuccessBuildStatusOnS3(ChannelType.valueOf(android_channel_id), artifactPath)
                                     }
                                 }
-                                catch(AppFactoryException ignored) {
+                                catch (AppFactoryException ignored) {
                                     String exceptionMessage = "Exception Found while Sign and Publishing Android artifact!!"
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
                                     buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(android_channel_id))
@@ -288,7 +290,9 @@ class AllChannels implements Serializable {
                                 try {
                                     ios_channel.pipelineWrapper {
                                         ios_channel.fetchFastlaneConfig()
-                                        ios_channel.createIPA()
+                                        iosSigningCloudWrapper(script, ios_channel) {
+                                            ios_channel.createIPA()
+                                        }
 
                                         /* Get ipa file name and path */
                                         def foundArtifacts = ios_channel.getArtifactLocations('ipa')
@@ -325,7 +329,7 @@ class AllChannels implements Serializable {
                                         buildStatus.updateSuccessBuildStatusOnS3(ChannelType.valueOf(ios_channel_id), artifactPath)
                                     }
                                 }
-                                catch(AppFactoryException ignored) {
+                                catch (AppFactoryException ignored) {
                                     String exceptionMessage = "Exception Found while Sign and Publishing iOS artifact!! ${ios_channel_id}"
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
                                     buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(ios_channel_id))
@@ -409,12 +413,87 @@ class AllChannels implements Serializable {
                              androidSigningInfo['KSFILE'].id
                             ])
                 }
-            }
-            else {
+            } else {
                 script.echoCustom("Please specify keyStorePassword, keyAlias and keyPassword " +
                         "in projectProperties.json file properly. Skipping android apk signing and " +
                         "unsigned apk will be shared.", 'WARN')
             }
         }
     }
+
+    /**
+     * Validate IOS properties in projectProperties.json
+     * @param projectProperties POJO representing projectProperties.json
+     * @param script
+     */
+    def validateIosCertProperties(ProjectPropertiesDTO projectProperties, script) {
+        projectProperties.developmentMethod ?:
+                script.echoCustom('Missing developmentMethod in projectProperties.json in project. ', 'ERROR')
+        projectProperties.iOSP12Password ?:
+                script.echoCustom('Missing iOSP12Password in projectProperties.json in project. ', 'ERROR')
+        projectProperties.iOSP12FilePath ?:
+                script.echoCustom('Missing iOSP12FilePath property in projectProperties.json in project. ', 'ERROR')
+        projectProperties.iOSMobileProvision ?:
+                script.echoCustom('Missing iOSMobileProvision property in projectProperties.json in project. ', 'ERROR')
+        script.fileExists(projectProperties.iOSP12FilePath) ?:
+                script.echoCustom('Failed to locate apple certificate(.iOSP12FilePath) in project. Failed to sign IOS application.', 'ERROR')
+        script.fileExists(projectProperties.iOSMobileProvision) ?:
+                script.echoCustom('Failed to locate iOS MobileProvisioning File(.mobileprovision) in project. Failed to sign IOS application.', 'ERROR')
+    }
+
+    protected final void iosSigningCloudWrapper(script, IosChannel ios_channel, closure) {
+
+        String appleId = script.params.APPLE_ID
+        if(!appleId || appleId == "null") {
+            ProjectPropertiesDTO projectProperties
+
+            def absAppleCertPath = ''
+            def absAppleMobileProvisionPath = ''
+
+            def signingInfo = credentialsHelper.getSigningIdMap(script.env['BUILD_NUMBER'])
+            def iosSigningInfo = signingInfo['iOS']
+
+            def projectDir = script.env.PROJECT_ROOT_FOLDER_NAME ?
+                    [checkoutRelativeTargetFolder, script.env.PROJECT_ROOT_FOLDER_NAME].join(separator) :
+                    checkoutRelativeTargetFolder
+
+            script.dir(projectDir) {
+                String projectPropertiesText = script.readFile file: 'projectProperties.json'
+                projectProperties = JsonHelper.parseJson(projectPropertiesText, ProjectPropertiesDTO.class)
+                validateIosCertProperties(projectProperties, script)
+
+                absAppleCertPath = [script.pwd(), projectProperties.iOSP12FilePath].join('/')
+                absAppleMobileProvisionPath = [script.pwd(), projectProperties.iOSMobileProvision].join('/')
+
+                script.echoCustom("Found p12 Cert located at $absAppleCertPath \n" +
+                        "Found Provisioning profile located at $absAppleMobileProvisionPath")
+            }
+            try {
+                credentialsHelper.addAppleCert(
+                        iosSigningInfo['APPLE_SIGNING_CERT'].id,
+                        iosSigningInfo['APPLE_SIGNING_CERT'].description,
+                        projectProperties.iOSP12Password,
+                        absAppleCertPath,
+                        absAppleMobileProvisionPath,
+                        script
+                )
+
+                // Nullifying AppleID as manual certs from CloudBuild are surfaced.
+                ios_channel.setAppleID(null)
+                ios_channel.setAppleCertID(iosSigningInfo['APPLE_SIGNING_CERT'].id)
+                ios_channel.setIosDistributionType(projectProperties.developmentMethod)
+                script.withEnv(["IS_SINGLE_PROFILE=true",
+                                "PROVISION_PASSWORD=$projectProperties.iOSP12Password"]) {
+                    closure()
+                }
+            }
+            finally {
+                credentialsHelper.deleteUserCredentials([iosSigningInfo['APPLE_SIGNING_CERT'].id])
+            }
+        }
+        else {
+            closure()
+        }
+    }
+
 }

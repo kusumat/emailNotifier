@@ -459,11 +459,19 @@ class Facade implements Serializable {
 
         /* Collect iOS channel parameters to check */
         def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
-        if(iosChannels) {
-            String appleUsername = script.params.APPLE_USERNAME
-            String applePassword = script.params.APPLE_PASSWORD
-            appleID = PlatformType.IOS.toString() + buildNumber
-            credentialsHelper.addUsernamePassword(appleID, "Apple Credentials", appleUsername, applePassword)
+
+        if (iosChannels) {
+            String appleUsername = script.params.APPLE_USERNAME ?: ""
+            String applePassword = script.params.APPLE_PASSWORD ?: ""
+
+            if (appleUsername as Boolean ^ applePassword as Boolean) {
+                script.echoCustom('Please specify both APPLE_USERNAME and APPLE_PASSWORD.', 'ERROR')
+            }
+
+            if (appleUsername && applePassword) {
+                appleID = PlatformType.IOS.toString() + buildNumber
+                credentialsHelper.addUsernamePassword(appleID, "Apple Credentials", appleUsername, applePassword)
+            }
         }
 
         // Prepare Status Json with build in-progress
