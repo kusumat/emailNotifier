@@ -178,7 +178,6 @@ class EmailTemplateHelper implements Serializable {
         }
     }
 
-
     /**
      * Creates HTML content for runTests job, build of the test binaries part.
      *
@@ -311,174 +310,18 @@ class EmailTemplateHelper implements Serializable {
                     }
                 }
                 if (binding.deviceruns) {
-                    tr {
-                        td(style: "text-align:left", class: "text-color") {
-                            br()
-                            p(style: "font-weight:bold", "Brief Summary of Test Results:")
-                        }
-                    }
-                    table(style: "width:100%;text-align:center", class: "text-color table-border") {
-                        tr {
-                            td(
-                                    class: "testresults",
-                                    'DEVICE'
-                            )
-                            td(
-                                    class: "testresults",
-                                    'TOTAL'
-                            )
-                            td(
-                                    class: "testresults",
-                                    'PASSED'
-                            )
-                            td(
-                                    class: "testresults",
-                                    colspan:"5",
-                                    'FAILURES'
-                            )
-                            td(
-                                    class: "testresults",
-                                    'DURATION'
-                            )
-                        }
-                        tr {
-                            td("")
-                            td("")
-                            td("")
-                            td(class: "fail","Failed")
-                            td(class: "skip","Skipped")
-                            td(class: "warn","Warned")
-                            td(class: "stop","Stopped")
-                            td(class: "error","Errored")
-                            td("")
-                        }
-                        def testsSummary = [:]
-                        testsSummary.putAll(binding.summaryofResults)
-                        def keys= testsSummary.keySet()
-                        def vals= testsSummary.values()
-                        for(int i=0;i<vals.size();i++){
-                            tr {
-                                th(
-                                        class: "testresults",
-                                        keys[i]
-                                )
-                                th(
-                                        class: "testresults",
-                                        vals[i].substring(vals[i].lastIndexOf(":") + 1)
-                                )
-                                (vals[i].contains("errored")) ? th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "errored:")) :
-                                        th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "total tests:"))
-                                th(
-                                        class: "testresults",
-                                        StringUtils.substringBetween(vals[i], "failed:", "stopped:")
-                                )
-                                th(
-                                        class: "testresults",
-                                        StringUtils.substringBetween(vals[i], "skipped:", "warned:")
-                                )
-                                th(
-                                        class: "testresults",
-                                        StringUtils.substringBetween(vals[i], "warned:", "failed:")
-                                )
-                                th(
-                                        class: "testresults",
-                                        StringUtils.substringBetween(vals[i], "stopped:", "passed:")
-                                )
-                                th(
-                                        class: "testresults",
-                                        StringUtils.substringBetween(vals[i], "errored:", "total tests:")
-                                )
-                                th(
-                                        class: "testresults",
-                                        binding.duration[keys[i]]
-                                )
-                            }
-                        }
-                    }
-                    tr {
-                        td(style: "text-align:left", class: "text-color") {
-                            br()
-                            p(style: "font-weight:bold", "Detailed Summary of Test Results:")
-                        }
-                    }
-                }
+                    displayBriefSummaryOfNativeTestResults(htmlBuilder, binding)
 
-                for (runResult in binding.deviceruns) {
-                    for (prop in runResult) {
-                        if (prop.key == 'device') {
-                            def projectArtifactKey = ((prop.value.platform.toLowerCase() + '_' +
-                                    prop.value.formFactor.toLowerCase()).contains('phone')) ?
-                                    (prop.value.platform.toLowerCase() + '_' +
-                                            prop.value.formFactor.toLowerCase()).replaceAll('phone', 'mobile') :
-                                    prop.value.platform.toLowerCase() + '_' + prop.value.formFactor.toLowerCase()
-                            def binaryName = binding.binaryName.find {
-                                it.key.toLowerCase() == projectArtifactKey
-                            }.value
-                            tr {
-                                td {
-                                    p(style: "margin:30px 0 10px;font-weight:bold", 'Device: ' + prop.value.name +
-                                            ', FormFactor: ' + prop.value.formFactor +
-                                            ', Platform: ' + prop.value.platform +
-                                            ', OS Version: ' + prop.value.os +
-                                            ', Binary Name: ' + binaryName)
-                                }
-                            }
-                        }
-
-                        if (prop.key == 'suites') {
-                            tr {
-                                td {
-                                    table(style: "width:100%;text-align:left", class: "text-color table-border") {
-                                        for (suite in prop.value) {
-                                            tr {
-                                                td(
-                                                        class: "testresults-left-aligned",
-                                                        'Suite Name: ' + suite.name
-                                                )
-                                                td(
-                                                        class: "testresults-left-aligned",
-                                                        'Total test cases: ' + suite.totalTests
-                                                )
-                                            }
-                                            for (test in suite.tests) {
-                                                tr {
-                                                    th(
-                                                            class: "testresults-left-aligned-font-bold",
-                                                            'Test Name: ' + test.name
-                                                    )
-                                                    th(
-                                                            class: "testresults-left-aligned-font-bold",
-                                                            test.result
-                                                    )
-                                                }
-                                                for (artifact in test.artifacts.sort { a, b -> a.name <=> b.name }) {
-                                                    if (!suppressedArtifacts.contains(artifact.name)) {
-                                                        tr {
-                                                            th(
-                                                                    class: "testresults-left-aligned",
-                                                                    artifact.name + '.' + artifact.extension
-                                                            )
-                                                            th(
-                                                                    class: "testresults-left-aligned",
-                                                                    {
-                                                                        a(href: artifact.authurl, target: '_blank', 'Download File')
-                                                                    }
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    /*
+                     * Check to see if this is the summary email which has to be sent on completion of runTests(parent) job or not.
+                     * If this is the summary email, then we display only brief summary and not detailed summary of test results.
+                     */
+                    if(!binding.isSummaryEmail)
+                        displayDetailedSummaryOfNativeTestResults(htmlBuilder, binding)
                 }
                 if (binding.desktopruns) {
 
-                    def suiteList= binding.desktopruns["suiteName"]
+                    def suiteList = binding.desktopruns["suiteName"]
                     def testNameMap = binding.desktopruns["testName"]
                     def classNameMap = binding.desktopruns["className"]
                     def testMethodNameMap = binding.desktopruns["testMethod"]
@@ -502,15 +345,21 @@ class EmailTemplateHelper implements Serializable {
                         }
                     }
                     tr {
-                        td(style: "text-align:left", class: "text-color")  {
+                        td(style: "text-align:left", class: "text-color") {
                             br()
-                            p(style: "font-weight:bold", "Brief Summary of Test Results:")
+                            p(style: "font-weight:bold", "Brief Summary of DesktopWeb Test Results:")
                         }
                     }
 
-                    prepareContentForSummaryTable(suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap, suiteWiseSummary)
-                    displayBriefSummaryOfTestResults(htmlBuilder, binding, suiteWiseSummary)
-                    displayDetailedSummaryOfTestResults(htmlBuilder, binding, suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap)
+                    prepareContentForDesktopWebTestsSummaryTable(suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap, suiteWiseSummary)
+                    displayBriefSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteWiseSummary)
+
+                    /*
+                     * Check to see if this is the summary mail which has to be sent on completion of runTests(parent) job or not.
+                     * If this is the summary email, then we display only brief summary and not detailed summary of test results.
+                     */
+                    if(!binding.isSummaryEmail)
+                        displayDetailedSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap)
                 }
                 if (!binding.deviceruns && !binding.desktopruns) {
                     tr {
@@ -529,8 +378,9 @@ class EmailTemplateHelper implements Serializable {
     /*
      *This method is used to parse each suite and collect suite-wise tests results
      */
+
     @NonCPS
-    protected static void prepareContentForSummaryTable(suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap, suiteWiseSummary){
+    protected static void prepareContentForDesktopWebTestsSummaryTable(suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap, suiteWiseSummary) {
         suiteList.each {
             def mapForTestCaseAndStatus = [:]
             def suite_name = it.value
@@ -561,10 +411,11 @@ class EmailTemplateHelper implements Serializable {
     }
 
     /*
-     *Using the content that got generated in "prepareContentForSummaryTable" method, we will be displaying the Brief summary of tests results in tabular format
+     *Using the content that got generated in "prepareContentForDesktopWebTestsSummaryTable" method, we will be displaying the Brief summary of DesktopWeb tests results in tabular format
      */
+
     @NonCPS
-    protected static void displayBriefSummaryOfTestResults(htmlBuilder, binding, suiteWiseSummary){
+    protected static void displayBriefSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteWiseSummary) {
         htmlBuilder.table(style: "width:100%") {
             tr {
                 td {
@@ -659,19 +510,20 @@ class EmailTemplateHelper implements Serializable {
                                     totalTestCases
                             )
                         }
+                        br()
                     }
                 }
             }
         }
     }
 
-
     /*
      *This method is used to display the desktopweb test results in detail in tabular format
      * First we parse each list and prepare the content, then we will display it suite-wise
      */
+
     @NonCPS
-    protected static displayDetailedSummaryOfTestResults(htmlBuilder, binding, suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap){
+    protected static displayDetailedSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap) {
         htmlBuilder.table(style: "width:100%") {
             tr {
                 td {
@@ -679,18 +531,18 @@ class EmailTemplateHelper implements Serializable {
                     p(style: "margin:30px 0 30px;font-weight:bold", "Detailed Summary of Test Results:")
                     table(style: "width:100%;text-align:left", class: "text-color table-border") {
                         //Parse each suite and get status of each test case
-                        suiteList.each{
+                        suiteList.each {
                             def mapForTestCaseAndStatus = [:]
-                            def suite_name =  it.value
+                            def suite_name = it.value
                             // Parse each test of a suite
                             testNameMap.each { testNameMapVar ->
-                                if(testNameMapVar.value.equalsIgnoreCase(suite_name.join(""))){
+                                if (testNameMapVar.value.equalsIgnoreCase(suite_name.join(""))) {
                                     // Parse each class of a test of a suite
-                                    classNameMap.each{ classNameMapVar ->
-                                        if(classNameMapVar.value == testNameMapVar.key){
+                                    classNameMap.each { classNameMapVar ->
+                                        if (classNameMapVar.value == testNameMapVar.key) {
                                             // Put the status of each test corresponding to it in a map called mapForTestCasesAndStatus
-                                            testMethodNameMap.each{ testMethodNameMapVar ->
-                                                if(testMethodNameMapVar.value == classNameMapVar.key){
+                                            testMethodNameMap.each { testMethodNameMapVar ->
+                                                if (testMethodNameMapVar.value == classNameMapVar.key) {
                                                     mapForTestCaseAndStatus.put(testMethodNameMapVar.key, statusOfTestsMap.get(testMethodNameMapVar.key))
                                                 }
                                             }
@@ -698,7 +550,7 @@ class EmailTemplateHelper implements Serializable {
                                     }
                                 }
                             }
-                            if(mapForTestCaseAndStatus.size()!=0){
+                            if (mapForTestCaseAndStatus.size() != 0) {
                                 tr {
                                     def passedTestCases = 0, failedTestCases = 0, skippedTestCases = 0
                                     // Get the total count of passed, failed, skipped and total test cases
@@ -717,7 +569,7 @@ class EmailTemplateHelper implements Serializable {
                                 }
                                 //For each test case, create one row and for each artifact related to this test case, create one row below the test case
                                 mapForTestCaseAndStatus.each { mapForTestCaseAndStatusVar ->
-                                    if(mapForTestCaseAndStatusVar.key){
+                                    if (mapForTestCaseAndStatusVar.key) {
                                         tr {
                                             th(
                                                     class: "testresults-left-aligned-font-bold",
@@ -735,7 +587,9 @@ class EmailTemplateHelper implements Serializable {
                                             )
                                             th(
                                                     class: "testresults-left-aligned",
-                                                    {a(href: binding.listofLogFiles[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')}
+                                                    {
+                                                        a(href: binding.listofLogFiles[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
+                                                    }
                                             )
                                         }
                                         tr {
@@ -745,7 +599,9 @@ class EmailTemplateHelper implements Serializable {
                                             )
                                             th(
                                                     class: "testresults-left-aligned",
-                                                    {a(href: binding.listofScreenshots[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')}
+                                                    {
+                                                        a(href: binding.listofScreenshots[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
+                                                    }
                                             )
                                         }
                                     }
@@ -757,7 +613,182 @@ class EmailTemplateHelper implements Serializable {
             }
         }
     }
+    /*
+    *Using the content that got generated in "prepareContentForDesktopWebTestsSummaryTable" method, we will be displaying the Brief summary of Native tests results in tabular format
+    */
 
+    @NonCPS
+    protected static void displayBriefSummaryOfNativeTestResults(htmlBuilder, binding) {
+        htmlBuilder.table(style: "width:100%") {
+            tr {
+                td(style: "text-align:left", class: "text-color") {
+                    br()
+                    p(style: "font-weight:bold", "Brief Summary of Native Test Results:")
+                }
+            }
+            table(style: "width:100%;text-align:center", class: "text-color table-border") {
+                tr {
+                    td(
+                            class: "testresults",
+                            'DEVICE'
+                    )
+                    td(
+                            class: "testresults",
+                            'TOTAL'
+                    )
+                    td(
+                            class: "testresults",
+                            'PASSED'
+                    )
+                    td(
+                            class: "testresults",
+                            colspan: "5",
+                            'FAILURES'
+                    )
+                    td(
+                            class: "testresults",
+                            'DURATION'
+                    )
+                }
+                tr {
+                    td("")
+                    td("")
+                    td("")
+                    td(class: "fail", "Failed")
+                    td(class: "skip", "Skipped")
+                    td(class: "warn", "Warned")
+                    td(class: "stop", "Stopped")
+                    td(class: "error", "Errored")
+                    td("")
+                }
+                def testsSummary = [:]
+                testsSummary.putAll(binding.summaryofResults)
+                def keys = testsSummary.keySet()
+                def vals = testsSummary.values()
+                for (int i = 0; i < vals.size(); i++) {
+                    tr {
+                        th(
+                                class: "testresults",
+                                keys[i]
+                        )
+                        th(
+                                class: "testresults",
+                                vals[i].substring(vals[i].lastIndexOf(":") + 1)
+                        )
+                        (vals[i].contains("errored")) ? th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "errored:")) :
+                                th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "total tests:"))
+                        th(
+                                class: "testresults",
+                                StringUtils.substringBetween(vals[i], "failed:", "stopped:")
+                        )
+                        th(
+                                class: "testresults",
+                                StringUtils.substringBetween(vals[i], "skipped:", "warned:")
+                        )
+                        th(
+                                class: "testresults",
+                                StringUtils.substringBetween(vals[i], "warned:", "failed:")
+                        )
+                        th(
+                                class: "testresults",
+                                StringUtils.substringBetween(vals[i], "stopped:", "passed:")
+                        )
+                        th(
+                                class: "testresults",
+                                StringUtils.substringBetween(vals[i], "errored:", "total tests:")
+                        )
+                        th(
+                                class: "testresults",
+                                binding.duration[keys[i]]
+                        )
+                    }
+                }
+                br()
+            }
+        }
+    }
+
+    @NonCPS
+    protected static void displayDetailedSummaryOfNativeTestResults(htmlBuilder, binding) {
+        htmlBuilder.table(style: "width:100%") {
+            tr {
+                td(style: "text-align:left", class: "text-color") {
+                    br()
+                    p(style: "font-weight:bold", "Detailed Summary of Test Results:")
+                }
+            }
+            for (runResult in binding.deviceruns) {
+                for (prop in runResult) {
+                    if (prop.key == 'device') {
+                        def projectArtifactKey = ((prop.value.platform.toLowerCase() + '_' +
+                                prop.value.formFactor.toLowerCase()).contains('phone')) ?
+                                (prop.value.platform.toLowerCase() + '_' +
+                                        prop.value.formFactor.toLowerCase()).replaceAll('phone', 'mobile') :
+                                prop.value.platform.toLowerCase() + '_' + prop.value.formFactor.toLowerCase()
+                        def binaryName = binding.binaryName.find {
+                            it.key.toLowerCase() == projectArtifactKey
+                        }.value
+                        tr {
+                            td {
+                                p(style: "margin:30px 0 10px;font-weight:bold", 'Device: ' + prop.value.name +
+                                        ', FormFactor: ' + prop.value.formFactor +
+                                        ', Platform: ' + prop.value.platform +
+                                        ', OS Version: ' + prop.value.os +
+                                        ', Binary Name: ' + binaryName)
+                            }
+                        }
+                    }
+
+                    if (prop.key == 'suites') {
+                        tr {
+                            td {
+                                table(style: "width:100%;text-align:left", class: "text-color table-border") {
+                                    for (suite in prop.value) {
+                                        tr {
+                                            td(
+                                                    class: "testresults-left-aligned",
+                                                    'Suite Name: ' + suite.name
+                                            )
+                                            td(
+                                                    class: "testresults-left-aligned",
+                                                    'Total test cases: ' + suite.totalTests
+                                            )
+                                        }
+                                        for (test in suite.tests) {
+                                            tr {
+                                                th(
+                                                        class: "testresults-left-aligned-font-bold",
+                                                        'Test Name: ' + test.name
+                                                )
+                                                th(
+                                                        class: "testresults-left-aligned-font-bold",
+                                                        test.result
+                                                )
+                                            }
+                                            for (artifact in test.artifacts) {
+                                                tr {
+                                                    th(
+                                                            class: "testresults-left-aligned",
+                                                            artifact.name + '.' + artifact.extension
+                                                    )
+                                                    th(
+                                                            class: "testresults-left-aligned",
+                                                            {
+                                                                a(href: artifact.authurl, target: '_blank', 'Download File')
+                                                            }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     /**
      * Creates HTML content for Fabric jobs(Export, Import, Publish).
      *
@@ -886,7 +917,7 @@ class EmailTemplateHelper implements Serializable {
                     }
                 }
 
-                if(binding.build.result.equalsIgnoreCase('FAILURE')){
+                if (binding.build.result.equalsIgnoreCase('FAILURE')) {
                     tr {
                         td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')

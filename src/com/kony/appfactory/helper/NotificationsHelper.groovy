@@ -100,8 +100,8 @@ class NotificationsHelper implements Serializable {
             Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name
             and result status of the job.
          */
-	 String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
-	 String subject = modifiedBuildTag + "-${script.currentBuild.currentResult}"
+        String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
+        String subject = modifiedBuildTag + "-${script.currentBuild.currentResult}"
 
         /* Load base e-mail template from library resources */
         String baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
@@ -187,7 +187,7 @@ class NotificationsHelper implements Serializable {
         List filesToStore = []
         /* Get build result suffix for test console */
         String buildResultForTestConsole = getBuildResultForTestConsole(buildResult)
-		
+
         switch (templateType) {
             case 'buildVisualizerApp':
                 filesToStore.add([name: 'buildResults' + buildResultForTestConsole + '.html', data: body])
@@ -269,38 +269,49 @@ class NotificationsHelper implements Serializable {
         templateContent
     }
 
-	
     private static String modifySubjectOfMail(script, templateType, templateData) {
-	String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
-	switch (templateType) {
+        String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
+        switch (templateType) {
             case 'buildVisualizerApp':
-	        modifiedBuildTag =(((modifiedBuildTag.minus("-Visualizer")).minus("s-buildVisualizerApp")).minus("s-Channels")).replaceAll("-build","-")
-		if(modifiedBuildTag.contains("Android"))
-		    return modifiedBuildTag.replace("Android","Android-$script.env.FORM_FACTOR")
-		if(modifiedBuildTag.contains("Ios"))
-		    return modifiedBuildTag.replace("Ios","Ios-${script.env.FORM_FACTOR}")
-	            break
-	    case 'buildTests':
-		modifiedBuildTag = ((((modifiedBuildTag).minus("-Visualizer")).minus("s-Channels")).minus("build")).minus("-runTests")
-		break
-	    case 'runTests':
-		modifiedBuildTag = (modifiedBuildTag.minus("-Visualizer")).minus("-runTests")
-            if(templateData.desktopruns){
-                modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-DesktopWeb-Tests")
-            }
-            if(templateData.deviceruns){
-                modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-Native-Tests")
-            }
-        break
-        case 'cloudBuild':
-            modifiedBuildTag = 'Build Service';
-        break
-        case 'fabric':
-        break
-        default:
-	        modifiedBuildTag = ''
-        break
-	    }
-	    return modifiedBuildTag
-       }
-}     
+                modifiedBuildTag = (((modifiedBuildTag.minus("-Visualizer")).minus("s-buildVisualizerApp")).minus("s-Channels")).replaceAll("-build", "-")
+                if (modifiedBuildTag.contains("Android"))
+                    return modifiedBuildTag.replace("Android", "Android-$script.env.FORM_FACTOR")
+                if (modifiedBuildTag.contains("Ios"))
+                    return modifiedBuildTag.replace("Ios", "Ios-${script.env.FORM_FACTOR}")
+                break
+            case 'buildTests':
+                /*
+                 * We are removing the unwanted words in email subject and forming a simpler one.
+                 * For instance, by default we get the subject as "ProjectName-Visualizer-Tests-Channels-runDesktopWebTests-242-SUCCESS"
+                 * After this change, we will get it as "ProjectName-DesktopWebTests-242-SUCCESS"
+                 * */
+                modifiedBuildTag = modifiedBuildTag.minus("Visualizer-Tests-Channels-run")
+                break
+            case 'runTests':
+                modifiedBuildTag = (modifiedBuildTag.minus("-Visualizer")).minus("-runTests")
+                /* To maintain backward compatibility, we are checking whether 'Channels' folder is present udner 'Tests' folder or not and then modifying the subject of mail accordingly */
+                if (script.env.JOB_NAME.contains("Tests/Channels/")) {
+                    modifiedBuildTag = modifiedBuildTag.minus("Tests-Channels-run")
+                } else {
+                    if (templateData.desktopruns) {
+                        modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-DesktopWebTests")
+                    }
+                    if (templateData.deviceruns) {
+                        modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-NativeTests")
+                    }
+                }
+
+                if (templateData.isSummaryEmail)
+                    modifiedBuildTag = modifiedBuildTag.replace("-DesktopWebTests", "-Tests").replace("-NativeTests", "-Tests")
+                break
+            case 'Export':
+            case 'Import':
+            case 'Publish':
+                break
+            default:
+                modifiedBuildTag = ''
+                break
+        }
+        return modifiedBuildTag
+    }
+}

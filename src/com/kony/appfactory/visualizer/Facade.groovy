@@ -618,14 +618,7 @@ class Facade implements Serializable {
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
             script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-            mustHaveArtifacts.each {
-                if (it.path.trim().length() > 0) {
-                    script.withAWS(region: script.env.S3_BUCKET_REGION) {
-                        script.s3Download(file: it.name, bucket: script.env.S3_BUCKET_NAME, path: [it.path, it.name].join('/'))
-                        script.s3Delete(bucket: script.env.S3_BUCKET_NAME, path: [it.path, it.name].join('/'))
-                    }
-                }
-            }
+            AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
         }
 
         script.dir(script.env.WORKSPACE) {
@@ -752,7 +745,7 @@ class Facade implements Serializable {
                         }
                     }
 					
-                    /* Allocate a slave for the run */
+                    /* Use master for the run */
                     script.node(libraryProperties.'facade.node.label') {
 
                         script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun():prepareRun()

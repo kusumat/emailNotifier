@@ -23,7 +23,6 @@ class Channel implements Serializable {
      List of artifacts to be captured for the must haves to debug
     */
     protected mustHaveArtifacts = []
-    protected mustHaves = []
     protected mustHavePath
     protected String upstreamJob = null
     protected isRebuild = false
@@ -899,32 +898,10 @@ class Channel implements Serializable {
      */
     protected final String PrepareMustHaves() {
         String mustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
-        String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
         try {
             script.catchErrorCustom("Error while preparing must haves") {
                 collectAllInformation()
-                script.dir(projectFullPath) {
-                    script.zip dir: mustHavePath, zipFile: mustHaveFile
-                    script.catchErrorCustom("Failed to create the zip file") {
-                        if (script.fileExists(mustHaveFilePath)) {
-                            String s3FullMustHavePath = [script.env.CLOUD_ACCOUNT_ID, projectName, s3ArtifactPath].join('/')
-                            String s3MustHaveUrl = AwsHelper.publishToS3 sourceFileName: mustHaveFile,
-                                    sourceFilePath: projectFullPath, s3FullMustHavePath, script
-                            s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
-                            /* We will be keeping the s3 url of the must haves into the collection only if the 
-                             * channel job is triggered by the parent job that is buildVisualiser job.
-                             * Handling the case where we rebuild a child job, from an existing job which was
-                             * triggered by the buildVisualiser job.
-                             */
-                            if (upstreamJob != null && !isRebuild) {
-                                mustHaves.add([
-                                        channelVariableName: channelVariableName, name: mustHaveFile, path: s3FullMustHavePath
-                                ])
-                                script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
-                            }
-                        }
-                    }
-                }
+                s3MustHaveAuthUrl = BuildHelper.uploadBuildMustHavesToS3(script, projectFullPath, mustHavePath, mustHaveFile, separator, s3ArtifactPath, channelVariableName)
             }
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed while collecting the logs (must-gather) for debugging.'

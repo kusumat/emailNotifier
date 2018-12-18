@@ -25,7 +25,7 @@ class BuildHelper implements Serializable {
      *   scmUrl URL of the repository.
      *   scmBranch repository branch to clone.
      *
-     *   @param args for checkoutType downloadzip
+     * @param args for checkoutType downloadzip
      *   script pipeline object.
      *   downloadURL from which the source project should be downloaded
      *   relativeTargetDir path where project should be stored.
@@ -68,12 +68,13 @@ class BuildHelper implements Serializable {
 
         for (directory in directories) {
             if (script.fileExists(directory)) {
-                script.dir(directory){
+                script.dir(directory) {
                     script.deleteDir()
                 }
             }
         }
     }
+
 
 	/**
 	 * This method is responsible for downloading file from a pre signed or pre authenticated or an open url
@@ -106,7 +107,6 @@ class BuildHelper implements Serializable {
 
         (template) ? template.toString() : null
     }
-
 
 
     /**
@@ -152,7 +152,7 @@ class BuildHelper implements Serializable {
                        doGenerateSubmoduleConfigurations: false,
                        extensions                       : [[$class           : 'RelativeTargetDirectory',
                                                             relativeTargetDir: relativeTargetDir],
-                                                           [$class           : 'CloneOption',
+                                                           [$class : 'CloneOption',
                                                             timeout: 30]],
                        submoduleCfg                     : [],
                        userRemoteConfigs                : [[credentialsId: scmCredentialsId,
@@ -226,20 +226,20 @@ class BuildHelper implements Serializable {
     protected static String getBuildLogText(jobFullName, buildNumber, script) {
         String buildLogText = ""
         BufferedReader reader
-        Jenkins.instance.getItemByFullName(jobFullName).each{ item->
-            Run currentBuild = ((Job)item).getBuild(buildNumber)
-            if(currentBuild){
+        Jenkins.instance.getItemByFullName(jobFullName).each { item ->
+            Run currentBuild = ((Job) item).getBuild(buildNumber)
+            if (currentBuild) {
                 try {
-                    reader = TimestamperAPI.get().read(currentBuild,"time=HH:mm:ss&appendLog")
+                    reader = TimestamperAPI.get().read(currentBuild, "time=HH:mm:ss&appendLog")
                     String line
-                    while((line=reader.readLine())!= null){
+                    while ((line = reader.readLine()) != null) {
                         buildLogText = buildLogText + line + "\n";
                     }
                 } catch (Exception e) {
                     String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed to capture the Build Log....'
                     script.echoCustom(exceptionMessage, 'ERROR', false)
                 } finally {
-                    if(reader != null){
+                    if (reader != null) {
                         reader.close();
                     }
                 }
@@ -247,7 +247,7 @@ class BuildHelper implements Serializable {
         }
         buildLogText
     }
-	
+
     /**
      * Wraps code with Fabric environment variables.
      *
@@ -270,7 +270,7 @@ class BuildHelper implements Serializable {
             closure()
         }
     }
-    
+
     /**
      * Extract Protected Keys from credential plug-in.
      *
@@ -280,15 +280,15 @@ class BuildHelper implements Serializable {
      * @param closure block of code.
      */
     protected final static void extractProtectedKeys(script, protectedKeysId, targetProtectedKeysPath, closure) {
-        script.withCredentials([[$class: 'ProtectedModeTripletBinding',
-            credentialsId: "${protectedKeysId}",
-            filePath: "${targetProtectedKeysPath}"
-            ]]) {
-        /* Block of code to run */
-        closure()
+        script.withCredentials([[$class       : 'ProtectedModeTripletBinding',
+                                 credentialsId: "${protectedKeysId}",
+                                 filePath     : "${targetProtectedKeysPath}"
+                                ]]) {
+            /* Block of code to run */
+            closure()
         }
     }
-    
+
     /**
      * Loads library configuration properties.
      * Properties can be places anywhere in the library, but most appropriate place is under:
@@ -330,7 +330,7 @@ class BuildHelper implements Serializable {
      */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
         /* Check required arguments */
-        (dependenciesFileContent) ?: script.echoCustom("File content string can't be null",'ERROR')
+        (dependenciesFileContent) ?: script.echoCustom("File content string can't be null", 'ERROR')
 
         def requiredDependencies = null
 
@@ -355,8 +355,8 @@ class BuildHelper implements Serializable {
      */
     private final static void switchDependencies(script, isUnixNode, dependencyPath, installationPath) {
         /* Check required arguments */
-        (dependencyPath) ?: script.echoCustom("Dependency path can't be null!",'ERROR')
-        (installationPath) ?: script.echoCustom("Installation path can't be null!",'ERROR')
+        (dependencyPath) ?: script.echoCustom("Dependency path can't be null!", 'ERROR')
+        (installationPath) ?: script.echoCustom("Installation path can't be null!", 'ERROR')
 
         if (isUnixNode) {
             script.shellCustom(
@@ -364,9 +364,9 @@ class BuildHelper implements Serializable {
                     isUnixNode
             )
         } else {
-            script.shellCustom(['(if exist',installationPath + '\\','fsutil reparsepoint query ' + installationPath,
+            script.shellCustom(['(if exist', installationPath + '\\', 'fsutil reparsepoint query ' + installationPath,
                                 '| ' + 'findstr /C:\"Print Name:\" | find \"' + dependencyPath + '\"  >nul && ' +
-                                'echo symbolic link found ) || rmdir /s /q',installationPath,'&&',
+                                        'echo symbolic link found ) || rmdir /s /q', installationPath, '&&',
                                 'mklink /J', installationPath, dependencyPath].join(' '), isUnixNode)
         }
     }
@@ -387,15 +387,15 @@ class BuildHelper implements Serializable {
             dependenciesArchiveFileExtension
     ) {
         /* Check required arguments */
-        (visualizerVersion) ?: script.echoCustom("Visualizer version couldn't be null!",'ERROR')
+        (visualizerVersion) ?: script.echoCustom("Visualizer version couldn't be null!", 'ERROR')
 
         def dependenciesArchive = null
         def dependenciesArchiveFileName = dependenciesArchiveFilePrefix + visualizerVersion +
                 dependenciesArchiveFileExtension
-        
-		dependenciesBaseUrl = dependenciesBaseUrl.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
-		
-		/* Composing URL for fetch */
+
+        dependenciesBaseUrl = dependenciesBaseUrl.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
+
+        /* Composing URL for fetch */
         def dependenciesURL = [
                 dependenciesBaseUrl, visualizerVersion, dependenciesArchiveFileName
         ].join('/')
@@ -435,23 +435,23 @@ class BuildHelper implements Serializable {
             dependenciesArchiveFilePrefix, dependenciesArchiveFileExtension
     ) {
         /* Check required arguments */
-        (separator) ?: script.echoCustom("separator argument can't be null!",'ERROR')
-        (visualizerHome) ?: script.echoCustom("visualizerHome argument can't be null!",'ERROR')
-        (visualizerVersion) ?: script.echoCustom("visualizerVersion argument can't be null!",'ERROR')
-        (dependenciesFileName) ?: script.echoCustom("dependenciesFileName argument can't be null!",'ERROR')
-        (dependenciesBaseUrl) ?: script.echoCustom("dependenciesBaseUrl argument can't be null!",'ERROR')
-        (dependenciesArchiveFilePrefix) ?: script.echoCustom("dependenciesArchiveFilePrefix argument can't be null!",'ERROR')
-        (dependenciesArchiveFileExtension) ?: script.echoCustom("dependenciesArchiveFileExtension argument can't be null!",'ERROR')
+        (separator) ?: script.echoCustom("separator argument can't be null!", 'ERROR')
+        (visualizerHome) ?: script.echoCustom("visualizerHome argument can't be null!", 'ERROR')
+        (visualizerVersion) ?: script.echoCustom("visualizerVersion argument can't be null!", 'ERROR')
+        (dependenciesFileName) ?: script.echoCustom("dependenciesFileName argument can't be null!", 'ERROR')
+        (dependenciesBaseUrl) ?: script.echoCustom("dependenciesBaseUrl argument can't be null!", 'ERROR')
+        (dependenciesArchiveFilePrefix) ?: script.echoCustom("dependenciesArchiveFilePrefix argument can't be null!", 'ERROR')
+        (dependenciesArchiveFileExtension) ?: script.echoCustom("dependenciesArchiveFileExtension argument can't be null!", 'ERROR')
 
         def dependencies = []
         def dependenciesFileContent = fetchRequiredDependencies(script, visualizerVersion, dependenciesFileName,
                 dependenciesBaseUrl, dependenciesArchiveFilePrefix, dependenciesArchiveFileExtension)
         def visualizerDependencies = parseDependenciesFileContent(script, dependenciesFileContent)
 
-        if(!visualizerDependencies){
-            throw new AppFactoryException("Visualizer dependencies object can't be null!",'ERROR')
+        if (!visualizerDependencies) {
+            throw new AppFactoryException("Visualizer dependencies object can't be null!", 'ERROR')
         }
-        
+
         /* Construct installation path */
         def getInstallationPath = { toolPath ->
             ([visualizerHome] + toolPath).join(separator)
@@ -496,7 +496,7 @@ class BuildHelper implements Serializable {
                     break
                 case 'node':
                     if (isUnixNode) {
-                        script.env.NODE_HOME = [getToolPath(dependency),'bin'].join(separator)
+                        script.env.NODE_HOME = [getToolPath(dependency), 'bin'].join(separator)
                     } else {
                         script.env.NODE_HOME = getToolPath(dependency)
                     }
@@ -514,10 +514,10 @@ class BuildHelper implements Serializable {
     }
     /* ---------------------------------------------------- END ---------------------------------------------------- */
 
-    protected final static void fixRunShScript (script, filePath, fileName) {
+    protected final static void fixRunShScript(script, filePath, fileName) {
         /* Check required arguments */
-        (filePath) ?: script.echoCustom("filePath argument can't be null!",'ERROR')
-        (fileName) ?: script.echoCustom("fileName argument can't be null!",'ERROR')
+        (filePath) ?: script.echoCustom("filePath argument can't be null!", 'ERROR')
+        (fileName) ?: script.echoCustom("fileName argument can't be null!", 'ERROR')
 
         script.dir(filePath) {
             if (script.fileExists(fileName)) {
@@ -614,7 +614,7 @@ class BuildHelper implements Serializable {
          *  1. Checks if user wants to run CustomHooks
          *  2. If Yes, check if there are any CustomHooks defined and are in active state.
          */
-        
+
         if (isThisBuildWithCustomHooksRun) {
             script.echoCustom('Found active CustomHooks. Allocating MAC agent.')
             return iosNodeLabel;
@@ -652,30 +652,30 @@ class BuildHelper implements Serializable {
         }
     }
 
-    protected final static isLabelActive(label,script){
+    protected final static isLabelActive(label, script) {
         def isActiveNodeAvailable = false
 
         Jenkins instance = Jenkins.getInstance()
-        instance.getLabel(label).getNodes().each { node->
-            if(node.toComputer()?.isOnline()){
+        instance.getLabel(label).getNodes().each { node ->
+            if (node.toComputer()?.isOnline()) {
                 def nodeName = node.toComputer().getDisplayName()
                 def isNodeOnline = node.toComputer().isOnline()
-                isActiveNodeAvailable=true
+                isActiveNodeAvailable = true
             }
         }
         return isActiveNodeAvailable
     }
-	
-    protected final static getEnvironmentInfo(script){
+
+    protected final static getEnvironmentInfo(script) {
         String cmd = script.isUnix() ? "env" : "set"
-        String environmentInfo = script.shellCustom(cmd, script.isUnix(),[returnStdout: true]).trim()
+        String environmentInfo = script.shellCustom(cmd, script.isUnix(), [returnStdout: true]).trim()
 
         return environmentInfo
     }
 
-    protected final static getInputParamsAsString(script){
+    protected final static getInputParamsAsString(script) {
         def paramsInfo = StringBuilder.newInstance()
-        script.params.each{
+        script.params.each {
             paramsInfo.append "${it.key} = ${it.value}\n"
         }
         return paramsInfo.toString()
@@ -688,6 +688,7 @@ class BuildHelper implements Serializable {
      * @param exposeUrl is made as true if we want to display it in the console
      * @param action - (downloads or view): decides whether the url is direct download link or directly view from browser (such as HTML files), default value is "downloads"
      */
+
     protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false, String action = "downloads") {
 
         def authArtifactUrl = artifactUrl;
@@ -704,11 +705,10 @@ class BuildHelper implements Serializable {
 
             def externalAuthID = (script.env['URL_PATH_INFO']) ? "?url_path=" + URLEncoder.encode(script.env['URL_PATH_INFO'], "UTF-8") : ''
             authArtifactUrl = "https://manage." + script.env['CLOUD_DOMAIN'] + "/console/" + externalAuthID + "#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + encodedArtifactUrl
+        } else {
+            script.echoCustom("Failed to generate the authenticated URLs. Unable to find the cloud environment guid.", 'WARN')
         }
-        else {
-            script.echoCustom("Failed to generate the authenticated URLs. Unable to find the cloud environment guid.",'WARN')
-        }
-		
+
         if (exposeUrl) {
             script.echoCustom("Artifact URL: ${authArtifactUrl}")
         }
@@ -719,8 +719,8 @@ class BuildHelper implements Serializable {
     /**
      *  Tells whether the current build is rebuilt or not
      *
-     *  @param  script
-     *  @return true if the current build is rebuilt from previous build, false otherwise
+     * @param script
+     * @return true if the current build is rebuilt from previous build, false otherwise
      */
     protected final static isRebuildTriggered(script) {
         boolean isRebuildFlag = false
@@ -735,53 +735,54 @@ class BuildHelper implements Serializable {
         }
         return isRebuildFlag
     }
-        
+
     /* This is required as each build can be trigger from IOS Android or SPA.
      *  To give permission to channel jobs workspace we need info about Upstream job
      *
      *  @param script
      *  return upstreamJobName
      * */
+
     @NonCPS
     protected final static getUpstreamJobName(script) {
-         String upstreamJobName = null
-         script.currentBuild.rawBuild.actions.each { action ->
-             if (action.hasProperty("causes")) {
-                 action.causes.each { cause ->
-                     if (cause instanceof hudson.model.Cause$UpstreamCause && cause.hasProperty("shortDescription") && cause.shortDescription.contains("Started by upstream project")) {
-                         upstreamJobName = cause.upstreamRun?.getEnvironment(TaskListener.NULL)?.get("JOB_BASE_NAME")
-                     }
-                 }
-             }
-         }
-         upstreamJobName
-     }
-     
-     /**
-      * Get the app id type for the native channel
-      *
-      * @param channelOs
-      * @param channelFormFactor
-      * @return appIdType.
-      */
-     protected static getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor ) {
-         def appIdType = [channelOs, channelFormFactor, "APP_ID"].join('_').toUpperCase()
-         return appIdType
-     }
-     
-     /**
-      * Returns the flag to trigger the custom hook based on RUN_CUSTOM_HOOK build parameters flag
-      * and available active custom hook for the project
-      * 
-      * @param projectName
-      * @param runCustomHook
-      * @param libraryProperties
-      * @return runCustomHookForBuild
-      */
-     protected final static isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties ) {
-         def customhooksConfigFolder = projectName + libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
-         return (runCustomHook && isActiveCustomHookAvailable(customhooksConfigFolder, projectName))
-     }
+        String upstreamJobName = null
+        script.currentBuild.rawBuild.actions.each { action ->
+            if (action.hasProperty("causes")) {
+                action.causes.each { cause ->
+                    if (cause instanceof hudson.model.Cause$UpstreamCause && cause.hasProperty("shortDescription") && cause.shortDescription.contains("Started by upstream project")) {
+                        upstreamJobName = cause.upstreamRun?.getEnvironment(TaskListener.NULL)?.get("JOB_BASE_NAME")
+                    }
+                }
+            }
+        }
+        upstreamJobName
+    }
+
+    /**
+     * Get the app id type for the native channel
+     *
+     * @param channelOs
+     * @param channelFormFactor
+     * @return appIdType.
+     */
+    protected static getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor) {
+        def appIdType = [channelOs, channelFormFactor, "APP_ID"].join('_').toUpperCase()
+        return appIdType
+    }
+
+    /**
+     * Returns the flag to trigger the custom hook based on RUN_CUSTOM_HOOK build parameters flag
+     * and available active custom hook for the project
+     *
+     * @param projectName
+     * @param runCustomHook
+     * @param libraryProperties
+     * @return runCustomHookForBuild
+     */
+    protected final static isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties) {
+        def customhooksConfigFolder = projectName + libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
+        return (runCustomHook && isActiveCustomHookAvailable(customhooksConfigFolder, projectName))
+    }
 
     /**
      * Collects selected channels to build.
@@ -798,6 +799,7 @@ class BuildHelper implements Serializable {
                     || it.key.matches('^DESKTOP_WEB')) && it.value
         }.keySet().collect()
     }
+
     
     /* Get the param based on DSL job availability */
     @NonCPS
@@ -818,6 +820,33 @@ class BuildHelper implements Serializable {
     private static getParamValueOrDefault(script, param, defaultValue) {
         def paramValue = script.params.containsKey(param) ? script.params[param] : defaultValue
         return paramValue
+    }
+
+    /**
+     * Created a zip with all MustHaves the artifacts, uploads to s3, creates Auth URL and sets the environment variable "MUSTHAVE_ARTIFACTS".
+     * @param script current build instance
+     * @param projectFullPath The full path of the project for which we are creating the MustHaves
+     * @param mustHaveFile The file for which we are going to create a zip
+     * @param separator This is used while creating paths
+     * @param s3ArtifactPath Path where we are going to publish the S3 artifacts
+     * @param channelVariableName The channel for which we are creating the MustHaves
+     * @return s3MustHaveAuthUrl The authenticated URL of the S3 url
+     */
+    protected static def uploadBuildMustHavesToS3 (script, projectFullPath, mustHavePath, mustHaveFile, separator, s3ArtifactPath, channelVariableName) {
+        def upstreamJob = BuildHelper.getUpstreamJobName(script)
+        def isRebuild = BuildHelper.isRebuildTriggered(script)
+        def mustHaves = []
+        def s3MustHaveAuthUrl
+        String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
+        script.dir(projectFullPath) {
+            script.catchErrorCustom("Failed to create the zip file") {
+                script.zip dir: mustHavePath, zipFile: mustHaveFile
+                if (script.fileExists(mustHaveFilePath)) {
+                    s3MustHaveAuthUrl = AwsHelper.publishMustHavesToS3(script, s3ArtifactPath, mustHaveFile, projectFullPath, upstreamJob, isRebuild, channelVariableName, mustHaves)
+                }
+            }
+        }
+        s3MustHaveAuthUrl
     }
 }
 
