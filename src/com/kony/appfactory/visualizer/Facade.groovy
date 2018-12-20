@@ -50,6 +50,7 @@ class Facade implements Serializable {
     private final defaultLocale = script.params.DEFAULT_LOCALE
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
+    private fabricEnvironmentName
     /* iOS build parameters */
     private appleID = script.params.APPLE_ID
     private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
@@ -762,6 +763,7 @@ class Facade implements Serializable {
                             */
                                     script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
                                             script.echoCustom("Fabric environment value can't be null", 'ERROR')
+                                    fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                                 }
                             }
                         /* Run channel builds in parallel */
@@ -832,7 +834,7 @@ class Facade implements Serializable {
                                 }
                                 setBuildDescription(s3MustHaveAuthUrl)
                                 if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                                    NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                                    NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts, fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: projectSourceCodeBranch ], true)
                                 }
                             }
                         }

@@ -474,6 +474,7 @@ class Fabric implements Serializable {
                 emailData = [
                         fabricAppName         : fabricAppName,
                         fabricAppVersion      : fabricAppVersion,
+                        fabricEnvironmentName : fabricEnvironmentName,
                         exportRepositoryUrl   : exportRepositoryUrl,
                         exportRepositoryBranch: exportRepositoryBranch,
                         authorEmail           : authorEmail,

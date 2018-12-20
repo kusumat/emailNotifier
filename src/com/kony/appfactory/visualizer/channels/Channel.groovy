@@ -103,6 +103,7 @@ class Channel implements Serializable {
     protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     protected final buildMode = (script.params.BUILD_MODE == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
+    protected fabricEnvironmentName
     protected channelFormFactor = script.params.FORM_FACTOR
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
@@ -159,6 +160,7 @@ class Channel implements Serializable {
                 value as ''(empty). */
                 script.env.FABRIC_APP_NAME = (script.env.FABRIC_APP_NAME) ?: ''
                 script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+                fabricEnvironmentName = script.env.FABRIC_ENV_NAME
             }
         }
         /* Set environment-dependent variables */
@@ -214,7 +216,7 @@ class Channel implements Serializable {
 
             /* Been agreed to send notification from channel job only if result equals 'FAILURE' and if it's not CloudBuild */
             if (script.currentBuild.result == 'FAILURE' && !script.params.IS_SOURCE_VISUALIZER) {
-                NotificationsHelper.sendEmail(script, 'buildVisualizerApp')
+                NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: scmBranch])
             }
         }
     }
