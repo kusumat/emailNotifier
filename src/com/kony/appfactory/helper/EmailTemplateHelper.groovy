@@ -125,6 +125,24 @@ class EmailTemplateHelper implements Serializable {
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
                 }
+                else if (artifact.karAuthUrl) {
+                    def map = [
+                            channelPath: artifact.channelPath,
+                            artifacts  : [
+                                    [
+                                            //for karAuthUrl, there won't be any ipa.name and ipa.authUrl
+                                            extension: 'IPA'
+                                    ],
+                                    [
+                                            name     : artifact.name,
+                                            url      : artifact.karAuthUrl,
+                                            extension: 'KAR',
+                                    ]
+                            ]
+                    ]
+
+                    EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
+                }
 
                 /* Web */
                 else if (artifact.webappurl) {
@@ -172,9 +190,9 @@ class EmailTemplateHelper implements Serializable {
                     EmailBuilder.addSimpleArtifactTableRowFailed(htmlBuilder, map)
                 }
                 else {
-                    tr {
+                    htmlBuilder.tr {
                         th(artifact.channelPath.replaceAll('/', ' '))
-                        td(colspan:"2", "Build failed")
+                        td(colspan: "2", "Build failed")
                     }
                 }
             }

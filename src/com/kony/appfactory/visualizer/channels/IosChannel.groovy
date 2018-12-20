@@ -15,9 +15,14 @@ class IosChannel extends Channel {
     private karArtifact
     private plistArtifact
     private ipaArtifact
-    private authenticatedIPAArtifactUrl
     /* IPA file S3 URL, used for PLIST file creation */
     private ipaArtifactUrl
+    private authenticatedIPAArtifactUrl
+
+    /* KAR file S3 URL */
+    private karArtifactUrl
+    private authenticatedKARArtifactUrl
+
     /* Stash name for fastlane configuration */
     private fastlaneConfigStashName
 
@@ -168,7 +173,7 @@ class IosChannel extends Channel {
         String iosDummyProjectGenPath = [iosDummyProjectWorkspacePath, 'gen'].join(separator)
         String fastlaneName
 
-        script.catchErrorCustom(errorMessage, successMessage) {
+        try {
             /* Extract Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectBasePath) {
                 script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
@@ -322,6 +327,23 @@ class IosChannel extends Channel {
                     script.deleteDir()
                 }
             }
+            script.echoCustom(successMessage)
+        }
+        catch (Exception e) {
+            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+            script.echoCustom(exceptionMessage, 'ERROR', false)
+
+            /* Publish iOS KAR artifact to S3 */
+            def karArtifacts = getArtifactLocations(artifactExtension)
+            karArtifact = renameArtifacts(karArtifacts).first()
+            karArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                    sourceFileName: karArtifact.name, sourceFilePath: karArtifact.path, script
+            authenticatedKARArtifactUrl = BuildHelper.createAuthUrl(karArtifactUrl, script, false)
+            artifacts.add([
+                    channelPath: channelPath, name: karArtifact.name, karAuthUrl: authenticatedKARArtifactUrl
+            ])
+
+            throw new AppFactoryException(errorMessage, 'ERROR')
         }
     }
 

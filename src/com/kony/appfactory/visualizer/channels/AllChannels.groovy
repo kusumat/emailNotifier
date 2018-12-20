@@ -358,7 +358,16 @@ class AllChannels implements Serializable {
                                     String exceptionMessage = "Exception Found while Sign and Publishing iOS artifact!! ${ios_channel_id}"
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
                                     buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(ios_channel_id))
-                                    channelArtifacts.add([channelPath: ios_channel.channelPath, extensionType: 'IPA'])
+
+                                    /* Place KAR file into channelArtifacts and StatusJson file */
+                                    ios_channel.pipelineWrapper {
+                                        channelArtifacts.add([
+                                                channelPath: ios_channel.channelPath, name: ios_channel.karArtifact.name, karAuthUrl: ios_channel.authenticatedKARArtifactUrl
+                                        ])
+                                        def artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.s3ArtifactPath, ios_channel.karArtifact.name].join('/')
+                                        buildStatus.updateDownloadLink(ChannelType.valueOf(ios_channel_id), artifactPath)
+                                    }
+
                                     script.currentBuild.result = "UNSTABLE"
                                 }
                             }

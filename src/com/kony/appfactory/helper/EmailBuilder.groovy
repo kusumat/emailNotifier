@@ -58,7 +58,10 @@ class EmailBuilder {
                     th(rowspan: countRows, binding.channelPath.replaceAll('/', ' '))
                 td(style: "border-right: 1px dotted #e8e8e8; width: 65px;", binding.artifacts[i].extension)
                 td {
-                    a(href: binding.artifacts[i].url, target: '_blank', binding.artifacts[i].name)
+                    if(binding.artifacts[i].url)
+                        a(href: binding.artifacts[i].url, target: '_blank', binding.artifacts[i].name)
+                    else
+                        mkp.yield("Build failed")
                 }
             }
         }

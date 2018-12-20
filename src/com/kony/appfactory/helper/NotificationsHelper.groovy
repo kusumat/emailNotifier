@@ -101,6 +101,7 @@ class NotificationsHelper implements Serializable {
             and result status of the job.
          */
         String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
+
         String subject = modifiedBuildTag + "-${script.currentBuild.currentResult}"
 
         /* Load base e-mail template from library resources */
@@ -303,6 +304,9 @@ class NotificationsHelper implements Serializable {
 
                 if (templateData.isSummaryEmail)
                     modifiedBuildTag = modifiedBuildTag.replace("-DesktopWebTests", "-Tests").replace("-NativeTests", "-Tests")
+                break
+            case 'cloudBuild':
+                modifiedBuildTag = 'Build Service'
                 break
             case 'Export':
             case 'Import':
