@@ -59,6 +59,17 @@ class AllChannels implements Serializable {
     protected String projectFileName = "project.zip"
 
     protected CredentialsHelper credentialsHelper
+
+    /* This variable contains content of projectProperties.json file */
+    protected ProjectPropertiesDTO projectProperties
+
+    /*This will contain the project root location */
+    protected String projectDir
+
+    /*This will contain the project root location */
+    protected String projectPropertyFileName
+
+
     /**
      * Class constructor.
      *
@@ -79,6 +90,7 @@ class AllChannels implements Serializable {
 
         buildStatus = new BuildStatus(script, channelsToRun)
         credentialsHelper = new CredentialsHelper()
+        projectPropertyFileName = libraryProperties.'ios.project.props.json.file.name'
     }
 
     /**
@@ -154,16 +166,26 @@ class AllChannels implements Serializable {
 
                     script.stage('Pre Build') {
                         // setting project root folder path
-                        def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
-                        if (!script.fileExists([checkoutRelativeTargetFolder, propertyFileName].join(separator))) {
+
+                        if (!script.fileExists([checkoutRelativeTargetFolder, projectPropertyFileName].join(separator))) {
                             script.dir(checkoutRelativeTargetFolder) {
-                                def projectRoot = script.findFiles glob: '**/' + propertyFileName
+                                def projectRoot = script.findFiles glob: '**/' + projectPropertyFileName
                                 if (projectRoot)
-                                    script.env.PROJECT_ROOT_FOLDER_NAME = projectRoot[0].path.minus(separator + propertyFileName)
+                                    script.env.PROJECT_ROOT_FOLDER_NAME = projectRoot[0].path.minus(separator + projectPropertyFileName)
                                 else
                                     script.echoCustom("Unable to recognize Visualizer project source code.", 'ERROR')
                             }
                         }
+
+                        projectDir = script.env.PROJECT_ROOT_FOLDER_NAME  ?
+                                [checkoutRelativeTargetFolder, script.env.PROJECT_ROOT_FOLDER_NAME].join(separator) :
+                                checkoutRelativeTargetFolder
+
+                        script.dir(projectDir) {
+                            String projectPropertiesText = script.readFile file: projectPropertyFileName
+                            projectProperties = JsonHelper.parseJson(projectPropertiesText, ProjectPropertiesDTO.class)
+                        }
+
 
                         script.stage('Android Task') {
                             channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
@@ -185,11 +207,14 @@ class AllChannels implements Serializable {
                         /* Since CI tool is same for both android and ios, we can use any channel wrapper to initiate actual build */
                         /* preferring to use first channel object, can be one of MobileChannel and TabletChannel of Android and iOS */
                         def channelObjectsFirstKey = channelObjects.keySet().toArray()[0]
-                        def channelObjectsFirstVal = channelObjects.get(channelObjectsFirstKey)
-                        channelObject = channelObjectsFirstVal
-                        channelObjectsFirstVal.pipelineWrapper {
+                        channelObject = channelObjects.get(channelObjectsFirstKey)
+                        channelObject.pipelineWrapper {
                             try {
-                                channelObjectsFirstVal.build()
+                                if (channelObject.buildMode == libraryProperties.'buildmode.release.protected.type') {
+                                    copyProtectedModeKeys()
+                                }
+
+                                channelObject.build()
                             }
                             catch (Exception ignored) {
                                 String exceptionMessage = "CI build failed for this project, script returned with exit code"
@@ -369,83 +394,119 @@ class AllChannels implements Serializable {
 
     protected final void androidSigningCloudWrapper(script, closure) {
 
-        script.dir(checkoutRelativeTargetFolder) {
+        script.dir(projectDir) {
 
-            def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
-
-            def keyStoreFilePath = projectPropertiesJsonContent['keyStoreFilePath']
-            def KSFILE = [script.pwd(), keyStoreFilePath].join('/')
-            def KSPASS = projectPropertiesJsonContent[libraryProperties.'cloudbuild.android.keystorePassword.property']
-            def KEYPASS = projectPropertiesJsonContent[libraryProperties.'cloudbuild.android.keyPassword.property']
-            def KEY_ALIAS = projectPropertiesJsonContent[libraryProperties.'cloudbuild.android.keystoreAlias.property']
-
-
-            if (!keyStoreFilePath || !script.fileExists(keyStoreFilePath)) {
-                script.echoCustom('Failed to locate keystore in project. Skipping android apk signing and ' +
-                        'unsigned apk will be shared.', 'WARN')
+            def isValid = validateAndroidCertProperties()
+            if(!isValid) {
+                script.echoCustom('Skipping android apk signing and unsigned apk will be shared.', 'WARN')
                 return
             }
 
-            if (KSPASS && KEYPASS && KEY_ALIAS) {
-                def signingInfo = credentialsHelper.getSigningIdMap(script.env['BUILD_NUMBER'])
-                def androidSigningInfo = signingInfo['android']
+            def KSFILE = [script.pwd(), projectProperties.keyStoreFilePath].join('/')
 
-                try {
-                    credentialsHelper.addSecretText(androidSigningInfo['KSPASS'].id, androidSigningInfo['KSPASS'].description, KSPASS)
-                    credentialsHelper.addSecretText(androidSigningInfo['KEYPASS'].id, androidSigningInfo['KEYPASS'].description, KEYPASS)
-                    credentialsHelper.addSecretText(androidSigningInfo['KEY_ALIAS'].id, androidSigningInfo['KEY_ALIAS'].description, KEY_ALIAS)
-                    credentialsHelper.addSecretFile(androidSigningInfo['KSFILE'].id, androidSigningInfo['KSFILE'].description, KSFILE, script)
+            def signingInfo = credentialsHelper.getSigningIdMap(script.env['BUILD_NUMBER'])
+            def androidSigningInfo = signingInfo['android']
 
-                    script.withCredentials([
-                            script.string(credentialsId: androidSigningInfo['KSPASS'].id, variable: 'KSPASS'),
-                            script.string(credentialsId: androidSigningInfo['KEYPASS'].id, variable: 'KEYPASS'),
-                            script.string(credentialsId: androidSigningInfo['KEY_ALIAS'].id, variable: 'KEY_ALIAS'),
-                            script.file(credentialsId: androidSigningInfo['KSFILE'].id, variable: 'KSFILE')
-                    ]) {
-                        closure()
-                    }
+            try {
+                credentialsHelper.addSecretText(
+                        androidSigningInfo['KSPASS'].id,
+                        androidSigningInfo['KSPASS'].description,
+                        projectProperties.keyStorePassword)
+                credentialsHelper.addSecretText(
+                        androidSigningInfo['KEYPASS'].id,
+                        androidSigningInfo['KEYPASS'].description,
+                        projectProperties.keyPassword)
+                credentialsHelper.addSecretText(
+                        androidSigningInfo['KEY_ALIAS'].id,
+                        androidSigningInfo['KEY_ALIAS'].description,
+                        projectProperties.keyAlias)
+                credentialsHelper.addSecretFile(
+                        androidSigningInfo['KSFILE'].id,
+                        androidSigningInfo['KSFILE'].description,
+                        KSFILE, script)
+
+                script.withCredentials([
+                        script.string(credentialsId: androidSigningInfo['KSPASS'].id, variable: 'KSPASS'),
+                        script.string(credentialsId: androidSigningInfo['KEYPASS'].id, variable: 'KEYPASS'),
+                        script.string(credentialsId: androidSigningInfo['KEY_ALIAS'].id, variable: 'KEY_ALIAS'),
+                        script.file(credentialsId: androidSigningInfo['KSFILE'].id, variable: 'KSFILE')
+                ]) {
+                    closure()
                 }
-                finally {
-                    credentialsHelper.deleteUserCredentials(
-                            [androidSigningInfo['KSPASS'].id,
-                             androidSigningInfo['KEYPASS'].id,
-                             androidSigningInfo['KEY_ALIAS'].id,
-                             androidSigningInfo['KSFILE'].id
-                            ])
-                }
-            } else {
-                script.echoCustom("Please specify keyStorePassword, keyAlias and keyPassword " +
-                        "in projectProperties.json file properly. Skipping android apk signing and " +
-                        "unsigned apk will be shared.", 'WARN')
+            }
+            finally {
+                credentialsHelper.deleteUserCredentials(
+                        [androidSigningInfo['KSPASS'].id,
+                         androidSigningInfo['KEYPASS'].id,
+                         androidSigningInfo['KEY_ALIAS'].id,
+                         androidSigningInfo['KSFILE'].id
+                        ])
             }
         }
     }
 
     /**
      * Validate IOS properties in projectProperties.json
-     * @param projectProperties POJO representing projectProperties.json
-     * @param script
      */
-    def validateIosCertProperties(ProjectPropertiesDTO projectProperties, script) {
+    def validateIosCertProperties() {
         projectProperties.developmentMethod ?:
-                script.echoCustom('Missing developmentMethod in projectProperties.json in project. ', 'ERROR')
+                script.echoCustom("Missing developmentMethod in $projectPropertyFileName in project. ", 'ERROR')
         projectProperties.iOSP12Password ?:
-                script.echoCustom('Missing iOSP12Password in projectProperties.json in project. ', 'ERROR')
+                script.echoCustom("Missing iOSP12Password in $projectPropertyFileName in project. ", 'ERROR')
         projectProperties.iOSP12FilePath ?:
-                script.echoCustom('Missing iOSP12FilePath property in projectProperties.json in project. ', 'ERROR')
+                script.echoCustom("Missing iOSP12FilePath property in $projectPropertyFileName in project. ", 'ERROR')
         projectProperties.iOSMobileProvision ?:
-                script.echoCustom('Missing iOSMobileProvision property in projectProperties.json in project. ', 'ERROR')
+                script.echoCustom("Missing iOSMobileProvision property in $projectPropertyFileName in project. ", 'ERROR')
         script.fileExists(projectProperties.iOSP12FilePath) ?:
                 script.echoCustom('Failed to locate apple certificate(.iOSP12FilePath) in project. Failed to sign IOS application.', 'ERROR')
         script.fileExists(projectProperties.iOSMobileProvision) ?:
                 script.echoCustom('Failed to locate iOS MobileProvisioning File(.mobileprovision) in project. Failed to sign IOS application.', 'ERROR')
     }
 
+    /**
+     * Validate android properties in projectProperties.json
+     */
+    def validateAndroidCertProperties() {
+
+        def missingKeys = []
+
+        missingKeys.add(projectProperties.keyStoreFilePath ? 'OK' : 'keyStoreFilePath')
+        missingKeys.add(projectProperties.keyStorePassword ? 'OK' : 'keyStorePassword')
+        missingKeys.add(projectProperties.keyAlias ? 'OK' : 'keyAlias')
+        missingKeys.add(projectProperties.keyPassword ? 'OK' : 'keyPassword')
+
+        if (missingKeys.every { it == 'OK' }) {
+            def isLocated = script.fileExists(projectProperties.keyStoreFilePath)
+            isLocated ?: script.echoCustom('Failed to locate keystore in project.', 'WARN')
+            return isLocated
+        } else {
+            missingKeys.each {
+                if (it != 'OK')
+                    script.echoCustom("Missing $it in $projectPropertyFileName in project. ", 'WARN')
+            }
+            return false
+        }
+    }
+
+    /**
+     * Validate Protect Mode encryption properties in projectProperties.json
+     */
+    def validateProtectedModeProperties() {
+        projectProperties.protectedModePublicKey ?:
+                script.echoCustom("Missing protectedModePublicKey in $projectPropertyFileName in project. ", 'ERROR')
+        projectProperties.protectedModePrivateKey ?:
+                script.echoCustom("Missing protectedModePrivateKey in $projectPropertyFileName in project. ", 'ERROR')
+
+        script.fileExists(projectProperties.protectedModePublicKey) ?:
+                script.echoCustom('Failed to locate public key File(.dat) in project. Failed to load encryption keys.', 'ERROR')
+        script.fileExists(projectProperties.protectedModePrivateKey) ?:
+                script.echoCustom('Failed to locate iOS Private key File(.pem) in project. Failed to load encryption keys.', 'ERROR')
+    }
+
     protected final void iosSigningCloudWrapper(script, IosChannel ios_channel, closure) {
 
         String appleId = script.params.APPLE_ID
         if(!appleId || appleId == "null") {
-            ProjectPropertiesDTO projectProperties
 
             def absAppleCertPath = ''
             def absAppleMobileProvisionPath = ''
@@ -453,14 +514,9 @@ class AllChannels implements Serializable {
             def signingInfo = credentialsHelper.getSigningIdMap(script.env['BUILD_NUMBER'])
             def iosSigningInfo = signingInfo['iOS']
 
-            def projectDir = script.env.PROJECT_ROOT_FOLDER_NAME ?
-                    [checkoutRelativeTargetFolder, script.env.PROJECT_ROOT_FOLDER_NAME].join(separator) :
-                    checkoutRelativeTargetFolder
-
             script.dir(projectDir) {
-                String projectPropertiesText = script.readFile file: 'projectProperties.json'
-                projectProperties = JsonHelper.parseJson(projectPropertiesText, ProjectPropertiesDTO.class)
-                validateIosCertProperties(projectProperties, script)
+
+                validateIosCertProperties()
 
                 absAppleCertPath = [script.pwd(), projectProperties.iOSP12FilePath].join('/')
                 absAppleMobileProvisionPath = [script.pwd(), projectProperties.iOSMobileProvision].join('/')
@@ -496,4 +552,25 @@ class AllChannels implements Serializable {
         }
     }
 
+    protected final void copyProtectedModeKeys() {
+        def isUnix = script.isUnix()
+        script.dir(projectDir) {
+
+            validateProtectedModeProperties()
+
+            String absPublicKeyFilePath = [script.pwd(), projectProperties.protectedModePublicKey].join(separator)
+            String absPrivateKeyFilePath = [script.pwd(), projectProperties.protectedModePrivateKey].join(separator)
+
+            def targetDir = ['..', "__encryptionkeys"].join(separator)
+            script.shellCustom("mkdir -p $targetDir", isUnix)
+
+            // Fin key directory creation will be done as part of - APPFACT-1365
+            def targetFinDir = ['..', "__encryptionkeys", "fin"].join(separator)
+            script.shellCustom("mkdir -p $targetFinDir", isUnix)
+
+            def copyCmd = script.isUnix() ? 'cp' : 'copy'
+            script.shellCustom([copyCmd, absPublicKeyFilePath, targetDir].join(' '), isUnix)
+            script.shellCustom([copyCmd, absPrivateKeyFilePath, targetDir].join(' '), isUnix)
+        }
+    }
 }

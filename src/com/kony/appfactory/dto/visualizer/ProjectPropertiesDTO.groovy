@@ -22,6 +22,11 @@ class ProjectPropertiesDTO implements Serializable {
     @SerializedName("developmentMethod")
     String developmentMethod
 
+    @SerializedName("protectedModePublicKey")
+    String protectedModePublicKey
+    @SerializedName("protectedModePrivateKey")
+    String protectedModePrivateKey
+
     @Override
     String toString() {
         return "keyStorePassword : $keyStorePassword \n" +
@@ -31,7 +36,8 @@ class ProjectPropertiesDTO implements Serializable {
                 "iOSP12Password : $iOSP12Password \n" +
                 "iOSP12FilePath : $iOSP12FilePath \n" +
                 "iOSMobileProvision: $iOSMobileProvision \n" +
-                "developmentMethod : $developmentMethod \n"
-
+                "developmentMethod : $developmentMethod \n" +
+                "protectedModePublicKey : $protectedModePublicKey \n" +
+                "protectedModePrivateKey : $protectedModePrivateKey \n"
     }
 }

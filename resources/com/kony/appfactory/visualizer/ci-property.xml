@@ -124,6 +124,12 @@
         <condition property="iosBundleVersion" value="${env.IOS_BUNDLE_VERSION}" else="">
             <isset property="env.IOS_BUNDLE_VERSION"/>
         </condition>
+        <condition property="iosBundleId" value="${env.IOS_BUNDLE_ID}" else="">
+            <isset property="env.IOS_BUNDLE_ID"/>
+        </condition>
+        <condition property="androidBundleId" value="${env.ANDROID_PACKAGE_NAME}" else="">
+            <isset property="env.ANDROID_PACKAGE_NAME"/>
+        </condition>
         <condition property="cloudUsername" value="${env.CLOUD_USERNAME}" else="">
             <isset property="env.CLOUD_USERNAME"/>
         </condition>
@@ -194,6 +200,8 @@
             <entry key="android.packagename" value="${androidPackageName}"/>
             <entry key="android.versioncode" value="${androidVersionCode}"/>
             <entry key="ios.bundleversion" value="${iosBundleVersion}"/>
+            <entry key="iphonebundleidentifierkey" value="${iosBundleId}"/>
+            <entry key="android.packagename" value="${androidBundleId}"/>
             <entry key="cloud.username" value="${cloudUsername}"/>
             <!--APPFACT-545, direct assignment leads in adding escape character '\' with all special characters.
                 Instead using replace task to add proper value of password -->
