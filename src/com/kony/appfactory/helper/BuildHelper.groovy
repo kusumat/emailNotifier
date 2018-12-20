@@ -606,7 +606,7 @@ class BuildHelper implements Serializable {
      *
      * @return NodeLabel
      */
-    protected final static getAvailableNode(resourcesStatus, libraryProperties, script, isThisBuildWithCustomHooksRun) {
+    protected final static getAvailableNode(resourcesStatus, libraryProperties, script, isThisBuildWithCustomHooksRun, channelOs) {
         def iosNodeLabel = libraryProperties.'ios.node.label'
         def winNodeLabel = libraryProperties.'windows.node.label'
 
@@ -648,7 +648,7 @@ class BuildHelper implements Serializable {
         } else if (winResourceStatus == false && macResourceStatus == true) {
             return winNodeLabel
         } else {
-            return winNodeLabel + " || " + iosNodeLabel
+            return (channelOs == 'Android') ? libraryProperties.'android.node.label' : libraryProperties.'spa.node.label'
         }
     }
 

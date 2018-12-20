@@ -218,7 +218,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                     validateBuildParameters(script.params)
                 }
                 /* Allocate a slave for the run */
-                script.node(libraryProperties.'test.automation.node.label') {
+                script.node(libraryProperties.'test.dweb.automation.node.label') {
 
                     pipelineWrapper("DesktopWeb", {
                         /*

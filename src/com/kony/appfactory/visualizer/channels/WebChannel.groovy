@@ -118,7 +118,7 @@ class WebChannel extends Channel {
                  */
                 resourceList = BuildHelper.getResourcesList()
                 isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
-                nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild)
+                nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild, channelOs)
 
                 script.node(nodeLabel) {
                     pipelineWrapper {

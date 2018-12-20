@@ -495,7 +495,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 }
 
                 /* Allocate a slave for the run */
-                script.node(libraryProperties.'test.automation.node.label') {
+                script.node(libraryProperties.'test.native.aws.automation.node.label') {
 
                     pipelineWrapper ("Native", {
                         /*

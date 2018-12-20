@@ -166,7 +166,7 @@ class AndroidChannel extends Channel {
                     */
                     resourceList = BuildHelper.getResourcesList()
                     isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
-                    nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild)
+                    nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild, channelOs)
                 }
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
