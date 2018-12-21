@@ -1,6 +1,7 @@
 package com.kony.appfactory.dto.visualizer
 
 import com.google.gson.annotations.SerializedName
+import com.kony.appfactory.annotations.Path
 
 class ProjectPropertiesDTO implements Serializable {
 
@@ -10,20 +11,25 @@ class ProjectPropertiesDTO implements Serializable {
     String keyPassword
     @SerializedName("keyAlias")
     String keyAlias
+    @Path
     @SerializedName("keyStoreFilePath")
     String keyStoreFilePath
 
     @SerializedName("iOSP12Password")
     String iOSP12Password
+    @Path
     @SerializedName("iOSP12FilePath")
     String iOSP12FilePath
+    @Path
     @SerializedName("iOSMobileProvision")
     String iOSMobileProvision
     @SerializedName("developmentMethod")
     String developmentMethod
 
+    @Path
     @SerializedName("protectedModePublicKey")
     String protectedModePublicKey
+    @Path
     @SerializedName("protectedModePrivateKey")
     String protectedModePrivateKey
 

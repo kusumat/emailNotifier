@@ -1,5 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
+import com.kony.appfactory.annotations.Path
 import com.kony.appfactory.dto.visualizer.ProjectPropertiesDTO
 import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
@@ -184,6 +185,7 @@ class AllChannels implements Serializable {
                         script.dir(projectDir) {
                             String projectPropertiesText = script.readFile file: projectPropertyFileName
                             projectProperties = JsonHelper.parseJson(projectPropertiesText, ProjectPropertiesDTO.class)
+                            modifyPaths(projectProperties)
                         }
 
 
@@ -580,6 +582,25 @@ class AllChannels implements Serializable {
             def copyCmd = script.isUnix() ? 'cp' : 'copy'
             script.shellCustom([copyCmd, absPublicKeyFilePath, targetDir].join(' '), isUnix)
             script.shellCustom([copyCmd, absPrivateKeyFilePath, targetDir].join(' '), isUnix)
+        }
+    }
+
+    /**
+     * This method help in converting all the paths into OS specific path.
+     * It iterate over all the fields in given object and modify fields
+     * which are Annotated with Path annotation.
+     * @param targetObject
+     */
+    @NonCPS
+    protected void modifyPaths(Object targetObject) {
+        if (targetObject) {
+            targetObject.getClass().declaredFields.each { field ->
+                if (Path.class in field.declaredAnnotations*.annotationType()) {
+                    if (targetObject."$field.name") {
+                        targetObject."$field.name" = String.valueOf(targetObject."$field.name").replace('\\', separator)
+                    }
+                }
+            }
         }
     }
 }
