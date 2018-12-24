@@ -129,7 +129,10 @@ class FacadeTests implements Serializable {
                         script.string(name: 'IOS_MOBILE_NATIVE_BINARY_URL', value: script.params.IOS_MOBILE_NATIVE_BINARY_URL),
                         script.string(name: 'IOS_TABLET_NATIVE_BINARY_URL', value: script.params.IOS_TABLET_NATIVE_BINARY_URL),
                         script.string(name: 'NATIVE_TESTS_URL', value: script.params.NATIVE_TESTS_URL),
-                        script.string(name: 'AVAILABLE_TEST_POOLS', value: script.params.AVAILABLE_TEST_POOLS)
+                        script.string(name: 'AVAILABLE_TEST_POOLS', value: script.params.AVAILABLE_TEST_POOLS),
+                        script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT),
+                        script.string(name: 'APPIUM_VERSION', value: script.params.APPIUM_VERSION),
+                        script.string(name: 'TESTNG_FILES', value: script.params.TESTNG_FILES)
                 ]
     }
 
