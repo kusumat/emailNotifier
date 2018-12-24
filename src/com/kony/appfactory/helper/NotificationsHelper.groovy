@@ -308,9 +308,7 @@ class NotificationsHelper implements Serializable {
             case 'cloudBuild':
                 modifiedBuildTag = 'Build Service'
                 break
-            case 'Export':
-            case 'Import':
-            case 'Publish':
+            case 'fabric':
                 break
             default:
                 modifiedBuildTag = ''
