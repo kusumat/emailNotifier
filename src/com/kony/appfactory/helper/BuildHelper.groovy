@@ -86,10 +86,10 @@ class BuildHelper implements Serializable {
 
 		try{
 			script.httpRequest url: sourceUrl,
-					outputFile: outputFileName, validResponseCodes: '200', timeout:10000
+					outputFile: outputFileName, validResponseCodes: '200', timeout:60000
 		}
 		catch(Exception e){
-			throw new AppFactoryException("Failed to download source code project")
+			throw new AppFactoryException("Failed to download the file", 'ERROR')
 		}
 	}
 

@@ -12,6 +12,7 @@ import com.kony.appfactory.sanitizers.RegexSanitizer
 import com.kony.appfactory.sanitizers.RemoveLinesSanitizer
 import com.kony.appfactory.sanitizers.TextSanitizer
 
+
 /**
  * This class acts as an interface for the json, any update on the json is done through this class
  */
@@ -26,6 +27,13 @@ class BuildStatus implements Serializable {
 
     BuildStatus(script, channelsToRun) {
         buildJson = BuildStatusDTO.getInstance()
+        this.script = script
+        this.channelsToRun = channelsToRun
+        statusFilePath = script.params.BUILD_STATUS_PATH
+    }
+
+    BuildStatus(script, buildJsonDto, channelsToRun) {
+        buildJson = buildJsonDto
         this.script = script
         this.channelsToRun = channelsToRun
         statusFilePath = script.params.BUILD_STATUS_PATH
@@ -70,7 +78,7 @@ class BuildStatus implements Serializable {
     /**
      * This function sets the value for the status at the platform level
      *
-     * @param buildStatus The value refers to the build status value { IN_PROGRESS, SUCCESSFUL, FAILED}* @param type This refers to the platform type for which the status has to be set
+     * @param buildStatus The value refers to the build status value {IN_PROGRESS, SUCCESSFUL, FAILED, CANCELED}* @param type This refers to the platform type for which the status has to be set
      */
     @NonCPS
     void updatePlatformStatus(ChannelType channelType, Status buildStatus) {
@@ -105,7 +113,9 @@ class BuildStatus implements Serializable {
         PlatformsDTO platformDTO = getPlatformByType(type)
         if (platformDTO == null)
             return
-        platformDTO.setLogsLink(downloadURI)
+        if(platformDTO.getLogsLink().equals("null") || !platformDTO.getLogsLink()) {
+            platformDTO.setLogsLink(downloadURI)
+        }
         updatePlatformInStatusJSON(type, platformDTO)
     }
 
@@ -203,7 +213,7 @@ class BuildStatus implements Serializable {
 
     /**
      * This function sets the global build status
-     * @param status{SUCCESS, FAILED, UNSTABLE} are the possible values
+     * @param status{SUCCESS, FAILED, UNSTABLE, CANCELED} are the possible values
      */
     public void updateGlobalStatus(Status status) {
         buildJson.setStatus(status)
@@ -223,13 +233,26 @@ class BuildStatus implements Serializable {
 
     /**
      * This function is used to update channel (Platform) env status to FAILED, update the json with status on S3.
-     * This sets all the selected platforms to Failed and updates the global status to Failed as well
+     * This sets the provided platform to Failed status.
      * @param channelType contains the channel for which the status has to be updated
      */
     void updateFailureBuildStatusOnS3(ChannelType channelType) {
         updatePlatformStatus(channelType, Status.FAILED)
         updateBuildStatusOnS3()
     }
+
+
+    /**
+     * This function sets all the selected platforms to CANCELLED and updates the global status to CANCELLED as well
+     */
+    void updateCancelBuildStatusOnS3() {
+        for (channel in channelsToRun) {
+            updatePlatformStatus(ChannelType.valueOf(channel), Status.CANCELLED)
+        }
+        updateGlobalStatus(Status.CANCELLED)
+        updateBuildStatusOnS3()
+    }
+
 
     /**
      * This function updates the current status json file on to S3
@@ -283,8 +306,9 @@ class BuildStatus implements Serializable {
      * @param channelsToRun contains the list of channels selected by the user to build
      * @param buildLog holds the the console log of jobs.
      */
-    def createAndUploadLogFile(channelsToRun, String buildLog) {
+    def createAndUploadLogFile(String jobName, String buildId, String ExceptionMsg = "") {
 
+        String buildLog = BuildHelper.getBuildLogText(jobName, buildId, script)
         String projectWorkspacePath = script.env.WORKSPACE
 
         /*
@@ -305,14 +329,64 @@ class BuildStatus implements Serializable {
                         new TextSanitizer())
         )
 
-        String sanitizedLogs = sanitizer.sanitize(buildLog)
+        String sanitizedLogs = sanitizer.sanitize(buildLog + '\n' + ExceptionMsg)
         script.writeFile file: CLOUD_BUILD_LOG_FILENAME, text: sanitizedLogs, encoding: 'UTF-8'
         String s3ArtifactPath = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME, 'Builds', 'logs'].join('/')
         String s3Url = AwsHelper.publishToS3 sourceFileName: CLOUD_BUILD_LOG_FILENAME,
                 sourceFilePath: "./", s3ArtifactPath, script
-        updateLogsLink(s3ArtifactPath + "/" + CLOUD_BUILD_LOG_FILENAME)
-        updateBuildStatusOnS3()
 
-        return BuildHelper.createAuthUrl(s3Url, script, true);
+        updateLogsLink(s3ArtifactPath + "/" + CLOUD_BUILD_LOG_FILENAME)
+
+        //finally update the global status of the build and update the status file on S3 for non aborted builds.
+        if (!buildJson.getStatus().equals(Status.CANCELLED))
+            deriveGlobalBuildStatus(channelsToRun)
+        else
+            updateBuildStatusOnS3()
+
+        return BuildHelper.createAuthUrl(s3Url, script, true)
     }
+
+    /**
+     * This function primary help in mapping json content into BuildStatus
+     * @param script
+     * @param statusJsonContent : status content returned from readJSON
+     * @param channelsToRun
+     * @return Build Status object
+     */
+    static BuildStatus getBuildStatusObject(script, statusJsonContent, channelsToRun) {
+
+        BuildStatusDTO buildStatusDTO = BuildStatusDTO.getInstance()
+
+        buildStatusDTO.setBuildNumber(String.valueOf(statusJsonContent['buildNumber']))
+        buildStatusDTO.setStatus(Status.valueOf(String.valueOf(statusJsonContent['status'])))
+        buildStatusDTO.setStartedAt(String.valueOf(statusJsonContent['startedAt']))
+        buildStatusDTO.setLastUpdatedAt(String.valueOf(statusJsonContent['lastUpdatedAt']))
+
+        List<PlatformsDTO> listOfPlatform = new ArrayList<>()
+
+        statusJsonContent['platforms'].each { platformKey ->
+            platformKey.each { platformName, platformJson ->
+                PlatformsDTO platformsDTO = new PlatformsDTO(PlatformType.valueOf(platformName))
+
+                platformsDTO.setMobileStatus(Status.valueOf(String.valueOf(platformJson['mobileStatus'])))
+                platformsDTO.setTabletStatus(Status.valueOf(String.valueOf(platformJson['tabletStatus'])))
+                platformsDTO.setUniversalStatus(Status.valueOf(String.valueOf(platformJson['universalStatus'])))
+                platformsDTO.setLogsLink(String.valueOf(platformJson['logsLink']))
+
+                platformsDTO.setMobileFlag(Boolean.valueOf(String.valueOf(platformJson['mobileFlag'])))
+                platformsDTO.setTabletFlag(Boolean.valueOf(String.valueOf(platformJson['tabletFlag'])))
+                platformsDTO.setUniversalFlag(Boolean.valueOf(String.valueOf(platformJson['universalFlag'])))
+
+                platformsDTO.setMobileDownloadLink(String.valueOf(platformJson['mobileDownloadLink']))
+                platformsDTO.setTabletDownloadLink(String.valueOf((platformJson['tabletDownloadLink'])))
+                platformsDTO.setUniversalDownloadLink(String.valueOf(platformJson['universalDownloadLink']))
+
+                listOfPlatform.add(platformsDTO)
+            }
+        }
+
+        buildStatusDTO.setPlatforms(listOfPlatform)
+        return new BuildStatus(script, buildStatusDTO, channelsToRun)
+    }
+
 }

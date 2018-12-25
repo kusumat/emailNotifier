@@ -7,6 +7,9 @@ import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
 import com.kony.appfactory.helper.CredentialsHelper
+import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException
+import hudson.AbortException
+
 
 /**
  * Implements logic for buildVisualizerApp job.
@@ -474,9 +477,6 @@ class Facade implements Serializable {
             }
         }
 
-        // Prepare Status Json with build in-progress
-        status.prepareStatusJson()
-
         /* Filter Native channels */
         def channelJobName = 'Channels/buildAll'
         def channelJobBuildParameters = getCommonJobCloudBuildParameters()
@@ -504,9 +504,9 @@ class Facade implements Serializable {
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.CHANNEL_ARTIFACTS))
-
             }
         }
+
     }
 
     /**
@@ -640,131 +640,125 @@ class Facade implements Serializable {
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void createPipeline() {
+        /* Allocate a slave for the run */
+        script.node(libraryProperties.'facade.node.label') {
+            try {
+                /* Wrapper for injecting timestamp to the build console output */
+                script.timestamps {
+                    /* Wrapper for colorize the console output in a pipeline build */
+                    script.ansiColor('xterm') {
+                        script.stage('Check provided parameters') {
+                            status.prepareBuildServiceEnvironment(channelsToRun)
+                            status.prepareStatusJson(true)
 
-        try {
-            /* Wrapper for injecting timestamp to the build console output */
-            script.timestamps {
-                /* Wrapper for colorize the console output in a pipeline build */
-                script.ansiColor('xterm') {
-                    script.stage('Check provided parameters') {
-                        script.echoCustom("Running the build in ${buildMode} mode..")
+                            channelsToRun ?: script.echoCustom('Please select at least one channel to build!', 'ERROR');
 
-                        status.prepareBuildServiceEnvironment(channelsToRun)
-                        status.prepareStatusJson()
+                            /* Check common params */
+                            ValidationHelper.checkBuildConfiguration(script)
 
-                        channelsToRun ?: script.echoCustom('Please select at least one channel to build!', 'ERROR');
+                            /* Check params for universal application build */
+                            if (universalAndroid || universalIos) {
+                                ValidationHelper.checkBuildConfigurationForUniversalApp(script)
+                            }
 
-                        /* Check common params */
-                        ValidationHelper.checkBuildConfiguration(script)
+                            /* List of required parameters */
+                            def checkParams = [], eitherOrParameters = []
+                            def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
+                            /* Collect Android channel parameters to check */
+                            def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
+                            if (androidChannels) {
+                                def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
 
-                        /* Check params for universal application build */
-                        if (universalAndroid || universalIos) {
-                            ValidationHelper.checkBuildConfigurationForUniversalApp(script)
+                                if (androidChannels.findAll { it.contains('MOBILE') }) {
+                                    androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
+                                }
+
+                                if (androidChannels.findAll { it.contains('TABLET') }) {
+                                    androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
+                                }
+
+                                if (androidChannels.findAll { it.contains('UNIVERSAL') }) {
+                                    androidMandatoryParams.add('ANDROID_UNIVERSAL_APP_ID')
+                                }
+
+                                if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
+                                    androidMandatoryParams.add('PROTECTED_KEYS')
+                                }
+
+                                checkParams.addAll(androidMandatoryParams)
+                            }
+
+                            /* Collect iOS channel parameters to check */
+                            def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
+
+                            if (iosChannels) {
+
+                                def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION']
+                                eitherOrParameters.add(['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES'])
+
+                                if (iosChannels.findAll { it.contains('MOBILE') }) {
+                                    iosMandatoryParams.add('IOS_MOBILE_APP_ID')
+                                }
+
+                                if (iosChannels.findAll { it.contains('TABLET') }) {
+                                    iosMandatoryParams.add('IOS_TABLET_APP_ID')
+                                }
+
+                                if (iosChannels.findAll { it.contains('UNIVERSAL') }) {
+                                    iosMandatoryParams.add('IOS_UNIVERSAL_APP_ID')
+                                }
+
+                                if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
+                                    iosMandatoryParams.add('PROTECTED_KEYS')
+                                }
+
+                                if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
+                                    iosMandatoryParams.add('IOS_APP_VERSION')
+                                }
+                                checkParams.addAll(iosMandatoryParams)
+                            }
+
+                            /* Collect SPA channel parameters to check */
+                            def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
+
+                            if (spaChannels || desktopWebChannel) {
+                                def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
+
+                                checkParams.addAll(webMandatoryParams)
+                            }
+
+                            /* Check all required parameters depending on user input */
+                            /* For CloudBuild, scan the checkParams list and clean unwanted params */
+                            if (script.params.IS_SOURCE_VISUALIZER) {
+                                def cloudBuildNotExistingParams = [
+                                        'FABRIC_APP_CONFIG', 'PUBLISH_FABRIC_APP', 'RECIPIENTS_LIST',
+                                        'RUN_CUSTOM_HOOKS', 'FORM_FACTOR', 'PROTECTED_KEYS', 'APPLE_ID'
+                                ]
+                                checkParams.removeAll(cloudBuildNotExistingParams)
+                                ValidationHelper.checkBuildConfiguration(script, checkParams)
+                            } else {
+                                ValidationHelper.checkBuildConfiguration(script, checkParams, eitherOrParameters)
+
+                            }
                         }
-						
-                        /* List of required parameters */
-                        def checkParams = [], eitherOrParameters = []
-                        def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
-                        /* Collect Android channel parameters to check */
-                        def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
-                        if (androidChannels) {
-                            def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
 
-                            if (androidChannels.findAll { it.contains('MOBILE') }) {
-                                androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
-                            }
+                        script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun() : prepareRun()
 
-                            if (androidChannels.findAll { it.contains('TABLET') }) {
-                                androidMandatoryParams.add('ANDROID_TABLET_APP_ID')
-                            }
-
-                            if (androidChannels.findAll { it.contains('UNIVERSAL') }) {
-                                androidMandatoryParams.add('ANDROID_UNIVERSAL_APP_ID')
-                            }
-
-                            if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
-                                androidMandatoryParams.add('PROTECTED_KEYS')
-                            }
-
-                            checkParams.addAll(androidMandatoryParams)
-                        }
-
-                        /* Collect iOS channel parameters to check */
-                        def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
-
-                        if (iosChannels) {
-
-                            def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION']
-                            eitherOrParameters.add(['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES'])
-
-                            if (iosChannels.findAll { it.contains('MOBILE') }) {
-                                iosMandatoryParams.add('IOS_MOBILE_APP_ID')
-                            }
-
-                            if (iosChannels.findAll { it.contains('TABLET') }) {
-                                iosMandatoryParams.add('IOS_TABLET_APP_ID')
-                            }
-
-                            if (iosChannels.findAll { it.contains('UNIVERSAL') }) {
-                                iosMandatoryParams.add('IOS_UNIVERSAL_APP_ID')
-                            }
-
-                            if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
-                                iosMandatoryParams.add('PROTECTED_KEYS')
-                            }
-
-                            if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
-                                iosMandatoryParams.add('IOS_APP_VERSION')
-                            }
-                            checkParams.addAll(iosMandatoryParams)
-                        }
-
-                        /* Collect SPA channel parameters to check */
-                        def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
-
-                        if (spaChannels || desktopWebChannel) {
-                            def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
-
-                            checkParams.addAll(webMandatoryParams)
-                        }
-
-                        /* Check all required parameters depending on user input */
-                        /* For CloudBuild, scan the checkParams list and clean unwanted params */
-                        if (script.params.IS_SOURCE_VISUALIZER) {
-                            def cloudBuildNotExistingParams = [
-                                    'FABRIC_APP_CONFIG', 'PUBLISH_FABRIC_APP', 'RECIPIENTS_LIST',
-                                    'RUN_CUSTOM_HOOKS', 'FORM_FACTOR', 'PROTECTED_KEYS', 'APPLE_ID'
-                            ]
-                            checkParams.removeAll(cloudBuildNotExistingParams)
-                            ValidationHelper.checkBuildConfiguration(script, checkParams)
-                        }
-                        else
-                        {
-                            ValidationHelper.checkBuildConfiguration(script, checkParams, eitherOrParameters)
-
-                        }
-                    }
-					
-                    /* Use master for the run */
-                    script.node(libraryProperties.'facade.node.label') {
-
-                        script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun():prepareRun()
-                        try {
-                            /* Expose Fabric configuration */
-                            if (fabricAppConfig && !fabricAppConfig.equals("null")) {
-                                BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-                                    /*
+                        /* Expose Fabric configuration */
+                        if (fabricAppConfig && !fabricAppConfig.equals("null")) {
+                            BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                                /*
                                 Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
                                 to not mask required values during the build we simply need redefine parameter values.
                                 Also, because of the case, when user didn't provide some not mandatory values we can get
                                 null value and script.env object returns only String values,
                                 been added elvis operator for assigning variable value as ''(empty).
-                            */
-                                    script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
-                                            script.echoCustom("Fabric environment value can't be null", 'ERROR')
-                                    fabricEnvironmentName = script.env.FABRIC_ENV_NAME
-                                }
+                                */
+                                script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
+                                    script.echoCustom("Fabric environment value can't be null", 'ERROR')
+                                fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                             }
+                        }
                         /* Run channel builds in parallel */
                         script.parallel(runList)
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
@@ -805,73 +799,90 @@ class Facade implements Serializable {
                             }
                         }
 
-                            /* Check if there are failed or unstable or aborted jobs */
-                            if (jobResultList.contains('FAILURE') ||
-                                    jobResultList.contains('UNSTABLE') ||
-                                    jobResultList.contains('ABORTED')
-                            ) {
-                                /* Set job result to 'UNSTABLE' if above check is true */
-                                script.currentBuild.result = 'UNSTABLE'
-                            } else {
-                                /* Set job result to 'SUCCESS' if above check is false */
-                                script.currentBuild.result = 'SUCCESS'
-                            }
-                        } catch (Exception e) {
-                            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                            script.echoCustom(exceptionMessage, 'WARN')
-                            script.currentBuild.result = 'FAILURE'
-                        } finally {
-                            /*
-                            Been agreed to send notification from buildVisualizerApp job only
-                            if result not equals 'FAILURE', all notification with failed channel builds
-                            will be sent directly from channel job.
-                            */
-                            if(!script.params.IS_SOURCE_VISUALIZER) {
-                                String s3MustHaveAuthUrl
-                                if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                                    s3MustHaveAuthUrl = PrepareMustHaves()
-                                }
-                                setBuildDescription(s3MustHaveAuthUrl)
-                                if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                                    NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts, fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: projectSourceCodeBranch ], true)
-                                }
-                            }
+                        /* Check if there are failed or unstable or aborted jobs */
+                        if (jobResultList.contains('FAILURE') ||
+                                jobResultList.contains('UNSTABLE') ||
+                                jobResultList.contains('ABORTED')
+                        ) {
+                            /* Set job result to 'UNSTABLE' if above check is true */
+                            script.currentBuild.result = 'UNSTABLE'
+                        } else {
+                            /* Set job result to 'SUCCESS' if above check is false */
+                            script.currentBuild.result = 'SUCCESS'
                         }
                     }
                 }
             }
-        }
-        catch(Exception e){
-            String exceptionMessage = (e.getMessage()) ?: 'Something went wrong...'
-            script.ansiColor('xterm') {
-                script.echoCustom(exceptionMessage, "ERROR", false)
-                script.currentBuild.result = 'FAILURE'
-                String buildLogs = BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
 
-                // build logs doesn't contain full logs sometime, so appending exception explicitly.
-                if (script.params.IS_SOURCE_VISUALIZER) {
-                    def consoleLogsLink = cloudBuildCreateAndUploadLogFile(buildLogs + '\n' + exceptionMessage)
-                    NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+            catch (FlowInterruptedException interruptEx) {
+                script.ansiColor('xterm') {
+                    script.echoCustom("Build is Aborted during pipeline is not in a shell step!!", 'ERROR', false)
+                    cancelCloudBuild()
+                    script.currentBuild.result = 'ABORTED'
                 }
             }
-        } finally {
-            credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
+            catch (AbortException abortedEx) {
+                script.ansiColor('xterm') {
+                    script.echoCustom("Build is Aborted during pipeline is in a shell step!!", 'ERROR', false)
+                    cancelCloudBuild()
+                }
+            }
+            catch (Exception e) {
+                String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong ...'
+                script.echoCustom(exceptionMessage, 'WARN')
+                script.currentBuild.result = 'FAILURE'
+
+                if (script.params.IS_SOURCE_VISUALIZER) {
+                    def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
+                    NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+                }
+
+            } finally {
+                /*
+                Been agreed to send notification from buildVisualizerApp job only
+                if result not equals 'FAILURE', all notification with failed channel builds
+                will be sent directly from channel job.
+                */
+                if (!script.params.IS_SOURCE_VISUALIZER) {
+                    String s3MustHaveAuthUrl
+                    if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                        s3MustHaveAuthUrl = PrepareMustHaves()
+                    }
+                    setBuildDescription(s3MustHaveAuthUrl)
+                    if (channelsToRun && script.currentBuild.result != 'FAILURE') {
+                        NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                    }
+                }
+                if (script.params.IS_SOURCE_VISUALIZER) {
+                    credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
+                }
+            }
         }
     }
 
     /**
-     * This function helps in uploading the logfile to the s3 with an exception message, This explicitly allocates a node
-     * Uploads both status json as well as the exception message
-     *
-     * @param message holds the exception message that has to be kept in the log file
+     * Creates job pipeline.
+     * This method is called from the job and contains whole job's pipeline logic.
      */
-    def cloudBuildCreateAndUploadLogFile(String message){
-        script.node(libraryProperties.'facade.node.label') {
-            def buildLogsLink = status.createAndUploadLogFile(channelsToRun, message)
-            // finally update the global status of the build and update status file on S3
-            status.deriveGlobalBuildStatus(channelsToRun)
-
-            return buildLogsLink
+    protected void cancelCloudBuild() {
+        if (script.params.IS_SOURCE_VISUALIZER) {
+            // lets get the downstream job (buildAll) log file from S3 if it exist, and then map it to current statusJson Object
+            // this way, we will get child job status file back to parent to refresh with new status
+            def jsonS3Uri = 's3://' + script.env.S3_BUCKET_NAME + '/' + script.params.BUILD_STATUS_PATH
+            script.shellCustom("set +xe;aws s3 cp ${jsonS3Uri} buildStatus.json --only-show-errors", true)
+            if (script.fileExists("buildStatus.json")) {
+                def statusFileJson = script.readJSON file: "buildStatus.json"
+                status = BuildStatus.getBuildStatusObject(script, statusFileJson, channelsToRun)
+            }
+            else {
+                // if S3 file not exist it means no downstream job invoked, so, lets upload parent job log file then notify
+                def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
+                // Send build results email notification with build status as aborted
+                script.currentBuild.result = 'ABORTED'
+                NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+            }
+            // update status as cancelled and upload latest json to S3
+            status.updateCancelBuildStatusOnS3()
         }
     }
 }

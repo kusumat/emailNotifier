@@ -25,7 +25,11 @@ class RegexSanitizer extends TextSanitizer {
      * @return modified buildLogs
      */
     def sanitize(String text) {
-        def modifiedText = text.replaceAll(regex, replaceTo)
-        return nextSanitizer.sanitize(modifiedText)
+        if(regex) {
+            def modifiedText = text.replaceAll(regex, replaceTo)
+            return nextSanitizer.sanitize(modifiedText)
+        }
+        else
+            return text
     }
 }
