@@ -460,6 +460,9 @@ class Facade implements Serializable {
         cloudCredentialsID = "CloudID-" + buildNumber
         credentialsHelper.addUsernamePassword(cloudCredentialsID, "Cloud Creds", "dummyuser", "dummypasswd")
 
+        // Let's check whether third party authentication is enabled or not
+        BuildHelper.getExternalAuthInfoForCloudBuild(script, script.env['CLOUD_DOMAIN'], script.kony['MF_API_VERSION'], script.env['CLOUD_ENVIRONMENT_GUID'])
+
         /* Collect iOS channel parameters to check */
         def iosChannels = channelsToRun?.findAll { it.matches('^IOS_.*_NATIVE$') }
 

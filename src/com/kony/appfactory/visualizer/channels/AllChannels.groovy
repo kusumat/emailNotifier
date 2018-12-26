@@ -189,6 +189,8 @@ class AllChannels implements Serializable {
                                 modifyPaths(projectProperties)
                             }
 
+                        // Let's check whether third party authentication is enabled or not
+                        BuildHelper.getExternalAuthInfoForCloudBuild(script, script.env['CLOUD_DOMAIN'], script.kony['MF_API_VERSION'], script.env['CLOUD_ENVIRONMENT_GUID'])
 
                             script.stage('Android Task') {
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {

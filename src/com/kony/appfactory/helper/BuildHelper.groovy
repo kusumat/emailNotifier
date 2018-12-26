@@ -8,6 +8,11 @@ import org.jenkins.plugins.lockableresources.LockableResources
 import com.kony.appfactory.helper.ConfigFileHelper
 import groovy.text.SimpleTemplateEngine
 
+import com.kony.AppFactory.fabric.api.oauth1.KonyOauth1Client
+import com.kony.AppFactory.fabric.api.oauth1.dto.KonyExternalAuthN
+import com.kony.AppFactory.fabric.FabricException;
+import com.kony.AppFactory.fabric.FabricUnreachableException
+
 /**
  * Implements logic related to channel build process.
  */
@@ -691,7 +696,8 @@ class BuildHelper implements Serializable {
 
     protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false, String action = "downloads") {
 
-        def authArtifactUrl = artifactUrl;
+        def authArtifactUrl = artifactUrl
+
         if (script.env['CLOUD_ENVIRONMENT_GUID'] && script.env['CLOUD_DOMAIN']) {
             String searchString = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME].join("/")
             //artifactUrl is already encoded but only for spaces. To avoid double encoding, replacing '%20' with space
@@ -847,6 +853,30 @@ class BuildHelper implements Serializable {
             }
         }
         s3MustHaveAuthUrl
+    }
+
+    /**
+     * Set the external (third party) authentication login path as URL_PATH_INFO env variable, if enabled for the provided MF Account.
+     * @param script
+     * @param cloudDomain: The domain of the Kony cloud in which the account is hosted -e.g. kony.com, sit2-kony.com, etc.
+     * @param mfApiVersion: The version of the Kony API to be used for authentication.
+     * @param environmentGuid: The GUID of the Kony environment (MF_ENVIRONMENT_GUID).
+     */
+    protected final static void getExternalAuthInfoForCloudBuild(script, cloudDomain, mfApiVersion, environmentGuid) {
+        try{
+            KonyExternalAuthN externalAuth = KonyOauth1Client.getExternalAuthNConfig(cloudDomain, mfApiVersion, environmentGuid)
+            //If external authentication is enabled.
+            if (externalAuth != null && externalAuth.urlPath != null && !externalAuth.urlPath.trim().isEmpty()) {
+                script.echoCustom("Third party authentication is enabled with url path: ${externalAuth.urlPath}")
+                script.env['URL_PATH_INFO'] = externalAuth.urlPath
+            }
+        }
+        catch (FabricUnreachableException e1) {
+            throw new AppFactoryException("Unable to reach the Kony Cloud..")
+        }
+        catch(FabricException e){
+            throw new AppFactoryException("Looks like Oauth key is no longer accepted.. Please retry..")
+        }
     }
 }
 
