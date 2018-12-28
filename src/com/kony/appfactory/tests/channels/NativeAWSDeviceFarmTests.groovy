@@ -462,7 +462,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         String configFolderPath = 'com/kony/appfactory/configurations'
         /* If Test Spec File is not available inside the source, create one from template. */
         if (!testSpecUploadFilePath) {
-            script.echoCustom("Value of Appium Version is :" + appiumVersion)
+            appiumVersion ? script.echoCustom("Value of Appium Version is :" + appiumVersion) : script.echoCustom("No Appium Version entered, will run with default.")
             /* Load YAML Template */
             ymlTemplate = script.loadLibraryResource(configFolderPath + '/KonyYamlTestSpec.template')
             def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles])
@@ -517,12 +517,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
                             script.stage('Build') {
                                 if(runInCustomTestEnvironment && !appiumVersion) {
-                                    if (script.fileExists("${testFolder}/src/test/resources/${testSpecUploadFileName}")) {
+                                    if (script.fileExists("${testFolder}/src/test/resources/${testSpecUploadFileName}"))
                                         testSpecUploadFilePath = "${testFolder}/src/test/resources/${testSpecUploadFileName}"
-                                    }
-                                    else {
-                                        script.echoCustom("No Appium Version entered and no TestSpec file present in the test folder.", 'ERROR')
-                                    }
                                 }
                                 /* Build Test Automation scripts */
                                 buildTestScripts("Native", testFolder)
