@@ -5,6 +5,7 @@ import com.kony.appfactory.helper.TestsHelper
 import com.kony.appfactory.tests.channels.NativeAWSDeviceFarmTests
 import com.kony.appfactory.tests.channels.DesktopWebTests
 import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.helper.AppFactoryException
 
 import groovyx.net.http.*
 import groovy.util.slurpersupport.*
@@ -76,7 +77,7 @@ class FacadeTests implements Serializable {
     def testsJob
     def testsJobOutput = [:]
 
-    /* To maintain backward compatibility, we are checking whether 'Channels' folder is present udner 'Tests' folder or not and then modifying the subject of mail accordingly */
+    /* To maintain backward compatibility, we are checking whether 'Channels' folder is present under 'Tests' folder or not and then modifying the subject of mail accordingly */
     String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
             "${script.env.JOB_BASE_NAME}" + "Channels/"
 
@@ -242,6 +243,8 @@ class FacadeTests implements Serializable {
     protected final void createPipeline() {
         desktopWebTests = new DesktopWebTests(script)
         nativeAWSDeviceFarmTests = new NativeAWSDeviceFarmTests(script)
+        if(!isNativeApp && !isDesktopWebApp)
+            throw new AppFactoryException("Please provide atleast one of the Native Binary URLs or FABRIC_APP_URL to proceed with the build.", 'ERROR')
         if (isParallelRun()) {
             script.timestamps {
                 /* Wrapper for colorize the console output in a pipeline build */

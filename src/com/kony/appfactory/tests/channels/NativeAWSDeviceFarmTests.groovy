@@ -373,14 +373,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         def nativeAppBinaryUrlParameters = buildParameters.findAll {
             it.key.contains('NATIVE_BINARY_URL') && it.value
         }
-
-        if (runInCustomTestEnvironment) {
-            /*Filter AWS Test Environment related parameters */
-            def awsCustomEnvMandatoryParameters = ['TESTNG_FILES']
-            /* Check all required parameters depending on user input */
-            ValidationHelper.checkBuildConfiguration(script, awsCustomEnvMandatoryParameters)
-        }
-
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
         /* Filter test binaries build parameter. This check is needed to maintain backward compatibility*/
@@ -391,8 +383,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         /* Combine binaries build parameters */
         def nativeUrlParameters = nativeTestBinaryUrlParameter + nativeAppBinaryUrlParameters
 
-        /* Check if at least one application binaries parameter been provided */
-        (!nativeAppBinaryUrlParameters) ?: validateApplicationBinariesURLs(nativeUrlParameters)
+        if (runInCustomTestEnvironment) {
+            /*Filter AWS Test Environment related parameters */
+            def awsCustomEnvMandatoryParameters = ['TESTNG_FILES']
+            /* Check all required parameters depending on user input */
+            ValidationHelper.checkBuildConfiguration(script, awsCustomEnvMandatoryParameters)
+        }
 
         /* Restrict the user to run tests either with Universal build binary or with normal native test binaries,
            fail the build if both options are provided.
@@ -419,6 +415,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         else if (!poolNameParameter && nativeAppBinaryUrlParameters) {
             throw new AppFactoryException("Please provide pool to test on", 'ERROR')
         }
+
+        /* Check if at least one application binaries parameter been provided */
+        (!nativeAppBinaryUrlParameters) ?: validateApplicationBinariesURLs(nativeUrlParameters)
+
     }
 
     /**

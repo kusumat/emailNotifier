@@ -194,9 +194,6 @@ class DesktopWebTests extends RunTests implements Serializable {
         /* Combine desktopWeb binaries build parameters */
         def urlParameters = testBinaryUrlParameter + publishedAppUrlParameters
 
-        /* Check if at least one application binaries parameter been provided */
-        (!publishedAppUrlParameters) ?: validateApplicationBinariesURLs(urlParameters)
-
         if (scmParameters && testBinaryUrlParameter) {
             throw new AppFactoryException("Please provide only one option for the source of test scripts: GIT or TESTS_URL",'ERROR')
         }
@@ -208,6 +205,9 @@ class DesktopWebTests extends RunTests implements Serializable {
         if (!publishedAppUrlParameters && (testBinaryUrlParameter || scmParameters)) {
             throw new AppFactoryException("Please provide at least one of application binaries URL",'ERROR')
         }
+
+        /* Check if at least one application binaries parameter been provided */
+        (!publishedAppUrlParameters) ?: validateApplicationBinariesURLs(urlParameters)
     }
 
     protected createPipeline() {
