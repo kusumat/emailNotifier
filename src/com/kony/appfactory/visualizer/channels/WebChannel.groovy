@@ -15,20 +15,20 @@ class WebChannel extends Channel {
     private fabricCliFileName
     private libraryProperties
     /* Build parameters */
-    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
-    private final desktopWebChannel = script.params.DESKTOP_WEB
-    private final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    private webAppUrl
+    protected final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    protected final desktopWebChannel = script.params.DESKTOP_WEB
+    protected final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
+    protected webAppUrl
     /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
     def appVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
-    private final webAppVersion = script.params[appVersionParameterName]
+    protected final webAppVersion = script.params[appVersionParameterName]
     /* CustomHooks build Parameters*/
-    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
-    private final selectedSpaChannels
+    protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    protected final selectedSpaChannels
 
     /* CustomHookHelper object */
     protected hookHelper
-    private boolean isCustomHookRunBuild
+    protected boolean isCustomHookRunBuild
 
     /* Build agent resources */
     def resourceList
