@@ -170,7 +170,7 @@ class DesktopWebTests extends RunTests implements Serializable {
             switch (browserName) {
                 case 'CHROME':
                     script.shellCustom("mvn test -DDRIVER_PATH=${script.env.CHROME_DRIVER_PATH} -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -Dmaven.test.failure.ignore=true ${scriptArguments}", true)
-                    browserVersionsMap << ["CHROME":getBrowserVersion('CHROME', script.env.CHROME_BROWSER_PATH)]
+                    browserVersionsMap << ["CHROME":script.env.CHROME_VERSION]
                     break
                 default:
                     throw new AppFactoryException("Unable to find the browser.. might be unknown/unsupported browser selected!!", 'ERROR')
