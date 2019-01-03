@@ -1,3 +1,5 @@
+import com.kony.appfactory.helper.AppFactoryException
+
 def call(String printMsg, String logType = 'INFO', boolean isExit = true) {
     def ANSI_PREFIX = '';
     def ANSI_PREFIX_NO_COLOR = '\033[0m'
@@ -11,8 +13,9 @@ def call(String printMsg, String logType = 'INFO', boolean isExit = true) {
         case 'ERROR':
             ANSI_PREFIX = '\033[0;31m' // ansi Red color code
             if (isExit) {
-                error printMsg
+                throw new AppFactoryException(printMsg, 'ERROR')
             }
+            break
         default:
             ANSI_PREFIX = ANSI_PREFIX_NO_COLOR // ansi No color code
             break

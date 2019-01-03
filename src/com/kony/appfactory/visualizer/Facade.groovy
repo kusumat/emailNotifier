@@ -7,6 +7,7 @@ import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
 import com.kony.appfactory.helper.CredentialsHelper
+import com.kony.appfactory.helper.AppFactoryException
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException
 import hudson.AbortException
 
@@ -819,26 +820,38 @@ class Facade implements Serializable {
 
             catch (FlowInterruptedException interruptEx) {
                 script.ansiColor('xterm') {
-                    script.echoCustom("Build is Aborted during pipeline is not in a shell step!!", 'ERROR', false)
                     cancelCloudBuild()
                     script.currentBuild.result = 'ABORTED'
                 }
             }
             catch (AbortException abortedEx) {
                 script.ansiColor('xterm') {
-                    script.echoCustom("Build is Aborted during pipeline is in a shell step!!", 'ERROR', false)
                     cancelCloudBuild()
+                }
+            }
+            catch (AppFactoryException AFEx) {
+                script.ansiColor('xterm') {
+                    String exceptionMessage = (AFEx.getLocalizedMessage()) ?: 'Something went wrong...'
+                    script.echoCustom(exceptionMessage, 'ERROR', false)
+
+                    if (script.params.IS_SOURCE_VISUALIZER) {
+                        def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+                    }
+
+                    script.currentBuild.result = 'FAILURE'
                 }
             }
             catch (Exception e) {
                 String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong ...'
-                script.echoCustom(exceptionMessage, 'WARN')
-                script.currentBuild.result = 'FAILURE'
+                script.echoCustom(exceptionMessage, 'ERROR', false)
 
                 if (script.params.IS_SOURCE_VISUALIZER) {
                     def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
                     NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
                 }
+
+                script.currentBuild.result = 'FAILURE'
 
             } finally {
                 /*
