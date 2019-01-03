@@ -222,8 +222,8 @@ class AllChannels implements Serializable {
 
                                     channelObject.build()
                                 }
-                                catch (Exception ignored) {
-                                    String exceptionMessage = "CI build failed for this project, script returned with exit code"
+                                catch (Exception Ex) {
+                                    String exceptionMessage = (Ex.getLocalizedMessage()) ?: 'Something went wrong...'
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
                                     script.currentBuild.result = "UNSTABLE"
                                 }

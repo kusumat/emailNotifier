@@ -229,16 +229,29 @@ class Channel implements Serializable {
      */
     protected final void visualizerEnvWrapper(closure) {
 
-        /* Project will be considered as Starter Project on below case if  konyplugins.xml  doesn't exist */
+        /* Project will be considered as Starter Project on below case
+         * IS_SOURCE_VISUALIZER parameter is set to true
+         * OR
+         * if konyplugins.xml doesn't exist
+         **/
         def konyPluginExists = script.fileExists file: "konyplugins.xml"
-        script.env.IS_STARTER_PROJECT = !konyPluginExists
+        script.env.IS_STARTER_PROJECT = (ValidationHelper.isValidStringParam(script, 'IS_SOURCE_VISUALIZER') ? script.params.IS_SOURCE_VISUALIZER : false) || !konyPluginExists
 
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion()
 
         script.env.visualizerVersion = visualizerVersion
         script.echoCustom("Current Project version: " + visualizerVersion)
+
+        /* For CloudBuild, validate if CloudBuild Supported for the given project version */
+        if (script.env.IS_STARTER_PROJECT.equals("true")) {
+            def finalFeatureParamsToCheckCISupport = [:]
+            finalFeatureParamsToCheckCISupport.put('CloudBuild', ['featureDisplayName': 'Cloud Build Feature'])
+            ValidationHelper.checkFeatureSupportExist(script, libraryProperties, finalFeatureParamsToCheckCISupport, VisualizerBuildType.ci)
+        }
+
         setVersionBasedProperties(visualizerVersion)
+
 
         /* Get Visualizer dependencies */
         visualizerDependencies = (
