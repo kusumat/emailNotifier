@@ -57,7 +57,7 @@ class BuildHelper implements Serializable {
                 // download the zip from non-protected url
                 downloadFile(script, downloadURL, projectFileName)
                 // extract the final downloaded zip
-                script.unzip zipFile: projectFileName
+                script.shellCustom("unzip -q ${projectFileName}", true)
             }
         } else {
             throw new AppFactoryException("Unknown checkout source type found!!", "ERROR")
@@ -90,8 +90,7 @@ class BuildHelper implements Serializable {
 	protected static final void downloadFile(script, String sourceUrl, String outputFileName){
 
 		try{
-			script.httpRequest url: sourceUrl,
-					outputFile: outputFileName, validResponseCodes: '200', timeout:60000
+			script.shellCustom("curl -o \'${outputFileName}\' \'${sourceUrl}\'", true)
 		}
 		catch(Exception e){
 			throw new AppFactoryException("Failed to download the file", 'ERROR')
