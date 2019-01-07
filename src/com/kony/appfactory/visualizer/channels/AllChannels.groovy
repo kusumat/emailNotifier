@@ -244,6 +244,7 @@ class AllChannels implements Serializable {
                                         String exceptionMessage = "Build artifacts for ${it.key} were not found!!"
                                         script.echoCustom(exceptionMessage, 'ERROR', false)
                                         channelArtifacts.add([channelPath: it.value.channelPath, extensionType: 'APK'])
+                                        buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(it.key))
                                         channelObjects.remove(it.key)
                                         script.currentBuild.result = "UNSTABLE"
                                     }
@@ -263,6 +264,7 @@ class AllChannels implements Serializable {
                                         String exceptionMessage = "Build artifacts for ${it.key} were not found!!"
                                         script.echoCustom(exceptionMessage, 'ERROR', false)
                                         channelArtifacts.add([channelPath: it.value.channelPath, extensionType: 'IPA'])
+                                        buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(it.key))
                                         channelObjects.remove(it.key)
                                         script.currentBuild.result = "UNSTABLE"
                                     }

@@ -190,10 +190,19 @@ class IosChannel extends Channel {
 
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectGenPath) {
-                script.shellCustom("""
+                try {
+                    script.shellCustom("""
                     cp ${karArtifact.path}/${karArtifact.name} .
                     perl extract.pl ${karArtifact.name}
                 """, true)
+                }
+                catch (Exception err) {
+                    def karExtractErrorLog = "error.txt"
+                    if (script.fileExists(karExtractErrorLog)) {
+                        script.shellCustom("cat ${karExtractErrorLog}", true)
+                    }
+                    throw new AppFactoryException("KAR extraction failed!!", 'ERROR')
+                }
             }
             
             script.stage('Check PreBuild IPA Hook Points') {

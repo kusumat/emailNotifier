@@ -45,19 +45,20 @@ class EmailTemplateHelper implements Serializable {
                     td {
                         table(style: "width:100%", class: "text-color table-border cell-spacing") {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
-                            if (binding.fabricEnvironmentName)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric Environment Name:', binding.fabricEnvironmentName)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
                             if (binding.triggeredBy)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
 
                             if(templateType.equals('buildVisualizerApp')) {
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
                                 EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', binding.build.number)
                             }
 
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
+                            
+                            if (binding.fabricEnvironmentName)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric Environment Name:', binding.fabricEnvironmentName)
                         }
                     }
                 }
