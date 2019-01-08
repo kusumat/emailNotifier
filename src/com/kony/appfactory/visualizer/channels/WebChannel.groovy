@@ -12,8 +12,8 @@ import groovy.json.JsonSlurper
  * Implements logic for WEB channel builds.
  */
 class WebChannel extends Channel {
-    private fabricCliFileName
-    private libraryProperties
+    protected fabricCliFileName
+    protected libraryProperties
     /* Build parameters */
     protected final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     protected final desktopWebChannel = script.params.DESKTOP_WEB
