@@ -391,6 +391,7 @@ class IosChannel extends Channel {
             profileEnvVars.add("sigh_${appIdentifier}_${iosDistributionType}=${UUID}")
 
             // Preparing the commands to copy the profile files. If we run the copy command here, we are getting the java.io.NotSerializableException
+            copyCMDs.add("mkdir -p ${profileHome}")
             copyCMDs.add("cp -f ${filePath} ${profileHome}/${UUID}.mobileprovision")
         }
         
