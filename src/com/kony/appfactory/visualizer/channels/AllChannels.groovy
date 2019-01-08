@@ -187,6 +187,11 @@ class AllChannels implements Serializable {
                                 String projectPropertiesText = script.readFile file: projectPropertyFileName
                                 projectProperties = JsonHelper.parseJson(projectPropertiesText, ProjectPropertiesDTO.class)
                                 modifyPaths(projectProperties)
+
+                                // Removed android Keystore path to STOP CI build auto signing
+                                def jsonContent = script.readJSON text: projectPropertiesText
+                                jsonContent['keyStoreFilePath'] = ''
+                                script.writeJSON file: projectPropertyFileName, json: jsonContent
                             }
 
                         // Let's check whether third party authentication is enabled or not
