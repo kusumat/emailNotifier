@@ -107,6 +107,7 @@ class NotificationsHelper implements Serializable {
         /* Load base e-mail template from library resources */
         String baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
         /* Get template content depending on templateType(job name) */
+        
         String templateContent = getTemplateContent(script, templateType, templateData)
 
         def productName = templateType.equals('cloudBuild') ? 'Build Service' : 'App Factory'
@@ -247,7 +248,7 @@ class NotificationsHelper implements Serializable {
                         log     : script.currentBuild.rawBuild.getLog(100)
                 ]
         ] + templateData
-
+        
         switch (templateType) {
             case 'buildVisualizerApp':
             case 'cloudBuild':

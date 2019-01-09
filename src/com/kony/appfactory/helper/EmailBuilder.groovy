@@ -20,15 +20,15 @@ class EmailBuilder {
     }
 
     @NonCPS
-    static void addBuildSummaryAnchorRow(htmlBuilder, key, url) {
+    static void addBuildSummaryAnchorRow(htmlBuilder, key, url, buildNo) {
         htmlBuilder.tr {
             td(style: "width:22%;text-align:right", key)
             td {
-                a(href: url, url)
+                a(href: url, buildNo)
             }
         }
     }
-
+    
     @NonCPS
     static void addSimpleArtifactTableRowSuccess(htmlBuilder, binding) {
         htmlBuilder.tr {

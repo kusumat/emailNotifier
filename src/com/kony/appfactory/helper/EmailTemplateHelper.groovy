@@ -50,8 +50,8 @@ class EmailTemplateHelper implements Serializable {
 
                             if(templateType.equals('buildVisualizerApp')) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
-                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', binding.build.number)
+                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
                             }
 
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
@@ -235,7 +235,7 @@ class EmailTemplateHelper implements Serializable {
                             tr {
                                 td(style: "width:22%;text-align:right", 'Build URL:')
                                 td {
-                                    a(href: binding.build.url, "${binding.build.url}")
+                                    a(href: binding.build.url, "${binding.build.number}")
                                 }
                             }
                             tr {
@@ -244,7 +244,7 @@ class EmailTemplateHelper implements Serializable {
                             }
                             tr {
                                 td(style: "width:22%;text-align:right", 'Build number:')
-                                td(class: "table-value", binding.build.number)
+                                td(class: "table-value", "#" + binding.build.number)
                             }
                             tr {
                                 td(style: "width:22%;text-align:right", 'Date of build:')
@@ -304,7 +304,7 @@ class EmailTemplateHelper implements Serializable {
                                 tr {
                                     td(style: "width:30%;text-align:right", 'Build URL: ')
                                     td {
-                                        a(href: binding.build.url, "${binding.build.url}")
+                                        a(href: binding.build.url, "${binding.build.number}")
                                     }
                                 }
                                 tr {
@@ -846,7 +846,7 @@ class EmailTemplateHelper implements Serializable {
                             tr {
                                 td(style: "width:22%;text-align:right", 'Build URL:')
                                 td {
-                                    a(href: binding.build.url, "${binding.build.url}")
+                                    a(href: binding.build.url, "${binding.build.number}")
                                 }
                             }
 

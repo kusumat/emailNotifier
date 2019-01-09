@@ -870,7 +870,7 @@ class Facade implements Serializable {
                     }
                     setBuildDescription(s3MustHaveAuthUrl)
                     if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                        NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts], true)
+                        NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts, fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: projectSourceCodeBranch], true)
                     }
                 }
                 if (script.params.IS_SOURCE_VISUALIZER) {
