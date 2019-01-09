@@ -43,7 +43,7 @@ class TestsHelper implements Serializable {
      * @return list of channel artifacts.
      */
     protected final static getArtifactObjects(artifacts) {
-        (artifacts) ? Eval.me(artifacts) : [name: '', url: '']
+        (artifacts) ? Eval.me(artifacts) : [name: '', url: '', path: '']
     }
 
     /**
