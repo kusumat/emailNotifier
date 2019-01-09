@@ -769,18 +769,21 @@ class Facade implements Serializable {
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
                         if (availableTestPools || runDesktopwebTests) {
                             script.stage('TESTS') {
+
                                 def testAutomationJobParameters = getTestAutomationJobParameters() ?:
                                         script.echoCustom("runTests job parameters are missing!", 'ERROR')
                                 def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
                                         script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
-                                def awsCustomEnvParameters
+
+                                def awsCustomEnvParameters = []
+
                                 if (runInCustomTestEnvironment) {
                                     /* Filter AWS Test Environment related parameters */
                                     awsCustomEnvParameters = [script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: runInCustomTestEnvironment),
                                                                   script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"),
                                                                   script.string(name: 'TESTNG_FILES', value: "${testngFiles}")
                                     ]
-                                    }
+                                }
                                 String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
                                         "${script.env.JOB_BASE_NAME}" -
                                         'Builds/'
