@@ -776,7 +776,7 @@ class Facade implements Serializable {
                                 def awsCustomEnvParameters
                                 if (runInCustomTestEnvironment) {
                                     /* Filter AWS Test Environment related parameters */
-                                    awsCustomEnvParameters = [script.string(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: "${runInCustomTestEnvironment}"),
+                                    awsCustomEnvParameters = [script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: "${runInCustomTestEnvironment}"),
                                                                   script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"),
                                                                   script.string(name: 'TESTNG_FILES', value: "${testngFiles}")
                                     ]
