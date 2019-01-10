@@ -287,7 +287,6 @@ class EmailTemplateHelper implements Serializable {
      */
     @NonCPS
     protected static String createRunTestContent(Map binding) {
-        def suppressedArtifacts = ['Customer Artifacts Log', 'Test spec shell script', 'Test spec file']
         markupBuilderWrapper { MarkupBuilder htmlBuilder ->
             htmlBuilder.table(style: "width:100%") {
                 tr {
@@ -732,6 +731,7 @@ class EmailTemplateHelper implements Serializable {
 
     @NonCPS
     protected static void displayDetailedSummaryOfNativeTestResults(htmlBuilder, binding) {
+        def suppressedArtifacts = ['Customer Artifacts Log', 'Test spec shell script', 'Test spec file']
         htmlBuilder.table(style: "width:100%") {
             tr {
                 td(style: "text-align:left", class: "text-color") {
@@ -787,18 +787,20 @@ class EmailTemplateHelper implements Serializable {
                                                         test.result
                                                 )
                                             }
-                                            for (artifact in test.artifacts) {
-                                                tr {
-                                                    th(
-                                                            class: "testresults-left-aligned",
-                                                            artifact.name + '.' + artifact.extension
-                                                    )
-                                                    th(
-                                                            class: "testresults-left-aligned",
-                                                            {
-                                                                a(href: artifact.authurl, target: '_blank', 'Download File')
-                                                            }
-                                                    )
+                                            for (artifact in test.artifacts.sort { a, b -> a.name <=> b.name }) {
+                                                if (!suppressedArtifacts.contains(artifact.name)) {
+                                                    tr {
+                                                        th(
+                                                                class: "testresults-left-aligned",
+                                                                artifact.name + '.' + artifact.extension
+                                                        )
+                                                        th(
+                                                                class: "testresults-left-aligned",
+                                                                {
+                                                                    a(href: artifact.authurl, target: '_blank', 'Download File')
+                                                                }
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
