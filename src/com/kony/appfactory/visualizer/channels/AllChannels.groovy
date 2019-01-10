@@ -294,8 +294,8 @@ class AllChannels implements Serializable {
                                                         "skipping signing (artifact already signed with debug certificate)!")
                                             }
 
-                                            /* Rename artifacts for publishing */
-                                            android_channel.artifacts = android_channel.renameArtifacts(android_channel.buildArtifacts).first()
+                                            /* artifacts for publishing */
+                                            android_channel.artifacts = android_channel.buildArtifacts.first()
 
                                             /* Publish Android artifact to S3 */
                                             String artifactUrl = AwsHelper.publishToS3 bucketPath: android_channel.s3ArtifactPath,
@@ -334,8 +334,8 @@ class AllChannels implements Serializable {
                                             /* Get ipa file name and path */
                                             def foundArtifacts = ios_channel.getArtifactLocations('ipa')
 
-                                            /* Rename artifacts for publishing */
-                                            ios_channel.ipaArtifact = ios_channel.renameArtifacts(foundArtifacts).first()
+                                            /* artifacts for publishing */
+                                            ios_channel.ipaArtifact = foundArtifacts.first()
 
                                             /* Publish iOS ipa artifact to S3 */
                                             ios_channel.ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: ios_channel.s3ArtifactPath,

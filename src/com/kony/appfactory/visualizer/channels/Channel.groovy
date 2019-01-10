@@ -188,7 +188,7 @@ class Channel implements Serializable {
 
         /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */
         fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
-        s3ArtifactPath = ['Builds', fabricEnvName, channelPath].join('/')
+        s3ArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
         artifactExtension = getArtifactExtension(channelVariableName) ?:

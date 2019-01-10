@@ -23,7 +23,7 @@ class BuildStatus implements Serializable {
     private static String buildService = "BS"
     private static String statusFilePath
     private channelsToRun
-    protected final String CLOUD_BUILD_LOG_FILENAME = 'consolelog_' + script.env.BUILD_NUMBER + '.txt'
+    protected final String CLOUD_BUILD_LOG_FILENAME = 'consolelog.txt'
 
     BuildStatus(script, channelsToRun) {
         buildJson = BuildStatusDTO.getInstance()
@@ -331,7 +331,7 @@ class BuildStatus implements Serializable {
 
         String sanitizedLogs = sanitizer.sanitize(buildLog + '\n' + ExceptionMsg)
         script.writeFile file: CLOUD_BUILD_LOG_FILENAME, text: sanitizedLogs, encoding: 'UTF-8'
-        String s3ArtifactPath = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME, 'Builds', 'logs'].join('/')
+        String s3ArtifactPath = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME, 'Builds', 'logs', script.env.BUILD_NUMBER].join('/')
         String s3Url = AwsHelper.publishToS3 sourceFileName: CLOUD_BUILD_LOG_FILENAME,
                 sourceFilePath: "./", s3ArtifactPath, script
 

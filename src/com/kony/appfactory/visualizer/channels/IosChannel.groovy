@@ -344,7 +344,7 @@ class IosChannel extends Channel {
 
             /* Publish iOS KAR artifact to S3 */
             def karArtifacts = getArtifactLocations(artifactExtension)
-            karArtifact = renameArtifacts(karArtifacts).first()
+            karArtifact = karArtifacts.first()
             karArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                     sourceFileName: karArtifact.name, sourceFilePath: karArtifact.path, script
             authenticatedKARArtifactUrl = BuildHelper.createAuthUrl(karArtifactUrl, script, false)
