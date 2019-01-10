@@ -285,8 +285,8 @@ class Facade implements Serializable {
         } else if (spaChannelsToBuildJobParameters) {
             commonWebParameters +  spaChannelsToBuildJobParameters
         }
-        
-        commonWebParameters
+        else
+            commonWebParameters
     }
 
     /**
