@@ -2,14 +2,10 @@ package com.kony.appfactory.tests.channels
 
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
-import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.TestsHelper
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.NotificationsHelper
 
-import groovyx.net.http.*
-import groovy.util.slurpersupport.*
-import java.util.*
 
 class DesktopWebTests extends RunTests implements Serializable {
 
@@ -24,10 +20,7 @@ class DesktopWebTests extends RunTests implements Serializable {
 
     String surefireReportshtml = ""
 
-    /*Added backward compatibility check here so that it works for both NATIVE_TESTS_URL and TESTS_BINARY_URL */
-    private testPackage = BuildHelper.getCurrentParamValue(script, 'NATIVE_TESTS_URL', 'TESTS_BINARY_URL')?: 'jobWorkspace'
-
-    private runTests = false
+    private boolean isTestScriptGiven = script.params['DESKTOPWEB_TESTS_URL'] ? true : false
 
     /**
      * Class constructor.
@@ -228,7 +221,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                         script.cleanWs deleteDirs: true
 
                         /* Build test automation scripts if URL with test binaries was not provided */
-                        if (testPackage == 'jobWorkspace') {
+                        if (!isTestScriptGiven) {
                             script.stage('Checkout') {
                                 BuildHelper.checkoutProject script: script,
                                         projectRelativePath: checkoutRelativeTargetFolder,
@@ -241,75 +234,67 @@ class DesktopWebTests extends RunTests implements Serializable {
                             script.stage('Build') {
                                 /* Build Test Automation scripts */
                                 buildTestScripts("DesktopWeb", testFolder)
-                                /* Set runTests flag to true when build is successful,otherwise set it to false (in catch block) */
-                                runTests = true
                             }
                         }
                     })
 
-                    /* To make runTests flag true when Tests URL is given instead of passing SCM details */
-                    if (testPackage != 'jobWorkspace') {
-                        runTests = true
-                    }
-
                     /* Run tests on provided binaries */
-                    if (runTests) {
-                        try {
-                                script.stage('Run the Tests') {
-                                    runTests(script.params.AVAILABLE_BROWSERS, testFolder)
+
+                    try {
+                        script.stage('Run the Tests') {
+                            runTests(script.params.AVAILABLE_BROWSERS, testFolder)
+                        }
+                        script.stage('Get Test Results') {
+                            desktopTestRunResults = fetchTestResults(testFolder)
+                            if (!desktopTestRunResults)
+                                throw new AppFactoryException('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
+                            publishTestsResults()
+                        }
+                        script.stage('Check PostTest Hook Points') {
+                            def testsResultsStatus = true
+                            if (!desktopTestRunResults)
+                                throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                            testsResultsStatus = !testStatusMap.any { it.value != "PASS" }
+                            testsResultsStatus ?: (script.currentBuild.result = 'UNSTABLE')
+
+                            if (runCustomHook) {
+                                if (testsResultsStatus) {
+                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
+                                    if (!isSuccess)
+                                        throw new Exception("Something went wrong with the Custom hooks execution.")
+                                } else {
+                                    script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
                                 }
-                                script.stage('Get Test Results') {
-                                    desktopTestRunResults = fetchTestResults(testFolder)
-                                    if (!desktopTestRunResults)
-                                        throw new AppFactoryException('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
-                                    publishTestsResults()
-                                }
-                                script.stage('Check PostTest Hook Points'){
-                                    def testsResultsStatus = true
-                                    if (!desktopTestRunResults)
-                                        throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
-                                    testsResultsStatus = !testStatusMap.any {it.value != "PASS"}
-                                    testsResultsStatus ?: (script.currentBuild.result = 'UNSTABLE')
-
-                                    if(runCustomHook) {
-                                        if(testsResultsStatus) {
-                                            def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
-                                            if (!isSuccess)
-                                                throw new Exception("Something went wrong with the Custom hooks execution.")
-                                        } else {
-                                            script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
-                                        }
-                                    }
-                                    else{
-                                        script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
-                                    }
-                                }
-
-                        } catch (AppFactoryException e) {
-                            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                            script.echoCustom(exceptionMessage, e.getErrorType(), false)
-                            script.currentBuild.result = 'FAILURE'
-                        } catch (Exception e) {
-                            String exceptionMessage = (e.toString()) ?: 'Something went wrong...'
-                            script.echoCustom(exceptionMessage,'WARN')
-                            script.currentBuild.result = 'FAILURE'
-                        } finally {
-                            /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
-                            script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
-                            script.env['LOG_FILES_LIST'] = listofLogFiles?.inspect()
-                            script.env['SCREENSHOTS_LIST'] = listofScreenshots?.inspect()
-
-                            NotificationsHelper.sendEmail(script, 'runTests', [
-                                    desktopruns: desktopTestRunResults,
-                                    listofLogFiles: listofLogFiles,
-                                    listofScreenshots: listofScreenshots
-                            ], true)
-                            if (script.currentBuild.result != 'SUCCESS') {
-                                TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties)
-                                (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
-
+                            } else {
+                                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
                             }
                         }
+
+                    } catch (AppFactoryException e) {
+                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                        script.echoCustom(exceptionMessage, e.getErrorType(), false)
+                        script.currentBuild.result = 'FAILURE'
+                    } catch (Exception e) {
+                        String exceptionMessage = (e.toString()) ?: 'Something went wrong...'
+                        script.echoCustom(exceptionMessage, 'WARN')
+                        script.currentBuild.result = 'FAILURE'
+                    } finally {
+                        /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
+                        script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
+                        script.env['LOG_FILES_LIST'] = listofLogFiles?.inspect()
+                        script.env['SCREENSHOTS_LIST'] = listofScreenshots?.inspect()
+
+                        NotificationsHelper.sendEmail(script, 'runTests', [
+                                desktopruns      : desktopTestRunResults,
+                                listofLogFiles   : listofLogFiles,
+                                listofScreenshots: listofScreenshots
+                        ], true)
+                        if (script.currentBuild.result != 'SUCCESS') {
+                            TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties)
+                            (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
+
+                        }
+
                     }
                 }
             }
