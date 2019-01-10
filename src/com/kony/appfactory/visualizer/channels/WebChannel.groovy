@@ -18,7 +18,7 @@ class WebChannel extends Channel {
     protected final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     protected final desktopWebChannel = script.params.DESKTOP_WEB
     protected final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected webAppUrl
+    protected String webAppUrl
     /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
     def appVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     protected final webAppVersion = script.params[appVersionParameterName]
@@ -232,12 +232,15 @@ class WebChannel extends Channel {
                                 String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
                                         sourceFileName: artifactName, sourceFilePath: artifactPath, script
 
+
+
                                 String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
                                 /* Add War/Zip to MustHaves Artifacts */
                                 mustHaveArtifacts.add([name: artifact.name, path: artifactPath])
                                 channelArtifacts.add([
-                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, webappurl: webAppUrl
+                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl
                                 ])
+                                if (publishFabricApp) channelArtifacts.add([webAppUrl: webAppUrl])
                             }
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                         }
