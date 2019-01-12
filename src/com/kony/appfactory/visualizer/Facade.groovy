@@ -647,11 +647,11 @@ class Facade implements Serializable {
     protected final void createPipeline() {
         /* Allocate a slave for the run */
         script.node(libraryProperties.'facade.node.label') {
-            try {
-                /* Wrapper for injecting timestamp to the build console output */
-                script.timestamps {
-                    /* Wrapper for colorize the console output in a pipeline build */
-                    script.ansiColor('xterm') {
+            /* Wrapper for colorize the console output in a pipeline build */
+            script.ansiColor('xterm') {
+                try {
+                    /* Wrapper for injecting timestamp to the build console output */
+                    script.timestamps {
                         script.stage('Check provided parameters') {
                             status.prepareBuildServiceEnvironment(channelsToRun)
                             status.prepareStatusJson(true)
@@ -760,7 +760,7 @@ class Facade implements Serializable {
                                 been added elvis operator for assigning variable value as ''(empty).
                                 */
                                 script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
-                                    script.echoCustom("Fabric environment value can't be null", 'ERROR')
+                                        script.echoCustom("Fabric environment value can't be null", 'ERROR')
                                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                             }
                         }
@@ -780,8 +780,8 @@ class Facade implements Serializable {
                                 if (runInCustomTestEnvironment) {
                                     /* Filter AWS Test Environment related parameters */
                                     awsCustomEnvParameters = [script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: runInCustomTestEnvironment),
-                                                                  script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"),
-                                                                  script.string(name: 'TESTNG_FILES', value: "${testngFiles}")
+                                                              script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"),
+                                                              script.string(name: 'TESTNG_FILES', value: "${testngFiles}")
                                     ]
                                 }
                                 String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
@@ -820,21 +820,15 @@ class Facade implements Serializable {
                         }
                     }
                 }
-            }
 
-            catch (FlowInterruptedException interruptEx) {
-                script.ansiColor('xterm') {
+                catch (FlowInterruptedException interruptEx) {
                     cancelCloudBuild()
                     script.currentBuild.result = 'ABORTED'
                 }
-            }
-            catch (AbortException abortedEx) {
-                script.ansiColor('xterm') {
+                catch (AbortException abortedEx) {
                     cancelCloudBuild()
                 }
-            }
-            catch (AppFactoryException AFEx) {
-                script.ansiColor('xterm') {
+                catch (AppFactoryException AFEx) {
                     String exceptionMessage = (AFEx.getLocalizedMessage()) ?: 'Something went wrong...'
                     script.echoCustom(exceptionMessage, 'ERROR', false)
 
@@ -845,36 +839,36 @@ class Facade implements Serializable {
 
                     script.currentBuild.result = 'FAILURE'
                 }
-            }
-            catch (Exception e) {
-                String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong ...'
-                script.echoCustom(exceptionMessage, 'ERROR', false)
+                catch (Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong ...'
+                    script.echoCustom(exceptionMessage, 'ERROR', false)
 
-                if (script.params.IS_SOURCE_VISUALIZER) {
-                    def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
-                    NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
-                }
+                    if (script.params.IS_SOURCE_VISUALIZER) {
+                        def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+                    }
 
-                script.currentBuild.result = 'FAILURE'
+                    script.currentBuild.result = 'FAILURE'
 
-            } finally {
-                /*
+                } finally {
+                    /*
                 Been agreed to send notification from buildVisualizerApp job only
                 if result not equals 'FAILURE', all notification with failed channel builds
                 will be sent directly from channel job.
                 */
-                if (!script.params.IS_SOURCE_VISUALIZER) {
-                    String s3MustHaveAuthUrl
-                    if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                        s3MustHaveAuthUrl = PrepareMustHaves()
+                    if (!script.params.IS_SOURCE_VISUALIZER) {
+                        String s3MustHaveAuthUrl
+                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                            s3MustHaveAuthUrl = PrepareMustHaves()
+                        }
+                        setBuildDescription(s3MustHaveAuthUrl)
+                        if (channelsToRun && script.currentBuild.result != 'FAILURE') {
+                            NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts, fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: projectSourceCodeBranch], true)
+                        }
                     }
-                    setBuildDescription(s3MustHaveAuthUrl)
-                    if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                        NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts, fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: projectSourceCodeBranch], true)
+                    if (script.params.IS_SOURCE_VISUALIZER) {
+                        credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
                     }
-                }
-                if (script.params.IS_SOURCE_VISUALIZER) {
-                    credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
                 }
             }
         }

@@ -12,13 +12,13 @@ def call(String printMsg, String logType = 'INFO', boolean isExit = true) {
             break
         case 'ERROR':
             ANSI_PREFIX = '\033[0;31m' // ansi Red color code
-            if (isExit) {
-                throw new AppFactoryException(printMsg, 'ERROR')
-            }
             break
         default:
             ANSI_PREFIX = ANSI_PREFIX_NO_COLOR // ansi No color code
             break
     }
-    echo "$ANSI_PREFIX [$logType] $printMsg $ANSI_PREFIX_NO_COLOR"
+    if (logType.equals("ERROR") && isExit)
+        throw new AppFactoryException(printMsg, 'ERROR')
+    else
+        echo "$ANSI_PREFIX [$logType] $printMsg $ANSI_PREFIX_NO_COLOR"
 }
