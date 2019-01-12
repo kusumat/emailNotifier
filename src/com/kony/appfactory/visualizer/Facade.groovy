@@ -767,7 +767,7 @@ class Facade implements Serializable {
                         /* Run channel builds in parallel */
                         script.parallel(runList)
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
-                        if (availableTestPools || runDesktopwebTests) {
+                        if (availableTestPools || (runDesktopwebTests && publishFabricApp)) {
                             script.stage('TESTS') {
 
                                 def testAutomationJobParameters = getTestAutomationJobParameters() ?:
