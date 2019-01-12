@@ -37,7 +37,7 @@ class IosChannel extends Channel {
     private final iosAppVersion = script.params.IOS_APP_VERSION
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     private iosDistributionType = script.params.IOS_DISTRIBUTION_TYPE
-    private final iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+    protected iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
         iosMobileAppId : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
         iosTabletAppId : iosUniversalAppId
 
@@ -68,7 +68,16 @@ class IosChannel extends Channel {
         this.iosDistributionType = iosDistributionType
     }
 
-    /**
+    def getIosMobileAppId() {
+        return iosMobileAppId
+    }
+
+    void setIosBundleId() {
+        this.iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+                iosMobileAppId : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+                iosTabletAppId : iosUniversalAppId
+    }
+/**
      * Class constructor.
      *
      * @param script pipeline object.
@@ -380,7 +389,7 @@ class IosChannel extends Channel {
                 appIdentifier = iosBundleId
                 isValidBundleID = true
             }
-            
+
             if(profileInfo.isProfileExpired())
                 throw new AppFactoryException("Provisioning profile is expired. Please check and upload the new provisioing profile for the app identifier : ${appIdentifier}.", "ERROR")
                 

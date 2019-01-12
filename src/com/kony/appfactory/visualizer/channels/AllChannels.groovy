@@ -323,11 +323,12 @@ class AllChannels implements Serializable {
                                 /* Search for build artifacts for iOS and publish to S3 */
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
                                     def ios_channel_id = it.key
-                                    def ios_channel = it.value
+                                    IosChannel ios_channel = it.value
                                     try {
                                         ios_channel.pipelineWrapper {
                                             ios_channel.fetchFastlaneConfig()
                                             iosSigningCloudWrapper(script, ios_channel) {
+                                                ios_channel.setIosBundleId();
                                                 ios_channel.createIPA()
                                             }
 
