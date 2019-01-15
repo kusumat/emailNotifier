@@ -76,7 +76,7 @@ class AwsHelper implements Serializable {
         String s3BucketRegion = (script.env.S3_BUCKET_REGION) ?: script.echoCustom("Bucket region value can't be null!", 'ERROR')
         String bucketName = (script.env.S3_BUCKET_NAME) ?: script.echoCustom("Bucket name value can't be null!", 'ERROR')
 
-        finalBucketPath = [bucketName, finalBucketPath].join('/')
+        String S3BucketPath = [bucketName, finalBucketPath].join('/')
 
         String successMessage = fileName + ' published successfully.'
         String errorMessage = 'Failed to publish ' + fileName + '!'
@@ -86,7 +86,7 @@ class AwsHelper implements Serializable {
                              consoleLogLevel                     : 'WARNING',
                              dontWaitForConcurrentBuildCompletion: false,
                              entries                             : [
-                                     [bucket           : finalBucketPath,
+                                     [bucket           : S3BucketPath,
                                       flatten          : true,
                                       keepForever      : true,
                                       managedArtifacts : false,

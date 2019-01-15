@@ -188,7 +188,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
             }
         }
-        /*For universal build test run job setting the artifacts url path to fetch the binary from universal artifacts  */
+        /* For universal build test run job setting the artifacts url path to fetch the binary from universal artifacts  */
         if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL) {
             projectArtifacts.'Android_Mobile'.'url' = script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL
             projectArtifacts.'Android_Tablet'.'url' = script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL
