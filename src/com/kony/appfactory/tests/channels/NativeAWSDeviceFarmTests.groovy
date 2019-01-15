@@ -628,9 +628,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                             script.env['NATIVE_RUN_RESULTS'] = deviceFarmTestRunResults?.inspect()
                             script.env['DEVICE_POOL_NAME'] = devicePoolName
                             script.env['BINARY_NAME'] = getBinaryNameForEmail(projectArtifacts).inspect()
-                            script.env['MISSING_DEVICES'] = script.env.MISSING_DEVICES.inspect()
-                            script.env['NATIVE_RESULTS_SUMMARY'] = summary?.inspect()
-                            script.env['DURATION'] = duration?.inspect()
+                            if (script.env.MISSING_DEVICES != null && !script.env.MISSING_DEVICES.isEmpty())
+                                script.env['MISSING_DEVICES'] = script.env.MISSING_DEVICES.inspect()
+                            else
+                                script.env['MISSING_DEVICES'] = 'None'
+                            script.env['NATIVE_RESULTS_SUMMARY'] = summary
+                            script.env['DURATION'] = duration
 
                             NotificationsHelper.sendEmail(script, 'runTests', [
                                     deviceruns      : deviceFarmTestRunResults,
@@ -638,8 +641,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                     binaryName      : getBinaryNameForEmail(projectArtifacts),
                                     missingDevices  : script.env.MISSING_DEVICES,
                                     summaryofResults: summary,
-                                    duration      : duration,
-                                    appiumVersion : appiumVersion,
+                                    duration        : duration,
+                                    appiumVersion   : appiumVersion,
                                     runInCustomTestEnvironment : runInCustomTestEnvironment
                             ], true)
 

@@ -160,15 +160,17 @@ class FacadeTests implements Serializable {
         desktopWebTestsJob = testsJobOutput['DesktopWeb Tests']
 
         emailData += [isSummaryEmail   : true,
-                      deviceruns       : TestsHelper.getArtifactObjects(nativeTestsJob.buildVariables.NATIVE_RUN_RESULTS),
+                      deviceruns       : nativeTestsJob.buildVariables.NATIVE_RUN_RESULTS,
                       devicePoolName   : nativeTestsJob.buildVariables.DEVICE_POOL_NAME,
-                      binaryName       : TestsHelper.getArtifactObjects(nativeTestsJob.buildVariables.BINARY_NAME),
-                      missingDevices   : TestsHelper.getArtifactObjects(nativeTestsJob.buildVariables.MISSING_DEVICES),
-                      summaryofResults : TestsHelper.getArtifactObjects(nativeTestsJob.buildVariables.NATIVE_RESULTS_SUMMARY),
-                      duration         : TestsHelper.getArtifactObjects(nativeTestsJob.buildVariables.DURATION),
-                      listofLogFiles   : TestsHelper.getArtifactObjects(desktopWebTestsJob.buildVariables.LOG_FILES_LIST),
-                      desktopruns      : TestsHelper.getArtifactObjects(desktopWebTestsJob.buildVariables.DESKTOP_TEST_RUN_RESULTS),
-                      listofScreenshots: TestsHelper.getArtifactObjects(desktopWebTestsJob.buildVariables.SCREENSHOTS_LIST)]
+                      binaryName       : nativeTestsJob.buildVariables.BINARY_NAME,
+                      missingDevices   : nativeTestsJob.buildVariables.MISSING_DEVICES,
+                      summaryofResults : nativeTestsJob.buildVariables.NATIVE_RESULTS_SUMMARY,
+                      duration         : nativeTestsJob.buildVariables.DURATION,
+                      appiumVersion    : nativeTestsJob.buildVariables.APPIUM_VERSION,
+                      runInCustomTestEnvironment : nativeTestsJob.buildVariables.RUN_IN_CUSTOM_TEST_ENVIRONMENT,
+                      desktopruns      : desktopWebTestsJob.buildVariables.DESKTOP_TEST_RUN_RESULTS,
+                      listofLogFiles   : desktopWebTestsJob.buildVariables.LOG_FILES_LIST,
+                      listofScreenshots: desktopWebTestsJob.buildVariables.SCREENSHOTS_LIST]
 
         return emailData
     }
