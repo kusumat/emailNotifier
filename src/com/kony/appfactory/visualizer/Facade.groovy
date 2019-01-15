@@ -833,7 +833,7 @@ class Facade implements Serializable {
                     script.echoCustom(exceptionMessage, 'ERROR', false)
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
-                        def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
+                        def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
                         NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
                     }
 
@@ -844,7 +844,7 @@ class Facade implements Serializable {
                     script.echoCustom(exceptionMessage, 'ERROR', false)
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
-                        def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
+                        def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
                         NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
                     }
 
@@ -890,7 +890,7 @@ class Facade implements Serializable {
             }
             else {
                 // if S3 file not exist it means no downstream job invoked, so, lets upload parent job log file then notify
-                def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID)
+                def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, "BUILD ABORTED!!")
                 // Send build results email notification with build status as aborted
                 script.currentBuild.result = 'ABORTED'
                 NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
