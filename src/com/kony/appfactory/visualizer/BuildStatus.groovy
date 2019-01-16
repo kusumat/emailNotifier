@@ -321,13 +321,20 @@ class BuildStatus implements Serializable {
 
         def gitCheckoutStartLineNumber = 6
         def gitCheckoutEndLineNumber = 30
+        String iamRoleTextRegex = "Assumed role arn:aws:iam.*";
 
-        def sanitizer = new RegexSanitizer(projectWorkspacePath, "CloudBuildService",
-                new RemoveLinesSanitizer(
-                        gitCheckoutStartLineNumber,
-                        gitCheckoutEndLineNumber,
-                        new TextSanitizer())
-        )
+        def removeLineSanitizer = new RemoveLinesSanitizer(
+                gitCheckoutStartLineNumber,
+                gitCheckoutEndLineNumber,
+                new TextSanitizer());
+        def cloudBuildPathSanitizer = new RegexSanitizer(
+                projectWorkspacePath,
+                "CloudBuildService",
+                removeLineSanitizer);
+        def sanitizer = new RegexSanitizer(
+                iamRoleTextRegex,
+                "",
+                cloudBuildPathSanitizer);
 
         String sanitizedLogs = sanitizer.sanitize(buildLog + '\n' + ExceptionMsg)
         script.writeFile file: CLOUD_BUILD_LOG_FILENAME, text: sanitizedLogs, encoding: 'UTF-8'
