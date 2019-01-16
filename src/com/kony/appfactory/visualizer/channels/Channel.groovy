@@ -632,15 +632,19 @@ class Channel implements Serializable {
             script.dir(targetProtectedKeysPath) {
                 /* Note: Here, Expecting the file name from plug-in as: private_key.pem, public_key.dat
                  * and FinKeys.zip contains fin.zip with minimum three .key files for different architecture.
+                 * We added a check to see if FinKeys exists or not.
+                 * This is because for the visualizer versions which are below V8 SP3, finkeys are mandatory and for other versions, these keys are optional.
                  */
                 BuildHelper.extractProtectedKeys(script, protectedKeys, targetProtectedKeysPath) {
-                    script.unzip zipFile: "FinKeys.zip"
-                    script.unzip dir: 'fin', zipFile: "fin.zip"
-                    String finKeysFilesPath = [targetProtectedKeysPath, 'fin'].join(separator)
-                    script.dir(finKeysFilesPath) {
-                        def finKeysFiles = script.findFiles(glob: '**/*.key')
-                        if(finKeysFiles.size() < 3 ) {
-                            throw new AppFactoryException("Problem found with fin keys.",'ERROR')
+                    if (script.fileExists('FinKeys.zip')) {
+                        script.unzip zipFile: "FinKeys.zip"
+                        script.unzip dir: 'fin', zipFile: "fin.zip"
+                        String finKeysFilesPath = [targetProtectedKeysPath, 'fin'].join(separator)
+                        script.dir(finKeysFilesPath) {
+                            def finKeysFiles = script.findFiles(glob: '**/*.key')
+                            if (finKeysFiles.size() < 3) {
+                                throw new AppFactoryException("Problem found with fin keys.", 'ERROR')
+                            }
                         }
                     }
                 }
