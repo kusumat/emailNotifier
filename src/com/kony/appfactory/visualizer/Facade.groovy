@@ -536,7 +536,6 @@ class Facade implements Serializable {
         }
 
         def channelPath = getChannelPath(channelName)
-
         runList[channelName] = {
             script.stage(channelName) {
                 /* Trigger channel job */

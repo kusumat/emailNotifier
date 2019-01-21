@@ -18,10 +18,10 @@ class WebChannel extends Channel {
     protected final publishFabricApp = script.params.PUBLISH_FABRIC_APP
     protected final desktopWebChannel = script.params.DESKTOP_WEB
     protected final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected String webAppUrl
     /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
     def appVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     protected final webAppVersion = script.params[appVersionParameterName]
+    protected webAppUrl
     /* CustomHooks build Parameters*/
     protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     protected final selectedSpaChannels
@@ -33,6 +33,10 @@ class WebChannel extends Channel {
     /* Build agent resources */
     def resourceList
     def nodeLabel
+
+    /* Create a list with artifact objects for e-mail template */
+    def channelArtifacts = []
+
     /**
      * Class constructor.
      *
@@ -209,7 +213,7 @@ class WebChannel extends Channel {
                                 /* Prepare string with shell script to run */
                                 FabricHelper.fabricCli(script, 'publish', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions)
                                 script.echoCustom("Published to Fabric Successfully, Fetching AppInfo")
-                                webAppUrl = getWebAppUrl("appinfo", fabricCommandOptions)
+                                webAppUrl = fetchWebAppUrl("appinfo", fabricCommandOptions)
                                 script.echoCustom("Your published app is accessible at : " + webAppUrl)
                             } else {
                                 script.echoCustom("PUBLISH_FABRIC_APP flag set to false, " +
@@ -223,9 +227,6 @@ class WebChannel extends Channel {
                             /* Rename artifacts for publishing */
                             artifacts = renameArtifacts(buildArtifacts)
 
-                            /* Create a list with artifact objects for e-mail template */
-                            def channelArtifacts = []
-
                             artifacts?.each { artifact ->
                                 String artifactName = artifact.name
                                 String artifactPath = artifact.path
@@ -238,9 +239,8 @@ class WebChannel extends Channel {
                                 /* Add War/Zip to MustHaves Artifacts */
                                 mustHaveArtifacts.add([name: artifact.name, path: artifactPath])
                                 channelArtifacts.add([
-                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl
+                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, webAppUrl: webAppUrl
                                 ])
-                                if (publishFabricApp) channelArtifacts.add([webAppUrl: webAppUrl])
                             }
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
                         }
@@ -301,9 +301,8 @@ class WebChannel extends Channel {
      * @param fabricCommandOptions other fabric cli command options that can be provided.
      * @return WebAppUrl of the web app.
      */
-    protected getWebAppUrl(cliCommand = "appinfo", fabricCommandOptions = [:]) {
+    protected fetchWebAppUrl(cliCommand = "appinfo", fabricCommandOptions = [:]) {
         def webAppUrlText
-        String errorMessage = ['Failed to run', cliCommand, 'command'].join(' ')
         
         webAppUrlText = FabricHelper.fabricCli(script, cliCommand, cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions, [returnStdout: true])
 
@@ -311,8 +310,8 @@ class WebChannel extends Channel {
         webAppUrlText = webAppUrlText.substring(webAppUrlText.indexOf("{"), webAppUrlText.lastIndexOf("}") + 1)
         webAppUrlText.trim()
         def webAppUrlJson = jsonSlurper.parseText(webAppUrlText)
-        webAppUrl = webAppUrlJson.Webapp.url
-        webAppUrl
+        def webAppUrl = webAppUrlJson.Webapp.url
+        webAppUrl.toString()
     }
 
 }

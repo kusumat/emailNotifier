@@ -231,8 +231,9 @@ class NotificationsHelper implements Serializable {
      */
     private static String getTemplateContent(script, templateType, templateData = [:]) {
         String templateContent
+
         /* Common properties for content */
-        String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData);
+        String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData)
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
@@ -248,7 +249,7 @@ class NotificationsHelper implements Serializable {
                         log     : script.currentBuild.rawBuild.getLog(100)
                 ]
         ] + templateData
-        
+
         switch (templateType) {
             case 'buildVisualizerApp':
             case 'cloudBuild':

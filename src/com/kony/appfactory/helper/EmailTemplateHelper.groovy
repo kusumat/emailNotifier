@@ -146,7 +146,7 @@ class EmailTemplateHelper implements Serializable {
                 }
 
                 /* Web */
-                else if (artifact.webappurl) {
+                else if (artifact.webAppUrl) {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
 
@@ -159,8 +159,8 @@ class EmailTemplateHelper implements Serializable {
                                             extension: artifactExtension,
                                     ],
                                     [
-                                            name     : artifact.webappurl,
-                                            url      : artifact.webappurl,
+                                            name     : artifact.webAppUrl,
+                                            url      : artifact.webAppUrl,
                                             extension: 'APP URL',
                                     ]
                             ]

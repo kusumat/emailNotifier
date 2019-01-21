@@ -2,7 +2,6 @@ package com.kony.appfactory.helper
 
 class FabricHelper implements Serializable {
 
-
     /**
      * Fetches specified version of Fabric CLI application.
      *
@@ -44,6 +43,7 @@ class FabricHelper implements Serializable {
         (fabricCommand) ?: script.echoCustom("fabricCommand argument can't be null",'ERROR')
         (cloudCredentialsID) ?: script.echoCustom("cloudCredentialsID argument can't be null",'ERROR')
         
+        String commandOutput
         String errorMessage = ['Failed to run', fabricCommand, 'command'].join(' ')
 
         script.catchErrorCustom(errorMessage) {
@@ -72,9 +72,10 @@ class FabricHelper implements Serializable {
                         options
                 ].join(' ')
 
-                script.shellCustom(shellString, isUnixNode, args)
+               commandOutput = script.shellCustom(shellString, isUnixNode, args)
             }
         }
+        commandOutput
     }
 
 
