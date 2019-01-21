@@ -26,8 +26,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
     /* Build parameters */
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
-    protected runInCustomTestEnvironment = script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
-    protected appiumVersion = script.params.APPIUM_VERSION
+    protected boolean runInCustomTestEnvironment
+    protected String appiumVersion
     protected testngFiles = script.params.TESTNG_FILES
 
     /* Device Farm related variables */
@@ -86,6 +86,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         /* Initializer Device Farm scrips object */
         deviceFarm = new AwsDeviceFarmHelper(script)
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
+        runInCustomTestEnvironment = BuildHelper.getParamValueOrDefault(script, "RUN_IN_CUSTOM_TEST_ENVIRONMENT", false)
+        appiumVersion = BuildHelper.getParamValueOrDefault(script, "APPIUM_VERSION", null)
     }
 
     /**
