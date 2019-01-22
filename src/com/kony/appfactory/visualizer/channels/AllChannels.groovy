@@ -287,6 +287,8 @@ class AllChannels implements Serializable {
                                         android_channel.pipelineWrapper {
                                             if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
                                                 androidSigningCloudWrapper(script) {
+                                                    // Follow up ticket: APPFACT-1465. We should rethink of better solution in next release
+                                                    android_channel.visualizerDependencies = channelObject.visualizerDependencies
                                                     android_channel.signArtifacts(android_channel.buildArtifacts)
                                                 }
                                             } else {
