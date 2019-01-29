@@ -355,7 +355,7 @@ class EmailTemplateHelper implements Serializable {
                                 tr {
                                     td(style: "width:30%;text-align:right", 'Build URL: ')
                                     td {
-                                        a(href: binding.build.url, "${binding.build.url}")
+                                        a(href: binding.build.url, "${binding.build.number}")
                                     }
                                 }
                                 tr {
