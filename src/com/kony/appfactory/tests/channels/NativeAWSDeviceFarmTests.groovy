@@ -609,6 +609,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                         throw new AppFactoryException('Tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
                                     def overAllDeviceFarmTestRunResult = getFinalDeviceFarmStatus(deviceFarmTestRunResults)
                                     def nativeTestsResultStatus = overAllDeviceFarmTestRunResult == "PASSED" ? true : false
+                                    script.currentBuild.result = nativeTestsResultStatus ? 'SUCCESS' : 'UNSTABLE'
 
                                     if (runCustomHook) {
                                         nativeTestsResultStatus ? runCustomHooks() :

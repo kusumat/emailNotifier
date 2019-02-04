@@ -255,8 +255,8 @@ class DesktopWebTests extends RunTests implements Serializable {
                             if (!desktopTestRunResults)
                                 throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
                             testsResultsStatus = !testStatusMap.any { it.value != "PASS" }
-                            testsResultsStatus ?: (script.currentBuild.result = 'UNSTABLE')
-
+                            script.currentBuild.result = testsResultsStatus ? 'SUCCESS' : 'UNSTABLE'
+                            
                             if (runCustomHook) {
                                 if (testsResultsStatus) {
                                     def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
