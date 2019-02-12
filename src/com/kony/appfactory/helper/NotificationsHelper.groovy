@@ -143,9 +143,12 @@ class NotificationsHelper implements Serializable {
 
             /* Get sub-folder for S3 path */
             String subFolder = (fileToStore.name.contains('build')) ? 'Builds' : 'Tests'
+            /* Get build-Number for S3 path */
+            String baseJobBuildNumber = templateData.buildNumber ?: script.env.BUILD_NUMBER
+            String baseJobName = templateData.jobName ?: script.env.JOB_BASE_NAME
             /* Publish file on S3 */
             AwsHelper.publishToS3 sourceFileName: fileToStore.name,
-                    bucketPath: [subFolder, script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/'),
+                    bucketPath: [subFolder, baseJobName, baseJobBuildNumber].join('/'),
                     sourceFilePath: script.pwd(), script
         }
     }
@@ -165,6 +168,7 @@ class NotificationsHelper implements Serializable {
             case 'FAILURE':
                 buildResultForTestConsole = '-FAIL'
                 break
+            case 'ABORTED':
             case 'UNSTABLE':
                 buildResultForTestConsole = '-UNSTABLE'
                 break
@@ -191,6 +195,7 @@ class NotificationsHelper implements Serializable {
         String buildResultForTestConsole = getBuildResultForTestConsole(buildResult)
 
         switch (templateType) {
+            case 'cloudBuild':
             case 'buildVisualizerApp':
                 filesToStore.add([name: 'buildResults' + buildResultForTestConsole + '.html', data: body])
                 break

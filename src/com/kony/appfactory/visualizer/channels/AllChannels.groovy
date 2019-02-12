@@ -401,6 +401,8 @@ class AllChannels implements Serializable {
                         script.echoCustom("Build failed either due to errors or abort!!", 'ERROR', false)
                     }
                     finally {
+                        def buildNumber = BuildHelper.getUpstreamJobNumber(script)
+                        def jobName = 'buildVisualizerApp'
                         def abortMsg = ""
                         if (!script.currentBuild.rawBuild.getActions(jenkins.model.InterruptedBuildAction.class).isEmpty()) {
                             abortMsg = "BUILD ABORTED!!"
@@ -412,7 +414,7 @@ class AllChannels implements Serializable {
                         if (abortMsg?.trim()) {
                             script.currentBuild.result = 'ABORTED'
                         }
-                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: channelArtifacts, consolelogs: consoleLogsLink])
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: channelArtifacts, consolelogs: consoleLogsLink, buildNumber: buildNumber, jobName: jobName], true)
                     }
                 }
             }

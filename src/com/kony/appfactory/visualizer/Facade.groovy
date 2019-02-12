@@ -55,6 +55,12 @@ class Facade implements Serializable {
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     private fabricEnvironmentName
+    /* Temporary Base Job name for Cloud Build.
+     * Since console is only looking for 'buildVisualizerApp' in S3 path
+     * to fetch the results,for now, hardcoding this value.
+     * Later, a change has to be made on console side to fetch results using 'cloudBuildVisualizerApp' also.
+     * */
+    protected jobName = 'buildVisualizerApp'
     /* iOS build parameters */
     private appleID = script.params.APPLE_ID
     private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
@@ -833,7 +839,7 @@ class Facade implements Serializable {
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
-                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName], true)
                     }
 
                     script.currentBuild.result = 'FAILURE'
@@ -844,7 +850,7 @@ class Facade implements Serializable {
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
-                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName], true)
                     }
 
                     script.currentBuild.result = 'FAILURE'
@@ -886,13 +892,12 @@ class Facade implements Serializable {
             if (script.fileExists("buildStatus.json")) {
                 def statusFileJson = script.readJSON file: "buildStatus.json"
                 status = BuildStatus.getBuildStatusObject(script, statusFileJson, channelsToRun)
-            }
-            else {
+            } else {
                 // if S3 file not exist it means no downstream job invoked, so, lets upload parent job log file then notify
                 def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, "BUILD ABORTED!!")
                 // Send build results email notification with build status as aborted
                 script.currentBuild.result = 'ABORTED'
-                NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink])
+                NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName], true)
             }
             // update status as cancelled and upload latest json to S3
             status.updateCancelBuildStatusOnS3()
