@@ -86,6 +86,8 @@ class Channel implements Serializable {
     protected artifactsBasePath
     /* Artifact extension, depends on channel type */
     protected artifactExtension
+    /* Project's AppID key */
+    protected projectAppId
     /* Path for storing artifact on S3 bucket, has following format: Builds/<Fabric environment name>/channelPath */
     protected s3ArtifactPath
     /* Library configuration */
@@ -189,8 +191,6 @@ class Channel implements Serializable {
         /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */
         fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
-        artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) ?:
-                script.echoCustom('Artifacts base path is missing!', 'ERROR')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
 
@@ -507,6 +507,10 @@ class Channel implements Serializable {
         /* Check required arguments */
         (artifactExtension) ?: script.echoCustom("artifactExtension argument can't be null", 'ERROR')
 
+        projectAppId = getProjectAppIdKey()
+        artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, projectAppId, separator, channelVariableName) ?:
+                script.echoCustom('Artifacts base path is missing!', 'ERROR')
+
         def files = null
         def artifactLocations = []
 
@@ -666,10 +670,10 @@ class Channel implements Serializable {
             case ~/^.*apk.*$/:
                 switch (buildMode) {
                     case libraryProperties.'buildmode.release.protected.type':
-                        searchGlob = '**/' + projectName + '-' + 'release' + '*.' + artifactExtension
+                        searchGlob = '**/' + projectAppId + '-' + 'release' + '*.' + artifactExtension
                         break
                     default:
-                        searchGlob = '**/' + projectName + '-' + buildMode + '*.' + artifactExtension
+                        searchGlob = '**/' + projectAppId + '-' + buildMode + '*.' + artifactExtension
                         break
                 }
                 break
@@ -681,7 +685,7 @@ class Channel implements Serializable {
                 break
             case ~/^.*appx.*$/:
             case ~/^.*war.*|^.*zip.*$/:
-                searchGlob = '**/' + projectName + '.' + artifactExtension
+                searchGlob = '**/' + projectAppId + '.' + artifactExtension
                 break
             default:
                 searchGlob = '**/*.' + artifactExtension
@@ -696,12 +700,14 @@ class Channel implements Serializable {
      *
      * @param projectWorkspacePath project location on job workspace.
      * @param projectName project name.
+     * @param project projectAppId.
      * @param separator path separator.
      * @param channelVariableName channel build parameter name.
      * @return path to the artifact.
      */
-    protected final getArtifactTempPath(projectWorkspacePath, projectName, separator, channelVariableName) {
+    protected final getArtifactTempPath(projectWorkspacePath, projectName, projectAppId, separator, channelVariableName) {
         def artifactsTempPath
+
         /* In future, the temp paths for all platforms will move to binaries directory. */
         def getPath = {
             def tempBasePath = [projectWorkspacePath, 'temp', projectName]
@@ -710,17 +716,17 @@ class Channel implements Serializable {
 
         switch (channelVariableName) {
             case 'ANDROID_UNIVERSAL_NATIVE':
-                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectAppId, 'build', 'outputs', 'apk'])
                 break
             case 'IOS_UNIVERSAL_NATIVE':
                 artifactsTempPath = getPath(['build', 'server', 'iphonekbf'])
                 break
             case 'ANDROID_MOBILE_NATIVE':
-                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectName, 'build', 'outputs', 'apk'])
+                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectAppId, 'build', 'outputs', 'apk'])
                 break
             case 'ANDROID_TABLET_NATIVE':
                 artifactsTempPath = getPath(
-                        ['build', 'luatabrcandroid', 'dist', projectName, 'build', 'outputs', 'apk']
+                        ['build', 'luatabrcandroid', 'dist', projectAppId, 'build', 'outputs', 'apk']
                 )
                 break
             case 'IOS_MOBILE_NATIVE':
@@ -962,6 +968,24 @@ class Channel implements Serializable {
             finalFeatureParamsToCheckHeadlessSupport.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
         }
         finalFeatureParamsToCheckHeadlessSupport
+    }
+
+    /**
+     * Returns project AppID key by fetching from projectProperties file.
+     *
+     * @return project appidkey.
+     */
+    protected final String getProjectAppIdKey()
+    {
+        script.dir(projectFullPath) {
+            def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
+            if (script.fileExists(propertyFileName)) {
+                def projectPropertiesJsonContent = script.readJSON file: propertyFileName
+                return projectPropertiesJsonContent['appidkey']
+            } else {
+                throw new AppFactoryException("Failed to find $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+            }
+        }
     }
     
 
