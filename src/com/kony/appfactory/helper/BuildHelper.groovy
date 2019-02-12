@@ -763,6 +763,29 @@ class BuildHelper implements Serializable {
         upstreamJobName
     }
 
+
+    /*  Provides the Upstream Job Build Number.
+     *  It is required to keep the S3 upload path of buildresults.html in Cloud Build consistent with Single Tenant.
+     *
+     *  @param script
+     *  return upstreamJobNumber
+     * */
+
+    @NonCPS
+    protected final static getUpstreamJobNumber(script) {
+        String upstreamJobNumber = null
+        script.currentBuild.rawBuild.actions.each { action ->
+            if (action.hasProperty("causes")) {
+                action.causes.each { cause ->
+                    if (cause instanceof hudson.model.Cause$UpstreamCause && cause.hasProperty("shortDescription") && cause.shortDescription.contains("Started by upstream project")) {
+                        upstreamJobNumber = cause.upstreamRun?.getEnvironment(TaskListener.NULL)?.get("BUILD_NUMBER")
+                    }
+                }
+            }
+        }
+        upstreamJobNumber
+    }
+
     /**
      * Get the app id type for the native channel
      *
