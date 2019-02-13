@@ -23,7 +23,7 @@ class BuildStatus implements Serializable {
     private static String buildService = "BS"
     private static String statusFilePath
     private channelsToRun
-    protected final String CLOUD_BUILD_LOG_FILENAME = 'consolelog.txt'
+    protected final String CLOUD_BUILD_LOG_FILENAME = 'console.log'
 
     BuildStatus(script, channelsToRun) {
         buildJson = BuildStatusDTO.getInstance()
