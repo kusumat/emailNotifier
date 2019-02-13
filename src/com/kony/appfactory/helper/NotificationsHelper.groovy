@@ -313,7 +313,7 @@ class NotificationsHelper implements Serializable {
                     modifiedBuildTag = modifiedBuildTag.replace("-DesktopWebTests", "-Tests").replace("-NativeTests", "-Tests")
                 break
             case 'cloudBuild':
-                modifiedBuildTag = 'Build Service'
+                modifiedBuildTag = "${script.env.PROJECT_NAME}-Build Service"
                 break
             case 'fabric':
                 break
