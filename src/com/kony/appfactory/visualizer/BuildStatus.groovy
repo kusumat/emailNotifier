@@ -23,6 +23,8 @@ class BuildStatus implements Serializable {
     private static String buildService = "BS"
     private static String statusFilePath
     private channelsToRun
+
+    public static final String BUILD_STATUS_FILE_NAME = 'buildStatus.json';
     protected final String CLOUD_BUILD_LOG_FILENAME = 'console.log'
 
     BuildStatus(script, channelsToRun) {
@@ -262,9 +264,9 @@ class BuildStatus implements Serializable {
         statusUrl = statusUrl.substring(0, statusUrl.lastIndexOf('/'))
         buildJson.setLastUpdatedAt(new Date().toString())
         String resultJson = buildJson.toString()
-        script.writeFile file: "buildStatus.json", text: resultJson
+        script.writeFile file: BUILD_STATUS_FILE_NAME, text: resultJson
         script.echoCustom("The status url path is ${statusUrl} and ${resultJson}")
-        AwsHelper.publishToS3 sourceFileName: "buildStatus.json",
+        AwsHelper.publishToS3 sourceFileName: BUILD_STATUS_FILE_NAME,
                 sourceFilePath: "./", statusUrl, script
     }
 
@@ -387,6 +389,7 @@ class BuildStatus implements Serializable {
                 platformsDTO.setMobileDownloadLink(String.valueOf(platformJson['mobileDownloadLink']))
                 platformsDTO.setTabletDownloadLink(String.valueOf((platformJson['tabletDownloadLink'])))
                 platformsDTO.setUniversalDownloadLink(String.valueOf(platformJson['universalDownloadLink']))
+                platformsDTO.setBuildNumber(String.valueOf(platformJson['buildNumber']))
 
                 listOfPlatform.add(platformsDTO)
             }

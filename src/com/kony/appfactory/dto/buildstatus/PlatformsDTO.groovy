@@ -34,9 +34,20 @@ class PlatformsDTO implements Serializable{
     private String mobileDownloadLink
     private String tabletDownloadLink
     private String universalDownloadLink
+    private String buildNumber
 
     PlatformsDTO(PlatformType platformType){
         this.platformType = platformType
+    }
+
+    @NonCPS
+    String getBuildNumber() {
+        return buildNumber
+    }
+
+    @NonCPS
+    void setBuildNumber(String buildNumber) {
+        this.buildNumber = buildNumber
     }
 
     @NonCPS
@@ -163,7 +174,8 @@ class PlatformsDTO implements Serializable{
                 universalFlag: getUniversalFlag(),
                 mobileDownloadLink: getMobileDownloadLink(),
                 tabletDownloadLink: getTabletDownloadLink(),
-                universalDownloadLink: getUniversalDownloadLink()
+                universalDownloadLink: getUniversalDownloadLink(),
+                buildNumber: getBuildNumber()
 
         return json.toPrettyString()
     }

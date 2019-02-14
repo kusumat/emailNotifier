@@ -96,20 +96,12 @@ class CustomHookHelper implements Serializable {
     /**
      * Fetches Hook zip file for running it locally from S3.
      */
-    protected final void fetchHook(buildScriptUrl){
-        def customhookBucketURL = script.env.S3_BUCKET_URL
-        def customhookBucketName = script.env.S3_BUCKET_NAME
-        def customhookBucketRegion = script.env.S3_BUCKET_REGION
-        def awsIAMRole = script.env.S3_BUCKET_IAM_ROLE
+    protected final void fetchHook(String buildScriptUrl){
         def hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
-
-        def hookScriptFileBucketPath = (buildScriptUrl - customhookBucketURL).substring(1)
+        def hookScriptFileBucketPath = (buildScriptUrl - script.env.S3_BUCKET_URL).substring(1)
 
         script.catchErrorCustom('Failed to fetch Hook zip file') {
-            script.withAWS(region: customhookBucketRegion, role: awsIAMRole) {
-                script.s3Download bucket: customhookBucketName, file: hookScriptFileName, force: true, path: hookScriptFileBucketPath
-
-            }
+            AwsHelper.s3Download(script, hookScriptFileName, hookScriptFileBucketPath)
         }
     }
 

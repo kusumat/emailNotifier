@@ -112,13 +112,11 @@ class AwsHelper implements Serializable {
      * Downloads the child job artifacts and then deletes them from S3 while preparing musthaves.
      * @param mustHaveArtifacts Artifacts that are to be captured in musthaves zip file.
      */
-    protected static void downloadChildJobMustHavesFromS3 (script, mustHaveArtifacts) {
-        script.withAWS(region: script.env.S3_BUCKET_REGION) {
-            mustHaveArtifacts.each { mustHaveArtifact ->
-                if (mustHaveArtifact.path.trim().length() > 0) {
-                    script.s3Download(file: mustHaveArtifact.name, bucket: script.env.S3_BUCKET_NAME, path: [mustHaveArtifact.path, mustHaveArtifact.name].join('/'))
-                    script.s3Delete(bucket: script.env.S3_BUCKET_NAME, path: [mustHaveArtifact.path, mustHaveArtifact.name].join('/'))
-                }
+    static void downloadChildJobMustHavesFromS3(script, mustHaveArtifacts) {
+        mustHaveArtifacts.each { mustHaveArtifact ->
+            if (mustHaveArtifact.path.trim().length() > 0) {
+                s3Download(script, mustHaveArtifact.name, [mustHaveArtifact.path, mustHaveArtifact.name].join('/'));
+                s3Delete(script, [mustHaveArtifact.path, mustHaveArtifact.name].join('/'))
             }
         }
     }
@@ -153,5 +151,37 @@ class AwsHelper implements Serializable {
         }
 
         s3MustHaveAuthUrl
+    }
+
+    /**
+     * This is utility method to download artifacts from s3 from a specified path.
+     *  -> This method always refers to build bucket configured for AppFactory.
+     *  -> It used environment variables configured in Jenkins configure screen.
+     * @param script
+     * @param fileName Name of file needs to be downloaded
+     * @param filePath S3 Path to file to be downloaded
+     */
+    static void s3Download(script, String fileName, String filePath) {
+        script.withAWS(region: script.env.S3_BUCKET_REGION, role: script.env.S3_BUCKET_IAM_ROLE) {
+            script.s3Download bucket: script.env.S3_BUCKET_NAME,
+                    file: fileName,
+                    force: true,
+                    path: filePath
+        }
+    }
+
+    /**
+     * This is utility method to delete artifacts from s3 from a specified path.
+     *  -> This method always refers to build bucket configured for AppFactory.
+     *  -> It used environment variables configured in Jenkins configure screen.
+     * @param script
+     * @param filePath S3 Path to file to be Deleted 
+     *
+     * Documentation: https://jenkins.io/doc/pipeline/steps/pipeline-aws/#s3delete-delete-file-from-s3
+     */
+    static void s3Delete(script, String filePath) {
+        script.withAWS(region: script.env.S3_BUCKET_REGION, role: script.env.S3_BUCKET_IAM_ROLE) {
+            script.s3Delete(bucket: script.env.S3_BUCKET_NAME, path: filePath)
+        }
     }
 }

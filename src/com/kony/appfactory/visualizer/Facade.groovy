@@ -42,6 +42,7 @@ class Facade implements Serializable {
     private mustHaveArtifacts = []
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
+
     /* Common build parameters */
     private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
@@ -55,12 +56,7 @@ class Facade implements Serializable {
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     private fabricEnvironmentName
-    /* Temporary Base Job name for Cloud Build.
-     * Since console is only looking for 'buildVisualizerApp' in S3 path
-     * to fetch the results,for now, hardcoding this value.
-     * Later, a change has to be made on console side to fetch results using 'cloudBuildVisualizerApp' also.
-     * */
-    protected jobName = 'buildVisualizerApp'
+
     /* iOS build parameters */
     private appleID = script.params.APPLE_ID
     private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
@@ -72,6 +68,7 @@ class Facade implements Serializable {
     private final iosAppVersion = script.params.IOS_APP_VERSION
     private final iosBundleVersion = script.params.IOS_BUNDLE_VERSION
     private final iosWatchApp = script.params.APPLE_WATCH_EXTENSION
+
     /* Android build parameters */
     private final androidUniversalAppId = script.params.ANDROID_UNIVERSAL_APP_ID
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
@@ -82,6 +79,7 @@ class Facade implements Serializable {
     private final keystorePasswordID = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
+
     /* WEB build parameters */
     private
     final webAppVersion = script.params.WEB_APP_VERSION ? script.params.WEB_APP_VERSION : script.params.SPA_APP_VERSION ? script.params.SPA_APP_VERSION : null
@@ -89,25 +87,34 @@ class Facade implements Serializable {
     final webVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     private final desktopWebChannel = script.params.DESKTOP_WEB
     private final compatibilityMode = script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE
+
     /* TestAutomation build parameters */
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
     private final availableBrowsers = script.params.AVAILABLE_BROWSERS
     private final desktopWebTestsArguments = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
     private final runDesktopwebTests = script.params.RUN_DESKTOPWEB_TESTS
+
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+
     /* Protected mode build parameters */
     private final protectedKeys = script.params.PROTECTED_KEYS
-    private appleCredentialsId
-    private buildNumber = script.env.BUILD_NUMBER
-    protected CredentialsHelper credentialsHelper
-    protected BuildStatus status
+    private final buildNumber = script.env.BUILD_NUMBER
 
     /* AWS Custom Test Environment parameters */
     private runInCustomTestEnvironment = script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
     private appiumVersion = script.params.APPIUM_VERSION
     private testngFiles = script.params.TESTNG_FILES
 
+    /* Cloud Build properties */
+    protected CredentialsHelper credentialsHelper
+    protected BuildStatus status
+    /*
+     Temporary Base Job name for Cloud Build. Since console is only looking for 'buildVisualizerApp' in S3 path
+     to fetch the results, for now, hardcoding this value. Later, a change has to be made on console side to fetch
+     results using 'cloudBuildVisualizerApp' also.
+     */
+    protected jobName = 'buildVisualizerApp'
     /**
      * Class constructor.
      *
@@ -613,10 +620,11 @@ class Facade implements Serializable {
     }
 
     /**
-     * Prepare must haves for the debugging
+     * Prepare must have for debugging
+     * @return s3MustHaveAuthUrl fabric authenticated auth url to download musthaves
      */
-    private final String PrepareMustHaves() {
-        String s3MustHaveAuthUrl
+    private final String prepareMustHaves() {
+        String s3MustHaveAuthUrl = ''
         String separator = script.isUnix() ? '/' : '\\'
         String mustHaveFolderPath = [script.env.WORKSPACE, "vizMustHaves"].join(separator)
         String mustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
@@ -856,23 +864,31 @@ class Facade implements Serializable {
                     script.currentBuild.result = 'FAILURE'
 
                 } finally {
-                    /*
-                Been agreed to send notification from buildVisualizerApp job only
-                if result not equals 'FAILURE', all notification with failed channel builds
-                will be sent directly from channel job.
-                */
-                    if (!script.params.IS_SOURCE_VISUALIZER) {
-                        String s3MustHaveAuthUrl
-                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                            s3MustHaveAuthUrl = PrepareMustHaves()
-                        }
-                        setBuildDescription(s3MustHaveAuthUrl)
-                        if (channelsToRun && script.currentBuild.result != 'FAILURE') {
-                            NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [artifacts: artifacts, fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: projectSourceCodeBranch], true)
-                        }
-                    }
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
+                    } else {
+                        String s3MustHaveAuthUrl = ''
+
+                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                            s3MustHaveAuthUrl = prepareMustHaves()
+                        }
+
+                        setBuildDescription(s3MustHaveAuthUrl)
+
+                        if (channelsToRun && script.currentBuild.result != 'FAILURE') {
+                            /*
+                             * Been agreed to send notification from buildVisualizerApp job only,
+                             * if result not equals 'FAILURE',
+                             * all notification with failed channel builds will be sent directly from channel job.
+                             */
+                            NotificationsHelper.sendEmail(script, 'buildVisualizerApp',
+                                    [
+                                            artifacts              : artifacts,
+                                            fabricEnvironmentName  : fabricEnvironmentName,
+                                            projectSourceCodeBranch: projectSourceCodeBranch
+                                    ],
+                                    true)
+                        }
                     }
                 }
             }
@@ -880,17 +896,16 @@ class Facade implements Serializable {
     }
 
     /**
-     * Creates job pipeline.
-     * This method is called from the job and contains whole job's pipeline logic.
+     * This method updates the build status file on cancel operation of cloud build .
      */
     protected void cancelCloudBuild() {
         if (script.params.IS_SOURCE_VISUALIZER) {
             // lets get the downstream job (buildAll) log file from S3 if it exist, and then map it to current statusJson Object
             // this way, we will get child job status file back to parent to refresh with new status
-            def jsonS3Uri = 's3://' + script.env.S3_BUCKET_NAME + '/' + script.params.BUILD_STATUS_PATH
-            script.shellCustom("set +xe;aws s3 cp ${jsonS3Uri} buildStatus.json --only-show-errors", true)
-            if (script.fileExists("buildStatus.json")) {
-                def statusFileJson = script.readJSON file: "buildStatus.json"
+            AwsHelper.s3Download(script, BuildStatus.BUILD_STATUS_FILE_NAME, script.params.BUILD_STATUS_PATH)
+
+            if (script.fileExists(BuildStatus.BUILD_STATUS_FILE_NAME)) {
+                def statusFileJson = script.readJSON file: BuildStatus.BUILD_STATUS_FILE_NAME
                 status = BuildStatus.getBuildStatusObject(script, statusFileJson, channelsToRun)
             } else {
                 // if S3 file not exist it means no downstream job invoked, so, lets upload parent job log file then notify

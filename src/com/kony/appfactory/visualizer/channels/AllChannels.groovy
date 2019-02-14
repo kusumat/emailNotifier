@@ -149,13 +149,25 @@ class AllChannels implements Serializable {
 
                 script.node(nodeLabel) {
                     try {
-                        /*
-                        Clean workspace, to be sure that we have not any items from previous build,
-                        and build environment completely new.
-                        */
-                        buildStatus.prepareBuildServiceEnvironment(channelsToRun)
-                        buildStatus.prepareStatusJson(true)
+                        // Clear workspace so no items remains from previous build
                         script.cleanWs deleteDirs: true
+
+                        // Initialize build status Object by mapping buildStatus.json file uploaded by Facade Job
+                        AwsHelper.s3Download(script, BuildStatus.BUILD_STATUS_FILE_NAME, script.params.BUILD_STATUS_PATH)
+                        if (script.fileExists(BuildStatus.BUILD_STATUS_FILE_NAME)) {
+                            def statusFileJson = script.readJSON file: BuildStatus.BUILD_STATUS_FILE_NAME
+                            buildStatus = BuildStatus.getBuildStatusObject(script, statusFileJson, channelsToRun)
+
+                            buildStatus.buildJson.platforms.each { platform ->
+                                platform.buildNumber = script.env.BUILD_NUMBER
+                            }
+                            buildStatus.updateBuildStatusOnS3()
+                        } else {
+                            // When no buildStatus.json is present in s3, init a new BuildStatus class Object.
+                            buildStatus.prepareBuildServiceEnvironment(channelsToRun)
+                            buildStatus.prepareStatusJson(true)
+                        }
+
                         script.stage('Checkout') {
                             String url = script.params.PROJECT_SOURCE_URL
                             // source code checkout from downloadZipUrl
