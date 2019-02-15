@@ -97,6 +97,9 @@
         <condition property="projectName" value="${env.PROJECT_NAME}" else="">
             <isset property="env.PROJECT_NAME"/>
         </condition>
+        <condition property="projectAppId" value="${env.projectAppId}" else="">
+            <isset property="env.projectAppId"/>
+        </condition>
         <condition property="androidHome" value="${env.ANDROID_HOME}" else="">
             <isset property="env.ANDROID_HOME"/>
         </condition>
@@ -194,7 +197,7 @@
             <!-- Mode been hardcoded to 0 to fit requirement of publishing Fabric application with Fabric CLI -->
             <entry key="mode" value="0"/>
             <entry key="build.mode" value="${buildMode}"/>
-            <entry key="appid" value="${projectName}"/>
+            <entry key="appid" value="${projectAppId}"/>
             <entry key="version" value="${appVersion}"/>
             <entry key="default_locale" value="${defaultLocale}"/>
             <entry key="android.packagename" value="${androidPackageName}"/>
