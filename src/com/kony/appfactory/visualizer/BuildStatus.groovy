@@ -105,6 +105,26 @@ class BuildStatus implements Serializable {
     }
 
     /**
+     * This function update build finish time of any channel
+     *
+     * @param channelType
+     */
+    @NonCPS
+    void updateFinishTime(ChannelType channelType) {
+        PlatformType platformType = channelType.toString().contains("IOS") ? PlatformType.valueOf("IOS") : PlatformType.valueOf("ANDROID")
+        PlatformsDTO platformDTO = getPlatformByType(platformType)
+
+        if (channelType.toString().contains("MOBILE")) {
+            platformDTO.setMobileFinishedAt(new Date().toString())
+        } else if (channelType.toString().contains("TABLET")) {
+            platformDTO.setTabletFinishedAt(new Date().toString())
+        } else {
+            platformDTO.setUniversalFinishedAt(new Date().toString())
+        }
+        updatePlatformInStatusJSON(platformType, platformDTO)
+    }
+
+    /**
      * This function sets the value for the logsLink at the platform level
      *
      * @param downloadURI The value refers to the logs link of the specified platform
@@ -197,6 +217,10 @@ class BuildStatus implements Serializable {
         platformDTO.setTabletFlag(tabletFlag)
         platformDTO.setUniversalFlag(universalFlag)
 
+        platformDTO.setMobileStartedAt(mobileFlag ? new Date().toString() : 'NA')
+        platformDTO.setTabletStartedAt(tabletFlag ? new Date().toString() : 'NA')
+        platformDTO.setUniversalStartedAt(universalFlag ? new Date().toString() : 'NA')
+
         return platformDTO
     }
 
@@ -228,6 +252,7 @@ class BuildStatus implements Serializable {
      */
     void updateSuccessBuildStatusOnS3(ChannelType channelType, String artefactURL) {
         updateDownloadLink(channelType, artefactURL)
+        updateFinishTime(channelType)
         prepareBuildServiceEnvironment([channelType.toString()], true)
         updatePlatformStatus(channelType, Status.SUCCESS)
         updateBuildStatusOnS3()
@@ -390,6 +415,13 @@ class BuildStatus implements Serializable {
                 platformsDTO.setTabletDownloadLink(String.valueOf((platformJson['tabletDownloadLink'])))
                 platformsDTO.setUniversalDownloadLink(String.valueOf(platformJson['universalDownloadLink']))
                 platformsDTO.setBuildNumber(String.valueOf(platformJson['buildNumber']))
+
+                platformsDTO.setMobileStartedAt(String.valueOf(platformJson['mobileStartedAt']))
+                platformsDTO.setMobileFinishedAt(String.valueOf(platformJson['mobileFinishedAt']))
+                platformsDTO.setTabletStartedAt(String.valueOf(platformJson['tabletStartedAt']))
+                platformsDTO.setTabletFinishedAt(String.valueOf(platformJson['tabletFinishedAt']))
+                platformsDTO.setUniversalStartedAt(String.valueOf(platformJson['universalStartedAt']))
+                platformsDTO.setUniversalFinishedAt(String.valueOf(platformJson['universalFinishedAt']))
 
                 listOfPlatform.add(platformsDTO)
             }

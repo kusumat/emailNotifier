@@ -34,6 +34,12 @@ class PlatformsDTO implements Serializable{
     private String mobileDownloadLink
     private String tabletDownloadLink
     private String universalDownloadLink
+    private String mobileStartedAt = "NA"
+    private String mobileFinishedAt = "NA"
+    private String tabletStartedAt = "NA"
+    private String tabletFinishedAt = "NA"
+    private String universalStartedAt = "NA"
+    private String universalFinishedAt = "NA"
     private String buildNumber
 
     PlatformsDTO(PlatformType platformType){
@@ -160,6 +166,66 @@ class PlatformsDTO implements Serializable{
     }
 
     @NonCPS
+    String getMobileStartedAt() {
+        return mobileStartedAt
+    }
+
+    @NonCPS
+    void setMobileStartedAt(String mobileStartedAt) {
+        this.mobileStartedAt = mobileStartedAt
+    }
+
+    @NonCPS
+    String getMobileFinishedAt() {
+        return mobileFinishedAt
+    }
+
+    @NonCPS
+    void setMobileFinishedAt(String mobileFinishedAt) {
+        this.mobileFinishedAt = mobileFinishedAt
+    }
+
+    @NonCPS
+    String getTabletStartedAt() {
+        return tabletStartedAt
+    }
+
+    @NonCPS
+    void setTabletStartedAt(String tabletStartedAt) {
+        this.tabletStartedAt = tabletStartedAt
+    }
+
+    @NonCPS
+    String getTabletFinishedAt() {
+        return tabletFinishedAt
+    }
+
+    @NonCPS
+    void setTabletFinishedAt(String tabletFinishedAt) {
+        this.tabletFinishedAt = tabletFinishedAt
+    }
+
+    @NonCPS
+    String getUniversalStartedAt() {
+        return universalStartedAt
+    }
+
+    @NonCPS
+    void setUniversalStartedAt(String universalStartedAt) {
+        this.universalStartedAt = universalStartedAt
+    }
+
+    @NonCPS
+    String getUniversalFinishedAt() {
+        return universalFinishedAt
+    }
+
+    @NonCPS
+    void setUniversalFinishedAt(String universalFinishedAt) {
+        this.universalFinishedAt = universalFinishedAt
+    }
+
+    @NonCPS
     @Override
     String toString(){
 
@@ -175,6 +241,12 @@ class PlatformsDTO implements Serializable{
                 mobileDownloadLink: getMobileDownloadLink(),
                 tabletDownloadLink: getTabletDownloadLink(),
                 universalDownloadLink: getUniversalDownloadLink(),
+                mobileStartedAt: getMobileStartedAt(),
+                mobileFinishedAt: getMobileFinishedAt(),
+                tabletStartedAt: getTabletStartedAt(),
+                tabletFinishedAt: getTabletFinishedAt(),
+                universalStartedAt: getUniversalStartedAt(),
+                universalFinishedAt: getUniversalFinishedAt()
                 buildNumber: getBuildNumber()
 
         return json.toPrettyString()
