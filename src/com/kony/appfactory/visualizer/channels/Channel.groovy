@@ -630,7 +630,7 @@ class Channel implements Serializable {
         String targetProtectedKeysPath = [projectWorkspacePath, '__encryptionkeys'].join(separator)
         script.catchErrorCustom("Failed to copy protected keys to project workspace") {
             script.dir(targetProtectedKeysPath) {
-                /* Note: Here, Expecting the file name from plug-in as: private_key.pem, public_key.dat
+                /* Note: Here, Expecting the file name from plug-in as: private_key.pem, public_key.dat or PublicKey.(any extension)
                  * and FinKeys.zip contains fin.zip with minimum three .key files for different architecture.
                  * We added a check to see if FinKeys exists or not.
                  * This is because for the visualizer versions which are below V8 SP3, finkeys are mandatory and for other versions, these keys are optional.
@@ -646,6 +646,10 @@ class Channel implements Serializable {
                                 throw new AppFactoryException("Problem found with fin keys.", 'ERROR')
                             }
                         }
+                    }
+
+                    if (script.fileExists('PublicKey.zip')) {
+                        script.unzip zipFile: "PublicKey.zip"
                     }
                 }
             }
