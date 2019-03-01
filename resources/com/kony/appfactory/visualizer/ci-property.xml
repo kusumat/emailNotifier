@@ -261,9 +261,13 @@
         <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}" />
     </target>
 
-    <target name="cloudpropertyOverwriteOnExist" if="${env.IS_STARTER_PROJECT}">
+
+    <target name="cloudpropertyOverwriteOnExist" if="${env.IS_STARTER_PROJECT}" description="-> update properties coming from CloudBuild service">
         <propertyfile file="HeadlessBuild.properties">
+            <entry key="fabric.token" value="${env.MF_TOKEN}"/>
             <entry key="mf.app.version" value="${env.FABRIC_APP_VERSION}"/>
+            <entry key="cloud.username" value=""/>
+            <entry key="cloud.password" value=""/>
         </propertyfile>
     </target>
 

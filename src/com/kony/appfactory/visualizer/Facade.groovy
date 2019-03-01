@@ -270,7 +270,10 @@ class Facade implements Serializable {
                 script.string(name: 'PROJECT_SOURCE_URL', value: "${script.params.PROJECT_SOURCE_URL}"),
                 script.string(name: 'BUILD_STATUS_PATH', value: "${script.params.BUILD_STATUS_PATH}"),
                 script.string(name: 'MF_TOKEN', value: "${script.params.MF_TOKEN}"),
-                script.string(name: 'PROJECT_NAME', value: "${script.params.PROJECT_NAME}")
+                script.string(name: 'PROJECT_NAME', value: "${script.params.PROJECT_NAME}"),
+                script.string(name: 'FABRIC_ENV_NAME', value: "${script.params.FABRIC_ENV_NAME}"),
+                script.string(name: 'FABRIC_APP_NAME', value: "${script.params.FABRIC_APP_NAME}"),
+                script.string(name: 'FABRIC_APP_VERSION', value: "${script.params.FABRIC_APP_VERSION}")
         ]
     }
 
