@@ -87,15 +87,18 @@ class BuildHelper implements Serializable {
 	 * @param sourceUrl is the target url, from which we want to download the artefact
 	 * @param outputFileName is the fileName for the downloaded artefact
 	 */
-	protected static final void downloadFile(script, String sourceUrl, String outputFileName){
+    protected static final void downloadFile(script, String sourceUrl, String outputFileName) {
 
-		try{
-			script.shellCustom("curl -o \'${outputFileName}\' \'${sourceUrl}\'", true)
-		}
-		catch(Exception e){
-			throw new AppFactoryException("Failed to download the file", 'ERROR')
-		}
-	}
+        try {
+            def projectDownload = script.shellCustom("curl --fail -o \'${outputFileName}\' \'${sourceUrl}\'", true, [returnStatus: true, returnStdout: true])
+            if (projectDownload) {
+                script.currentBuild.result = "FAILED"
+            }
+        }
+        catch (Exception e) {
+            throw new AppFactoryException("Failed to download the file", 'ERROR')
+        }
+    }
 
     /**
      * Populates provided binding in template.

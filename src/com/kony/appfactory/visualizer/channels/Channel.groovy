@@ -208,9 +208,7 @@ class Channel implements Serializable {
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                 upstreamJob = BuildHelper.getUpstreamJobName(script)
                 isRebuild = BuildHelper.isRebuildTriggered(script)
-                if(!script.params.IS_SOURCE_VISUALIZER){
                     PrepareMustHaves()
-                }
             }
             setBuildDescription()
 

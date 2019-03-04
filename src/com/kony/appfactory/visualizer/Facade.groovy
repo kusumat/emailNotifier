@@ -522,6 +522,9 @@ class Facade implements Serializable {
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.CHANNEL_ARTIFACTS))
+
+                /* Collect must have artifacts */
+                mustHaveArtifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
             }
         }
 
@@ -864,17 +867,16 @@ class Facade implements Serializable {
                     script.currentBuild.result = 'FAILURE'
 
                 } finally {
+                    String s3MustHaveAuthUrl = ''
+                    if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
+                        s3MustHaveAuthUrl = prepareMustHaves()
+                    }
+
+                    setBuildDescription(s3MustHaveAuthUrl)
+
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
                     } else {
-                        String s3MustHaveAuthUrl = ''
-
-                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                            s3MustHaveAuthUrl = prepareMustHaves()
-                        }
-
-                        setBuildDescription(s3MustHaveAuthUrl)
-
                         if (channelsToRun && script.currentBuild.result != 'FAILURE') {
                             /*
                              * Been agreed to send notification from buildVisualizerApp job only,
