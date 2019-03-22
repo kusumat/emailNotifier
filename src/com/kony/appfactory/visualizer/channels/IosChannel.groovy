@@ -253,6 +253,7 @@ class IosChannel extends Channel {
                 
                 script.dir('fastlane') {
                     script.unstash name: fastlaneConfigStashName
+                    sleep(150000)
                 }
                 
                 /* set iOS build configuration to debug/release based on Visualizer version,
