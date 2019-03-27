@@ -13,10 +13,10 @@ class RunTests implements Serializable {
     protected libraryProperties
     /* Job workspace path */
     protected workspace
-    /* Folder name with test automation scripts */
-    protected testFolder
     /* Target folder for checkout, default value vis_ws/<project_name> */
     protected checkoutRelativeTargetFolder
+    /* Folder name with test automation scripts */
+    protected testFolder
     /*
         If projectRoot value has been provide, than value of this property
         will be set to <job_workspace>/vis_ws/<project_name> otherwise it will be set to <job_workspace>/vis_ws
@@ -35,7 +35,6 @@ class RunTests implements Serializable {
         can not be used.
      */
     final projectWorkspaceFolderName
-    
     /*
         Platform dependent default name-separator character as String.
         For windows, it's '\' and for unix it's '/'.
@@ -45,7 +44,6 @@ class RunTests implements Serializable {
     
     /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     protected projectFullPath
-
     /* CustomHookHelper object */
     protected hookHelper
 
@@ -99,6 +97,31 @@ class RunTests implements Serializable {
                 throw new AppFactoryException("Build parameter ${parameter.key} value is not valid URL!", 'ERROR')
         }
     }
+    /**
+     * Provide the Test Directory Path in source.
+     * Since V8SP4, the testing framework locations have been updated to <project_root>/testresources/..
+     * To be able to add such new modifications and support the  backward compatibility, we will go through each possible location
+     * and check for a valid POM file. For future additions, make sure to add the latest paths first.
+     *
+     * @param projectFullPath contains the path for project root.
+     * @param channelType contains whether it is a native or desktopweb channel.
+     * @return testsFolderPath contains the base path for tests directory.
+     */
+    protected final String getTestsFolderPath(projectFullPath, channelType) {
+        String testsFolderPath
+        List<String> testPoms = [] as String[]
+        /* Add possible pom file locations, Please make sure to add the latest versions first. */
+        channelType.equalsIgnoreCase("Native")?
+                testPoms.addAll([[projectFullPath, libraryProperties.'testresources.automation.scripts.path', 'pom.xml'].join(separator),[projectFullPath, libraryProperties.'test.automation.scripts.path', 'pom.xml'].join(separator)])
+                :testPoms.addAll([[projectFullPath, libraryProperties.'testresources.automation.scripts.path.for.desktopweb', 'pom.xml'].join(separator),[projectFullPath, libraryProperties.'test.automation.scripts.path.for.desktopweb', 'pom.xml'].join(separator)])
+        for (String pomFilePath : testPoms) {
+            if (script.fileExists(pomFilePath)) {
+                testsFolderPath = pomFilePath.minus(separator + 'pom.xml')
+                return testsFolderPath
+                break
+            }
+        }
+    }
 
     /**
      * Wraps block of code with required steps for every build pipeline.
@@ -115,13 +138,6 @@ class RunTests implements Serializable {
         projectFullPath = [
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
-        if (channelType.equalsIgnoreCase("Native")) {
-            testFolder = [projectFullPath, libraryProperties.'test.automation.scripts.path'].join(separator)
-            deviceFarmWorkingFolder = [projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'].join(separator)
-        } else {
-            testFolder = [projectFullPath, libraryProperties.'test.automation.scripts.path.for.desktopweb'].join(separator)
-        }
-
         try {
             closure()
         } catch (AppFactoryException e) {
