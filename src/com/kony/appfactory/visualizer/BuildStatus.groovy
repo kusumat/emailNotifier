@@ -166,6 +166,7 @@ class BuildStatus implements Serializable {
         boolean iOSFlag = false
         boolean androidFlag = false
         buildStatus.setBuildNumber(script.env.BUILD_NUMBER)
+        buildStatus.setBuildGuid(script.params.BUILD_GUID)
         buildStatus.setStatus(Status.IN_PROGRESS)
         buildStatus.setStartedAt(new Date().toString())
         buildStatus.setLastUpdatedAt(new Date().toString())
@@ -392,6 +393,7 @@ class BuildStatus implements Serializable {
         BuildStatusDTO buildStatusDTO = BuildStatusDTO.getInstance()
 
         buildStatusDTO.setBuildNumber(String.valueOf(statusJsonContent['buildNumber']))
+        buildStatusDTO.setBuildGuid(String.valueOf(statusJsonContent['buildGuid']))
         buildStatusDTO.setStatus(Status.valueOf(String.valueOf(statusJsonContent['status'])))
         buildStatusDTO.setStartedAt(String.valueOf(statusJsonContent['startedAt']))
         buildStatusDTO.setLastUpdatedAt(String.valueOf(statusJsonContent['lastUpdatedAt']))

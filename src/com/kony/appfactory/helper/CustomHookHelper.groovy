@@ -236,16 +236,18 @@ class CustomHookHelper implements Serializable {
     }
 
 
-  //  @NonCPS
-    protected runCustomHooks(String folderName, String hookBuildStage, String pipelineBuildStage){
+    //  @NonCPS
+    protected runCustomHooks(String folderName, String hookBuildStage, String pipelineBuildStage) {
         script.echoCustom("Trying to fetch $hookBuildStage $pipelineBuildStage hooks. ")
+        /* If CloudBuild, the folder name will be CloudBuildService (project in AppFactory CloudBuild Jenkins Console) */
+        folderName = script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : folderName
 
-       /* Execute available hooks */
+        /* Execute available hooks */
         def executionStatus = triggerHooks(folderName, hookBuildStage, pipelineBuildStage)
-        
+
         executionStatus
     }
-    
+
     protected getHookSlaveForCurrentBuildSlave(currentComputer){
 
         String hookSlaveForCurrentComputer = null;

@@ -230,6 +230,8 @@ class DesktopWebTests extends RunTests implements Serializable {
                                         scmCredentialsId: scmCredentialsId,
                                         scmUrl: scmUrl
                             }
+                            /* Get the automation test folder */
+                            testFolder = getTestsFolderPath(projectFullPath, "DesktopWeb")
 
                             script.stage('Build') {
                                 /* Build Test Automation scripts */

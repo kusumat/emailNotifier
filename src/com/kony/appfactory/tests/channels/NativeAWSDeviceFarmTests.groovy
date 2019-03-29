@@ -505,7 +505,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         and build environment completely new.
                      */
                         script.cleanWs deleteDirs: true
-
+                        /* Set the device farm working directory */
+                        deviceFarmWorkingFolder = [projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'].join(separator)
                         /* Build test automation scripts if URL with test binaries was not provided */
                         if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
                             script.stage('Checkout') {
@@ -516,7 +517,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                         scmCredentialsId: scmCredentialsId,
                                         scmUrl: scmUrl
                             }
-
+                            testFolder = getTestsFolderPath(projectFullPath, "Native")
                             script.stage('Build') {
                                 if(runInCustomTestEnvironment && !appiumVersion) {
                                     if (script.fileExists("${testFolder}/src/test/resources/${testSpecUploadFileName}"))

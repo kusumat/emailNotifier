@@ -22,13 +22,7 @@ class WebChannel extends Channel {
     def appVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     protected final webAppVersion = script.params[appVersionParameterName]
     protected webAppUrl
-    /* CustomHooks build Parameters*/
-    protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     protected final selectedSpaChannels
-
-    /* CustomHookHelper object */
-    protected hookHelper
-    protected boolean isCustomHookRunBuild
 
     /* Build agent resources */
     def resourceList
