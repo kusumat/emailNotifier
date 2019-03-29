@@ -298,9 +298,8 @@ class Channel implements Serializable {
         /* Populate Fabric configuration to appfactory.js file */
         populateFabricAppConfig()
 
-        /* Get Project common AppId */
+        /* Get Project common AppId to be used in the CI/Headless build */
         script.env.projectAppId = getProjectAppIdKey()
-        projectAppId = script.env.projectAppId
         
         script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
@@ -511,6 +510,9 @@ class Channel implements Serializable {
         /* Check required arguments */
         (artifactExtension) ?: script.echoCustom("artifactExtension argument can't be null", 'ERROR')
 
+        /* Setting the projectAppId to the global variable which is needed to find the build artifacts */
+        projectAppId = script.env.projectAppId
+		
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, projectAppId, separator, channelVariableName) ?:
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
 
