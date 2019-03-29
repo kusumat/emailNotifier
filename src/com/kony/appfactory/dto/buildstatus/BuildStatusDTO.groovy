@@ -10,6 +10,7 @@ import groovy.json.JsonSlurper
  *
  *  {
  *     "buildNumber": "349",
+ *     "buildGuid": "eyJidWlsZF9ndWlkIjoiMmE1N2FlYTUtMGQwMS00OTBiLThjYzktZDg4NDU3YWY2MDllIiwicHJvamVjdF9uYW1lIjoiU1dBTGlmZSJ9",
  *     "status": "SUCCESS",
  *     "startedAt": "Tue Aug 21 04:20:52 UTC 2018",
  *     "lastUpdatedAt": "Tue Aug 21 04:20:52 UTC 2018",
@@ -52,7 +53,7 @@ import groovy.json.JsonSlurper
 class BuildStatusDTO implements Serializable {
 
     private String buildNumber
-    private String guid
+    private String buildGuid
     private Status status
     private String startedAt
     private String lastUpdatedAt
@@ -80,6 +81,17 @@ class BuildStatusDTO implements Serializable {
     String getBuildNumber(){
         return buildNumber
     }
+
+    @NonCPS
+    void setBuildGuid(String buildGuid){
+        this.buildGuid = buildGuid
+    }
+
+    @NonCPS
+    String getBuildGuid(){
+        return buildGuid
+    }
+
     @NonCPS
     void setStatus(Status status){
         this.status=status
@@ -147,13 +159,14 @@ class BuildStatusDTO implements Serializable {
 
     @NonCPS
     @Override
-    String toString(){
+    String toString() {
         def json = new JsonBuilder()
-        json buildNumber: getBuildNumber() ,
+        json buildNumber: getBuildNumber(),
+                buildGuid: getBuildGuid(),
                 status: getStatus(),
                 startedAt: getStartedAt(),
                 lastUpdatedAt: getLastUpdatedAt(),
-                platforms:getPlatformData()
+                platforms: getPlatformData()
         return json.toPrettyString()
     }
 
