@@ -2,7 +2,6 @@ package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
-import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.AppFactoryException
 
@@ -28,15 +27,6 @@ class AndroidChannel extends Channel {
     private resourceList
     /* nodeLabel store slave label */
     private nodeLabel
-    /* CustomHooks build Parameters*/
-    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
-    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
-        "ANDROID_MOBILE_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
-        "ANDROID_TABLET_STAGE" : "ANDROID_UNIVERSAL_STAGE"
-
-    /* CustomHookHelper object */
-    protected hookHelper
-    private boolean isCustomHookRunBuild
 
     /**
      * Class constructor.
@@ -44,13 +34,26 @@ class AndroidChannel extends Channel {
      * @param script pipeline object.
      */
     AndroidChannel(script) {
+        this(script, script.params.FORM_FACTOR)
+         }
+
+    /**
+     * Class constructor.
+     *
+     * @param script pipeline object.
+     * @param channelFormFactor
+     */
+    AndroidChannel(script, channelFormFactor) {
         super(script)
-        this.hookHelper = new CustomHookHelper(script)
         channelOs = 'Android'
         channelType = 'Native'
         /* Expose Android build parameters to environment variables to use it in HeadlessBuild.properties */
         this.script.env['APP_VERSION'] = androidAppVersion
         this.script.env['ANDROID_PACKAGE_NAME'] = androidPackageName
+        this.channelFormFactor = channelFormFactor
+        customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+                "ANDROID_MOBILE_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+                "ANDROID_TABLET_STAGE" : "ANDROID_UNIVERSAL_STAGE"
     }
 
     /**
@@ -154,7 +157,7 @@ class AndroidChannel extends Channel {
                             doAndroidSigning = true
                         }
                     }
-                    if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                    if (buildMode == libraryProperties.'buildmode.release.protected.type') {
                         mandatoryParameters.add('PROTECTED_KEYS')
                     }
 
@@ -196,30 +199,20 @@ class AndroidChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
-                        
-                        script.stage('Check PreBuild Hook Points'){
-                            if(isCustomHookRunBuild){
-                                /* Run Pre Build Android Hooks */
-                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
-                                if(!isSuccess)
-                                    throw new Exception("Something went wrong with the Custom hooks execution.")
-                            }
-                            else{
-                                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.','WARN')
-                            }
-                        }
-                        
+                        /* Run PreBuild Hooks */
+                        runPreBuildHook()
+
                         script.stage('Build') {
                             /* Copy protected keys to project workspace if build mode is "release-protected" */
-                            if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                            if (buildMode == libraryProperties.'buildmode.release.protected.type') {
                                 script.echoCustom("Placing encryptions keys for protected mode build.")
                                 copyProtectedKeysToProjectWorkspace()
                             }
                             build()
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension)
-                            if(!buildArtifacts){
-                                throw new AppFactoryException('Build artifacts were not found!','ERROR')
+                            if (!buildArtifacts) {
+                                throw new AppFactoryException('Build artifacts were not found!', 'ERROR')
                             }
                         }
 
@@ -269,21 +262,9 @@ class AndroidChannel extends Channel {
                             }
 
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
-                        }
 
-                        /* Run Post Build Android Hooks */
-                        script.stage('Check PostBuild Hook Points') {
-                            if (script.currentBuild.currentResult == 'SUCCESS') {
-                                if (isCustomHookRunBuild) {
-                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
-                                    if (!isSuccess)
-                                        throw new Exception("Something went wrong with the Custom hooks execution.")
-                                } else {
-                                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
-                                }
-                            } else {
-                                script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
-                            }
+                            /* Run PostBuild Hooks */
+                            runPostBuildHook()
                         }
                     }
                 }

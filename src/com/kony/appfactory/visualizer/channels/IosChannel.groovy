@@ -40,21 +40,8 @@ class IosChannel extends Channel {
     protected iosBundleId = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
         iosMobileAppId : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
         iosTabletAppId : iosUniversalAppId
-
-    /* CustomHooks build Parameters*/
-    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
-    private final customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
-        "IOS_MOBILE_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
-        "IOS_TABLET_STAGE" : "IOS_UNIVERSAL_STAGE"
-    private final customHookIPAStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
-        "IOS_MOBILE_IPA_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
-        "IOS_TABLET_IPA_STAGE" : "IOS_UNIVERSAL_IPA_STAGE"
     private final iosOTAPrefix = "itms-services://?action=download-manifest&url="
     private iosWatchExtension = script.env.APPLE_WATCH_EXTENSION ?: false
-
-    /* CustomHookHelper object */
-    protected hookHelper
-    private boolean isCustomHookRunBuild
 
     void setAppleCertID(appleCertID) {
         this.appleCertID = appleCertID
@@ -78,11 +65,21 @@ class IosChannel extends Channel {
                 iosTabletAppId : iosUniversalAppId
     }
 /**
+ * Class constructor.
+ *
+ * @param script pipeline object.
+ */
+    IosChannel(script) {
+        this(script, script.params.FORM_FACTOR)
+    }
+
+    /**
      * Class constructor.
      *
      * @param script pipeline object.
+     * @param channelFormFactor
      */
-    IosChannel(script) {
+    IosChannel(script, channelFormFactor) {
         super(script)
         this.hookHelper = new CustomHookHelper(script)
         channelOs = 'iOS'
@@ -90,9 +87,17 @@ class IosChannel extends Channel {
         fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
         /* Expose iOS bundle ID to environment variables to use it in HeadlessBuild.properties */
         this.script.env['IOS_BUNDLE_ID'] = iosBundleId
-        this.script.env['APP_VERSION'] =  ValidationHelper.isValidStringParam(script,'IOS_APP_VERSION') ? iosAppVersion : iosBundleVersion
+        this.script.env['APP_VERSION'] = ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION') ? iosAppVersion : iosBundleVersion
         this.script.env['IOS_BUNDLE_VERSION'] = iosBundleVersion
+        this.channelFormFactor = channelFormFactor
+        customHookStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+                "IOS_MOBILE_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+                "IOS_TABLET_STAGE" : "IOS_UNIVERSAL_STAGE"
+        customHookIPAStage = (channelFormFactor?.equalsIgnoreCase('Mobile')) ?
+                "IOS_MOBILE_IPA_STAGE" : (channelFormFactor?.equalsIgnoreCase('Tablet')) ?
+                "IOS_TABLET_IPA_STAGE" : "IOS_UNIVERSAL_IPA_STAGE"
     }
+
     /**
      * Fetches fastlane configuration files for signing build artifacts from S3.
      */
@@ -213,15 +218,12 @@ class IosChannel extends Channel {
                     throw new AppFactoryException("KAR extraction failed!!", 'ERROR')
                 }
             }
-            
             script.stage('Check PreBuild IPA Hook Points') {
-                /* Run Pre Build iOS IPA Hooks */
-                if(isCustomHookRunBuild){
+                if (isCustomHookRunBuild) {
                     /* Run Pre Build iOS IPA stage Hooks */
                     hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookIPAStage)
-                }
-                else{
-                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.','WARN')
+                } else {
+                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                 }
             }
 
@@ -466,18 +468,18 @@ class IosChannel extends Channel {
                     } else {
                         script.echoCustom("Something went wrong. Unable to figure out valid application id type", 'ERROR')
                     }
-                    
-                    if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+
+                    if (buildMode == libraryProperties.'buildmode.release.protected.type') {
                         mandatoryParameters.add('PROTECTED_KEYS')
                     }
-                    
+
                     if (ValidationHelper.isValidStringParam(script, 'IOS_APP_VERSION')) {
                         mandatoryParameters.add('IOS_APP_VERSION')
                     }
 
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters, eitherOrParameters)
                     if ((channelFormFactor?.equalsIgnoreCase('tablet')) && iosWatchExtension) {
-                        script.echoCustom ("Skipping Apple Watch extension build for iOS Tablet channel.", 'WARN')
+                        script.echoCustom("Skipping Apple Watch extension build for iOS Tablet channel.", 'WARN')
                         /* Resetting Watch variables to false for fastlane to ignore watch extension signing */
                         iosWatchExtension = false
                         /* Reset Watch build environment variable as well, to reflect it in HeadlessBuild.properties */
@@ -518,25 +520,16 @@ class IosChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
-                        isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
-                        script.stage('Check PreBuild Hook Points') {
-                            /* Run Pre Build iOS Hooks */
-                            if (isCustomHookRunBuild) {
-                                def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
-                                if(!isSuccess)
-                                    throw new Exception("Something went wrong with the Custom hooks execution.")
-                            } else {
-                                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
-                            }
-                        }
+                        /* Run PreBuild Hooks */
+                        runPreBuildHook()
 
                         script.stage('Update Bundle ID') {
                             updateIosBundleId()
                         }
-                        
+
                         script.stage('KAR Build') {
                             /* Copy protected keys to project workspace if build mode is "release-protected" */
-                            if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                            if (buildMode == libraryProperties.'buildmode.release.protected.type') {
                                 script.echoCustom("Placing encryptions keys for protected mode build.")
                                 copyProtectedKeysToProjectWorkspace()
                             }
@@ -584,20 +577,8 @@ class IosChannel extends Channel {
 
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 
-                        /* Run Post Build iOS Hooks */
-                        script.stage('Check PostBuild Hook Points') {
-                            if (script.currentBuild.currentResult == 'SUCCESS') {
-                                if (isCustomHookRunBuild) {
-                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
-                                    if (!isSuccess)
-                                        throw new Exception("Something went wrong with the Custom hooks execution.")
-                                } else {
-                                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
-                                }
-                            } else {
-                                script.echoCustom('CustomHooks execution skipped as current build result not SUCCESS.', 'WARN')
-                            }
-                        }
+                        /* Run PostBuild Hooks */
+                        runPostBuildHook()
                     }
                 }
             }

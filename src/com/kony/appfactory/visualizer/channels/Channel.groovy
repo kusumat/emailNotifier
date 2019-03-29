@@ -6,6 +6,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.AppFactoryException
 
 /**
@@ -111,6 +112,15 @@ class Channel implements Serializable {
     protected final jobBuildNumber = script.env.BUILD_NUMBER
     protected final protectedKeys = script.params.PROTECTED_KEYS
 
+    /* Custom Hooks related params */
+    protected boolean isCustomHookRunBuild
+    /* CustomHookHelper object */
+    protected hookHelper
+    /* CustomHooks build Parameters*/
+    protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    protected customHookStage
+    protected customHookIPAStage
+
     /* Visualizer command-line build types */
     protected final enum VisualizerBuildType {
         headless, ci
@@ -123,6 +133,7 @@ class Channel implements Serializable {
      */
     Channel(script) {
         this.script = script
+        this.hookHelper = new CustomHookHelper(script)
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
@@ -143,7 +154,7 @@ class Channel implements Serializable {
         /* Re-setting for global access of build mode */
         this.script.env['BUILD_MODE'] = buildMode
     }
-
+    
     /**
      * Wraps block of code with required steps for every build pipeline.
      *
@@ -193,7 +204,7 @@ class Channel implements Serializable {
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
-
+        isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, runCustomHook, libraryProperties)
         try {
             closure()
         } catch (Exception e) {
@@ -965,8 +976,38 @@ class Channel implements Serializable {
         }
         finalFeatureParamsToCheckHeadlessSupport
     }
-    
 
+    /**
+     *  Method to run pre build custom hooks
+     */
+    protected final void runPreBuildHook() {
+        script.stage('Check PreBuild Hook Points') {
+            if (isCustomHookRunBuild) {
+                /* Run Pre Build Android Hooks */
+                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
+            } else {
+                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
+            }
+        }
+    }
+
+    /**
+     *  Method to run post build custom hooks
+     */
+    protected final void runPostBuildHook() {
+        script.stage('Check PostBuild Hook Points') {
+            if (script.currentBuild.currentResult == 'SUCCESS') {
+                if (isCustomHookRunBuild) {
+                    /* Run Pre Build Android Hooks */
+                    hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
+                } else {
+                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
+                }
+            } else {
+                script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
+            }
+        }
+    }
 }
 
 

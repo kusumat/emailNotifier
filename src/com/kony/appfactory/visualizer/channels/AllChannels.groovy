@@ -6,7 +6,6 @@ import com.kony.appfactory.enums.ChannelType
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CredentialsHelper
-import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.JsonHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.visualizer.BuildStatus
@@ -27,14 +26,6 @@ class AllChannels implements Serializable {
 
     /* List of channels to build */
     private channelsToRun
-
-    /* CustomHooks build Parameters*/
-    private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
-    private boolean isCustomHookRunBuild
-
-    /* CustomHookHelper object */
-    protected hookHelper
-
     protected BuildStatus buildStatus
 
     /* Channel objects for each channel-type */
@@ -82,8 +73,6 @@ class AllChannels implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
-
-        hookHelper = new CustomHookHelper(script)
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         /* Checking if at least one channel been selected */
         channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?:
@@ -103,33 +92,27 @@ class AllChannels implements Serializable {
         for (item in channelsToRun) {
             switch (item) {
                 case ChannelType.ANDROID_MOBILE_NATIVE.toString():
-                    androidMobileChannel = new AndroidChannel(script)
-                    androidMobileChannel.channelFormFactor = "Mobile"
+                    androidMobileChannel = new AndroidChannel(script, "Mobile")
                     channelObjects.put(item, androidMobileChannel as Object)
                     break
                 case ChannelType.ANDROID_TABLET_NATIVE.toString():
-                    androidTabletChannel = new AndroidChannel(script)
-                    androidTabletChannel.channelFormFactor = "Tablet"
+                    androidTabletChannel = new AndroidChannel(script, "Tablet")
                     channelObjects.put(item, androidTabletChannel as Object)
                     break
                 case ChannelType.IOS_MOBILE_NATIVE.toString():
-                    iosMobileChannel = new IosChannel(script)
-                    iosMobileChannel.channelFormFactor = "Mobile"
+                    iosMobileChannel = new IosChannel(script, "Mobile")
                     channelObjects.put(item, iosMobileChannel as Object)
                     break
                 case ChannelType.IOS_TABLET_NATIVE.toString():
-                    iosTabletChannel = new IosChannel(script)
-                    iosTabletChannel.channelFormFactor = "Tablet"
+                    iosTabletChannel = new IosChannel(script, "Tablet")
                     channelObjects.put(item, iosTabletChannel as Object)
                     break
                 case ChannelType.ANDROID_UNIVERSAL_NATIVE.toString():
-                    androidUniversalChannel = new AndroidChannel(script)
-                    androidUniversalChannel.channelFormFactor = "Universal"
+                    androidUniversalChannel = new AndroidChannel(script, "Universal")
                     channelObjects.put(item, androidUniversalChannel as Object)
                     break
                 case ChannelType.IOS_UNIVERSAL_NATIVE.toString():
-                    iosUniversalChannel = new IosChannel(script)
-                    iosUniversalChannel.channelFormFactor = "Universal"
+                    iosUniversalChannel = new IosChannel(script, "Universal")
                     channelObjects.put(item, iosUniversalChannel as Object)
                     break
                 default:
@@ -206,8 +189,8 @@ class AllChannels implements Serializable {
                                 script.writeJSON file: projectPropertyFileName, json: jsonContent
                             }
 
-                        // Let's check whether third party authentication is enabled or not
-                        BuildHelper.getExternalAuthInfoForCloudBuild(script, script.env['CLOUD_DOMAIN'], script.kony['MF_API_VERSION'], script.env['CLOUD_ENVIRONMENT_GUID'])
+                            // Let's check whether third party authentication is enabled or not
+                            BuildHelper.getExternalAuthInfoForCloudBuild(script, script.env['CLOUD_DOMAIN'], script.kony['MF_API_VERSION'], script.env['CLOUD_ENVIRONMENT_GUID'])
 
                             script.stage('Android Task') {
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
@@ -223,6 +206,10 @@ class AllChannels implements Serializable {
                                         /* reserving space for any pre-setups needed for any ios builds */
                                     }
                                 }
+                            }
+                            /* Run PreBuild Hooks */
+                            channelObjects.each {
+                                it.value.runPreBuildHook()
                             }
                         }
 
@@ -398,6 +385,10 @@ class AllChannels implements Serializable {
                                         script.currentBuild.result = "UNSTABLE"
                                     }
                                 }
+                            }
+                            /* Run PostBuild Hooks */
+                            channelObjects.each{
+                                it.value.runPostBuildHook()
                             }
                         }
 
