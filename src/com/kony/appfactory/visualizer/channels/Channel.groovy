@@ -2,7 +2,6 @@ package com.kony.appfactory.visualizer.channels
 
 import java.util.regex.Matcher
 
-import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
@@ -248,8 +247,8 @@ class Channel implements Serializable {
 
         /* Get Visualizer version */
         visualizerVersion = getVisualizerVersion()
-
         script.env.visualizerVersion = visualizerVersion
+
         script.echoCustom("Current Project version: " + visualizerVersion)
 
         /* For CloudBuild, validate if CloudBuild Supported for the given project version */
@@ -257,8 +256,27 @@ class Channel implements Serializable {
             def finalFeatureParamsToCheckCISupport = [:]
             finalFeatureParamsToCheckCISupport.put('CloudBuild', ['featureDisplayName': 'Cloud Build Feature'])
             ValidationHelper.checkFeatureSupportExist(script, libraryProperties, finalFeatureParamsToCheckCISupport, VisualizerBuildType.ci)
+
+            def mostRecentVersion
+            script.dir("FeatureXMLDownloader") {
+                def updatesiteVersionInfoUrl = libraryProperties.'visualizer.dependencies.updatesite.versioninfo.base.url'
+                updatesiteVersionInfoUrl = updatesiteVersionInfoUrl.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
+
+                def updatesiteVersionInfoFile = "versionInfo.json"
+
+                BuildHelper.downloadFile(script, updatesiteVersionInfoUrl, updatesiteVersionInfoFile)
+
+                def versionInfoFileContent = script.readJSON file: updatesiteVersionInfoFile
+                def releaseKeySet = versionInfoFileContent.visualizer_enterprise.releases.version
+                def releaseVersions = releaseKeySet?.findAll { it =~ /(\d+)\.(\d+)\.(\d+)$/ }
+                mostRecentVersion = BuildHelper.getLatestVersion(releaseVersions)
+            }
+
+            visualizerVersion = mostRecentVersion?.trim()
+            script.echoCustom("Building through latest Visualizer version: " + visualizerVersion)
         }
 
+        script.env.visualizerVersion = visualizerVersion
         setVersionBasedProperties(visualizerVersion)
 
 

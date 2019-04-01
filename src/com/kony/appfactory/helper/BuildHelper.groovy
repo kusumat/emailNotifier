@@ -905,5 +905,38 @@ class BuildHelper implements Serializable {
             throw new AppFactoryException("Looks like Oauth key is no longer accepted.. Please retry..")
         }
     }
+
+
+    /**  Sorts versions passed in ArrayList and return Latest and greatest Version.
+     *  Able to sort the versions in two dot and three dot formats, example [8.2.1, 8.4.2.3, 8.5.6] will return 8.5.6
+     *  @param version List
+     *  return mostRecentVersion
+     **/
+
+    @NonCPS
+    protected static String getLatestVersion(versions) {
+        def sorted = versions.sort(false) { a, b ->
+
+            List verA = a.tokenize('.')
+            List verB = b.tokenize('.')
+
+            def commonIndices = Math.min(verA.size(), verB.size())
+
+            for (int i = 0; i < commonIndices; ++i) {
+                def numA = verA[i].toInteger()
+                def numB = verB[i].toInteger()
+
+                if (numA != numB) {
+                    return numA <=> numB
+                }
+            }
+
+            // If we got this far then all the common indices are identical, so whichever version is longer must be more recent
+            verA.size() <=> verB.size()
+        }
+
+        sorted[-1]
+    }
+
 }
 
