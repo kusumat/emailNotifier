@@ -39,8 +39,8 @@ class AwsDeviceFarmHelper implements Serializable {
              * This eliminates unnecessary burden of processing signed URLs for downloading artifact passed by Facade job.
              **/
             artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
-                                                artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com',
-                                                        's3://'+script.env.S3_BUCKET_NAME) : artifactUrl) : ''
+                    artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com',
+                            's3://'+script.env.S3_BUCKET_NAME) : artifactUrl) : ''
             if (artifactUrl.startsWith('http://') || artifactUrl.startsWith('https://')) {
                 script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactUrl}\'", true)
             }
@@ -352,17 +352,17 @@ class AwsDeviceFarmHelper implements Serializable {
         String getDevicePoolOutput = script.shellCustom(getDevicePoolScript, true, [returnStdout: true]).trim()
         def getDevicePoolJSON = script.readJSON text: getDevicePoolOutput
         def list = getDevicePoolJSON.devicePool.rules[0].value.tokenize(",")
-	 def isAndroidDevicePresentInPool = false, isiOSDevicePresentInPool = false
-	    
+        def isAndroidDevicePresentInPool = false, isiOSDevicePresentInPool = false
+
         for(def i=0; i <list.size(); i++){
             def deviceArn = list[i].minus('[').minus(']')
             String getDeviceScript = "set +x;aws devicefarm get-device --arn ${deviceArn}"
             String getDeviceOutput = script.shellCustom(getDeviceScript, true, [returnStdout: true]).trim()
             def getDeviceJSON = script.readJSON text: getDeviceOutput
-	
-	     // The below line is used to make isAndroidDevicePresentInPool to true if pool has android device and vice versa for iOS devices	
-	     (getDeviceJSON.device.platform.equalsIgnoreCase("Android")) ?(isAndroidDevicePresentInPool=true): (isiOSDevicePresentInPool = true)
-        
+
+            // The below line is used to make isAndroidDevicePresentInPool to true if pool has android device and vice versa for iOS devices
+            (getDeviceJSON.device.platform.equalsIgnoreCase("Android")) ?(isAndroidDevicePresentInPool=true): (isiOSDevicePresentInPool = true)
+
             String successMessage = "Test run is scheduled successfully on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
             String errorMessage = "Failed to schedule run on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
 
@@ -400,8 +400,8 @@ class AwsDeviceFarmHelper implements Serializable {
         String successMessage = 'Test run results fetched successfully'
         String errorMessage = 'Failed to fetch test run results'
         def completedRunDevicesList = []
-	 def index = 0
-	    
+        def index = 0
+
         script.catchErrorCustom(errorMessage, successMessage) {
             script.waitUntil {
                 String runResultScript = "set +x;aws devicefarm get-run --arn ${testRunArn}"
@@ -413,82 +413,84 @@ class AwsDeviceFarmHelper implements Serializable {
                 String listJobsScript = "set +x;aws devicefarm list-jobs --arn ${testRunArn} --no-paginate"
                 String listJobsOutput = script.shellCustom(listJobsScript, true, [returnStdout: true]).trim()
                 def listJobsJSON = script.readJSON text: listJobsOutput
+                String deviceKey
 
                 if(listJobsJSON.jobs.size()){
                     for(def i=0; i< listJobsJSON.jobs.size(); i++){
                         listJobsArrayList = listJobsJSON.jobs[i]
-                        runArnMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, testRunArn)
+                        deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
+                        runArnMap.put(deviceKey, testRunArn)
 
                         //If the run is already completed on particular device with specific ARN, then continue.
-			if(completedRunDevicesList.contains(listJobsArrayList.arn))
-			    continue
+                        if(completedRunDevicesList.contains(listJobsArrayList.arn))
+                            continue
                         Date startTime = new Date()
-                        if (!testStartTimeMap.containsKey(listJobsArrayList.name + " " + listJobsArrayList.device.os))
-                            testStartTimeMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, startTime.time)
+                        if (!testStartTimeMap.containsKey(deviceKey))
+                            testStartTimeMap.put(deviceKey, startTime.time)
 
                         switch (listJobsArrayList.status){
                             case 'PENDING':
-                                script.echoCustom("Tests are initiated, execution is yet to start on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-		                 break
-		             case 'PENDING_DEVICE':
-			         script.echoCustom("Tests Execution is pending, trying to get the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-		                 break
-		             case 'PROCESSING':
-		    	         script.echoCustom("Processing the tests on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-		                 break
-		             case 'SCHEDULING':
-		    	         script.echoCustom("Scheduling the tests on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-		                 break
-		             case 'PREPARING':
-			         script.echoCustom("Preparing to run the tests on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-		                 break
-		             case 'STOPPING':
-			         script.echoCustom("Tests execution is being stopped on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-		                 break
-		             case 'RUNNING':
-		    	         script.echoCustom("Tests are running on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os 
-		    	             + "\'... will fetch final results once the execution is completed.", 'INFO')
-		                 break
-		             case 'PENDING_CONCURRENCY':
-		    	         script.echoCustom("Tests execution is in PENDING_CONCURRENCY state on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-			         break
-		             default:
-			         break
-		         }
-		         switch (listJobsArrayList.result) {
-			     case 'PASSED':
-			         script.echoCustom("Test Execution is completed on \'"+ listJobsArrayList.name + " " + listJobsArrayList.device.os 
-	                             + "\' and over all test result is PASSED", 'INFO')
-                               createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
-			         break
-			     case 'WARNED':
-			         script.echoCustom("Build is warned for unknown reason on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'WARN')
-			         break
-			     case 'SKIPPED':
-			         script.echoCustom("Test Execution is skipped on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
-			         break
-			     case 'STOPPED':
-			     case 'ERRORED':
-			     case 'FAILED':
-			         script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os 
-			             + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
-			         createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
-			         break
-			     default:
-			         break
-	                 }    
-	                  
-                     }
-    		}   
-		else
-		    (testRunStatus == 'COMPLETED')?
-		        script.echoCustom("No test jobs were found on one/more of the devices of device farm. Test run status is " + testRunStatus + " and test run result is " + testRunResult, 'ERROR', false):
-		        script.echoCustom("No test jobs were found on one/more of the devices of device farm till now. Test run status is " + testRunStatus + " and test run result is " + testRunResult, 'INFO')
-		
-    		testRunStatus == 'COMPLETED'
+                                script.echoCustom("Tests are initiated, execution is yet to start on \'" + deviceKey + "\'", 'INFO')
+                                break
+                            case 'PENDING_DEVICE':
+                                script.echoCustom("Tests Execution is pending, trying to get the device \'" + deviceKey + "\'", 'INFO')
+                                break
+                            case 'PROCESSING':
+                                script.echoCustom("Processing the tests on \'" + deviceKey + "\'", 'INFO')
+                                break
+                            case 'SCHEDULING':
+                                script.echoCustom("Scheduling the tests on \'" + deviceKey + "\'", 'INFO')
+                                break
+                            case 'PREPARING':
+                                script.echoCustom("Preparing to run the tests on \'" + deviceKey + "\'", 'INFO')
+                                break
+                            case 'STOPPING':
+                                script.echoCustom("Tests execution is being stopped on \'" + deviceKey + "\'", 'INFO')
+                                break
+                            case 'RUNNING':
+                                script.echoCustom("Tests are running on \'" + deviceKey
+                                        + "\'... will fetch final results once the execution is completed.", 'INFO')
+                                break
+                            case 'PENDING_CONCURRENCY':
+                                script.echoCustom("Tests execution is in PENDING_CONCURRENCY state on \'" + deviceKey + "\'", 'INFO')
+                                break
+                            default:
+                                break
+                        }
+                        switch (listJobsArrayList.result) {
+                            case 'PASSED':
+                                script.echoCustom("Test Execution is completed on \'"+ deviceKey
+                                        + "\' and over all test result is PASSED", 'INFO')
+                                createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
+                                break
+                            case 'WARNED':
+                                script.echoCustom("Build is warned for unknown reason on the device \'" + deviceKey + "\'", 'WARN')
+                                break
+                            case 'SKIPPED':
+                                script.echoCustom("Test Execution is skipped on the device \'" + deviceKey + "\'", 'INFO')
+                                break
+                            case 'STOPPED':
+                            case 'ERRORED':
+                            case 'FAILED':
+                                script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + deviceKey
+                                        + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
+                                createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
+                                break
+                            default:
+                                break
+                        }
+
+                    }
+                }
+                else
+                    (testRunStatus == 'COMPLETED')?
+                            script.echoCustom("No test jobs were found on one/more of the devices of device farm. Test run status is " + testRunStatus + " and test run result is " + testRunResult, 'ERROR', false):
+                            script.echoCustom("No test jobs were found on one/more of the devices of device farm till now. Test run status is " + testRunStatus + " and test run result is " + testRunResult, 'INFO')
+
+                testRunStatus == 'COMPLETED'
             }
         }
-	testRunResult
+        testRunResult
     }
 
     /**
@@ -502,16 +504,17 @@ class AwsDeviceFarmHelper implements Serializable {
      * */
     protected void createSummaryOfTestCases(def listJobsArrayList, def testSummaryMap, def testStartTimeMap, def testEndTimeMap, def completedRunDevicesList, def index){
         def keys = listJobsArrayList.counters.keySet()
+        String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
         def counterValues = ""
         for(int j = 0; j < keys.size()-1; j++){
             counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
         }
         counterValues += "total tests: " + listJobsArrayList.counters.get('total')
-        testSummaryMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, counterValues)
+        testSummaryMap.put(deviceKey, counterValues)
         Date endTime = new Date()
-        testEndTimeMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, endTime.time)
+        testEndTimeMap.put(deviceKey, endTime.time)
         use(groovy.time.TimeCategory) {
-            Long timeDifference = testEndTimeMap[listJobsArrayList.name + " " + listJobsArrayList.device.os] - testStartTimeMap[listJobsArrayList.name + " " + listJobsArrayList.device.os]
+            Long timeDifference = testEndTimeMap[deviceKey] - testStartTimeMap[deviceKey]
             mapWithTimeFormat.putAll(changeTimeFormat(timeDifference))
             def value = ""
             if(mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP))
@@ -520,7 +523,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 value+=mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP)  + " mins "
             if(mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP))
                 value+=mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP) + " secs "
-            durationMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, value)
+            durationMap.put(deviceKey, value)
         }
         completedRunDevicesList[index] = listJobsArrayList.arn
         index++
