@@ -174,7 +174,7 @@ class WebChannel extends Channel {
                                 def copyArtifactsCmd = isUnixNode ? 'cp' : 'copy'
                                 def tempBasePath = [projectWorkspacePath, 'temp', projectName]
                                 def destPath = (tempBasePath + ['middleware_mobileweb']).join(separator)
-                                def sourcePath = (tempBasePath + ['build', 'wap', 'build', "${projectName}.zip"]).join(separator)
+                                def sourcePath = (tempBasePath + ['build', 'wap', 'build', "${projectAppId}.zip"]).join(separator)
                                 if (script.fileExists(sourcePath)) {
                                     copyArtifactsCmd = [copyArtifactsCmd, sourcePath, destPath].join(' ')
                                     script.shellCustom(copyArtifactsCmd, isUnixNode)

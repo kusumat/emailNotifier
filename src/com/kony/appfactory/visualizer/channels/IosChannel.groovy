@@ -140,32 +140,47 @@ class IosChannel extends Channel {
      */
     private final void updateIosBundleId() {
 
-        def propertyFileName = libraryProperties.'ios.project.props.xml.file.name'
+        def projectPropertyXMLFile = libraryProperties.'ios.project.props.xml.file.name'
+        def projectPropertyJSonFile = libraryProperties.'ios.project.props.json.file.name'
 
-        String successMessage = 'Bundle ID updated successfully in ' + propertyFileName + '.'
-        String errorMessage = 'Failed to update ' + propertyFileName + ' file with provided Bundle ID!'
+        String successMessage = 'Bundle ID updated successfully.'
+        String errorMessage = 'Failed to update Bundle ID!'
 
         /* Store property file content*/
         def propertyFileContent
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(projectFullPath) {
-                if (script.fileExists(propertyFileName)) {
+                if (script.fileExists(projectPropertyXMLFile)) {
                     /* Reading xml from Workspace */
-                    propertyFileContent = script.readFile file: propertyFileName
+                    propertyFileContent = script.readFile file: projectPropertyXMLFile
 
                     /*
-                    *  In projectprop.xml visualizer ensure this property is present
-                    *  So we just need to replace it
-                    */
+                     *  In projectprop.xml visualizer ensure this property is present
+                     *  So we just need to replace it
+                     */
                     String updatedProjectPropFileContent = propertyFileContent.replaceAll(
                             '<attributes name="iphonebundleidentifierkey".*',
                             '<attributes name="iphonebundleidentifierkey" value="' + iosBundleId + '"/>'
                     )
 
-                    script.writeFile file: propertyFileName, text: updatedProjectPropFileContent
+                    script.writeFile file: projectPropertyXMLFile, text: updatedProjectPropFileContent
+                }
+                else if (script.fileExists(projectPropertyJSonFile)) {
+                    /* Reading json from Workspace */
+                    propertyFileContent = script.readFile file: projectPropertyJSonFile
+
+                    /*
+                     * In projectProperties.json visualizer ensure this property is present from SP4
+                     * So we just need to update the value.
+                     */
+
+                    def jsonContent = script.readJSON text: propertyFileContent
+                    jsonContent['iphonebundleidentifierkey'] = iosBundleId
+
+                    script.writeJSON file: projectPropertyJSonFile, json: jsonContent
                 } else {
-                    throw new AppFactoryException("Failed to find $propertyFileName file to update Bundle ID!", 'ERROR')
+                    throw new AppFactoryException("Failed to find project Property files to update Bundle ID!", 'ERROR')
                 }
             }
         }
