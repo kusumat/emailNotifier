@@ -467,6 +467,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             appiumVersion ? script.echoCustom("Value of Appium Version is :" + appiumVersion) : script.echoCustom("No Appium Version entered, will run with default.")
             /* Load YAML Template */
             ymlTemplate = script.loadLibraryResource(configFolderPath + '/KonyYamlTestSpec.template')
+            testngFiles = testngFiles.replaceAll("," , " ")
             def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles])
             /* Create YAML file from template */
             testSpecUploadFileName = "${projectName}_TestSpec.${testSpecExtension}"

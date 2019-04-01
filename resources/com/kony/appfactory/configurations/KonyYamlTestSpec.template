@@ -70,8 +70,10 @@ phases:
       # Alternatively, You may specify your customized command.
       # Note: For most use cases, the default command works fine.
       # Please refer "http://testng.org/doc/documentation-main.html#running-testng" for more options on running TestNG tests from the command line.
+      - echo "Unzipping TestNG tests jar"
+      - unzip *-tests.jar
       - echo "Start Appium TestNG test"
-      - java -Dappium.screenshots.dir="\$DEVICEFARM_SCREENSHOT_PATH" org.testng.TestNG -xmlpathinjar ${testngFiles} -testjar *-tests.jar -d "\$DEVICEFARM_LOG_DIR"/test-output -verbose 10
+      - java -Dappium.screenshots.dir="\$DEVICEFARM_SCREENSHOT_PATH" org.testng.TestNG -d "\$DEVICEFARM_LOG_DIR"/test-output ${testngFiles} -verbose 10
 
       # To run your tests with testng.xml file, use the following sequence:
       # Note: you don't have to unzip your test jar unless you have xml file with custom name

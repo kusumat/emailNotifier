@@ -97,6 +97,9 @@
         <condition property="projectName" value="${env.PROJECT_NAME}" else="">
             <isset property="env.PROJECT_NAME"/>
         </condition>
+        <condition property="projectAppId" value="${env.projectAppId}" else="">
+            <isset property="env.projectAppId"/>
+        </condition>
         <condition property="androidHome" value="${env.ANDROID_HOME}" else="">
             <isset property="env.ANDROID_HOME"/>
         </condition>
@@ -194,7 +197,7 @@
             <!-- Mode been hardcoded to 0 to fit requirement of publishing Fabric application with Fabric CLI -->
             <entry key="mode" value="0"/>
             <entry key="build.mode" value="${buildMode}"/>
-            <entry key="appid" value="${projectName}"/>
+            <entry key="appid" value="${projectAppId}"/>
             <entry key="version" value="${appVersion}"/>
             <entry key="default_locale" value="${defaultLocale}"/>
             <entry key="android.packagename" value="${androidPackageName}"/>
@@ -258,9 +261,13 @@
         <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}" />
     </target>
 
-    <target name="cloudpropertyOverwriteOnExist" if="${env.IS_STARTER_PROJECT}">
+
+    <target name="cloudpropertyOverwriteOnExist" if="${env.IS_STARTER_PROJECT}" description="-> update properties coming from CloudBuild service">
         <propertyfile file="HeadlessBuild.properties">
+            <entry key="fabric.token" value="${env.MF_TOKEN}"/>
             <entry key="mf.app.version" value="${env.FABRIC_APP_VERSION}"/>
+            <entry key="cloud.username" value=""/>
+            <entry key="cloud.password" value=""/>
         </propertyfile>
     </target>
 

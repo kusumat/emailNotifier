@@ -418,12 +418,16 @@ class AwsDeviceFarmHelper implements Serializable {
                     for(def i=0; i< listJobsJSON.jobs.size(); i++){
                         listJobsArrayList = listJobsJSON.jobs[i]
                         runArnMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, testRunArn)
+
+                        //If the run is already completed on particular device with specific ARN, then continue.
 			if(completedRunDevicesList.contains(listJobsArrayList.arn))
 			    continue
+                        Date startTime = new Date()
+                        if (!testStartTimeMap.containsKey(listJobsArrayList.name + " " + listJobsArrayList.device.os))
+                            testStartTimeMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, startTime.time)
+
                         switch (listJobsArrayList.status){
                             case 'PENDING':
-                                Date startTime = new Date()
-                                testStartTimeMap.put(listJobsArrayList.name + " " + listJobsArrayList.device.os, startTime.time)
                                 script.echoCustom("Tests are initiated, execution is yet to start on \'" + listJobsArrayList.name + " " + listJobsArrayList.device.os + "\'", 'INFO')
 		                 break
 		             case 'PENDING_DEVICE':

@@ -56,7 +56,12 @@ class Facade implements Serializable {
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     private fabricEnvironmentName
-
+    /* Temporary Base Job name for Cloud Build.
+     * Since console is only looking for 'buildVisualizerApp' in S3 path
+     * to fetch the results,for now, hardcoding this value.
+     * Later, a change has to be made on console side to fetch results using 'cloudBuildVisualizerApp' also.
+     * */
+    protected jobName = 'buildVisualizerApp'
     /* iOS build parameters */
     private appleID = script.params.APPLE_ID
     private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
@@ -109,12 +114,7 @@ class Facade implements Serializable {
     /* Cloud Build properties */
     protected CredentialsHelper credentialsHelper
     protected BuildStatus status
-    /*
-     Temporary Base Job name for Cloud Build. Since console is only looking for 'buildVisualizerApp' in S3 path
-     to fetch the results, for now, hardcoding this value. Later, a change has to be made on console side to fetch
-     results using 'cloudBuildVisualizerApp' also.
-     */
-    protected jobName = 'buildVisualizerApp'
+
     /**
      * Class constructor.
      *
@@ -277,7 +277,10 @@ class Facade implements Serializable {
                 script.string(name: 'PROJECT_SOURCE_URL', value: "${script.params.PROJECT_SOURCE_URL}"),
                 script.string(name: 'BUILD_STATUS_PATH', value: "${script.params.BUILD_STATUS_PATH}"),
                 script.string(name: 'MF_TOKEN', value: "${script.params.MF_TOKEN}"),
-                script.string(name: 'PROJECT_NAME', value: "${script.params.PROJECT_NAME}")
+                script.string(name: 'PROJECT_NAME', value: "${script.params.PROJECT_NAME}"),
+                script.string(name: 'FABRIC_ENV_NAME', value: "${script.params.FABRIC_ENV_NAME}"),
+                script.string(name: 'FABRIC_APP_NAME', value: "${script.params.FABRIC_APP_NAME}"),
+                script.string(name: 'FABRIC_APP_VERSION', value: "${script.params.FABRIC_APP_VERSION}")
         ]
     }
 
