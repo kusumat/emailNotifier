@@ -270,7 +270,8 @@ class BuildHelper implements Serializable {
                         environmentNameVariable: 'FABRIC_ENV_NAME',
                         applicationKeyVariable: 'APP_KEY',
                         applicationSecretVariable: 'APP_SECRET',
-                        serviceUrlVariable: 'SERVICE_URL'
+                        serviceUrlVariable: 'SERVICE_URL',
+                        fabricAccountIdVariable: 'FABRIC_ACCOUNT_ID'
                 )
         ]) {
             /* Block of code to run */

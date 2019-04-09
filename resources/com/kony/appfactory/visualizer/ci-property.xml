@@ -139,8 +139,8 @@
         <condition property="cloudPassword" value="${env.CLOUD_PASSWORD}" else="">
             <isset property="env.CLOUD_PASSWORD"/>
         </condition>
-        <condition property="cloudAccountId" value="${env.CLOUD_ACCOUNT_ID}" else="">
-            <isset property="env.CLOUD_ACCOUNT_ID"/>
+        <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="${env.CLOUD_ACCOUNT_ID}">
+            <isset property="env.FABRIC_ACCOUNT_ID"/>
         </condition>
         <condition property="domainParam" value="${env.domainParam}" else="">
             <isset property="env.domainParam"/>
@@ -209,7 +209,7 @@
             <!--APPFACT-545, direct assignment leads in adding escape character '\' with all special characters.
                 Instead using replace task to add proper value of password -->
             <entry key="cloud.password" value="CLOUD_PASSWORD"/>
-            <entry key="account.id" value="${cloudAccountId}"/>
+            <entry key="account.id" value="${fabricAccountId}"/>
             <entry key="cloud.environment" value="${domainParam}"/>
             <entry key="mobilefabric.url" value="${fabricUrl}"/>
             <entry key="environment.name" value="${fabricEnvironmentName}"/>
