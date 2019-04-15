@@ -423,7 +423,7 @@ class Channel implements Serializable {
     protected final getVisualizerVersion() {
         if(script.env.IS_STARTER_PROJECT.equals("true")){
             def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
-            return projectPropertiesJsonContent['currentgaversion']
+            return projectPropertiesJsonContent['konyVizVersion']
         }
 
         def konyPluginsXmlFileContent = script.readFile('konyplugins.xml')
