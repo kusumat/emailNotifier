@@ -692,7 +692,7 @@ class BuildHelper implements Serializable {
     /*
      * This method is used to to create authenticated urls from S3 urls
      * @param artifactUrl is the url which we want to convert as authenticated
-     * @param script is defeault script parameter
+     * @param script is default script parameter
      * @param exposeUrl is made as true if we want to display it in the console
      * @param action - (downloads or view): decides whether the url is direct download link or directly view from browser (such as HTML files), default value is "downloads"
      */
@@ -907,15 +907,36 @@ class BuildHelper implements Serializable {
         }
     }
 
-
-    /**  Sorts versions passed in ArrayList and return Latest and greatest Version.
-     *  Able to sort the versions in two dot and three dot formats, example [8.2.1, 8.4.2.3, 8.5.6] will return 8.5.6
-     *  @param version List
-     *  return mostRecentVersion
+    /**
+     * Fetches list of Kony released versions from Visualizer updatesite.
+     * @param script pipeline object.
+     * @param common Library properties object
+     * return releasedVersionsList
      **/
+    protected static String getVisualizerReleasedVersions(script, libraryProperties) {
+        def updatesiteVersionInfoUrl = libraryProperties.'visualizer.dependencies.updatesite.versioninfo.base.url'
+        updatesiteVersionInfoUrl = updatesiteVersionInfoUrl.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
 
+        def updatesiteVersionInfoFile = "versionInfo.json"
+
+        downloadFile(script, updatesiteVersionInfoUrl, updatesiteVersionInfoFile)
+
+        def versionInfoFileContent = script.readJSON file: updatesiteVersionInfoFile
+        def releaseKeySet = versionInfoFileContent.visualizer_enterprise.releases.version
+        releaseKeySet?.findAll { it =~ /(\d+)\.(\d+)\.(\d+)$/ }
+    }
+
+    /**
+     * Sorts versions passed in ArrayList and returns most recent nth version.
+     * Able to sort the versions in two dot and three dot formats, example [8.2.1, 8.4.2.3, 8.5.6] will return 8.5.6 if
+     * index passed is -1 and 8.4.2.3 if index passed is -2.
+     * By default, it returns most latest version.
+     * @param version List
+     * @param index value to return (pass negative value to get nth release from latest version)
+     * return mostRecentNthVersion
+     **/
     @NonCPS
-    protected static String getLatestVersion(versions) {
+    protected static String getMostRecentNthVersion(versions, index=-1) {
         def sorted = versions.sort(false) { a, b ->
 
             List verA = a.tokenize('.')
@@ -936,7 +957,7 @@ class BuildHelper implements Serializable {
             verA.size() <=> verB.size()
         }
 
-        sorted[-1]
+        sorted[index]
     }
 
 }

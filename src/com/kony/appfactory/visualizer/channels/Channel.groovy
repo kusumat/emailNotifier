@@ -259,20 +259,15 @@ class Channel implements Serializable {
 
             def mostRecentVersion
             script.dir("FeatureXMLDownloader") {
-                def updatesiteVersionInfoUrl = libraryProperties.'visualizer.dependencies.updatesite.versioninfo.base.url'
-                updatesiteVersionInfoUrl = updatesiteVersionInfoUrl.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
-
-                def updatesiteVersionInfoFile = "versionInfo.json"
-
-                BuildHelper.downloadFile(script, updatesiteVersionInfoUrl, updatesiteVersionInfoFile)
-
-                def versionInfoFileContent = script.readJSON file: updatesiteVersionInfoFile
-                def releaseKeySet = versionInfoFileContent.visualizer_enterprise.releases.version
-                def releaseVersions = releaseKeySet?.findAll { it =~ /(\d+)\.(\d+)\.(\d+)$/ }
-                mostRecentVersion = BuildHelper.getLatestVersion(releaseVersions)
+                // Fetch Visualizer current released versions
+                def versions = BuildHelper.getVisualizerReleasedVersions(script, libraryProperties)
+                // Find n-4 release from most recent version.
+                mostRecentVersion = BuildHelper.getMostRecentNthVersion(versions, -4)
             }
+            def compareCIVizVersions = ValidationHelper.compareVisualizerVersions(visualizerVersion, mostRecentVersion?.trim())
+            if (compareCIVizVersions < 0)
+                visualizerVersion = mostRecentVersion?.trim()
 
-            visualizerVersion = mostRecentVersion?.trim()
             script.echoCustom("Building through latest Visualizer version: " + visualizerVersion)
         }
 
