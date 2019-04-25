@@ -79,7 +79,7 @@ class CustomHook implements Serializable {
                                 script.dir(hookDir) {
                                     try {
                                         if (buildAction == "Execute Ant") {
-                                            def antCmd = "set +e -x; ls -lrt; unset $EnvVariablesList; set -e; $antBinPath" + "/ant" + " -f build.xml ${scriptArguments} $defaultParams"
+                                            def antCmd = "set +ex; unset $EnvVariablesList; set -e; $antBinPath" + "/ant" + " -f build.xml ${scriptArguments} $defaultParams"
                                             script.shellCustom("$antCmd", true)
                                         } else if (buildAction == "Execute Maven") {
                                             def mvnCmd = "set +ex; unset $EnvVariablesList; set -e; $mavenBinPath" + "/mvn" + " ${scriptArguments} $defaultParams"

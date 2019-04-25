@@ -12,9 +12,6 @@
             <url name="WWW">
                 <artifact pattern="http://download.[CLOUD_DOMAIN]/studio/70/plugins/[artifact]_[revision].[ext]" />
             </url>
-            <url name="WWWProd">
-                <artifact pattern="http://download.kony.com/studio/70/plugins/[artifact]_[revision].[ext]" />
-            </url>
             <url name="V8">
                 <artifact pattern="http://download.[CLOUD_DOMAIN]/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>
