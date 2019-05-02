@@ -103,7 +103,8 @@ class PlatformsDTO implements Serializable{
 
     @NonCPS
     void setLogsLink(String logsLink){
-        this.logsLink = logsLink
+        this.logsLink = (!logsLink.equals("null")) ? logsLink : null
+
     }
 
     @NonCPS
@@ -137,7 +138,7 @@ class PlatformsDTO implements Serializable{
     }
 
     void setMobileDownloadLink(String mobileDownloadLink){
-        this.mobileDownloadLink = mobileDownloadLink
+        this.mobileDownloadLink = (!mobileDownloadLink.equals("null")) ? mobileDownloadLink : null
     }
 
     @NonCPS
@@ -147,7 +148,7 @@ class PlatformsDTO implements Serializable{
 
     @NonCPS
     void setTabletDownloadLink(String tabletDownloadLink){
-        this.tabletDownloadLink = tabletDownloadLink
+        this.tabletDownloadLink = (!tabletDownloadLink.equals("null")) ? tabletDownloadLink : null
     }
 
     @NonCPS
@@ -157,7 +158,7 @@ class PlatformsDTO implements Serializable{
 
     @NonCPS
     void setUniversalDownloadLink(String universalDownloadLink){
-        this.universalDownloadLink = universalDownloadLink
+        this.universalDownloadLink = (!universalDownloadLink.equals("null")) ? universalDownloadLink : null
     }
 
     @NonCPS

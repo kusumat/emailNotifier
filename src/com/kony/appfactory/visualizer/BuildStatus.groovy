@@ -414,7 +414,7 @@ class BuildStatus implements Serializable {
                 platformsDTO.setUniversalFlag(Boolean.valueOf(String.valueOf(platformJson['universalFlag'])))
 
                 platformsDTO.setMobileDownloadLink(String.valueOf(platformJson['mobileDownloadLink']))
-                platformsDTO.setTabletDownloadLink(String.valueOf((platformJson['tabletDownloadLink'])))
+                platformsDTO.setTabletDownloadLink(String.valueOf(platformJson['tabletDownloadLink']))
                 platformsDTO.setUniversalDownloadLink(String.valueOf(platformJson['universalDownloadLink']))
                 platformsDTO.setBuildNumber(String.valueOf(platformJson['buildNumber']))
 
