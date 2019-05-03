@@ -415,7 +415,7 @@ class Facade implements Serializable {
             String channelName = artifact.channelPath.toUpperCase().replaceAll('/', '_')
 
             /* Create build parameter for Test Automation job */
-            artifactName ? (artifact.name.matches("^.*.?(war|zip)\$")) ? script.stringParam(name: "FABRIC_APP_URL", value: artifact.webappurl) : script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
+            artifactName ? (artifact.name.matches("^.*.?(war|zip)\$")) ? script.stringParam(name: "FABRIC_APP_URL", value: artifact.webAppUrl) : script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
         }
     }
 
