@@ -275,6 +275,7 @@ class BuildHelper implements Serializable {
                 )
         ]) {
             /* Block of code to run */
+            script.env.FABRIC_ACCOUNT_ID = (script.env.FABRIC_ACCOUNT_ID) ?: script.env.CLOUD_ACCOUNT_ID
             closure()
         }
     }

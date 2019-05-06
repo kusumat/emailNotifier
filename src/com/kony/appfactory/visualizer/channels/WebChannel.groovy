@@ -201,7 +201,7 @@ class WebChannel extends Channel {
                                 }
                                 FabricHelper.fetchFabricCli(script, libraryProperties, libraryProperties.'fabric.cli.version')
                                 /* Fabric option for cliCommands */
-                                def fabricCommandOptions = ['-t': "\"${script.env.CLOUD_ACCOUNT_ID}\"",
+                                def fabricCommandOptions = ['-t': "\"${script.env.FABRIC_ACCOUNT_ID}\"",
                                                             '-a': "\"${script.env.FABRIC_APP_NAME}\"",
                                                             '-e': "\"${script.env.FABRIC_ENV_NAME}\"",]
                                 /* Prepare string with shell script to run */
