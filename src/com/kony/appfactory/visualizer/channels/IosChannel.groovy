@@ -219,16 +219,21 @@ class IosChannel extends Channel {
 
             /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
             script.dir(iosDummyProjectGenPath) {
+                def karExtractErrorLog = "error.txt"
                 try {
                     script.shellCustom("""
                     cp ${karArtifact.path}/${karArtifact.name} .
                     perl extract.pl ${karArtifact.name}
                 """, true)
+                    
+                    if (script.fileExists(karExtractErrorLog)) {
+                        throw new Exception("Error with KAR extraction!!")
+                    }
                 }
                 catch (Exception err) {
-                    def karExtractErrorLog = "error.txt"
                     if (script.fileExists(karExtractErrorLog)) {
                         script.shellCustom("cat ${karExtractErrorLog}", true)
+                        mustHaveArtifacts.add([name: karExtractErrorLog, path: iosDummyProjectGenPath])
                     }
                     throw new AppFactoryException("KAR extraction failed!!", 'ERROR')
                 }
