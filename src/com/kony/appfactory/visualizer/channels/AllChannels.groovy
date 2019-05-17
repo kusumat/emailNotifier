@@ -401,6 +401,8 @@ class AllChannels implements Serializable {
                         }
                     }
                     catch (Exception err) {
+                        String exceptionMessage = (err.getLocalizedMessage()) ?: 'Something went wrong....'
+                        script.echoCustom(exceptionMessage, 'ERROR', false)
                         script.echoCustom("Build failed either due to errors or abort!!", 'ERROR', false)
                     }
                     finally {
