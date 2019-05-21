@@ -602,6 +602,7 @@ class EmailTemplateHelper implements Serializable {
                                             )
                                         }
                                         tr {
+                                            if(binding.listofLogFiles.containsKey(mapForTestCaseAndStatusVar.key)){
                                             th(
                                                     class: "testresults-left-aligned",
                                                     mapForTestCaseAndStatusVar.key + ".log"
@@ -611,9 +612,10 @@ class EmailTemplateHelper implements Serializable {
                                                     {
                                                         a(href: binding.listofLogFiles[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
                                                     }
-                                            )
+                                            )}
                                         }
                                         tr {
+                                            if(binding.listofLogFiles.containsKey(mapForTestCaseAndStatusVar.key)) {
                                             th(
                                                     class: "testresults-left-aligned",
                                                     mapForTestCaseAndStatusVar.key + ".jpg"
@@ -623,7 +625,7 @@ class EmailTemplateHelper implements Serializable {
                                                     {
                                                         a(href: binding.listofScreenshots[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
                                                     }
-                                            )
+                                            )}
                                         }
                                     }
                                 }
