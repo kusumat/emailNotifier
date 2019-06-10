@@ -4,11 +4,23 @@
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
     <title>$title</title>
     <style>
+    div[style*="margin: 16px 0"]{
+        margin:0 !important;
+        }
+         * {
+
+               -ms-text-size-adjust: 100%;
+
+           }
         body {
             font-family: arial,sans-serif;
             font-size: 14px;
             color: #333;
             background: #efefef;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
         }
         table {
             border-spacing: 0;
@@ -57,6 +69,7 @@
             outline: none;
             background: #f8f9fb;
             border-bottom: 1px solid #e8e8e8;
+            margin : 0
         }
 
         .table-border-channels th {
@@ -74,7 +87,7 @@
         }
 
         .table-border.cell-spacing td{
-            padding: 10px;
+            padding: 20px !important;
             border: none;
         }
 
@@ -103,7 +116,7 @@
             color: #858484;
             text-align: left;
             font-size: 12px;
-            border: 1px solid #e8e8e8;
+            border: 1px solid #e8e8e8 !important;
             white-space: pre-wrap;
             word-wrap: break-word;
             word-break: break-all;
@@ -123,7 +136,7 @@
         h2 {
             font-size: 18px;
             border-top: 1px dashed #e8e8e8;
-            border-bottom: 1px dashed #e8e8e8;
+            border-bottom: 1px dashed #e8e8e8 !important;
             padding: 10px;
         }
 
@@ -132,7 +145,8 @@
             -moz-box-shadow: 0 0 5px #888;
             -webkit-box-shadow: 0 0 5px #888;
             box-shadow: 0 0 5px #888;
-            margin:0 auto;background:#ffffff;
+            margin:0 auto !important;background:#ffffff;
+            text-align: center !important;
         }
 
         .table-width {
@@ -215,29 +229,26 @@
         }
     </style>
 </head>
-<body>
-    <table class="container" cellpadding='0'>
+<body width="100%" style="margin: 0; padding: 0 !important; mso-line-height-rule: exactly;"> <center style="width: 100%;  background-color: #fff;">
+    <table class="container" cellpadding="0">
         <tr>
-            <td align="center" style="padding:10px">
-                <table style="width:100%; margin-bottom:20px;height:55px;">
+            <td text-align="center" style="padding:10px">
+                <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; margin-bottom:20px;height:55px">
                     <tr style="background:#35414d">
-                        <td style="width:110px;color:#fff">
-                            <div style="line-height:25px;margin-left:20px;font-size:25px;"> Kony </div>
-                        <td style="color:#fff">
-                            <div style="line-height:25px;margin-left:0px;border-left: 1px solid;text-indent:20px"> $productName</div>
-                        </td>
+                         <td style="width:110px;color:#fff;line-height:25px;margin-left:20px;font-size:25px;text-align:center;vertical-align:middle">Kony</td>
+                         <td style="color:#fff;line-height:25px;margin-left:0px;border-left: 0.5pt solid #fff;text-indent:20px;vertical-align:middle">$productName</td>
                     </tr>
                 </table>
             </td>
         </tr>
         <tr>
-            <td align="center" style="padding:0 20px;">
+            <td text-align="center" style="padding:0 20px;">
                 $contentTable
             </td>
+        </tr>
         <tr>
-            <td>&nbsp;
-
-            </td>
+             <td>&nbsp;
+             </td>
         </tr>
     </table>
 </body>

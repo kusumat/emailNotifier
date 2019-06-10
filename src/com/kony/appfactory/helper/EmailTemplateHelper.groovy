@@ -43,7 +43,7 @@ class EmailTemplateHelper implements Serializable {
                 }
                 tr {
                     td {
-                        table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                        table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%", class: "text-color table-border cell-spacing") {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
                             if (binding.triggeredBy)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
@@ -81,14 +81,14 @@ class EmailTemplateHelper implements Serializable {
                     tr {
                         td {
                             if(binding.artifacts != null && !binding.artifacts.isEmpty()) {
-                                table(style: "width:100%;text-align:left", class: "text-color table-border-channels") {
-                                    thead {
+                                table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%;text-align:left", class: "text-color table-border-channels") {
+                                    thead(class:"table-border-channels") {
                                         tr {
                                             th(style: "text-align:center", 'Channel')
                                             th(style: "text-align:center", colspan: "2", 'INSTALLER')
                                         }
                                     }
-                                    tbody {
+                                    tbody(class:"table-border-channels") {
                                         prepareMailBody(htmlBuilder, binding.artifacts, templateType)
                                     }
                                 }
@@ -210,12 +210,7 @@ class EmailTemplateHelper implements Serializable {
     protected static String createBuildTestsContent(Map binding) {
         markupBuilderWrapper { MarkupBuilder htmlBuilder ->
             htmlBuilder.table(style: "width:100%") {
-                tr {
-                    td(style: "text-align:center", class: "text-color") {
-                        h2 binding.notificationHeader
-                    }
-                }
-
+                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
                 tr {
                     td(style: "text-align:left", class: "text-color") {
                         h4(class: "subheading", "Build Details")
@@ -224,36 +219,16 @@ class EmailTemplateHelper implements Serializable {
 
                 tr {
                     td {
-                        table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                        table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%", class: "text-color table-border cell-spacing") {
                             if (binding.triggeredBy) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Triggered by:')
-                                    td(class: "table-value", binding.triggeredBy)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
                             }
 
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build URL:')
-                                td {
-                                    a(href: binding.build.url, "${binding.build.number}")
-                                }
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Project:')
-                                td(class: "table-value", binding.projectName)
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build number:')
-                                td(class: "table-value", "#" + binding.build.number)
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Date of build:')
-                                td(class: "table-value", binding.build.started)
-                            }
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build duration:')
-                                td(class: "table-value", binding.build.duration)
-                            }
+                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
                         }
                     }
                 }
@@ -289,42 +264,28 @@ class EmailTemplateHelper implements Serializable {
     protected static String createRunTestContent(Map binding) {
         markupBuilderWrapper { MarkupBuilder htmlBuilder ->
             htmlBuilder.table(style: "width:100%") {
-                tr {
-                    td(style: "text-align:center", class: "text-color") {
-                        h2 binding.notificationHeader
-                    }
-                }
-
+                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
                 tr {
                     td(style: "text-align:left", class: "text-color") {
                         h4 "Project Name: ${binding.projectName}"
                         if (binding.deviceruns) {
-                            table(style: "width:100%", class: "text-color table-border cell-spacing") {
-                                tr {
-                                    td(style: "width:30%;text-align:right", 'Build URL: ')
-                                    td {
-                                        a(href: binding.build.url, "${binding.build.number}")
-                                    }
+                            table(role :"presentation" ,cellspacing :"0" ,cellpadding :"0" ,style: "width:100%", class: "text-color table-border cell-spacing") {
+                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL: ', binding.build.url, binding.build.number)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Device Pools: ', binding.devicePoolName)
+                                if(binding.missingDevices)
+                                {
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ','None' )
                                 }
-                                tr {
-                                    td(style: "width:30%;text-align:right", 'Selected Device Pools: ')
-                                    td("${binding.devicePoolName}")
+                                else
+                                {
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ', binding.devicePoolName)
                                 }
-                                tr {
-                                    td(style: "width:30%;text-align:right", 'Devices not available in pool: ')
-                                    td("${(binding.missingDevices) ?: 'None'}")
-                                }
+
                                 if (binding.appiumVersion) {
-                                    tr {
-                                        td(style: "width:30%;text-align:right", 'Appium Version: ')
-                                        td("${binding.appiumVersion}")
-                                    }
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Appium Version: ', binding.appiumVersion)
                                 }
                                 if (binding.runInCustomTestEnvironment) {
-                                    tr {
-                                        td(style: "width:30%;text-align:right", 'Run in Custom AWS Environment: ')
-                                        td("${binding.runInCustomTestEnvironment}")
-                                    }
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Run in Custom AWS Environment: ', binding.runInCustomTestEnvironment)
                                 }
                             }
                         }
@@ -352,16 +313,8 @@ class EmailTemplateHelper implements Serializable {
                     tr {
                         td {
                             table(style: "width:100%", class: "text-color table-border cell-spacing") {
-                                tr {
-                                    td(style: "width:30%;text-align:right", 'Build URL: ')
-                                    td {
-                                        a(href: binding.build.url, "${binding.build.number}")
-                                    }
-                                }
-                                tr {
-                                    td(style: "width:30%;text-align:right", 'Selected Browser: ')
-                                    td("${binding.desktopruns["browserVersion"]}")
-                                }
+                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL: ', binding.build.url, binding.build.number)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Browser: ', binding.desktopruns["browserVersion"])
                             }
                         }
                     }
@@ -825,12 +778,7 @@ class EmailTemplateHelper implements Serializable {
     protected static String fabricContent(binding) {
         markupBuilderWrapper { MarkupBuilder htmlBuilder ->
             htmlBuilder.table(style: "width:100%") {
-                tr {
-                    td(style: "text-align:center", class: "text-color") {
-                        h2 binding.notificationHeader
-                    }
-                }
-
+                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
                 tr {
                     td(style: "text-align:left", class: "text-color") {
                         h4(class: "subheading", "Build Details")
@@ -841,93 +789,42 @@ class EmailTemplateHelper implements Serializable {
                     td {
                         table(style: "width:100%", class: "text-color table-border cell-spacing") {
                             if (binding.triggeredBy) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Triggered by:')
-                                    td(class: "table-value", binding.triggeredBy)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
                             }
-
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build URL:')
-                                td {
-                                    a(href: binding.build.url, "${binding.build.number}")
-                                }
-                            }
+                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
 
                             if (binding.gitURL) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Repository URL:')
-                                    td {
-                                        a(href: binding.gitURL, "${binding.exportRepositoryUrl}")
-                                    }
-                                }
+                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Repository URL:', binding.gitURL, binding.exportRepositoryUrl)
                             }
                             if (binding.gitBranch) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Repository Branch:')
-                                    td(class: "table-value", binding.exportRepositoryBranch)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Repository Branch:', binding.exportRepositoryBranch)
                             }
                             if (binding.commitAuthor) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Author:')
-                                    td(class: "table-value", binding.commitAuthor)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Author:', binding.commitAuthor)
                             }
                             if (binding.authorEmail) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Author Email:')
-                                    td {
-                                        a(href: "mailto:${binding.authorEmail}", "${binding.authorEmail}")
-                                    }
-                                }
+                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Author Email:', "mailto:" + binding.authorEmail, binding.authorEmail)
                             }
                             if (binding.commitMessage) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Commit Message:')
-                                    td(class: "table-value", binding.commitMessage)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Commit Message:', binding.commitMessage)
                             }
                             if (binding.overwriteExisting) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Overwrite Existing:')
-                                    td(class: "table-value", binding.overwriteExisting)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Overwrite Existing:', binding.overwriteExisting)
                             }
                             if (binding.publishApp) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Enable Publish:')
-                                    td(class: "table-value", binding.publishApp)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Enable Publish:', binding.publishApp)
                             }
                             if (binding.fabricEnvironmentName) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Published On Environment:')
-                                    td(class: "table-value", binding.fabricEnvironmentName)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Published On Environment:', binding.fabricEnvironmentName)
                             }
                             if (binding.exportCloudAccountId) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Exported From:')
-                                    td(class: "table-value", binding.exportCloudAccountId)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Exported From:', binding.exportCloudAccountId)
                             }
                             if (binding.exportCloudAccountId) {
-                                tr {
-                                    td(style: "width:22%;text-align:right", 'Imported To:')
-                                    td(class: "table-value", binding.importCloudAccountId)
-                                }
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'mported To:', binding.importCloudAccountId)
                             }
-                            
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Date of build:')
-                                td(class: "table-value", binding.build.started)
-                            }
-
-                            tr {
-                                td(style: "width:22%;text-align:right", 'Build duration:')
-                                td(class: "table-value", binding.build.duration)
-                            }
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
                         }
                     }
                 }
