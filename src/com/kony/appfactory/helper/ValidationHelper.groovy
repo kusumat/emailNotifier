@@ -191,17 +191,17 @@ class ValidationHelper implements Serializable {
     }
     
     /**
-     * Compare two visualizer versions
+     * Compare two versions
      *
-     * @param two visualizerVersions (eg. 8.0.0, 8.2.0)
+     * @param two versions (eg. 8.0.0, 8.2.0)
      * @return
      *      0 if two versions are equal
      *      1 if first parameter version is higher than second parameter version
      *      -1 if first parameter version is lower than second parameter version
      */
-    protected static final int compareVisualizerVersions(String visualizerVersion1, String visualizerVersion2) {
-        List<String> verA = visualizerVersion1.tokenize('.')
-        List<String> verB = visualizerVersion2.tokenize('.')
+    protected static final int compareVersions(String version1, String version2) {
+        List<String> verA = version1.tokenize('.')
+        List<String> verB = version2.tokenize('.')
         def commonIndices = Math.min(verA.size(), verB.size())
         for (int i = 0; i < commonIndices; ++i) {
             def numA = verA[i].toInteger()
@@ -223,7 +223,7 @@ class ValidationHelper implements Serializable {
         vizFeaturesSupportToCheck.each { featureKey, featureProperties ->
             def featureKeyInLowers = featureKey.toLowerCase()
             def featureSupportedVersion = libraryProperties."${featureKeyInLowers}.${buildType}.support.base.version"
-            if (ValidationHelper.compareVisualizerVersions(script.env["visualizerVersion"], featureSupportedVersion) == -1) {
+            if (ValidationHelper.compareVersions(script.env["visualizerVersion"], featureSupportedVersion) == -1) {
                 String errorMessage = "Sorry, the ${buildType} build for ${featureProperties.featureDisplayName} is not supported for your " +
                         "Visualizer project version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
                         "latest version and build the app."

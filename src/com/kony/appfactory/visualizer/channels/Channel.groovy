@@ -264,7 +264,7 @@ class Channel implements Serializable {
                 // Find n-4 release from most recent version.
                 mostRecentVersion = BuildHelper.getMostRecentNthVersion(versions, -4)
             }
-            def compareCIVizVersions = ValidationHelper.compareVisualizerVersions(visualizerVersion, mostRecentVersion?.trim())
+            def compareCIVizVersions = ValidationHelper.compareVersions(visualizerVersion, mostRecentVersion?.trim())
             if (compareCIVizVersions < 0)
                 visualizerVersion = mostRecentVersion?.trim()
 
@@ -479,14 +479,14 @@ class Channel implements Serializable {
     protected final void setVersionBasedProperties(visualizerVersion) {
         def ciBuildSupport = libraryProperties.'ci.build.support.base.version'
         def zipExtensionSupportBaseVersion = libraryProperties.'webapp.extension.ci.support.base.version'
-        def compareCIVizVersions = ValidationHelper.compareVisualizerVersions(visualizerVersion, ciBuildSupport)
+        def compareCIVizVersions = ValidationHelper.compareVersions(visualizerVersion, ciBuildSupport)
 
         if (compareCIVizVersions >= 0) {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
             if (["SPA", "DESKTOPWEB", "WEB"].contains(channelVariableName)) {
-                def compareVizZipExtensionVersions = ValidationHelper.compareVisualizerVersions(visualizerVersion, zipExtensionSupportBaseVersion)
+                def compareVizZipExtensionVersions = ValidationHelper.compareVersions(visualizerVersion, zipExtensionSupportBaseVersion)
               
                 if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
                     if (compareVizZipExtensionVersions == -1) {

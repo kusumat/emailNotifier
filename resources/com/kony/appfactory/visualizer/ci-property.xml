@@ -134,10 +134,16 @@
             <isset property="env.ANDROID_PACKAGE_NAME"/>
         </condition>
         <condition property="cloudUsername" value="${env.CLOUD_USERNAME}" else="">
-            <isset property="env.CLOUD_USERNAME"/>
+            <and>
+                <isset property="env.CLOUD_USERNAME"/>
+                <not> <equals arg1="${env.CLOUD_USERNAME}" arg2="dummyuser" /> </not>
+            </and>
         </condition>
         <condition property="cloudPassword" value="${env.CLOUD_PASSWORD}" else="">
-            <isset property="env.CLOUD_PASSWORD"/>
+            <and>
+                <isset property="env.CLOUD_PASSWORD"/>
+                <not> <equals arg1="${env.CLOUD_PASSWORD}" arg2="dummypasswd" /> </not>
+            </and>
         </condition>
         <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="${env.CLOUD_ACCOUNT_ID}">
             <isset property="env.FABRIC_ACCOUNT_ID"/>
@@ -263,11 +269,16 @@
 
 
     <target name="cloudpropertyOverwriteOnExist" if="${env.IS_STARTER_PROJECT}" description="-> update properties coming from CloudBuild service">
+        <condition property="fabricAppVersion" value="${env.FABRIC_APP_VERSION}" else="">
+            <isset property="env.FABRIC_APP_VERSION"/>
+        </condition>
+        <condition property="fabricToken" value="${env.MF_TOKEN}" else="">
+            <isset property="env.MF_TOKEN"/>
+        </condition>
+
         <propertyfile file="HeadlessBuild.properties">
-            <entry key="fabric.token" value="${env.MF_TOKEN}"/>
-            <entry key="mf.app.version" value="${env.FABRIC_APP_VERSION}"/>
-            <entry key="cloud.username" value=""/>
-            <entry key="cloud.password" value=""/>
+            <entry key="fabric.token" value="${fabricToken}"/>
+            <entry key="mf.app.version" value="${fabricAppVersion}"/>
         </propertyfile>
     </target>
 

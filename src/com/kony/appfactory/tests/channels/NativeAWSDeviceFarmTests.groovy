@@ -75,6 +75,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     protected testSpecUploadFileName = "TestSpec.yml"
     protected mustHaveArtifacts = []
     public testSpecUploadFilePath
+    private APPIUM_1_8_1_VERSION = "1.8.1"
 
     /**
      * Class constructor.
@@ -468,7 +469,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             /* Load YAML Template */
             ymlTemplate = script.loadLibraryResource(configFolderPath + '/KonyYamlTestSpec.template')
             testngFiles = testngFiles.replaceAll("," , " ")
-            def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles])
+            def customWDA = ''
+            // We need to use the WDA V1 if user has selected appium 1.8.1 or higher version.
+            if (ValidationHelper.compareVersions(appiumVersion, APPIUM_1_8_1_VERSION) > -1) {
+                customWDA = '--default-capabilities "{\\"usePrebuiltWDA\\": true, \\"derivedDataPath\\":\\"$DEVICEFARM_WDA_DERIVED_DATA_PATH_V1\\"}"'
+            }
+            def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles, customWDA: customWDA])
             /* Create YAML file from template */
             testSpecUploadFileName = "${projectName}_TestSpec.${testSpecExtension}"
             script.writeFile file: testSpecUploadFileName, text: template

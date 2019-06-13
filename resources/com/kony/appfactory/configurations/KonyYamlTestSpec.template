@@ -35,10 +35,10 @@ phases:
       - >-
         appium --log-timestamp --device-name "\$DEVICEFARM_DEVICE_NAME"
         --platform-name "\$DEVICEFARM_DEVICE_PLATFORM_NAME" --app "\$DEVICEFARM_APP_PATH"
-        --udid "\$DEVICEFARM_DEVICE_UDID" --chromedriver-executable "\$DEVICEFARM_CHROMEDRIVER_EXECUTABLE"  >> "\$DEVICEFARM_LOG_DIR"/appiumlog.txt 2>&1 &
+        --udid "\$DEVICEFARM_DEVICE_UDID" ${customWDA} --chromedriver-executable "\$DEVICEFARM_CHROMEDRIVER_EXECUTABLE"  >> "\$DEVICEFARM_LOG_DIR"/appiumlog.txt 2>&1 &
 
       - >-
-        "start_appium_timeout"=0;
+        start_appium_timeout=0;
         while [ true ];
         do
             if [ "\$start_appium_timeout" -gt 30 ];
@@ -54,7 +54,7 @@ phases:
             else
                 echo "Waiting for appium server to start. Sleeping for 1 second";
                 sleep 1;
-                "start_appium_timeout"="\$((start_appium_timeout+1))";
+                start_appium_timeout=\$((start_appium_timeout+1));
             fi;
         done;
 
