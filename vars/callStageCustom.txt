@@ -1,0 +1,7 @@
+Runs a stage. <br>
+<b>Options: </b>
+<ul>
+    <li><b><i>BuildStaus</i></b> <u>buildstatus</u>, buildStatus reference to update buildstatus.json file.</li>
+    <li><b><i>String</i></b> <u>stageName</u>, String with the stage to run.</li>
+    <li><b><i>Closure</i></b> <u>closure</u> , snippet to be executed as part of the the particular Stage.</li>
+</ul>

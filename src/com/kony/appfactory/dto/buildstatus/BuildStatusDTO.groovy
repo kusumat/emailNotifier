@@ -14,6 +14,7 @@ import groovy.json.JsonSlurper
  *     "status": "SUCCESS",
  *     "startedAt": "Tue Aug 21 04:20:52 UTC 2018",
  *     "lastUpdatedAt": "Tue Aug 21 04:20:52 UTC 2018",
+ *     "pipelineStage":"Checkout",
  *     "platforms": [
  *         {
  *           "IOS": {
@@ -53,6 +54,7 @@ import groovy.json.JsonSlurper
 class BuildStatusDTO implements Serializable {
 
     private String buildNumber
+    private String stageName
     private String buildGuid
     private Status status
     private String startedAt
@@ -93,8 +95,18 @@ class BuildStatusDTO implements Serializable {
     }
 
     @NonCPS
+    void setPipelineStage(String stageName){
+        this.stageName = stageName
+    }
+
+    @NonCPS
+    String getPipelineStage(){
+        return stageName
+    }
+
+    @NonCPS
     void setStatus(Status status){
-        this.status=status
+        this.status = status
     }
 
     @NonCPS
@@ -166,6 +178,7 @@ class BuildStatusDTO implements Serializable {
                 status: getStatus(),
                 startedAt: getStartedAt(),
                 lastUpdatedAt: getLastUpdatedAt(),
+                pipelineStage : getPipelineStage(),
                 platforms: getPlatformData()
         return json.toPrettyString()
     }

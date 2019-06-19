@@ -167,6 +167,7 @@ class BuildStatus implements Serializable {
         boolean androidFlag = false
         buildStatus.setBuildNumber(script.env.BUILD_NUMBER)
         buildStatus.setBuildGuid(script.params.BUILD_GUID)
+        buildStatus.setPipelineStage('Commencing Build')
         buildStatus.setStatus(Status.IN_PROGRESS)
         buildStatus.setStartedAt(new Date().toString())
         buildStatus.setLastUpdatedAt(new Date().toString())
@@ -269,6 +270,15 @@ class BuildStatus implements Serializable {
         updateBuildStatusOnS3()
     }
 
+
+    /**
+     * This method takes care of updating the pipeline stage and update status json on S3.
+     * @param stageName Name of the stage to be updated.
+     */
+    void updateStage(String stageName) {
+        buildJson.setPipelineStage(stageName)
+        updateBuildStatusOnS3()
+    }
 
     /**
      * This function sets all the selected platforms to CANCELLED and updates the global status to CANCELLED as well
@@ -394,6 +404,7 @@ class BuildStatus implements Serializable {
 
         buildStatusDTO.setBuildNumber(String.valueOf(statusJsonContent['buildNumber']))
         buildStatusDTO.setBuildGuid(String.valueOf(statusJsonContent['buildGuid']))
+        buildStatusDTO.setPipelineStage(String.valueOf(statusJsonContent['pipelineStage']))
         buildStatusDTO.setStatus(Status.valueOf(String.valueOf(statusJsonContent['status'])))
         buildStatusDTO.setStartedAt(String.valueOf(statusJsonContent['startedAt']))
         buildStatusDTO.setLastUpdatedAt(String.valueOf(statusJsonContent['lastUpdatedAt']))
