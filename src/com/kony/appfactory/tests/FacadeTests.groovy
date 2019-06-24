@@ -160,6 +160,7 @@ class FacadeTests implements Serializable {
         desktopWebTestsJob = testsJobOutput['DesktopWeb Tests']
 
         emailData += [isSummaryEmail   : true,
+                      isNativeAppTestRun        : isNativeApp,
                       deviceruns       : nativeTestsJob.buildVariables.NATIVE_RUN_RESULTS,
                       devicePoolName   : nativeTestsJob.buildVariables.DEVICE_POOL_NAME,
                       binaryName       : nativeTestsJob.buildVariables.BINARY_NAME,
@@ -168,6 +169,7 @@ class FacadeTests implements Serializable {
                       duration         : nativeTestsJob.buildVariables.DURATION,
                       appiumVersion    : nativeTestsJob.buildVariables.APPIUM_VERSION,
                       runInCustomTestEnvironment : nativeTestsJob.buildVariables.RUN_IN_CUSTOM_TEST_ENVIRONMENT,
+                      isDesktopWebAppTestRun    : isDesktopWebApp,
                       desktopruns      : desktopWebTestsJob.buildVariables.DESKTOP_TEST_RUN_RESULTS,
                       listofLogFiles   : desktopWebTestsJob.buildVariables.LOG_FILES_LIST,
                       listofScreenshots: desktopWebTestsJob.buildVariables.SCREENSHOTS_LIST]
@@ -273,8 +275,6 @@ class FacadeTests implements Serializable {
                             /* Set job result to 'SUCCESS' if above check is false */
                             script.currentBuild.result = 'SUCCESS'
                         }
-                        if (isNativeApp && isDesktopWebApp)
-                            NotificationsHelper.sendEmail(script, 'runTests', prepareEmailBody(), true)
                     }
                 }
             }

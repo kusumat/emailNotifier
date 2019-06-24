@@ -506,62 +506,66 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 /* Allocate a slave for the run */
                 script.node(libraryProperties.'test.native.aws.automation.node.label') {
 
-                    pipelineWrapper ("Native", {
-                        /*
-                        Clean workspace, to be sure that we have not any items from previous build,
-                        and build environment completely new.
-                     */
-                        script.cleanWs deleteDirs: true
-                        /* Set the device farm working directory */
-                        deviceFarmWorkingFolder = [projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'].join(separator)
-                        /* Build test automation scripts if URL with test binaries was not provided */
-                        if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
-                            script.stage('Checkout') {
-                                BuildHelper.checkoutProject script: script,
-                                        projectRelativePath: checkoutRelativeTargetFolder,
-                                        scmBranch: scmBranch,
-                                        checkoutType: "scm",
-                                        scmCredentialsId: scmCredentialsId,
-                                        scmUrl: scmUrl
-                            }
-                            testFolder = getTestsFolderPath(projectFullPath, "Native")
-                            script.stage('Build') {
-                                if(runInCustomTestEnvironment && !appiumVersion) {
-                                    if (script.fileExists("${testFolder}/src/test/resources/${testSpecUploadFileName}"))
-                                        testSpecUploadFilePath = "${testFolder}/src/test/resources/${testSpecUploadFileName}"
+                    try {
+                        pipelineWrapper("Native", {
+                            /*
+                            Clean workspace, to be sure that we have not any items from previous build,
+                            and build environment completely new.
+                            */
+                            script.cleanWs deleteDirs: true
+                            /* Set the device farm working directory */
+                            deviceFarmWorkingFolder = [projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'].join(separator)
+                            /* Build test automation scripts if URL with test binaries was not provided */
+                            if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
+                                script.stage('Checkout') {
+                                    BuildHelper.checkoutProject script: script,
+                                            projectRelativePath: checkoutRelativeTargetFolder,
+                                            scmBranch: scmBranch,
+                                            checkoutType: "scm",
+                                            scmCredentialsId: scmCredentialsId,
+                                            scmUrl: scmUrl
                                 }
-                                /* Build Test Automation scripts */
-                                buildTestScripts("Native", testFolder)
-                                
-                                script.dir(testFolder) {
-                                    script.shellCustom("mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip", true)
+                                testFolder = getTestsFolderPath(projectFullPath, "Native")
+
+                                if (!testFolder)
+                                    throw new AppFactoryException("No test automation scripts found for Native channels!!", 'ERROR')
+
+                                script.stage('Build') {
+                                    if (runInCustomTestEnvironment && !appiumVersion) {
+                                        if (script.fileExists("${testFolder}/src/test/resources/${testSpecUploadFileName}"))
+                                            testSpecUploadFilePath = "${testFolder}/src/test/resources/${testSpecUploadFileName}"
+                                    }
+                                    /* Build Test Automation scripts */
+                                    buildTestScripts("Native", testFolder)
+
+                                    script.dir(testFolder) {
+                                        script.shellCustom("mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip", true)
+                                    }
+                                    /* Set runTests flag to true when build is successful,otherwise set it to false (in catch block) */
+                                    runTests = true
                                 }
-                                /* Set runTests flag to true when build is successful,otherwise set it to false (in catch block) */
-                                runTests = true
+                                script.stage('Publish test automation scripts build result to S3') {
+                                    if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
+                                        AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
+                                                bucketPath: [
+                                                        'Tests',
+                                                        script.env.JOB_BASE_NAME,
+                                                        script.env.BUILD_NUMBER
+                                                ].join('/'),
+                                                sourceFilePath: "${testFolder}/target", script, true
+                                    } else
+                                        throw new AppFactoryException('Failed to find build result artifact!', 'ERROR')
+                                }
                             }
-                            script.stage('Publish test automation scripts build result to S3') {
-                                if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
-                                    AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
-                                            bucketPath: [
-                                                    'Tests',
-                                                    script.env.JOB_BASE_NAME,
-                                                    script.env.BUILD_NUMBER
-                                            ].join('/'),
-                                            sourceFilePath: "${testFolder}/target", script, true
-                                } else
-                                    throw new AppFactoryException('Failed to find build result artifact!', 'ERROR')
-                            }
+                        })
+
+                        /* To make runTests flag true when Tests URL is given instead of passing SCM details */
+                        if (testPackage.get("${projectName}_TestApp").url != 'jobWorkspace') {
+                            runTests = true
                         }
-                    })
 
-                    /* To make runTests flag true when Tests URL is given instead of passing SCM details */
-                    if (testPackage.get("${projectName}_TestApp").url != 'jobWorkspace') {
-                        runTests = true
-                    }
-
-                    /* Run tests on provided binaries */
-                    if (runTests) {
-                        try {
+                        /* Run tests on provided binaries */
+                        if (runTests) {
                             script.dir(deviceFarmWorkingFolder) {
                                 /* Providing AWS region for Device Farm, currently it is available in us-west-2 */
                                 script.withAWS(region: awsRegion) {
@@ -626,44 +630,38 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                         script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
                                 }
                             }
-                        } catch (AppFactoryException e) {
-                            String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                            script.echoCustom(exceptionMessage, e.getErrorType(), false)
-                            script.currentBuild.result = 'FAILURE'
-                        } catch (Exception e) {
-                            String exceptionMessage = (e.toString()) ?: 'Something went wrong...'
-                            script.echoCustom(exceptionMessage, 'WARN')
-                            script.currentBuild.result = 'FAILURE'
-                        } finally {
-                            /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
-                            script.env['NATIVE_RUN_RESULTS'] = deviceFarmTestRunResults?.inspect()
-                            script.env['DEVICE_POOL_NAME'] = devicePoolName
-                            script.env['BINARY_NAME'] = getBinaryNameForEmail(projectArtifacts).inspect()
-                            if (script.env.MISSING_DEVICES != null && !script.env.MISSING_DEVICES.isEmpty())
-                                script.env['MISSING_DEVICES'] = script.env.MISSING_DEVICES.inspect()
-                            else
-                                script.env['MISSING_DEVICES'] = 'None'
-                            script.env['NATIVE_RESULTS_SUMMARY'] = summary
-                            script.env['DURATION'] = duration
-
-                            NotificationsHelper.sendEmail(script, 'runTests', [
-                                    deviceruns      : deviceFarmTestRunResults,
-                                    devicePoolName  : devicePoolName,
-                                    binaryName      : getBinaryNameForEmail(projectArtifacts),
-                                    missingDevices  : script.env.MISSING_DEVICES,
-                                    summaryofResults: summary,
-                                    duration        : duration,
-                                    appiumVersion   : appiumVersion,
-                                    runInCustomTestEnvironment : runInCustomTestEnvironment
-                            ], true)
-
-                            if (script.currentBuild.result != 'SUCCESS') {
-                                TestsHelper.PrepareMustHaves(script, runCustomHook, "runNativeTests", libraryProperties, mustHaveArtifacts, false)
-                                (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
-                            }
-                            /* Cleanup created pools and uploads */
-                            cleanup(deviceFarmUploadArns, devicePoolArns)
                         }
+                    }
+                    finally {
+                        /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
+                        script.env['NATIVE_RUN_RESULTS'] = deviceFarmTestRunResults?.inspect()
+                        script.env['DEVICE_POOL_NAME'] = devicePoolName
+                        script.env['BINARY_NAME'] = getBinaryNameForEmail(projectArtifacts).inspect()
+                        if (script.env.MISSING_DEVICES != null && !script.env.MISSING_DEVICES.isEmpty())
+                            script.env['MISSING_DEVICES'] = script.env.MISSING_DEVICES.inspect()
+                        else
+                            script.env['MISSING_DEVICES'] = 'None'
+                        script.env['NATIVE_RESULTS_SUMMARY'] = summary
+                        script.env['DURATION'] = duration
+
+                        NotificationsHelper.sendEmail(script, 'runTests', [
+                                isNativeAppTestRun : true,
+                                deviceruns      : deviceFarmTestRunResults,
+                                devicePoolName  : devicePoolName,
+                                binaryName      : getBinaryNameForEmail(projectArtifacts),
+                                missingDevices  : script.env.MISSING_DEVICES,
+                                summaryofResults: summary,
+                                duration        : duration,
+                                appiumVersion   : appiumVersion,
+                                runInCustomTestEnvironment : runInCustomTestEnvironment
+                        ], true)
+
+                        if (script.currentBuild.result != 'SUCCESS') {
+                            TestsHelper.PrepareMustHaves(script, runCustomHook, "runNativeTests", libraryProperties, mustHaveArtifacts, false)
+                            (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
+                        }
+                        /* Cleanup created pools and uploads */
+                        cleanup(deviceFarmUploadArns, devicePoolArns)
                     }
                 }
             }

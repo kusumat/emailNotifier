@@ -244,73 +244,67 @@ class DesktopWebTests extends RunTests implements Serializable {
                 /* Allocate a slave for the run */
                 script.node(libraryProperties.'test.dweb.automation.node.label') {
 
-                    pipelineWrapper("DesktopWeb", {
-                        /*
-                        Clean workspace, to be sure that we have not any items from previous build,
-                        and build environment completely new.
-                     */
-                        script.cleanWs deleteDirs: true
-
-                        /* Build test automation scripts if URL with test binaries was not provided */
-                        if (!isTestScriptGiven) {
-                            script.stage('Checkout') {
-                                BuildHelper.checkoutProject script: script,
-                                        projectRelativePath: checkoutRelativeTargetFolder,
-                                        scmBranch: scmBranch,
-                                        checkoutType: "scm",
-                                        scmCredentialsId: scmCredentialsId,
-                                        scmUrl: scmUrl
-                            }
-                            /* Get the automation test folder */
-                            testFolder = getTestsFolderPath(projectFullPath, "DesktopWeb")
-
-                            script.stage('Build') {
-                                /* Build Test Automation scripts */
-                                buildTestScripts("DesktopWeb", testFolder)
-                            }
-                        }
-                    })
-
-                    /* Run tests on provided binaries */
-
                     try {
-                        script.stage('Run the Tests') {
-                            runTests(script.params.AVAILABLE_BROWSERS, testFolder)
-                        }
-                        script.stage('Get Test Results') {
-                            desktopTestRunResults = fetchTestResults(testFolder)
-                            if (!desktopTestRunResults)
-                                throw new AppFactoryException('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
-                            publishTestsResults()
-                        }
-                        script.stage('Check PostTest Hook Points') {
-                            def testsResultsStatus = true
-                            if (!desktopTestRunResults)
-                                throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
-                            testsResultsStatus = !testStatusMap.any { it.value != "PASS" }
-                            script.currentBuild.result = testsResultsStatus ? 'SUCCESS' : 'UNSTABLE'
-                            
-                            if (runCustomHook) {
-                                if (testsResultsStatus) {
-                                    def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
-                                    if (!isSuccess)
-                                        throw new Exception("Something went wrong with the Custom hooks execution.")
-                                } else {
-                                    script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
-                                }
-                            } else {
-                                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
-                            }
-                        }
 
-                    } catch (AppFactoryException e) {
-                        String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
-                        script.echoCustom(exceptionMessage, e.getErrorType(), false)
-                        script.currentBuild.result = 'FAILURE'
-                    } catch (Exception e) {
-                        String exceptionMessage = (e.toString()) ?: 'Something went wrong...'
-                        script.echoCustom(exceptionMessage, 'WARN')
-                        script.currentBuild.result = 'FAILURE'
+                        pipelineWrapper("DesktopWeb", {
+                            /*
+                            Clean workspace, to be sure that we have not any items from previous build,
+                            and build environment completely new.
+                            */
+                            script.cleanWs deleteDirs: true
+
+                            /* Build test automation scripts if URL with test binaries was not provided */
+                            if (!isTestScriptGiven) {
+                                script.stage('Checkout') {
+                                    BuildHelper.checkoutProject script: script,
+                                            projectRelativePath: checkoutRelativeTargetFolder,
+                                            scmBranch: scmBranch,
+                                            checkoutType: "scm",
+                                            scmCredentialsId: scmCredentialsId,
+                                            scmUrl: scmUrl
+                                }
+                                /* Get the automation test folder */
+                                testFolder = getTestsFolderPath(projectFullPath, "DesktopWeb")
+
+                                if (!testFolder)
+                                    throw new AppFactoryException("No test automation scripts found for DesktopWeb channel!!", 'ERROR')
+
+                                script.stage('Build') {
+                                    /* Build Test Automation scripts */
+                                    buildTestScripts("DesktopWeb", testFolder)
+                                }
+                            }
+
+                            /* Run tests on provided binaries */
+                            script.stage('Run the Tests') {
+                                runTests(script.params.AVAILABLE_BROWSERS, testFolder)
+                            }
+                            script.stage('Get Test Results') {
+                                desktopTestRunResults = fetchTestResults(testFolder)
+                                if (!desktopTestRunResults)
+                                    throw new AppFactoryException('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
+                                publishTestsResults()
+                            }
+                            script.stage('Check PostTest Hook Points') {
+                                def testsResultsStatus = true
+                                if (!desktopTestRunResults)
+                                    throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                testsResultsStatus = !testStatusMap.any { it.value != "PASS" }
+                                script.currentBuild.result = testsResultsStatus ? 'SUCCESS' : 'UNSTABLE'
+
+                                if (runCustomHook) {
+                                    if (testsResultsStatus) {
+                                        def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
+                                        if (!isSuccess)
+                                            throw new Exception("Something went wrong with the Custom hooks execution.")
+                                    } else {
+                                        script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
+                                    }
+                                } else {
+                                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
+                                }
+                            }
+                        })
                     } finally {
                         /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
                         script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
@@ -318,6 +312,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                         script.env['SCREENSHOTS_LIST'] = listofScreenshots?.inspect()
 
                         NotificationsHelper.sendEmail(script, 'runTests', [
+                                isDesktopWebAppTestRun  : true,
                                 desktopruns      : desktopTestRunResults,
                                 listofLogFiles   : listofLogFiles,
                                 listofScreenshots: listofScreenshots
@@ -325,7 +320,6 @@ class DesktopWebTests extends RunTests implements Serializable {
                         if (script.currentBuild.result != 'SUCCESS') {
                             TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties)
                             (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
-
                         }
 
                     }

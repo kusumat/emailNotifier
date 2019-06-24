@@ -117,10 +117,10 @@ class RunTests implements Serializable {
         for (String pomFilePath : testPoms) {
             if (script.fileExists(pomFilePath)) {
                 testsFolderPath = pomFilePath.minus(separator + 'pom.xml')
-                return testsFolderPath
                 break
             }
         }
+        testsFolderPath
     }
 
     /**
@@ -151,7 +151,6 @@ class RunTests implements Serializable {
             /* Set runTests flag to false so that tests will not get triggered on Device Farm when build is failed */
             runTests = false
         } finally {
-            NotificationsHelper.sendEmail(script, 'buildTests')
             /* Exit in case of test binaries failed, throw error to build console. */
             if (script.currentBuild.result == 'FAILURE') {
                 TestsHelper.PrepareMustHaves(script, false, "run${channelType}Tests", libraryProperties)

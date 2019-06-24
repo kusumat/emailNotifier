@@ -201,13 +201,13 @@ class EmailTemplateHelper implements Serializable {
     }
 
     /**
-     * Creates HTML content for runTests job, build of the test binaries part.
+     * Creates HTML content for runTests job, tests run part.
      *
      * @param binding provides data for HTML.
      * @return HTML content as a string.
      */
     @NonCPS
-    protected static String createBuildTestsContent(Map binding) {
+    protected static String createRunTestContent(Map binding) {
         markupBuilderWrapper { MarkupBuilder htmlBuilder ->
             htmlBuilder.table(style: "width:100%") {
                 EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
@@ -229,55 +229,12 @@ class EmailTemplateHelper implements Serializable {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
-                        }
-                    }
-                }
 
-                if (binding.build.result == 'SUCCESS') {
-                    tr {
-                        td(style: "text-align:left", class: "text-color") {
-                            h4(class: "subheading", 'Build Information')
-                            p("Build of Test Automation scripts for ${binding.projectName} finished successfully.")
-                        }
-                    }
-                } else {
-                    tr {
-                        td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
-                            h4(style: "margin-bottom:0", 'Console Output')
-                            binding.build.log.each { line ->
-                                p(line)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Creates HTML content for runTests job, tests run part.
-     *
-     * @param binding provides data for HTML.
-     * @return HTML content as a string.
-     */
-    @NonCPS
-    protected static String createRunTestContent(Map binding) {
-        markupBuilderWrapper { MarkupBuilder htmlBuilder ->
-            htmlBuilder.table(style: "width:100%") {
-                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
-                tr {
-                    td(style: "text-align:left", class: "text-color") {
-                        h4 "Project Name: ${binding.projectName}"
-                        if (binding.deviceruns) {
-                            table(role :"presentation" ,cellspacing :"0" ,cellpadding :"0" ,style: "width:100%", class: "text-color table-border cell-spacing") {
-                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL: ', binding.build.url, binding.build.number)
+                            if (binding.isNativeAppTestRun) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Device Pools: ', binding.devicePoolName)
-                                if(binding.missingDevices)
-                                {
-                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ','None' )
-                                }
-                                else
-                                {
+                                if (binding.missingDevices) {
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ', 'None')
+                                } else {
                                     EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ', binding.devicePoolName)
                                 }
 
@@ -291,7 +248,8 @@ class EmailTemplateHelper implements Serializable {
                         }
                     }
                 }
-                if (binding.deviceruns) {
+
+                if (binding.isNativeAppTestRun && binding.deviceruns) {
                     displayBriefSummaryOfNativeTestResults(htmlBuilder, binding)
 
                     /*
@@ -301,7 +259,7 @@ class EmailTemplateHelper implements Serializable {
                     if(!binding.isSummaryEmail)
                         displayDetailedSummaryOfNativeTestResults(htmlBuilder, binding)
                 }
-                if (binding.desktopruns) {
+                if (binding.isDesktopWebAppTestRun && binding.desktopruns) {
 
                     def suiteList = binding.desktopruns["suiteName"]
                     def testNameMap = binding.desktopruns["testName"]
@@ -335,7 +293,8 @@ class EmailTemplateHelper implements Serializable {
                     if(!binding.isSummaryEmail)
                         displayDetailedSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap)
                 }
-                if (!binding.deviceruns && !binding.desktopruns) {
+
+                if (binding.build.result != 'SUCCESS') {
                     tr {
                         td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
@@ -639,8 +598,8 @@ class EmailTemplateHelper implements Serializable {
                 }
                 def testsSummary = [:]
                 testsSummary.putAll(binding.summaryofResults)
-                def keys = testsSummary.keySet()
-                def vals = testsSummary.values()
+                def keys = testsSummary?.keySet()
+                def vals = testsSummary?.values()
                 for (int i = 0; i < vals.size(); i++) {
                     tr {
                         th(

@@ -21,12 +21,17 @@ class NotificationsHelper implements Serializable {
         (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
 
         /* If storeBody is true , expecting the tests results from AWS and using them to set build result. */
-        if (storeBody && templateData.deviceruns) {
-            /* Get test results and set build result accordingly */
-            def jsonSlurper = new JsonSlurper()
-            String testResultsToText = JsonOutput.toJson(templateData.deviceruns)
-            def testResultsToJson = jsonSlurper.parseText(testResultsToText)
-            setbuildResult(script, testResultsToJson)
+        if (storeBody && templateData.isNativeAppTestRun) {
+            if(!(templateData.deviceruns.isEmpty())) {
+                /* Get test results and set build result accordingly */
+                def jsonSlurper = new JsonSlurper()
+                String testResultsToText = JsonOutput.toJson(templateData.deviceruns)
+                def testResultsToJson = jsonSlurper.parseText(testResultsToText)
+                setbuildResult(script, testResultsToJson)
+            }
+            else {
+                script.currentBuild.result = "FAILURE"
+            }
         }
 
         /* Get data for e-mail notification */
@@ -205,13 +210,13 @@ class NotificationsHelper implements Serializable {
                 String testDesktopRunsToJson = JsonOutput.toJson(templateData.desktopruns)
 
                 /* For test console we are storing both HTML and JSON representation of test results */
-                if(templateData.desktopruns){
+                if(templateData.isDesktopWebAppTestRun){
                     filesToStore.addAll([
                             [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.html', data: body],
                             [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.json', data: testDesktopRunsToJson]
                     ])
                 }
-                if(templateData.deviceruns){
+                if(templateData.isNativeAppTestRun){
                     filesToStore.addAll([
                             [name: 'testResults-Native' + buildResultForTestConsole + '.html', data: body],
                             [name: 'testResults-Native' + buildResultForTestConsole + '.json', data: testRunsToJson]
@@ -260,9 +265,6 @@ class NotificationsHelper implements Serializable {
             case 'cloudBuild':
                 templateContent = EmailTemplateHelper.createBuildVisualizerAppContent(commonBinding, templateType)
                 break
-            case 'buildTests':
-                templateContent = EmailTemplateHelper.createBuildTestsContent(commonBinding)
-                break
             case 'runTests':
                 templateContent = EmailTemplateHelper.createRunTestContent(commonBinding)
                 break
@@ -287,24 +289,16 @@ class NotificationsHelper implements Serializable {
                 if (modifiedBuildTag.contains("Ios"))
                     return modifiedBuildTag.replace("Ios", "Ios-${script.env.FORM_FACTOR}")
                 break
-            case 'buildTests':
-                /*
-                 * We are removing the unwanted words in email subject and forming a simpler one.
-                 * For instance, by default we get the subject as "ProjectName-Visualizer-Tests-Channels-runDesktopWebTests-242-SUCCESS"
-                 * After this change, we will get it as "ProjectName-DesktopWebTests-242-SUCCESS"
-                 * */
-                modifiedBuildTag = modifiedBuildTag.minus("Visualizer-Tests-Channels-run")
-                break
             case 'runTests':
                 modifiedBuildTag = (modifiedBuildTag.minus("-Visualizer")).minus("-runTests")
                 /* To maintain backward compatibility, we are checking whether 'Channels' folder is present udner 'Tests' folder or not and then modifying the subject of mail accordingly */
                 if (script.env.JOB_NAME.contains("Tests/Channels/")) {
                     modifiedBuildTag = modifiedBuildTag.minus("Tests-Channels-run")
                 } else {
-                    if (templateData.desktopruns) {
+                    if (templateData.isDesktopWebAppTestRun) {
                         modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-DesktopWebTests")
                     }
-                    if (templateData.deviceruns) {
+                    if (templateData.isNativeAppTestRun) {
                         modifiedBuildTag = modifiedBuildTag.replace("-Tests", "-NativeTests")
                     }
                 }
