@@ -656,9 +656,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                 runInCustomTestEnvironment : runInCustomTestEnvironment
                         ], true)
 
-                        if (script.currentBuild.result != 'SUCCESS') {
+                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
                             TestsHelper.PrepareMustHaves(script, runCustomHook, "runNativeTests", libraryProperties, mustHaveArtifacts, false)
-                            (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
+                            if (TestsHelper.isBuildDescriptionNeeded(script))
+                                TestsHelper.setBuildDescription(script)
                         }
                         /* Cleanup created pools and uploads */
                         cleanup(deviceFarmUploadArns, devicePoolArns)

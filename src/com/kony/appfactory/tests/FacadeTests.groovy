@@ -270,7 +270,8 @@ class FacadeTests implements Serializable {
                             /* Set job result to 'UNSTABLE' if above check is true */
                             script.currentBuild.result = 'UNSTABLE'
                             TestsHelper.PrepareMustHaves(script, runCustomHook, "Tests_${script.env.BUILD_NUMBER}", libraryProperties, mustHaveArtifacts)
-                            (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
+                            if (TestsHelper.isBuildDescriptionNeeded(script))
+                                TestsHelper.setBuildDescription(script)
                         } else {
                             /* Set job result to 'SUCCESS' if above check is false */
                             script.currentBuild.result = 'SUCCESS'
@@ -297,10 +298,10 @@ class FacadeTests implements Serializable {
                         desktopWebTests.createPipeline()
                     if (isNativeApp)
                         nativeAWSDeviceFarmTests.createPipeline()
-
-                    if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
+                    if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
                         TestsHelper.PrepareMustHaves(script, runCustomHook, "Tests_${script.env.BUILD_NUMBER}", libraryProperties)
-                        (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
+                        if (TestsHelper.isBuildDescriptionNeeded(script))
+                            TestsHelper.setBuildDescription(script)
                     }
                 }
             }

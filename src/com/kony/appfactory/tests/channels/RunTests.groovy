@@ -150,12 +150,6 @@ class RunTests implements Serializable {
             script.currentBuild.result = 'FAILURE'
             /* Set runTests flag to false so that tests will not get triggered on Device Farm when build is failed */
             runTests = false
-        } finally {
-            /* Exit in case of test binaries failed, throw error to build console. */
-            if (script.currentBuild.result == 'FAILURE') {
-                TestsHelper.PrepareMustHaves(script, false, "run${channelType}Tests", libraryProperties)
-                (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
-            }
         }
     }
 }

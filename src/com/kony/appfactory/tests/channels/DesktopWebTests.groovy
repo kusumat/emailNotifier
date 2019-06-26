@@ -317,9 +317,10 @@ class DesktopWebTests extends RunTests implements Serializable {
                                 listofLogFiles   : listofLogFiles,
                                 listofScreenshots: listofScreenshots
                         ], true)
-                        if (script.currentBuild.result != 'SUCCESS') {
+                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
                             TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties)
-                            (!TestsHelper.isBuildDescriptionNeeded(script)) ?: TestsHelper.setBuildDescription(script)
+                            if (TestsHelper.isBuildDescriptionNeeded(script))
+                                TestsHelper.setBuildDescription(script)
                         }
 
                     }
