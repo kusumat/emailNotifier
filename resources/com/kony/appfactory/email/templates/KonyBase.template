@@ -232,14 +232,19 @@
 <body width="100%" style="margin: 0; padding: 0 !important; mso-line-height-rule: exactly;"> <center style="width: 100%;  background-color: #fff;">
     <table class="container" cellpadding="0">
         <tr>
-            <td text-align="center" style="padding:10px">
-                <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; margin-bottom:20px;height:55px">
+            <td>
+                <table role="presentation" cellspacing="0" cellpadding="5" style="width:100%;">
                     <tr style="background:#35414d">
-                         <td style="width:110px;color:#fff;line-height:25px;margin-left:20px;font-size:25px;text-align:center;vertical-align:middle">Kony</td>
-                         <td style="color:#fff;line-height:25px;margin-left:0px;border-left: 0.5pt solid #fff;text-indent:20px;vertical-align:middle">$productName</td>
+                         <td valign:"middle" style="width:150px">
+                         <img style="width:80%;height:40px" height="40" alt="Kony" src="http://ec2-18-212-31-146.compute-1.amazonaws.com/email-template-icon/kony_logo.png">
+                         </td>
+                         <td style="color:#fff;margin-left:0px;border-left: 0.5pt solid #fff;text-indent:20px;" align="center" valign="middle">$productName</td>
                     </tr>
                 </table>
             </td>
+        </tr>
+        <tr>
+        <td>&nbsp;</td>
         </tr>
         <tr>
             <td text-align="center" style="padding:0 20px;">
