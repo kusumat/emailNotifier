@@ -469,8 +469,9 @@ class AwsDeviceFarmHelper implements Serializable {
                             case 'SKIPPED':
                                 script.echoCustom("Test Execution is skipped on the device \'" + deviceKey + "\'", 'INFO')
                                 break
-                            case 'STOPPED':
                             case 'ERRORED':
+                                script.echoCustom("Looks like your tests failed with an ERRORED message, it usually happens due to some network issue on AWS device or issue with instance itself. Re-triggering the build might solve the issue.", 'WARN')
+                            case 'STOPPED':
                             case 'FAILED':
                                 script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + deviceKey
                                         + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
