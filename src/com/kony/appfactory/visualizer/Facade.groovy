@@ -767,11 +767,7 @@ class Facade implements Serializable {
                             }
                         }
 
-                        if(script.params.IS_SOURCE_VISUALIZER)
-                            (script.kony.IS_BUILD_THROUGH_API_ROUTE == "true") ? prepareCloudBuildRun() :
-                                    script.echoCustom("Triggering the build to this project is not supported directly. It is intended to run from Visualizer. Please use build option from Visualizer Quantum.", 'ERROR')
-                        else
-                            prepareRun()
+                        script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun() : prepareRun()
 
                         /* Expose Fabric configuration */
                         if (fabricAppConfig && !fabricAppConfig.equals("null")) {
