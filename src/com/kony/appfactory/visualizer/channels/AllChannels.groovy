@@ -146,12 +146,14 @@ class AllChannels implements Serializable {
                             }
                             buildStatus.updateBuildStatusOnS3()
                         } else {
-                            // When no buildStatus.json is present in s3, init a new BuildStatus class Object.
-                            buildStatus.prepareBuildServiceEnvironment(channelsToRun)
-                            buildStatus.prepareStatusJson(true)
+                            script.callStageCustom(buildStatus, "Starting build") {
+                                // When no buildStatus.json is present in s3, init a new BuildStatus class Object.
+                                buildStatus.prepareBuildServiceEnvironment(channelsToRun)
+                                buildStatus.prepareStatusJson(true)
+                            }
                         }
 
-                        script.callStageCustom(buildStatus, "Project checkout/download"){
+                        script.callStageCustom(buildStatus, "Downloading Project/Application source binaries") {
                             String url = script.params.PROJECT_SOURCE_URL
                             // source code checkout from downloadZipUrl
                             BuildHelper.checkoutProject script: script,
@@ -161,7 +163,7 @@ class AllChannels implements Serializable {
                                     projectFileName: projectFileName
                         }
 
-                        script.callStageCustom(buildStatus, "Pre-Build tasks") {
+                        script.callStageCustom(buildStatus, "Executing Pre-Build tasks") {
                             // setting project root folder path
 
                             if (!script.fileExists([checkoutRelativeTargetFolder, projectPropertyFileName].join(separator))) {
@@ -192,21 +194,21 @@ class AllChannels implements Serializable {
                             // Let's check whether third party authentication is enabled or not
                             BuildHelper.getExternalAuthInfoForCloudBuild(script, script.env['CLOUD_DOMAIN'], script.kony['MF_API_VERSION'], script.env['CLOUD_ENVIRONMENT_GUID'])
 
-                            script.callStageCustom(buildStatus, "Setting up environment for Android") {
-                                channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
-                                    it.value.pipelineWrapper {
-                                        /* reserving space for any pre-setups needed for any android builds */
-                                    }
+
+                            channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
+                                it.value.pipelineWrapper {
+                                    /* reserving space for any pre-setups needed for any android builds */
                                 }
                             }
 
-                            script.callStageCustom(buildStatus, "Setting iOS Bundle ID") {
-                                channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
-                                    it.value.pipelineWrapper {
-                                        /* reserving space for any pre-setups needed for any ios builds */
-                                    }
+
+
+                            channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
+                                it.value.pipelineWrapper {
+                                    /* reserving space for any pre-setups needed for any ios builds */
                                 }
                             }
+
                             /* Run PreBuild Hooks */
                             script.stage("Pre-build custom hooks") {
                                 channelObjects.each {
@@ -215,7 +217,7 @@ class AllChannels implements Serializable {
                             }
                         }
 
-                        script.callStageCustom(buildStatus, "Build") {
+                        script.callStageCustom(buildStatus, "Build in progress") {
                             /* Since CI tool is same for both android and ios, we can use any channel wrapper to initiate actual build */
                             /* preferring to use first channel object, can be one of MobileChannel and TabletChannel of Android and iOS */
                             def channelObjectsFirstKey = channelObjects.keySet().toArray()[0]
@@ -236,7 +238,7 @@ class AllChannels implements Serializable {
                             }
                         }
 
-                        script.callStageCustom(buildStatus, "Fetching binaries") {
+                        script.callStageCustom(buildStatus, "Build completed. Copying binaries") {
                             if (androidChannels) {
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
                                     try {
@@ -278,8 +280,8 @@ class AllChannels implements Serializable {
                             }
                         }
 
-                        script.callStageCustom(buildStatus, "Post-Build tasks") {
-                            script.callStageCustom(buildStatus, "Signing and publishing Android artifacts") {
+                        script.callStageCustom(buildStatus, "Executing post build tasks") {
+                            script.callStageCustom(buildStatus, "Signing and publishing Android binaries") {
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
                                     def android_channel_id = it.key
                                     def android_channel = it.value
@@ -322,7 +324,7 @@ class AllChannels implements Serializable {
                                     }
                                 }
                             }
-                            script.callStageCustom(buildStatus, "Generating IPA and publishing iOS artifacts") {
+                            script.callStageCustom(buildStatus, "Generating IPA and publishing iOS binaries") {
                                 /* Search for build artifacts for iOS and publish to S3 */
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
                                     def ios_channel_id = it.key
