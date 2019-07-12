@@ -63,23 +63,36 @@ class AwsHelper implements Serializable {
     }
 
     /**
-     * Uploads file to S3 destination path.
+     * Uploads file/directory to S3 destination path.
      *
-     * @param srcfileName the file needs to upload.
-     * @param srcDirPath the Dir contains the srcfileName.
-     * @param s3BucketPath destination S3 bucket url.
-     * @param s3BucketRegion region of destination bucket.
+     * @param args the map which contains source details that needs to be uploaded.
+     * If map contains both sourceFileName and sourceFilePath, then it uploads the specified file to S3.
+     * If map contains only the sourceFilePath, then it uploads the files & directories in the specified path to S3.
+     * @param finalBucketPath destination S3 bucket url.
+     * @param script pipeline object.
+     * @param exposeUrl flag to expose S3 artifact URL.
      */
     protected static String publishToS3(Map args, String finalBucketPath, script, boolean exposeUrl = false) {
-        String fileName = (args.sourceFileName) ?: script.echoCustom("fileName argument can't be null!", 'ERROR')
+        String fileName = args.sourceFileName
         String artifactFolder = (args.sourceFilePath) ?: script.echoCustom("artifactFolder argument can't be null!", 'ERROR')
         String s3BucketRegion = (script.env.S3_BUCKET_REGION) ?: script.echoCustom("Bucket region value can't be null!", 'ERROR')
         String bucketName = (script.env.S3_BUCKET_NAME) ?: script.echoCustom("Bucket name value can't be null!", 'ERROR')
+        boolean flatten = true
 
         String S3BucketPath = [bucketName, finalBucketPath].join('/')
 
         String successMessage = fileName + ' published successfully.'
         String errorMessage = 'Failed to publish ' + fileName + '!'
+
+        if(!fileName) {
+            fileName = '*/**'
+            flatten = false
+            artifactFolder = artifactFolder.endsWith('/') ? artifactFolder.substring(0, artifactFolder.length()-1) : artifactFolder
+            String folderName = artifactFolder.substring(artifactFolder.lastIndexOf("/") + 1)
+            successMessage = folderName + ' published successfully.'
+            errorMessage = 'Failed to publish ' + folderName + '!'
+        }
+
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
                 script.step([$class                              : 'S3BucketPublisher',
@@ -87,7 +100,7 @@ class AwsHelper implements Serializable {
                              dontWaitForConcurrentBuildCompletion: false,
                              entries                             : [
                                      [bucket           : S3BucketPath,
-                                      flatten          : true,
+                                      flatten          : flatten,
                                       keepForever      : true,
                                       managedArtifacts : false,
                                       noUploadOnFailure: false,

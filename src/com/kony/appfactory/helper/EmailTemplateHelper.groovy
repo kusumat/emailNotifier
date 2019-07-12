@@ -584,6 +584,12 @@ class EmailTemplateHelper implements Serializable {
                             class: "testresults",
                             'DURATION'
                     )
+                    if(binding.runInCustomTestEnvironment) {
+                        td(
+                                class: "testresults",
+                                'RESULTS'
+                        )
+                    }
                 }
                 tr {
                     td("")
@@ -601,15 +607,18 @@ class EmailTemplateHelper implements Serializable {
                 def keys = testsSummary?.keySet()
                 def vals = testsSummary?.values()
                 for (int i = 0; i < vals.size(); i++) {
+                    def url = "https:" + vals[i].substring(vals[i].lastIndexOf(":") + 1)
                     tr {
                         th(
                                 class: "testresults",
-                                keys[i]
+                                StringUtils.substringBetween(vals[i], "displayName:", "skipped:")
                         )
-                        th(
-                                class: "testresults",
-                                vals[i].substring(vals[i].lastIndexOf(":") + 1)
-                        )
+                        //if reports url exists then the total test cases count exist between 'total tests:' and 'reports url' otherwise count exists as last value.
+                        if(vals[i].contains('reports url'))
+                            th(class: "testresults", StringUtils.substringBetween(vals[i], "total tests:", "reports url"))
+                        else
+                            th(class: "testresults", vals[i].substring(vals[i].lastIndexOf(":") + 1))
+
                         (vals[i].contains("errored")) ? th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "errored:")) :
                                 th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "total tests:"))
                         th(
@@ -636,6 +645,8 @@ class EmailTemplateHelper implements Serializable {
                                 class: "testresults",
                                 binding.duration[keys[i]]
                         )
+                        if(binding.runInCustomTestEnvironment)
+                            (vals[i].contains('reports url')) ? th(class: "testresults", { a(href: url, target: '_blank', "Test Report")}) : th(class: "testresults", 'Not Found')
                     }
                 }
                 br()

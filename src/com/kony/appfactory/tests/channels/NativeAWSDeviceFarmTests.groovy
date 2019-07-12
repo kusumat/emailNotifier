@@ -224,6 +224,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         /* Workaround to iterate over map keys in c++ style for loop */
         for (int i = 0; i < deviceFarmTestRunArnsKeys.size(); ++i) {
             def arn = deviceFarmTestRunArns[deviceFarmTestRunArnsKeys[i]]
+            def testRunArtifacts
             script.echoCustom("Run ARN for ${deviceFarmTestRunArnsKeys[i]} is: " + arn)
             /* Prepare step to run in parallel */
             stepsToRun["testResults_${deviceFarmTestRunArnsKeys[i]}"] = {
@@ -236,14 +237,47 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         Using addAll method to collect all run results, because
                         getTestRunArtifacts returns list of one item (run result).
                      */
-                    deviceFarmTestRunResults.addAll(deviceFarm.getTestRunArtifacts(arn))
+                    testRunArtifacts = deviceFarm.getTestRunArtifacts(arn)
+
+                    if(runInCustomTestEnvironment)
+                        deviceFarmTestRunResults.addAll(fetchCustomTestResults(testRunArtifacts))
+                    else
+                        deviceFarmTestRunResults.addAll(testRunArtifacts)
 
                 }
                 /* else notify user that result value is empty */
                 else {
                     script.echoCustom("Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!", 'WARN')
                 }
-                summary.putAll(deviceFarm.testSummaryMap)
+                def testSummaryMap  = deviceFarm.testSummaryMap
+                def key, authUrl, name, os, displayName
+
+                for(runArtifacts in testRunArtifacts) {
+                    for(device in runArtifacts.device) {
+                        if(device.getKey() == 'name')
+                            name = device.getValue()
+                        if(device.getKey() == 'os')
+                            os = device.getValue()
+                    }
+                    key = name.toString() + ' ' + os.toString()
+                    displayName = name.toString() + ' OS ' + os.toString()
+                    for(summary in testSummaryMap) {
+                        testSummaryMap.put(key, 'displayName:' + displayName + summary.getValue())
+                    }
+                }
+
+                if(runInCustomTestEnvironment) {
+                    for(runArtifacts in testRunArtifacts) {
+                        for(reports in runArtifacts.reports) {
+                            authUrl = reports.getValue()
+                        }
+                        if(key != null && runArtifacts.passedTests != null && runArtifacts.failedTests != null) {
+                            def value = 'displayName:' + displayName + 'skipped: ' + runArtifacts.skippedTests + ' warned: ' + 0 + 'failed: '+ runArtifacts.failedTests + 'stopped: ' + 0 + 'passed: '+ runArtifacts.passedTests + 'errored: 0' + 'total tests: ' + runArtifacts.totalSuites + 'reports url: ' + authUrl
+                            testSummaryMap.put(key, value)
+                        }
+                    }
+                }
+                summary.putAll(testSummaryMap)
             }
         }
 
@@ -667,5 +701,91 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 }
             }
         }
+    }
+
+    /**
+     * Publish the TestNG test-output folder to S3.
+     *
+     * @param runArtifact the run result from devicefarm
+     * @param suiteName the test suite name
+     * @param folderPath the folder path need to upload
+     * @returns testngReportsAuthURL the authenticated S3 URL of TestNG test-output
+     */
+    protected  publishTestReportsToS3(runArtifact, suiteName, folderPath) {
+        def s3BasePath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
+        def s3ArtifactsPath
+        def resultPath = [s3BasePath]
+        resultPath.add(runArtifact.device.formFactor.toString())
+        resultPath.add(runArtifact.device.name.toString() + '_' + runArtifact.device.platform.toString() + '_' + runArtifact.device.os.toString())
+        resultPath.add(suiteName)
+        s3ArtifactsPath = resultPath.join('/').replaceAll('\\s', '_')
+        def testngReportsUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactsPath, sourceFilePath: folderPath, script, false
+        def testngReportsAuthURL = BuildHelper.createAuthUrl(testngReportsUrl, script, true, "view")
+        return testngReportsAuthURL
+
+    }
+
+   /**
+    * Downloads customer artifacts
+    * Parsing testng-results and updating the count of total failed/passed/skipped/total tests to display in email notification.
+    *
+    * @param testRunArtifacts the run result from devicefarm.
+    * @return testRunArtifacts the run result with updated count.
+    */
+    protected  final def fetchCustomTestResults(testRunArtifacts) {
+        def customerArtifactUrl, deviceName, reportsUrl =[:]
+        def artifactName = 'Customer Artifacts'
+        for(runArtifacts in testRunArtifacts) {
+            for(suite in runArtifacts.suites) {
+                for (test in suite.tests) {
+                    for (artifact in test.artifacts) {
+                        if(artifact.name == artifactName) {
+                            customerArtifactUrl = artifact.url
+                        }
+                    }
+                }
+            }
+        }
+        if(customerArtifactUrl != null) {
+            for(runArtifacts in testRunArtifacts) {
+                for(device in runArtifacts.device) {
+                    if(device.getKey() == "name") {
+                        deviceName = device.getValue().replaceAll("[^a-zA-Z0-9]", "");
+                    }
+                }
+            }
+            artifactName = artifactName.replaceAll('\\s', '_')
+            script.dir(deviceFarmWorkingFolder) {
+                script.shellCustom("mkdir -p " + deviceName, true)
+                script.dir(deviceName) {
+                    script.shellCustom("mkdir -p test-output", true)
+                    script.shellCustom("curl --silent --show-error --fail -o \'${artifactName}\' \'${customerArtifactUrl.toString()}\'", true, [returnStatus: true, returnStdout: true])
+                    // extract the final downloaded zip
+                    def zipExtractStatus = script.shellCustom("unzip -q ${artifactName}", true, [returnStatus: true])
+                    if (zipExtractStatus) {
+                        script.currentBuild.result = "FAILED"
+                        throw new AppFactoryException("Failed to extract Customer Artifacts zip", 'ERROR')
+                    }
+                }
+            }
+            script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/test-output/*  ${deviceFarmWorkingFolder}/${deviceName}/test-output", true)
+            def authUrl = publishTestReportsToS3(testRunArtifacts[0], "Tests Suite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
+            String testNGResultsFileContent = script.readFile("${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml")
+            def testng_results = new XmlSlurper().parseText(testNGResultsFileContent)
+            for(runArtifacts in testRunArtifacts) {
+                runArtifacts.totalSuites = testng_results.@total.join("")
+                runArtifacts.failedTests = testng_results.@failed.join("")
+                runArtifacts.passedTests = testng_results.@passed.join("")
+                runArtifacts.skippedTests = testng_results.@skipped.join("")
+                reportsUrl.put("url", authUrl.replace("*/**", 'index.html'))
+                runArtifacts.reports = reportsUrl
+                for(suite in runArtifacts.suites) {
+                     if(suite.name == "Tests Suite") {
+                        suite.totalTests = testng_results.@total.join("")
+                    }
+                }
+            }
+        }
+        return testRunArtifacts
     }
 }
