@@ -33,7 +33,6 @@ class NotificationsHelper implements Serializable {
                 script.currentBuild.result = "FAILURE"
             }
         }
-
         /* Get data for e-mail notification */
         Map emailData = getEmailData(script, templateType, templateData)
 
@@ -256,7 +255,8 @@ class NotificationsHelper implements Serializable {
 
                         started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
                                 System.getProperty('user.timezone').toUpperCase(),
-                        log     : script.currentBuild.rawBuild.getLog(100)
+                        log     : script.currentBuild.rawBuild.getLog(100),
+                        mode     : script.params.BUILD_MODE
                 ]
         ] + templateData
 

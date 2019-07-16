@@ -668,6 +668,7 @@ class Facade implements Serializable {
         /* Allocate a slave for the run */
         script.node(libraryProperties.'facade.node.label') {
             /* Wrapper for colorize the console output in a pipeline build */
+            Map meta = [:]
             script.ansiColor('xterm') {
                 try {
                     /* Wrapper for injecting timestamp to the build console output */
@@ -685,7 +686,6 @@ class Facade implements Serializable {
                             if (universalAndroid || universalIos) {
                                 ValidationHelper.checkBuildConfigurationForUniversalApp(script)
                             }
-
                             /* List of required parameters */
                             def checkParams = [], eitherOrParameters = []
                             def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
@@ -693,6 +693,8 @@ class Facade implements Serializable {
                             def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
                             if (androidChannels) {
                                 def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
+                                meta.put("ANDROID_APP_VERSION", script.params.ANDROID_APP_VERSION)
+                                meta.put("ANDROID_VERSION_CODE", script.params.ANDROID_VERSION_CODE)
 
                                 if (androidChannels.findAll { it.contains('MOBILE') }) {
                                     androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
@@ -719,6 +721,8 @@ class Facade implements Serializable {
                             if (iosChannels) {
 
                                 def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION']
+                                meta.put("IOS_APP_VERSION", script.params.IOS_APP_VERSION)
+                                meta.put("IOS_BUNDLE_VERSION", script.params.IOS_BUNDLE_VERSION)
                                 eitherOrParameters.add(['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES'])
 
                                 if (iosChannels.findAll { it.contains('MOBILE') }) {
@@ -748,6 +752,7 @@ class Facade implements Serializable {
 
                             if (spaChannels || desktopWebChannel) {
                                 def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
+                                meta.put("WEB_APP_VERSION", script.params.WEB_APP_VERSION)
 
                                 checkParams.addAll(webMandatoryParams)
                             }
@@ -891,7 +896,8 @@ class Facade implements Serializable {
                                     [
                                             artifacts              : artifacts,
                                             fabricEnvironmentName  : fabricEnvironmentName,
-                                            projectSourceCodeBranch: projectSourceCodeBranch
+                                            projectSourceCodeBranch: projectSourceCodeBranch,
+                                            meta:meta
                                     ],
                                     true)
                         }

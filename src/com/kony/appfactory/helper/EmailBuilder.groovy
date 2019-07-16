@@ -35,6 +35,10 @@ class EmailBuilder {
             td {
                 a(href: binding.url, target: '_blank', binding.name)
             }
+            td(style: "border-right: 1px solid #e8e8e8; width: 65px"){
+                p(style : "font-size: 12px",binding.APP_VERSION)
+                p(style : "font-size: 12px",binding.App_Build_Version)
+            }
         }
     }
 
@@ -60,6 +64,10 @@ class EmailBuilder {
                         a(href: binding.artifacts[i].url, target: '_blank', binding.artifacts[i].name)
                     else
                         mkp.yield("Build failed")
+                }
+                td(style: "border-right: 1px solid #e8e8e8; width: 65px"){
+                    p(style : "font-size: 12px",binding.APP_VERSION)
+                    p(style : "font-size: 12px",binding.App_Build_Version)
                 }
             }
         }

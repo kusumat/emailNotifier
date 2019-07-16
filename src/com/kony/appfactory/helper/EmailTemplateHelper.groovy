@@ -52,6 +52,7 @@ class EmailTemplateHelper implements Serializable {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
                                 EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build Mode:', binding.build.mode)
                             }
 
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
@@ -86,10 +87,11 @@ class EmailTemplateHelper implements Serializable {
                                         tr {
                                             th(style: "text-align:center", 'Channel')
                                             th(style: "text-align:center", colspan: "2", 'INSTALLER')
+                                            th(style: "text-align:center", colspan: "3", 'APP VERSION')
                                         }
                                     }
                                     tbody(class:"table-border-channels") {
-                                        prepareMailBody(htmlBuilder, binding.artifacts, templateType)
+                                        prepareMailBody(htmlBuilder, binding.artifacts, binding.meta, templateType)
                                     }
                                 }
                             }
@@ -103,14 +105,14 @@ class EmailTemplateHelper implements Serializable {
     }
 
     @NonCPS
-    static void prepareMailBody(htmlBuilder, artifacts, templateType) {
+    static void prepareMailBody(htmlBuilder, artifacts, meta, templateType) {
         for (artifact in artifacts) {
             if (artifact.name) {
                 /* iOS */
                 if (artifact.otaurl) {
                     def map = [
-                            channelPath: artifact.channelPath,
-                            artifacts  : [
+                            channelPath      : artifact.channelPath,
+                            artifacts        : [
                                     [
                                             name     : artifact.name,
                                             url      : artifact.otaurl,
@@ -121,15 +123,16 @@ class EmailTemplateHelper implements Serializable {
                                             url      : artifact.ipaAuthUrl,
                                             extension: 'IPA',
                                     ]
-                            ]
+                            ],
+                            APP_VERSION      : "App Version : " + meta.IOS_APP_VERSION,
+                            App_Build_Version: "Build Version : " + meta.IOS_BUNDLE_VERSION
                     ]
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
-                }
-                else if (artifact.karAuthUrl) {
+                } else if (artifact.karAuthUrl) {
                     def map = [
-                            channelPath: artifact.channelPath,
-                            artifacts  : [
+                            channelPath      : artifact.channelPath,
+                            artifacts        : [
                                     [
                                             //for karAuthUrl, there won't be any ipa.name and ipa.authUrl
                                             extension: 'IPA'
@@ -139,7 +142,9 @@ class EmailTemplateHelper implements Serializable {
                                             url      : artifact.karAuthUrl,
                                             extension: 'KAR',
                                     ]
-                            ]
+                            ],
+                            APP_VERSION      : "App Version :" + meta.IOS_APP_VERSION,
+                            App_Build_Version: "Build Version :" + meta.IOS_BUNDLE_VERSION
                     ]
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
@@ -149,10 +154,9 @@ class EmailTemplateHelper implements Serializable {
                 else if (artifact.webAppUrl) {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
-
                     def map = [
-                            channelPath: artifact.channelPath,
-                            artifacts  : [
+                            channelPath      : artifact.channelPath,
+                            artifacts        : [
                                     [
                                             name     : artifact.name,
                                             url      : artifact.authurl,
@@ -163,7 +167,9 @@ class EmailTemplateHelper implements Serializable {
                                             url      : artifact.webAppUrl,
                                             extension: 'APP URL',
                                     ]
-                            ]
+                            ],
+                            APP_VERSION      : "App Version : " + meta.WEB_APP_VERSION,
+                            App_Build_Version: ""
                     ]
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
@@ -171,29 +177,53 @@ class EmailTemplateHelper implements Serializable {
 
                 /* Android or channels - SPA/DesktopWeb/Web without publish enabled */
                 else {
+                    String app_version
+                    String app_build_version
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+                    if ((artifact.channelPath).contains("Android")) {
+                        app_version = "App Version : " + meta.ANDROID_APP_VERSION
+                        app_build_version = "Build Version : " + meta.ANDROID_VERSION_CODE
+                    } else {
+                        app_version = "App Version : " + meta.WEB_APP_VERSION
+                        app_build_version = ''
+                    }
                     def map = [
-                            name       : artifact.name,
-                            extension  : artifactExtension,
-                            url        : artifact.authurl,
-                            channelPath: artifact.channelPath
+                            name             : artifact.name,
+                            extension        : artifactExtension,
+                            url              : artifact.authurl,
+                            channelPath      : artifact.channelPath,
+                            APP_VERSION      : app_version,
+                            App_Build_Version: app_build_version
                     ]
                     EmailBuilder.addSimpleArtifactTableRowSuccess(htmlBuilder, map)
                 }
-            }
-            else {
-                if(templateType.equals('cloudBuild')) {
+            } else {
+                if (templateType.equals('cloudBuild')) {
                     def map = [
                             extension  : artifact.extensionType,
                             channelPath: artifact.channelPath
                     ]
                     EmailBuilder.addSimpleArtifactTableRowFailed(htmlBuilder, map)
-                }
-                else {
+                } else {
                     htmlBuilder.tr {
                         th(artifact.channelPath.replaceAll('/', ' '))
                         td(colspan: "2", "Build failed")
+                        if ((artifact.channelPath).contains("Android")) {
+                            td(style: "border-right: 1px solid #e8e8e8; width: 65px") {
+                                p(style: "font-size: 12px", "App Version : " + meta.ANDROID_APP_VERSION)
+                                p(style: "font-size: 12px", "Build Version : " + meta.ANDROID_VERSION_CODE)
+                            }
+                        } else if ((artifact.channelPath).contains("iOS")) {
+                            td(style: "border-right: 1px solid #e8e8e8; width: 65px; font-size: 8px") {
+                                p(style: "font-size: 12px", "App Version : " + meta.IOS_APP_VERSION)
+                                p(style: "font-size: 12px", "Build Version : " + meta.IOS_BUNDLE_VERSION)
+                            }
+                        } else {
+                            td(style: "border-right: 1px solid #e8e8e8; width: 65px; font-size: 8px") {
+                                p(style: "font-size: 12px", "App Version : " + meta.WEB_APP_VERSION)
+                            }
+                        }
                     }
                 }
             }

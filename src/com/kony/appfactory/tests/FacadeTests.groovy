@@ -158,7 +158,6 @@ class FacadeTests implements Serializable {
     private final prepareEmailBody() {
         nativeTestsJob = testsJobOutput['Native Tests']
         desktopWebTestsJob = testsJobOutput['DesktopWeb Tests']
-
         emailData += [isSummaryEmail   : true,
                       isNativeAppTestRun        : isNativeApp,
                       deviceruns       : nativeTestsJob.buildVariables.NATIVE_RUN_RESULTS,
