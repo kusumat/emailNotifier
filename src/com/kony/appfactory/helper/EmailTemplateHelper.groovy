@@ -591,6 +591,7 @@ class EmailTemplateHelper implements Serializable {
                     p(style: "font-weight:bold", "Brief Summary of Native Test Results:")
                 }
             }
+            def deviceFarmTimeLimitExceeded = false
             table(style: "width:100%;text-align:center", class: "text-color table-border") {
                 tr {
                     td(
@@ -632,12 +633,17 @@ class EmailTemplateHelper implements Serializable {
                     td(class: "error", "Errored")
                     td("")
                 }
-                def testsSummary = [:]
+                def testsSummary = [:], testRunDuration
                 testsSummary.putAll(binding.summaryofResults)
                 def keys = testsSummary?.keySet()
                 def vals = testsSummary?.values()
                 for (int i = 0; i < vals.size(); i++) {
                     def url = "https:" + vals[i].substring(vals[i].lastIndexOf(":") + 1)
+                    use(groovy.time.TimeCategory) {
+                        testRunDuration = changeTimeFormat(binding.duration[keys[i]])
+                    }
+                    if(binding.duration[keys[i]] > binding.defaultDeviceFarmTimeLimit)
+                        deviceFarmTimeLimitExceeded = true
                     tr {
                         th(
                                 class: "testresults",
@@ -673,13 +679,19 @@ class EmailTemplateHelper implements Serializable {
                         )
                         th(
                                 class: "testresults",
-                                binding.duration[keys[i]]
+                                testRunDuration
                         )
                         if(binding.runInCustomTestEnvironment)
                             (vals[i].contains('reports url')) ? th(class: "testresults", { a(href: url, target: '_blank', "Test Report")}) : th(class: "testresults", 'Not Found')
                     }
                 }
                 br()
+            }
+            if(deviceFarmTimeLimitExceeded)
+            tr {
+                td(style: "text-align:left", class: "text-color") {
+                    p(style: "font-size:10px;font-weight:normal", '** Tests got skipped. Device Farm public fleet default time limit exceeded of '+ (binding.defaultDeviceFarmTimeLimit/60000) +' minutes duration.')
+                }
             }
         }
     }
@@ -853,4 +865,29 @@ class EmailTemplateHelper implements Serializable {
             }
         }
     }
+
+    /**
+     * Converts the given time difference into hours, minutes, seconds
+     * @param Time difference between two times
+     * @returns value with a specific time format
+     * */
+    @NonCPS
+    protected static def changeTimeFormat(timeDifference){
+        def value = ""
+        Map mapWithTimeFormat = [:]
+        timeDifference = timeDifference / 1000
+        mapWithTimeFormat.seconds = timeDifference.remainder(60)
+        timeDifference = (timeDifference - mapWithTimeFormat.seconds) / 60
+        mapWithTimeFormat.minutes = timeDifference.remainder(60)
+        timeDifference = (timeDifference - mapWithTimeFormat.minutes) / 60
+        mapWithTimeFormat.hours = timeDifference.remainder(24)
+        if (mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP))
+            value += mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP) + " hrs "
+        if (mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP))
+            value += mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP) + " mins "
+        if (mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP))
+            value += mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP) + " secs "
+        return value
+    }
+
 }

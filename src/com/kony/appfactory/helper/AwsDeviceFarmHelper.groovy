@@ -12,7 +12,10 @@ import java.math.*;
 class AwsDeviceFarmHelper implements Serializable {
     def script
     def testSummaryMap = [:]
-    def durationMap = [:], testStartTimeMap = [:], testEndTimeMap = [:], mapWithTimeFormat = [:], runArnMap = [:]
+    def durationMap = [:], testStartTimeMap = [:], testEndTimeMap = [:], mapWithTimeFormat = [:], runArnMap = [:], testExecutionStartTimeMap = [:]
+
+    protected libraryProperties
+
     /**
      * Class constructor.
      *
@@ -20,6 +23,9 @@ class AwsDeviceFarmHelper implements Serializable {
      */
     AwsDeviceFarmHelper(script) {
         this.script = script
+        libraryProperties = BuildHelper.loadLibraryProperties(
+                this.script, 'com/kony/appfactory/configurations/common.properties'
+        )
     }
 
     /**
@@ -448,6 +454,8 @@ class AwsDeviceFarmHelper implements Serializable {
                                 script.echoCustom("Tests execution is being stopped on \'" + deviceKey + "\'", 'INFO')
                                 break
                             case 'RUNNING':
+                                if(! testExecutionStartTimeMap.containsKey(deviceKey))
+                                    testExecutionStartTimeMap.put(deviceKey, new Date().time)
                                 script.echoCustom("Tests are running on \'" + deviceKey
                                         + "\'... will fetch final results once the execution is completed.", 'INFO')
                                 break
@@ -459,20 +467,25 @@ class AwsDeviceFarmHelper implements Serializable {
                         }
                         switch (listJobsArrayList.result) {
                             case 'PASSED':
+                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Test Execution is completed on \'"+ deviceKey
                                         + "\' and over all test result is PASSED", 'INFO')
                                 createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
                                 break
                             case 'WARNED':
+                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Build is warned for unknown reason on the device \'" + deviceKey + "\'", 'WARN')
                                 break
                             case 'SKIPPED':
+                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Test Execution is skipped on the device \'" + deviceKey + "\'", 'INFO')
                                 break
                             case 'ERRORED':
+                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Looks like your tests failed with an ERRORED message, it usually happens due to some network issue on AWS device or issue with instance itself. Re-triggering the build might solve the issue.", 'WARN')
                             case 'STOPPED':
                             case 'FAILED':
+                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + deviceKey
                                         + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
                                 createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
@@ -516,36 +529,11 @@ class AwsDeviceFarmHelper implements Serializable {
         testEndTimeMap.put(deviceKey, endTime.time)
         use(groovy.time.TimeCategory) {
             Long timeDifference = testEndTimeMap[deviceKey] - testStartTimeMap[deviceKey]
-            mapWithTimeFormat.putAll(changeTimeFormat(timeDifference))
-            def value = ""
-            if(mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP))
-                value+=mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP) + " hrs "
-            if(mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP))
-                value+=mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP)  + " mins "
-            if(mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP))
-                value+=mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP) + " secs "
-            durationMap.put(deviceKey, value)
+            durationMap.put(deviceKey, timeDifference)
         }
         completedRunDevicesList[index] = listJobsArrayList.arn
         index++
     }
-
-    /**
-     * Converts the given time difference into hours, minutes, seconds
-     * @param Time difference between two times
-     * @return a map with a specific time format
-     * */
-    protected Map changeTimeFormat(Long timeDifference){
-        Map mapWithTimeFormat =[:]
-        timeDifference = timeDifference / 1000
-        mapWithTimeFormat.seconds = timeDifference.remainder(60)
-        timeDifference = (timeDifference - mapWithTimeFormat.seconds) / 60
-        mapWithTimeFormat.minutes = timeDifference.remainder(60)
-        timeDifference = (timeDifference - mapWithTimeFormat.minutes) / 60
-        mapWithTimeFormat.hours = timeDifference.remainder(24)
-        return mapWithTimeFormat
-    }
-
 
     /**
      * Queries Device Farm to get test run artifacts.
@@ -733,6 +721,20 @@ class AwsDeviceFarmHelper implements Serializable {
     protected final void deleteDevicePool(devicePoolArn) {
         script.catchErrorCustom('Failed to delete device pool') {
             script.shellCustom("set +x;aws devicefarm delete-device-pool --arn ${devicePoolArn}", true)
+        }
+    }
+
+    /**
+     * Displays a warning message on console if device farm time limit is exceeded of 150 minutes
+     *
+     * @param deviceKey device name
+     */
+    protected final void validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey){
+        Date endTime = new Date()
+        Long timeDifference = endTime.time - testExecutionStartTimeMap[deviceKey]
+        Long defaultTestRunTimeLimit = Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit')
+        if(timeDifference > defaultTestRunTimeLimit) {
+            script.echoCustom("Sorry! Device Farm public fleet default time limit exceeded of "+ (defaultTestRunTimeLimit/60000) +" minutes. All remaining tests on device " + deviceKey + " will be skipped.", 'WARN')
         }
     }
 }
