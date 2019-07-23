@@ -32,7 +32,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
     /* Device Farm related variables */
     private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn, deviceFarmTestSpecUploadArtifactArn
-    protected deviceFarmUploadArns = [], deviceFarmTestRunArns = [:], deviceFarmTestRunResults = [], summary = [:], duration = [:], runArnMap = [:]
+    protected deviceFarmUploadArns = [], deviceFarmTestRunArns = [:], deviceFarmTestRunResults = [], summary = [:], duration = [:], runArnMap = [:], testBinaryDetails = [:]
 
     /* Temp folder for Device Farm objects (test run results) */
     private deviceFarmWorkingFolder
@@ -253,16 +253,28 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 def key, authUrl, name, os, displayName
 
                 for(runArtifacts in testRunArtifacts) {
+                    def formFactor, platform
                     for(device in runArtifacts.device) {
                         if(device.getKey() == 'name')
                             name = device.getValue()
                         if(device.getKey() == 'os')
                             os = device.getValue()
+                        if(device.getKey() == 'formFactor')
+                            formFactor = device.getValue()
+                        if(device.getKey() == 'platform')
+                            platform = device.getValue()
                     }
                     key = name.toString() + ' ' + os.toString()
                     displayName = name.toString() + ' OS ' + os.toString()
-                    for(summary in testSummaryMap) {
-                        testSummaryMap.put(key, 'displayName:' + displayName + summary.getValue())
+                    def artifacts = fetchTestBinaryDetails(formFactor, platform)
+                    if(artifacts.url.contains(script.env.S3_BUCKET_NAME)) {
+                        artifacts.url = BuildHelper.createAuthUrl(artifacts.url, script, true)
+                        testBinaryDetails.put(key, artifacts)
+                    }
+                    for (summary in testSummaryMap) {
+                        def summaryDetail = summary.getValue()
+                        if (!summaryDetail.contains('displayName'))
+                            testSummaryMap.put(key, 'displayName:' + displayName + summaryDetail)
                     }
                 }
 
@@ -688,7 +700,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                 duration        : duration,
                                 appiumVersion   : appiumVersion,
                                 runInCustomTestEnvironment : runInCustomTestEnvironment,
-                                defaultDeviceFarmTimeLimit : Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit')
+                                defaultDeviceFarmTimeLimit : Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit'),
+                                testBinaryDetails : testBinaryDetails
                         ], true)
 
                         if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
@@ -772,21 +785,62 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/test-output/*  ${deviceFarmWorkingFolder}/${deviceName}/test-output", true)
             def authUrl = publishTestReportsToS3(testRunArtifacts[0], "Tests Suite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
             String testNGResultsFileContent = script.readFile("${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml")
-            def testng_results = new XmlSlurper().parseText(testNGResultsFileContent)
+            def test_results = parseTestResults(testNGResultsFileContent)
             for(runArtifacts in testRunArtifacts) {
-                runArtifacts.totalSuites = testng_results.@total.join("")
-                runArtifacts.failedTests = testng_results.@failed.join("")
-                runArtifacts.passedTests = testng_results.@passed.join("")
-                runArtifacts.skippedTests = testng_results.@skipped.join("")
                 reportsUrl.put("url", authUrl.replace("*/**", 'index.html'))
                 runArtifacts.reports = reportsUrl
-                for(suite in runArtifacts.suites) {
-                     if(suite.name == "Tests Suite") {
-                        suite.totalTests = testng_results.@total.join("")
+                if(test_results) {
+                    runArtifacts.totalSuites = test_results.totalSuites
+                    runArtifacts.failedTests = test_results.failedTests
+                    runArtifacts.passedTests = test_results.passedTests
+                    runArtifacts.skippedTests = test_results.skippedTests
+                    for(suite in runArtifacts.suites) {
+                        if(suite.name == "Tests Suite") {
+                            suite.totalTests = test_results.totalSuites
+                        }
                     }
                 }
             }
         }
         return testRunArtifacts
+    }
+
+    /*
+     * Parses TestNG results file content and gets the test cases counts
+     *
+     * @param testNGResultsFileContent the TestNG xml content
+     * @return testResultsMap the map containing test cases counts
+     */
+    @NonCPS
+    protected Map parseTestResults(testNGResultsFileContent) {
+        def testng_results = new XmlSlurper().parseText(testNGResultsFileContent)
+        def testResultsMap = [:]
+        testResultsMap.put('totalSuites', testng_results.@total.join(""))
+        testResultsMap.put('passedTests', testng_results.@passed.join(""))
+        testResultsMap.put('failedTests', testng_results.@failed.join(""))
+        testResultsMap.put('skippedTests', testng_results.@skipped.join(""))
+        return testResultsMap
+    }
+
+    /*
+     * Fetches test binary details based on form factor and platform
+     *
+     * @param formFactor the formFactor either phone or tablet
+     * @param platform the platform either ios or android
+     *
+     * @return projectArtifacts the projectArtifacts details
+     */
+    protected Map fetchTestBinaryDetails(formFactor, platform) {
+        def device = platform + '_' + formFactor
+        switch(device) {
+            case 'IOS_PHONE' :
+                return projectArtifacts.iOS_Mobile
+            case 'ANDROID_PHONE' :
+                return projectArtifacts.Android_Mobile
+            case 'IOS_TABLET' :
+                return projectArtifacts.iOS_Tablet
+            case 'ANDROID_TABLET' :
+                return projectArtifacts.Android_Tablet
+        }
     }
 }

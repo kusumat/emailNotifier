@@ -598,6 +598,12 @@ class EmailTemplateHelper implements Serializable {
                             class: "testresults",
                             'DEVICE'
                     )
+                    if(binding.testBinaryDetails)
+                        td(
+                                class: "testresults",
+                                'INSTALLER'
+                        )
+
                     td(
                             class: "testresults",
                             'TOTAL'
@@ -626,6 +632,8 @@ class EmailTemplateHelper implements Serializable {
                     td("")
                     td("")
                     td("")
+                    if(binding.testBinaryDetails)
+                        td("")
                     td(class: "fail", "Failed")
                     td(class: "skip", "Skipped")
                     td(class: "warn", "Warned")
@@ -649,6 +657,16 @@ class EmailTemplateHelper implements Serializable {
                                 class: "testresults",
                                 StringUtils.substringBetween(vals[i], "displayName:", "skipped:")
                         )
+                        if(binding.testBinaryDetails) {
+                            def binaryDetails = binding.testBinaryDetails.get(keys[i])
+                            th(
+                                    class: "testresults",
+                                    {
+                                        (!binaryDetails) ?: a(href: binaryDetails.url, target: '_blank', (binaryDetails.extension).toUpperCase())
+                                    }
+                            )
+                        }
+
                         //if reports url exists then the total test cases count exist between 'total tests:' and 'reports url' otherwise count exists as last value.
                         if(vals[i].contains('reports url'))
                             th(class: "testresults", StringUtils.substringBetween(vals[i], "total tests:", "reports url"))
@@ -875,18 +893,20 @@ class EmailTemplateHelper implements Serializable {
     protected static def changeTimeFormat(timeDifference){
         def value = ""
         Map mapWithTimeFormat = [:]
-        timeDifference = timeDifference / 1000
-        mapWithTimeFormat.seconds = timeDifference.remainder(60)
-        timeDifference = (timeDifference - mapWithTimeFormat.seconds) / 60
-        mapWithTimeFormat.minutes = timeDifference.remainder(60)
-        timeDifference = (timeDifference - mapWithTimeFormat.minutes) / 60
-        mapWithTimeFormat.hours = timeDifference.remainder(24)
-        if (mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP))
-            value += mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP) + " hrs "
-        if (mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP))
-            value += mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP) + " mins "
-        if (mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP))
-            value += mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP) + " secs "
+        if(timeDifference) {
+            timeDifference = timeDifference / 1000
+            mapWithTimeFormat.seconds = timeDifference.remainder(60)
+            timeDifference = (timeDifference - mapWithTimeFormat.seconds) / 60
+            mapWithTimeFormat.minutes = timeDifference.remainder(60)
+            timeDifference = (timeDifference - mapWithTimeFormat.minutes) / 60
+            mapWithTimeFormat.hours = timeDifference.remainder(24)
+            if (mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP))
+                value += mapWithTimeFormat.hours.setScale(0, BigDecimal.ROUND_HALF_UP) + " hrs "
+            if (mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP))
+                value += mapWithTimeFormat.minutes.setScale(0, BigDecimal.ROUND_HALF_UP) + " mins "
+            if (mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP))
+                value += mapWithTimeFormat.seconds.setScale(0, BigDecimal.ROUND_HALF_UP) + " secs "
+        }
         return value
     }
 
