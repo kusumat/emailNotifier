@@ -153,30 +153,6 @@ class FacadeTests implements Serializable {
     }
 
     /**
-     * Prepares email data for creating email body content.
-     */
-    private final prepareEmailBody() {
-        nativeTestsJob = testsJobOutput['Native Tests']
-        desktopWebTestsJob = testsJobOutput['DesktopWeb Tests']
-        emailData += [isSummaryEmail   : true,
-                      isNativeAppTestRun        : isNativeApp,
-                      deviceruns       : nativeTestsJob.buildVariables.NATIVE_RUN_RESULTS,
-                      devicePoolName   : nativeTestsJob.buildVariables.DEVICE_POOL_NAME,
-                      binaryName       : nativeTestsJob.buildVariables.BINARY_NAME,
-                      missingDevices   : nativeTestsJob.buildVariables.MISSING_DEVICES,
-                      summaryofResults : nativeTestsJob.buildVariables.NATIVE_RESULTS_SUMMARY,
-                      duration         : nativeTestsJob.buildVariables.DURATION,
-                      appiumVersion    : nativeTestsJob.buildVariables.APPIUM_VERSION,
-                      runInCustomTestEnvironment : nativeTestsJob.buildVariables.RUN_IN_CUSTOM_TEST_ENVIRONMENT,
-                      isDesktopWebAppTestRun    : isDesktopWebApp,
-                      desktopruns      : desktopWebTestsJob.buildVariables.DESKTOP_TEST_RUN_RESULTS,
-                      listofLogFiles   : desktopWebTestsJob.buildVariables.LOG_FILES_LIST,
-                      listofScreenshots: desktopWebTestsJob.buildVariables.SCREENSHOTS_LIST]
-
-        return emailData
-    }
-
-    /**
      * Returns the parameters needed for running the child jobs.
      * @param testChannel Contains the name of test channel selected for running the tests
      * @return parameters for child test jobs .

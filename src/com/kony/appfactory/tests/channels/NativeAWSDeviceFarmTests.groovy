@@ -679,17 +679,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         }
                     }
                     finally {
-                        /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
-                        script.env['NATIVE_RUN_RESULTS'] = deviceFarmTestRunResults?.inspect()
-                        script.env['DEVICE_POOL_NAME'] = devicePoolName
-                        script.env['BINARY_NAME'] = getBinaryNameForEmail(projectArtifacts).inspect()
-                        if (script.env.MISSING_DEVICES != null && !script.env.MISSING_DEVICES.isEmpty())
-                            script.env['MISSING_DEVICES'] = script.env.MISSING_DEVICES.inspect()
-                        else
-                            script.env['MISSING_DEVICES'] = 'None'
-                        script.env['NATIVE_RESULTS_SUMMARY'] = summary
-                        script.env['DURATION'] = duration
-
                         NotificationsHelper.sendEmail(script, 'runTests', [
                                 isNativeAppTestRun : true,
                                 deviceruns      : deviceFarmTestRunResults,
