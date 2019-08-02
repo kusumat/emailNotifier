@@ -63,7 +63,6 @@ class WebChannel extends Channel {
                 channelOs = channelFormFactor = channelType = 'DESKTOPWEB'
             }
         }
-
     }
 
     WebChannel(script) {
@@ -233,7 +232,7 @@ class WebChannel extends Channel {
                                 /* Add War/Zip to MustHaves Artifacts */
                                 mustHaveArtifacts.add([name: artifact.name, path: artifactPath])
                                 channelArtifacts.add([
-                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, webAppUrl: webAppUrl
+                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, webAppUrl: webAppUrl, jasmineTestsUrl: script.env.JASMINE_TEST_URL
                                 ])
                             }
                             script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()

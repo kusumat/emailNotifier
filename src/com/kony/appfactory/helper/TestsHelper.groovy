@@ -47,6 +47,30 @@ class TestsHelper implements Serializable {
     }
 
     /**
+     * This method checks the Test Framework type and also the test platform and assign the 
+     * respective label so that the proper jenkins slave is selected for the building.
+     * @param script is the object that contains the current build information
+     * @param libraryProperties is the contents of the common.properties file
+     * @param isJasmineEnabled is the flag which is set to true
+     * @param testPlatform is the platform for which the jenkins node has to be identified.
+     * @return the appropriate node label run the appropriate tests.
+     * */
+    protected static String getTestNode(script, libraryProperties, isJasmineEnabled, testPlatform = 'Native') {
+        
+        String nodeLabel
+        
+        if (isJasmineEnabled) {
+            nodeLabel = libraryProperties.'test.jasmine.automation.node.label'
+        } else if (testPlatform == 'DesktopWeb') {
+            nodeLabel = libraryProperties.'test.dweb.automation.node.label'
+        } else {
+            nodeLabel = libraryProperties.'test.native.aws.automation.node.label'
+        }
+        
+        nodeLabel
+    }
+    
+    /**
      * Converts the given time difference into hours, minutes, seconds.
      * @param timeInMilliseconds The time of execution in milliseconds
      * @return The time in hours, minutes and seconds format
@@ -102,7 +126,9 @@ class TestsHelper implements Serializable {
             }
             else {
                 for (artifact in mustHaveArtifacts) {
-                    script.shellCustom("cp ${artifact} .", true)
+                    if(script.fileExists(artifact)) {
+                        script.shellCustom("cp ${artifact} .", true)
+                    }
                 }
             }
         }

@@ -148,7 +148,9 @@ class FacadeTests implements Serializable {
                         script.string(name: 'FABRIC_APP_URL', value: script.params.FABRIC_APP_URL),
                         script.string(name: 'DESKTOPWEB_TESTS_URL', value: script.params.DESKTOPWEB_TESTS_URL),
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
-                        script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS)
+                        script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS),
+                        script.string(name: 'TEST_FRAMEWORK', value: script.params.TEST_FRAMEWORK),
+                        script.string(name: 'JASMINE_TEST_URL', value: script.params.JASMINE_TEST_URL)
                 ]
     }
 

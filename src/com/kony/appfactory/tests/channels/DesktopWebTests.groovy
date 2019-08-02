@@ -1,10 +1,16 @@
 package com.kony.appfactory.tests.channels
 
+import groovy.json.JsonSlurperClassic
+import groovy.json.internal.LazyMap
+import groovy.lang.Writable
+import org.codehaus.groovy.runtime.InvokerHelper
+
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.TestsHelper
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.NotificationsHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 
 class DesktopWebTests extends RunTests implements Serializable {
@@ -13,14 +19,19 @@ class DesktopWebTests extends RunTests implements Serializable {
     protected scriptArguments = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
 
     private static desktopTestRunResults = [:]
+    private static jasmineTestResults = [:]
     /* desktopweb tests Map variables */
     def static browserVersionsMap = [:], listofLogFiles = [:], listofScreenshots = [:], summary = [:], testList = [:], testMethodMap = [:], classList = [:], testStatusMap = [:], duration = [:], runArnMap = [:]
     def suiteNameList = [], surefireReportshtmlAuthURL = []
     def failedTests = 0, totalTests = 0, passedTests = 0, skippedTests = 0
 
     String surefireReportshtml = ""
-
+    
+    private boolean runTests = true
+    private boolean overAllTestsResultsStatus = true
+    
     private boolean isTestScriptGiven = script.params['DESKTOPWEB_TESTS_URL'] ? true : false
+    private selectedBrowser = script.params.AVAILABLE_BROWSERS
 
     /**
      * Class constructor.
@@ -29,6 +40,84 @@ class DesktopWebTests extends RunTests implements Serializable {
      */
     DesktopWebTests(script) {
         super(script)
+    }
+
+    /*
+     * This method captures the test results from the given testFolder based on the framework.
+     * @param testFolder is the folder from which the results will be captured.
+     */
+    private final def fetchTestResults(testFolder) {
+        mustHaveArtifacts.add("${testFolder}/browserConsoleLog.txt")
+        if(isJasmineEnabled){
+            fetchJasmineResults(testFolder)
+        } else {
+            fetchTestNGResults(testFolder)
+        }
+    }
+    
+    /*
+     * This method captures the Jasmine test results from the given testFolder.
+     * @param testFolder is the folder from which the Jasmine results will be captured.
+     */
+    private final def fetchJasmineResults(testFolder) {
+        String successMessage = 'Jasmine Test Results have been fetched successfully for DesktopWeb'
+        String errorMessage = 'Failed to fetch the Jasmine Test Results for DesktopWeb'
+        
+        def suiteMap = [:]
+        def suiteSummaryMap = [:]
+        def logFilesMap = [:]
+        def suiteTestPassed = 0
+        def suiteTestFailed = 0
+        script.catchErrorCustom(errorMessage, successMessage) {
+            String reportJSON = script.readJSON file: "${testFolder}/report.json"
+            def response = new JsonSlurperClassic().parseText(reportJSON)
+            def mapDuration = [:]
+            def testMap = [:]
+            def testArray = []
+            
+            response.each { event ->
+                String eventType = event.event
+                switch(eventType) {
+                    case 'suiteStarted':
+                                    suiteTestPassed = 0
+                                    suiteTestFailed = 0
+                                    break;
+                    case 'specStarted':
+                                    testMap = [:]
+                                    break;
+                    case 'specDone':
+                                    testMap["testID"] = event.result.id
+                                    testMap["testDesc"] = event.result.description
+                                    testMap["testFullName"] = event.result.fullName
+                                    testMap["testStatus"] = event.result.status
+                                    if (event.result.status.equalsIgnoreCase("passed")){
+                                        suiteTestPassed++
+                                    } else {
+                                        suiteTestFailed++
+                                        overAllTestsResultsStatus = false
+                                    }
+                                    testMap["failedExpectations"] = event.result.failedExpectations
+                                    testMap["duration"] = event.result.duration
+                                    testArray.add(testMap)
+                                    break;
+                    case 'suiteDone':
+                                    def suiteSummary = [:]
+                                    suiteSummary["totalPassed"] = suiteTestPassed
+                                    suiteSummary["totalFailed"] = suiteTestFailed
+                                    suiteSummary["totalTests"] = suiteTestPassed + suiteTestFailed
+                                    suiteSummary["duration"] = event.result.duration
+                                    suiteSummaryMap[event.result.description] = suiteSummary
+                                    suiteMap[event.result.description] = testArray
+                                    testArray.removeAll()
+                                    break;
+                }
+            }
+        }
+        
+        jasmineTestResults["results"] = suiteMap
+        jasmineTestResults["summary"] = suiteSummaryMap
+        jasmineTestResults["browserName"] = selectedBrowser
+        jasmineTestResults["browserVersion"] = browserVersionsMap[selectedBrowser]
     }
 
     /**
@@ -40,7 +129,7 @@ class DesktopWebTests extends RunTests implements Serializable {
      * Also copy files from test-output/Appscommon-Logs to testOutput/test-output, now copy from test-output/Screenshots to testOutput/test-output
      * Now we have all the date in testOutput folder , zip this and place it under target/${projectName}_TestApp
      */
-    private final def fetchTestResults(testFolder) {
+    private final def fetchTestNGResults(testFolder) {
         String successMessage = 'Test Results have been fetched successfully for DesktopWeb'
         String errorMessage = 'Failed to fetch the Test Results for DesktopWeb'
 
@@ -112,8 +201,11 @@ class DesktopWebTests extends RunTests implements Serializable {
             }
             suiteNo++
         }
+        
+        overAllTestsResultsStatus = !testStatusMap.any { it.value != "PASS" }
+        
         desktopTestRunResults << ["suiteName":suiteNameList, "className":classList, "testName":testList, "testMethod":testMethodMap, "testStatusMap":testStatusMap, "duration":durationList, "finishTime":finishedAtList]
-        desktopTestRunResults << ["passedTests":passedTests, "skippedTests":skippedTests, "failedTests":failedTests, "totalTests":totalTests, "browserName":script.params.AVAILABLE_BROWSERS, "browserVersion":browserVersionsMap[script.params.AVAILABLE_BROWSERS], "startTime":startedAtList]
+        desktopTestRunResults << ["passedTests":passedTests, "skippedTests":skippedTests, "failedTests":failedTests, "totalTests":totalTests, "browserName":selectedBrowser, "browserVersion":browserVersionsMap[selectedBrowser], "startTime":startedAtList]
 
         desktopTestRunResults
     }
@@ -131,12 +223,109 @@ class DesktopWebTests extends RunTests implements Serializable {
         }
         version
     }
+    
+    /*
+     * This method prepares the env for running the Jasmine Tests
+     * @param testInvokerFolder is the path of the folder in which we will be creating the TestNG Project for running the Jasmine tests
+     */
+    private prepareEnvForJasmineTests(testInvokerFolder){
+        
+        String jasminePkgFolder = "${projectFullPath}/JasmineScriptsOutput"
+        
+        script.dir(projectFullPath) {
+            
+            // Appending the appfactory reporting js code to retrive the jasmine results as json.
+            String customReporting = script.readFile file: "${projectFullPath}/testresources/Jasmine/Common/customReporter.js"
+            String appfactoryReporting = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/appfactoryReporter.js')
+            script.writeFile file: "${projectFullPath}/testresources/Jasmine/Common/customReporter.js", text: customReporting + appfactoryReporting, encoding: 'UTF-8'
+            
+            BuildHelper.jasmineTestEnvWrapper(script, {
+                
+                script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
+                    def npmInstallScript = "npm install"
+                    script.shellCustom(npmInstallScript, true)
+                }
+                
+                /* Run node generateJasmineArtifacts.js */
+                script.catchErrorCustom('Error while packaging the Jasmine test scripts') {
+                    def nodePkgScript = 'node generateJasmineArtifacts.js --output-dir ' + jasminePkgFolder
+                    script.shellCustom(nodePkgScript, true)
+                }
+            })
+            String fullPathToCopyScripts = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
 
-    protected publishTestsResults() {
+            // Copying the Desktop jasmine test scripts in the jetty webapps folder
+            script.shellCustom("set +x;mkdir -p $fullPathToCopyScripts", true)
+            script.shellCustom("set +x;cp -R ${jasminePkgFolder}/Desktop $fullPathToCopyScripts", true)
+        }
+        
+        // Copying the TestNG code and pom.xml to build and execute the maven tests to run the Jasmine tests on the browser
+        script.dir(testInvokerFolder) {
+            
+            String mvnSourceFolderPath = 'src/test/java/com/kony/appfactory/jasmine'
+            String invokeJasminePOM = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/pom.xml')
+            String invokeJasmineTestNG = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/TestNG.xml')
+            
+            script.writeFile file: "pom.xml", text: invokeJasminePOM
+            script.writeFile file: "Testng.xml", text: invokeJasmineTestNG
+            
+            script.dir(mvnSourceFolderPath) {
+                String invokeJasmineTestsSrc = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/InvokeJasmineTests.java')
+                script.writeFile file: "InvokeJasmineTests.java", text: invokeJasmineTestsSrc
+            }
+        }
+    }
+    
+    /* This method deletes the Jasmine tests which are hosted in the jetty webapps folder */
+    private cleanupJasmineTests(){
+        
+        String fullPathToDelete = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
+        
+        // Cleanup the jasmine test scripts in the jetty webapps folder
+        script.shellCustom("set +x;rm -Rf $fullPathToDelete", true)
+    }
+    
+    /*
+     * This method publishes the test results to S3, based on the framework.
+     */
+    protected final publishTestsResults() {
         def s3ArtifactsPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER]
         s3ArtifactsPath.add("DesktopWeb")
-        s3ArtifactsPath.add(desktopTestRunResults["browserName"] + '_' + desktopTestRunResults["browserVersion"])
+        s3ArtifactsPath.add(selectedBrowser + '_' + browserVersionsMap[selectedBrowser])
         def s3PublishPath = s3ArtifactsPath.join('/').replaceAll('\\s', '_')
+        if(isJasmineEnabled){
+            publishJasmineResults(s3PublishPath)
+        } else {
+            publishTestNGResults(s3PublishPath)
+        }
+    }
+
+    /*
+     * This method publishes the jasmine test results to S3 in the given S3 path.
+     * 
+     * @param s3PublishPath is the S3 path into which the results will be published.
+     */
+    private publishJasmineResults(s3PublishPath) {
+        String jasmineHTMLReport, bowserConsoleLog
+        if (script.fileExists("${testFolder}/report.html")) {
+            jasmineHTMLReport = AwsHelper.publishToS3 bucketPath: s3PublishPath, sourceFileName: "report.html",
+                sourceFilePath: "${testFolder}", script
+            listofLogFiles.put("Detailed Test Report", BuildHelper.createAuthUrl(jasmineHTMLReport, script, true));
+        }
+        if (script.fileExists("${testFolder}/browserConsoleLog.txt")) {
+            bowserConsoleLog = AwsHelper.publishToS3 bucketPath: s3PublishPath, sourceFileName: "browserConsoleLog.txt",
+                sourceFilePath: "${testFolder}", script
+            listofLogFiles.put("Bowser Console Log", BuildHelper.createAuthUrl(bowserConsoleLog, script, true));
+        }
+    }
+    
+    /*
+     * This method publishes the TestNG test results to S3 in the given S3 path.
+     *
+     * @param s3PublishPath is the S3 path into which the results will be published.
+     */
+    private publishTestNGResults(s3PublishPath) {
+        
         String testng_reportsCSSAndCSS = AwsHelper.publishToS3 bucketPath: s3PublishPath + "/testOutput/Smoke", sourceFileName: "testng.css,testng-reports.css",
                 sourceFilePath: "${testFolder}/testOutput/Smoke", script, true
 
@@ -189,11 +378,23 @@ class DesktopWebTests extends RunTests implements Serializable {
             script.shellCustom("mkdir -p test-output/Screenshots", true)
             script.shellCustom("mkdir -p test-output/Logs", true)
             script.shellCustom("mkdir -p test-output/Appscommon-Logs", true)
-
-            scriptArguments.contains('-Dsurefire.suiteXmlFiles')?: (scriptArguments += " -Dsurefire.suiteXmlFiles=Testng.xml")
+            
+            if(isJasmineEnabled) {
+                scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DJASMINE_TEST_APP_URL=${script.params['JASMINE_TEST_URL']}"
+            }
+            else {
+                scriptArguments.contains('-Dsurefire.suiteXmlFiles')?: (scriptArguments += " -Dsurefire.suiteXmlFiles=Testng.xml")
+            }
+            
+            def testHyphenDParams = "-DDRIVER_PATH=${script.env.CHROME_DRIVER_PATH} -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -DWEB_APP_URL=${script.params['FABRIC_APP_URL']} -Dmaven.test.failure.ignore=true -DFILE_DOWNLOAD_PATH=" + testFolder 
+            
+            if (script.params.containsKey('SCREEN_RESOLUTION')) {
+                testHyphenDParams = testHyphenDParams + " -DSCREEN_RESOLUTION=${script.params.SCREEN_RESOLUTION}"
+            }
+            
             switch (browserName) {
                 case 'CHROME':
-                    script.shellCustom("mvn test -DDRIVER_PATH=${script.env.CHROME_DRIVER_PATH} -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -DWEB_APP_URL=${script.params['FABRIC_APP_URL']} -Dmaven.test.failure.ignore=true ${scriptArguments}", true)
+                    script.shellCustom("mvn test " + testHyphenDParams + " ${scriptArguments}", true)
                     browserVersionsMap << ["CHROME":script.env.CHROME_VERSION]
                     break
                 default:
@@ -229,7 +430,7 @@ class DesktopWebTests extends RunTests implements Serializable {
         if (!publishedAppUrlParameters && (testBinaryUrlParameter || scmParameters)) {
             throw new AppFactoryException("Please provide at least one of application binaries URL",'ERROR')
         }
-
+        
         /* Check if at least one application binaries parameter been provided */
         (!publishedAppUrlParameters) ?: validateApplicationBinariesURLs(urlParameters)
     }
@@ -241,8 +442,11 @@ class DesktopWebTests extends RunTests implements Serializable {
                 script.stage('Validate parameters') {
                     validateBuildParameters(script.params)
                 }
+                
+                nodeLabel = TestsHelper.getTestNode(script, libraryProperties, isJasmineEnabled, 'DesktopWeb')
+                
                 /* Allocate a slave for the run */
-                script.node(libraryProperties.'test.dweb.automation.node.label') {
+                script.node(nodeLabel) {
 
                     try {
 
@@ -268,6 +472,11 @@ class DesktopWebTests extends RunTests implements Serializable {
 
                                 if (!testFolder)
                                     throw new AppFactoryException("No test automation scripts found for DesktopWeb channel!!", 'ERROR')
+                                
+                                /* Preparing the environment for the Jasmine Tests */
+                                if(isJasmineEnabled){
+                                    prepareEnvForJasmineTests(testFolder)
+                                }
 
                                 script.stage('Build') {
                                     /* Build Test Automation scripts */
@@ -280,20 +489,18 @@ class DesktopWebTests extends RunTests implements Serializable {
                                 runTests(script.params.AVAILABLE_BROWSERS, testFolder)
                             }
                             script.stage('Get Test Results') {
-                                desktopTestRunResults = fetchTestResults(testFolder)
-                                if (!desktopTestRunResults)
+                                fetchTestResults(testFolder)
+                                if (!desktopTestRunResults && !jasmineTestResults)
                                     throw new AppFactoryException('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
                                 publishTestsResults()
                             }
                             script.stage('Check PostTest Hook Points') {
-                                def testsResultsStatus = true
-                                if (!desktopTestRunResults)
+                                if (!desktopTestRunResults && !jasmineTestResults)
                                     throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
-                                testsResultsStatus = !testStatusMap.any { it.value != "PASS" }
-                                script.currentBuild.result = testsResultsStatus ? 'SUCCESS' : 'UNSTABLE'
+                                script.currentBuild.result = overAllTestsResultsStatus ? 'SUCCESS' : 'UNSTABLE'
 
                                 if (runCustomHook) {
-                                    if (testsResultsStatus) {
+                                    if (overAllTestsResultsStatus) {
                                         def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
                                         if (!isSuccess)
                                             throw new Exception("Something went wrong with the Custom hooks execution.")
@@ -308,17 +515,25 @@ class DesktopWebTests extends RunTests implements Serializable {
                     } finally {
                         /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
                         script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
+                        script.env['DESKTOP_JASMINE_TEST_RESULTS'] = jasmineTestResults?.inspect()
                         script.env['LOG_FILES_LIST'] = listofLogFiles?.inspect()
                         script.env['SCREENSHOTS_LIST'] = listofScreenshots?.inspect()
 
+                        if(isJasmineEnabled){
+                            cleanupJasmineTests()
+                        }
+
                         NotificationsHelper.sendEmail(script, 'runTests', [
                                 isDesktopWebAppTestRun  : true,
+                                isJasmineEnabled : isJasmineEnabled,
+                                jasmineruns      : jasmineTestResults,
                                 desktopruns      : desktopTestRunResults,
                                 listofLogFiles   : listofLogFiles,
                                 listofScreenshots: listofScreenshots
-                        ], true)
+                            ], true)
+                        
                         if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                            TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties)
+                            TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties, mustHaveArtifacts, false)
                             if (TestsHelper.isBuildDescriptionNeeded(script))
                                 TestsHelper.setBuildDescription(script)
                         }

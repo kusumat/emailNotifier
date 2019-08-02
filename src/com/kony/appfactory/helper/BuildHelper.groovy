@@ -1,13 +1,14 @@
 package com.kony.appfactory.helper
 
-import groovy.json.JsonSlurper
+import java.util.regex.Matcher
 import org.jenkins.plugins.lockableresources.LockableResources
 import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
-import org.jenkins.plugins.lockableresources.LockableResources
-import com.kony.appfactory.helper.ConfigFileHelper
 import groovy.text.SimpleTemplateEngine
+import groovy.json.JsonSlurper
 
+import com.kony.appfactory.helper.ConfigFileHelper
+import com.kony.appfactory.helper.ValidationHelper
 import com.kony.AppFactory.fabric.api.oauth1.KonyOauth1Client
 import com.kony.AppFactory.fabric.api.oauth1.dto.KonyExternalAuthN
 import com.kony.AppFactory.fabric.FabricException;
@@ -965,5 +966,85 @@ class BuildHelper implements Serializable {
         sorted[index]
     }
 
+    /**
+     * Determine which Visualizer version project requires,
+     * according to the version that matches first in the order of branding/studioviz/keditor plugin.
+     *
+     * @return Visualizer version.
+     */
+    protected final static getVisualizerVersion(script) {
+        if(script.env.IS_STARTER_PROJECT.equals("true")) {
+            def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
+            return projectPropertiesJsonContent['konyVizVersion']
+        }
+
+        def konyPluginsXmlFileContent = script.readFile('konyplugins.xml')
+
+        String visualizerVersion = ''
+        def plugins = [
+                'Branding'       : /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.ide.paas.branding"/,
+                'Studioviz win64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.win64"/,
+                'Studioviz mac64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.mac64"/,
+                'KEditor'        : /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.pat.tool.keditor"/
+        ]
+
+        plugins.find { pluginName, pluginSearchPattern ->
+            if (konyPluginsXmlFileContent =~ pluginSearchPattern) {
+                visualizerVersion = Matcher.lastMatcher[0][1]
+                script.echoCustom("Found ${pluginName} plugin!")
+                /* Return true to break the find loop, if at least one match been found */
+                return true
+            } else {
+                script.echoCustom("Could not find ${pluginName} plugin entry... " +
+                        "Switching to the next plugin to search...")
+            }
+        }
+
+        visualizerVersion
+    }
+    
+    /**
+     * This wrapper function will create the required environment for packaging the scripts and resolve the dependencies.
+     * Jasmine packaging node script, can be called with in this wrapper.
+     */
+    protected final static jasmineTestEnvWrapper(script, closure) {
+        
+        def libraryProperties = loadLibraryProperties(script, 'com/kony/appfactory/configurations/common.properties')
+        def visualizerVersion = getVisualizerVersion(script)
+
+        /* Checking the supported version, if Jasmine is selected as framework and
+         * either device pool is selected or the desktop web test execution is selected */
+        script.env["visualizerVersion"] = visualizerVersion
+        def finalParamsJasmineTestsSupport = [:]
+        finalParamsJasmineTestsSupport.put('Jasmine', ['featureDisplayName': 'Jasmine Tests Execution'])
+        ValidationHelper.checkFeatureSupportExist(script, libraryProperties, finalParamsJasmineTestsSupport, 'tests')
+
+        /* Get Visualizer dependencies */
+        def dependenciesFilePath = fetchRequiredDependencies(script, visualizerVersion, libraryProperties.'visualizer.dependencies.file.name',
+                        libraryProperties.'visualizer.dependencies.base.url',
+                        libraryProperties.'visualizer.dependencies.archive.file.prefix',
+                        libraryProperties.'visualizer.dependencies.archive.file.extension')
+
+        def testRunDependencies = parseDependenciesFileContent(script, dependenciesFilePath)
+        
+        def nodeversion = null
+        
+        /*
+            Get the node version details - This will work if we follow new approach for the tools availability.
+         */
+        for (dependency in testRunDependencies) {
+            switch (dependency.name) {
+                case 'node':
+                    nodeversion = [dependency.name, dependency.version].join('-')
+                    break
+                default:
+                    break
+            }
+        }
+        
+        script.nodejs(nodeversion) {
+            closure()
+        }
+    }
 }
 

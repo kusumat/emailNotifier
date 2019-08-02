@@ -1,7 +1,7 @@
 package com.kony.appfactory.helper
 
 import groovy.json.JsonOutput
-import groovy.json.JsonSlurper
+import groovy.json.JsonSlurperClassic
 import com.kony.appfactory.helper.BuildHelper
 /**
  * Implements logic required for sending notifications.
@@ -24,7 +24,9 @@ class NotificationsHelper implements Serializable {
         if (storeBody && templateData.isNativeAppTestRun) {
             if(!(templateData.deviceruns.isEmpty())) {
                 /* Get test results and set build result accordingly */
-                def jsonSlurper = new JsonSlurper()
+                /* We are using JsonSlurperClassic instead of JsonSlurper because JsonSlurperClassic will return an object that can be 
+                 * serializable, but the object returned by JsonSlurper is not. Jenkins has issues when we use objects that are not serializable. */
+                def jsonSlurper = new JsonSlurperClassic()
                 String testResultsToText = JsonOutput.toJson(templateData.deviceruns)
                 def testResultsToJson = jsonSlurper.parseText(testResultsToText)
                 setbuildResult(script, testResultsToJson)
@@ -40,7 +42,7 @@ class NotificationsHelper implements Serializable {
         if (storeBody) {
             storeEmailBody(script, emailData.body, templateType, templateData)
         }
-
+        
         script.catchErrorCustom('Failed to send e-mail!') {
             /* Send e-mail notification with provided values */
             script.emailext body: emailData.body, subject: emailData.subject, to: emailData.recipients
@@ -113,7 +115,7 @@ class NotificationsHelper implements Serializable {
         /* Get template content depending on templateType(job name) */
         
         String templateContent = getTemplateContent(script, templateType, templateData)
-
+        
         def productName = templateType.equals('cloudBuild') ? 'Build Service' : 'App Factory'
         /* Populate binding values in the base template */
         String body = BuildHelper.populateTemplate(baseTemplate, [title: subject, contentTable: templateContent, productName: productName])
@@ -206,7 +208,11 @@ class NotificationsHelper implements Serializable {
             case 'runTests':
                 /* Convert test run results to JSON */
                 String testRunsToJson = JsonOutput.toJson(templateData.deviceruns)
-                String testDesktopRunsToJson = JsonOutput.toJson(templateData.desktopruns)
+                String testDesktopRunsToJson
+                if (templateData.isJasmineEnabled)
+                    testDesktopRunsToJson = JsonOutput.toJson(templateData.jasmineruns)
+                else
+                    testDesktopRunsToJson = JsonOutput.toJson(templateData.desktopruns)
 
                 /* For test console we are storing both HTML and JSON representation of test results */
                 if(templateData.isDesktopWebAppTestRun){

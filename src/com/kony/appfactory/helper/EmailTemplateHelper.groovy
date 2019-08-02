@@ -298,21 +298,15 @@ class EmailTemplateHelper implements Serializable {
                     def statusOfTestsMap = binding.desktopruns["testStatusMap"]
                     def suiteWiseSummary = [:]
 
-                    tr {
-                        td {
-                            table(style: "width:100%", class: "text-color table-border cell-spacing") {
-                                EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL: ', binding.build.url, binding.build.number)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Browser: ', binding.desktopruns["browserVersion"])
-                            }
-                        }
-                    }
+                    getdesktopTestInfoTable(htmlBuilder, binding.desktopruns)
+
                     tr {
                         td(style: "text-align:left", class: "text-color") {
                             br()
                             p(style: "font-weight:bold", "Brief Summary of DesktopWeb Test Results:")
                         }
                     }
-
+                    
                     prepareContentForDesktopWebTestsSummaryTable(suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap, suiteWiseSummary)
                     displayBriefSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteWiseSummary)
 
@@ -322,6 +316,10 @@ class EmailTemplateHelper implements Serializable {
                      */
                     if(!binding.isSummaryEmail)
                         displayDetailedSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap)
+                }
+                if (binding.isDesktopWebAppTestRun && binding.jasmineruns) {
+                    getdesktopTestInfoTable(htmlBuilder, binding.jasmineruns)
+                    prepareJasmineTestsSummaryTable(htmlBuilder, binding.jasmineruns.summary, binding.listofLogFiles)
                 }
 
                 if (binding.build.result != 'SUCCESS') {
@@ -338,6 +336,188 @@ class EmailTemplateHelper implements Serializable {
         }
     }
 
+    /**
+     * Creates HTML content related to the browser info.
+     *
+     * @param htmlBuilder that contains the details of the email.
+     * @param testRunInfo that contains the browser information details.
+     * @return HTML content as a string.
+     */
+    @NonCPS
+    protected static void getdesktopTestInfoTable(htmlBuilder, testRunInfo) {
+        htmlBuilder.tr {
+                td {
+                    table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                        EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Browser: ', testRunInfo["browserVersion"])
+                    }
+                }
+            }
+    }
+    
+    /**
+     * Creates HTML content related to the browser info.
+     *
+     * @param htmlBuilder that contains the details of the email.
+     * @param summary that contains the summary map of the test results.
+     * @param logFiles contains the list of log files that need to be added as a new table in the email.
+     * @return HTML content as a string.
+     */
+    @NonCPS
+    protected static void prepareJasmineTestsSummaryTable(htmlBuilder, summary, logFiles) {
+        int totalPassed = 0
+        int totalFailed = 0
+        int totalTests = 0
+        int totalDuration = 0
+        htmlBuilder.table {
+            tr{
+                tr {
+                    td(style: "text-align:left", class: "text-color") {
+                        p(style: "font-weight:bold", "Brief Summary of Desktop Test Results:")
+                    }
+                }
+                td {
+                    table(style: "width:100%;text-align:center", class: "text-color table-border") {
+                        tr {
+                            td(
+                                    class: "testresults",
+                                    'Suite Name'
+                            )
+                            td(
+                                    class: "testresults",
+                                    'Total'
+                            )
+                            td(
+                                    class: "testresults",
+                                    'Passed'
+                            )
+                            td(
+                                    class: "testresults",
+                                    colspan: "5",
+                                    'Failures'
+                            )
+                            td(
+                                    class: "testresults",
+                                    'Duration (sec)'
+                            )
+                        }
+                        tr {
+                            td("")
+                            td("")
+                            td("")
+                            td(class: "fail", "Failed")
+                            td(class: "skip", "Skipped")
+                            td(class: "warn", "Warned")
+                            td(class: "stop", "Stopped")
+                            td(class: "error", "Errored")
+                            td("")
+                        }
+                        summary.each { suiteName, suiteSummary ->
+                            totalPassed = totalPassed + suiteSummary["totalPassed"]
+                            totalFailed = totalFailed + suiteSummary["totalFailed"]
+                            totalTests = totalTests + suiteSummary["totalTests"]
+                            totalDuration = totalDuration + suiteSummary["duration"]
+                            tr {
+                                th(
+                                        class: "testresults",
+                                        suiteName
+                                )
+                                th(
+                                        class: "testresults",
+                                        suiteSummary["totalTests"]
+                                )
+                                th(
+                                        class: "testresults",
+                                        suiteSummary["totalPassed"]
+                                )
+                                th(
+                                        class: "testresults",
+                                        suiteSummary["totalFailed"]
+                                )
+                                th(
+                                        class: "testresults",
+                                        "NA"
+                                )
+                                th(
+                                        class: "testresults",
+                                        "NA"
+                                )
+                                th(
+                                        class: "testresults",
+                                        "NA"
+                                )
+                                th(
+                                        class: "testresults",
+                                        "NA"
+                                )
+                                th(
+                                        class: "testresults",
+                                        (suiteSummary["duration"]/1000)
+                                )
+                            }
+                        }
+                        // Adding the high level totals
+                        tr(style: "font-weight:bold;background-color:#B0C4DE") {
+                            td(
+                                    class: "testresults",
+                                    'Total'
+                            )
+                            td(
+                                    class: "testresults",
+                                    totalTests
+                            )
+                            td(
+                                    class: "testresults",
+                                    totalPassed
+                            )
+                            td(
+                                    class: "testresults",
+                                    totalFailed
+                            )
+                            td(
+                                    class: "testresults",
+                                    "NA"
+                            )
+                            td(
+                                    class: "testresults",
+                                    "NA"
+                            )
+                            td(
+                                    class: "testresults",
+                                    "NA"
+                            )
+                            td(
+                                    class: "testresults",
+                                    "NA"
+                            )
+                            td(
+                                    class: "testresults",
+                                    (totalDuration/1000)
+                            )
+                        }
+                    }
+                    br()
+                    p(style: "margin:30px 0 10px;font-weight:bold", "Test Logs : ")
+                    table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                        tr {
+                            td(
+                                    class: "testresults",
+                                    'Test Report/Log File'
+                            )
+                            td(
+                                    class: "testresults-left-aligned",
+                                    'Link'
+                            )
+                        }
+                        logFiles.each { logFileName, logLink ->
+                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, logFileName, logLink, logFileName)
+                        }
+                    }
+                    br()
+                }
+            }
+        }
+    }
+    
     /*
      *This method is used to parse each suite and collect suite-wise tests results
      */

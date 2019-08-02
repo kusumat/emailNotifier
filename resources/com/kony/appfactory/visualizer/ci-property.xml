@@ -92,6 +92,11 @@
         <condition property="blackberryMobileHybridSPA" value="${env.BLACKBERRY_MOBILE_HYBRID_SPA}" else="false">
             <isset property="env.BLACKBERRY_MOBILE_HYBRID_SPA"/>
         </condition>
+    	
+        <!-- Set of Test properties -->
+        <condition property="jasmineTestsUrl" value="${env.JASMINE_TEST_URL}" else="">
+            <isset property="env.JASMINE_TEST_URL"/>
+        </condition>
 
         <!-- Set of common properties -->
         <condition property="projectName" value="${env.PROJECT_NAME}" else="">
@@ -261,6 +266,8 @@
             <entry key="protectedmodeenabled.ios" value="${protectedIosBuild}"/>
             <entry key="protectedmodeenabled.android" value="${protectedAndroidBuild}"/>
             <entry key="web.binary.extension" value="${binaryextensionWEB}"/>
+        	<!-- Jasmine Test options -->
+        	<entry key="test.automation.server.url" value="${jasmineTestsUrl}"/>
         </propertyfile>
 
         <!--APPFACT-545: propertyfile appends escape character to Special Characters, workaround to use exact same password -->

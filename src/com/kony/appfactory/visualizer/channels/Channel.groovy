@@ -246,7 +246,7 @@ class Channel implements Serializable {
         script.env.IS_STARTER_PROJECT = (ValidationHelper.isValidStringParam(script, 'IS_SOURCE_VISUALIZER') ? script.params.IS_SOURCE_VISUALIZER : false) || !konyPluginExists
 
         /* Get Visualizer version */
-        visualizerVersion = getVisualizerVersion()
+        visualizerVersion = BuildHelper.getVisualizerVersion(script)
         script.env.visualizerVersion = visualizerVersion
 
         script.echoCustom("Current Project version: " + visualizerVersion)
@@ -322,6 +322,9 @@ class Channel implements Serializable {
 
         /* Get Project common AppId to be used in the CI/Headless build */
         script.env.projectAppId = getProjectAppIdKey()
+        
+        /* Setting the test resources URL */
+        script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
         
         script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
@@ -408,43 +411,6 @@ class Channel implements Serializable {
         }
     }
 
-    /**
-     * Determine which Visualizer version project requires,
-     * according to the version that matches first in the order of branding/studioviz/keditor plugin.
-     *
-     * @param konyPluginsXmlFileContent content of the konyplugins.xml.
-     * @return Visualizer version.
-     */
-    protected final getVisualizerVersion() {
-        if(script.env.IS_STARTER_PROJECT.equals("true")){
-            def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
-            return projectPropertiesJsonContent['konyVizVersion']
-        }
-
-        def konyPluginsXmlFileContent = script.readFile('konyplugins.xml')
-
-        String visualizerVersion = ''
-        def plugins = [
-                'Branding'       : /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.ide.paas.branding"/,
-                'Studioviz win64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.win64"/,
-                'Studioviz mac64': /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.kony.studio.viz.core.mac64"/,
-                'KEditor'        : /<pluginInfo version-no="(\d+\.\d+\.\d+)\.\w*" plugin-id="com.pat.tool.keditor"/
-        ]
-
-        plugins.find { pluginName, pluginSearchPattern ->
-            if (konyPluginsXmlFileContent =~ pluginSearchPattern) {
-                visualizerVersion = Matcher.lastMatcher[0][1]
-                script.echoCustom("Found ${pluginName} plugin!")
-                /* Return true to break the find loop, if at least one much been found */
-                return true
-            } else {
-                script.echoCustom("Could not find ${pluginName} plugin entry... " +
-                        "Switching to the next plugin to search...")
-            }
-        }
-
-        visualizerVersion
-    }
 
     protected void fetchFeatureXML(vizVersion, basePath) {
 

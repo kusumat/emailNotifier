@@ -94,10 +94,12 @@ class Facade implements Serializable {
     private final compatibilityMode = script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE
 
     /* TestAutomation build parameters */
+    private final testFramework = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
     private final availableBrowsers = script.params.AVAILABLE_BROWSERS
     private final desktopWebTestsArguments = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
     private final runDesktopwebTests = script.params.RUN_DESKTOPWEB_TESTS
+    private jasmineTestURL = null
 
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
@@ -110,6 +112,8 @@ class Facade implements Serializable {
     private runInCustomTestEnvironment = script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
     private appiumVersion = script.params.APPIUM_VERSION
     private testngFiles = script.params.TESTNG_FILES
+    
+    private isJasmineEnabled = script.params.TEST_FRAMEWORK?.trim().equalsIgnoreCase("jasmine")
 
     /* Cloud Build properties */
     protected CredentialsHelper credentialsHelper
@@ -291,6 +295,7 @@ class Facade implements Serializable {
      * @return WEB specific build parameters.
      */
     private final getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters = null) {
+        def testFrameworkParam = [script.stringParam(name: "TEST_FRAMEWORK", value: testFramework)]
         def commonWebParameters = getCommonJobBuildParameters() +
         [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
         [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
@@ -298,12 +303,13 @@ class Facade implements Serializable {
         if (spaChannelsToBuildJobParameters && desktopWebChannel) {
             commonWebParameters +
                 [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + 
+                testFrameworkParam +
                 spaChannelsToBuildJobParameters
         } else if (spaChannelsToBuildJobParameters) {
             commonWebParameters +  spaChannelsToBuildJobParameters
         }
         else
-            commonWebParameters
+            commonWebParameters + testFrameworkParam
     }
 
     /**
@@ -379,7 +385,8 @@ class Facade implements Serializable {
                 script.string(name: 'AVAILABLE_BROWSERS', value: "${availableBrowsers}"),
                 script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: "${desktopWebTestsArguments}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
-                script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook)
+                script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook),
+                script.string(name: 'TEST_FRAMEWORK', value: "${testFramework}")
         ]
     }
 
@@ -403,7 +410,7 @@ class Facade implements Serializable {
      * @return Test Automation binaries build parameters.
      */
     private final getTestAutomationJobBinaryParameters(buildJobArtifacts) {
-        buildJobArtifacts.findResults { artifact ->
+        def binaryParams = buildJobArtifacts.findResults { artifact ->
             /* Filter Android and iOS channels */
             String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|ipa|apk|war|zip)\$")) ? artifact.name : ''
             /*
@@ -415,8 +422,10 @@ class Facade implements Serializable {
             String channelName = artifact.channelPath.toUpperCase().replaceAll('/', '_')
 
             /* Create build parameter for Test Automation job */
-            artifactName ? (artifact.name.matches("^.*.?(war|zip)\$")) ? script.stringParam(name: "FABRIC_APP_URL", value: artifact.webAppUrl) : script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
+            artifactName ? (artifact.name.matches("^.*.?(war|zip)\$")) ? [script.stringParam(name: "FABRIC_APP_URL", value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)] : script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl) : null
         }
+        
+        binaryParams.flatten()
     }
 
     /**
@@ -686,11 +695,18 @@ class Facade implements Serializable {
                             if (universalAndroid || universalIos) {
                                 ValidationHelper.checkBuildConfigurationForUniversalApp(script)
                             }
+                            
+                            /* Check the required param for run DesktopWeb test */
+                            if(runDesktopwebTests) {
+                                ValidationHelper.checkBuildConfigurationForDesktopWebTest(script, libraryProperties)
+                            }
+                            
                             /* List of required parameters */
                             def checkParams = [], eitherOrParameters = []
                             def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
                             /* Collect Android channel parameters to check */
                             def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
+
                             if (androidChannels) {
                                 def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
                                 meta.put("ANDROID_APP_VERSION", script.params.ANDROID_APP_VERSION)
@@ -756,7 +772,11 @@ class Facade implements Serializable {
 
                                 checkParams.addAll(webMandatoryParams)
                             }
-
+                            
+                            /* Check the valid values for Test Framework */
+                            def expectedValuesForTestFramework = ['TestNG', 'Jasmine']
+                            ValidationHelper.checkValidValueForParam(script, 'TEST_FRAMEWORK', expectedValuesForTestFramework)
+                            
                             /* Check all required parameters depending on user input */
                             /* For CloudBuild, scan the checkParams list and clean unwanted params */
                             if (script.params.IS_SOURCE_VISUALIZER) {
@@ -770,6 +790,7 @@ class Facade implements Serializable {
                                 ValidationHelper.checkBuildConfiguration(script, checkParams, eitherOrParameters)
 
                             }
+
                         }
 
                         script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun() : prepareRun()

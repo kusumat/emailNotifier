@@ -34,7 +34,7 @@ class ValidationHelper implements Serializable {
         def buildConfiguration = collectEnvironmentVariables(script.env, requiredParams)
         /* Check if there are empty parameters among required parameters */
         def emptyParams = checkForNull(buildConfiguration)
-
+        
         /* If there are empty parameters */
         if (emptyParams) {
             String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
@@ -243,6 +243,38 @@ class ValidationHelper implements Serializable {
     @NonCPS
     protected static isValidStringParam(script, paramName) {
         return (script.params.containsKey(paramName) && script.params[paramName] != "null")
+    }
+    
+    /**
+     * Check the parameters for running DesktopWeb tests build
+     * @param script pipeline object
+     * @param libraryProperties
+     */
+    protected static void checkBuildConfigurationForDesktopWebTest(script, libraryProperties) {
+        if(!script.params.PUBLISH_FABRIC_APP) {
+            throw new AppFactoryException("Please select PUBLISH_FABRIC_APP parameter if you want to run DesktopWeb tests!", 'ERROR')
+        }
+        
+        def isJasmineEnabled = script.params.TEST_FRAMEWORK?.trim().equalsIgnoreCase("jasmine")
+        if(isJasmineEnabled && script.params.BUILD_MODE != libraryProperties.'buildmode.debug.type') {
+            throw new AppFactoryException("Jasmine tests can only be executed when the app is built in Debug mode!", 'ERROR')
+        }
+    }
+    
+    /**
+     * Check the valid values for a choice parameter from the list of possible values
+     * 
+     * @param script pipeline object.
+     * @param paramName parameters that value need to be validated.
+     * @param [expectedValues] the valid possible values for the parameter
+     */
+    protected static void checkValidValueForParam(script, paramName, expectedValues = [] ) {
+        if(script.params.containsKey(paramName)) {
+            def currentParamValue = script.params[paramName].trim()
+            if(!expectedValues.contains(currentParamValue)) {
+                throw new AppFactoryException("Invalid input is given for ${paramName} parameter! Allowed values are : ${expectedValues.join(',')}", 'ERROR')
+            }
+        }
     }
     
 }

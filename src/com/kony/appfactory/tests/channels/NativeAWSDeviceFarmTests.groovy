@@ -73,7 +73,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     ]
     protected ymlTemplate = 'com/kony/appfactory/configurations/KonyYamlTestSpec.template'
     protected testSpecUploadFileName = "TestSpec.yml"
-    protected mustHaveArtifacts = []
     public testSpecUploadFilePath
     private APPIUM_1_8_1_VERSION = "1.8.1"
 
@@ -431,6 +430,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         def poolNameParameter = buildParameters.findAll { it.key.contains('AVAILABLE_TEST_POOLS') && it.value }
         /* Combine binaries build parameters */
         def nativeUrlParameters = nativeTestBinaryUrlParameter + nativeAppBinaryUrlParameters
+        
+        if (! buildParameters.TEST_FRAMEWORK) {
+            throw new AppFactoryException("You must select at least one of the test framework to run the tests.", 'ERROR')
+        }
 
         if (runInCustomTestEnvironment) {
             /*Filter AWS Test Environment related parameters */
@@ -549,8 +552,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     validateBuildParameters(script.params)
                 }
 
+                nodeLabel = TestsHelper.getTestNode(script, libraryProperties, isJasmineEnabled)
+                
                 /* Allocate a slave for the run */
-                script.node(libraryProperties.'test.native.aws.automation.node.label') {
+                script.node(nodeLabel) {
 
                     try {
                         pipelineWrapper("Native", {

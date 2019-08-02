@@ -5,6 +5,7 @@ import com.kony.appfactory.helper.TestsHelper
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.CustomHookHelper
+import com.kony.appfactory.helper.ValidationHelper
 
 class RunTests implements Serializable {
     /* Pipeline object */
@@ -29,6 +30,13 @@ class RunTests implements Serializable {
     protected scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected runCustomHook = script.params.RUN_CUSTOM_HOOKS
+    
+    protected isJasmineEnabled = script.params.TEST_FRAMEWORK?.trim()?.equalsIgnoreCase("jasmine")
+
+    protected String jettyWebAppsFolder = script.env.JETTY_WEBAPP_PATH ? script.env.JETTY_WEBAPP_PATH + '/testresources' :'/opt/jetty/webapps/testresources'
+    
+    protected nodeLabel
+    protected mustHaveArtifacts = []
 
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
@@ -110,6 +118,12 @@ class RunTests implements Serializable {
     protected final String getTestsFolderPath(projectFullPath, channelType) {
         String testsFolderPath
         List<String> testPoms = [] as String[]
+        
+        if(isJasmineEnabled) {
+            testsFolderPath = [projectFullPath, libraryProperties.'test.automation.jasmine.testinvoker.path'].join(separator)
+            return testsFolderPath
+        }
+        
         /* Add possible pom file locations, Please make sure to add the latest versions first. */
         channelType.equalsIgnoreCase("Native")?
                 testPoms.addAll([[projectFullPath, libraryProperties.'testresources.automation.scripts.path', 'pom.xml'].join(separator),[projectFullPath, libraryProperties.'test.automation.scripts.path', 'pom.xml'].join(separator)])
