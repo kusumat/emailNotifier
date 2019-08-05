@@ -26,10 +26,12 @@ class DesktopWebTests extends RunTests implements Serializable {
     def failedTests = 0, totalTests = 0, passedTests = 0, skippedTests = 0
 
     String surefireReportshtml = ""
-    
+
     private boolean runTests = true
     private boolean overAllTestsResultsStatus = true
-    
+
+    protected desktopwebArtifactUrl = script.params.DESKTOPWEB_ARTIFACT_URL
+
     private boolean isTestScriptGiven = script.params['DESKTOPWEB_TESTS_URL'] ? true : false
     private selectedBrowser = script.params.AVAILABLE_BROWSERS
 
@@ -518,20 +520,23 @@ class DesktopWebTests extends RunTests implements Serializable {
                         script.env['DESKTOP_JASMINE_TEST_RESULTS'] = jasmineTestResults?.inspect()
                         script.env['LOG_FILES_LIST'] = listofLogFiles?.inspect()
                         script.env['SCREENSHOTS_LIST'] = listofScreenshots?.inspect()
-
                         if(isJasmineEnabled){
                             cleanupJasmineTests()
                         }
-
+                        def testArtifact = [:]
+                        if (desktopwebArtifactUrl) {
+                            testArtifact.put("url", desktopwebArtifactUrl)
+                            testArtifact.put("extension", desktopwebArtifactUrl.substring(desktopwebArtifactUrl.lastIndexOf('.') + 1))
+                        }
                         NotificationsHelper.sendEmail(script, 'runTests', [
                                 isDesktopWebAppTestRun  : true,
                                 isJasmineEnabled : isJasmineEnabled,
                                 jasmineruns      : jasmineTestResults,
                                 desktopruns      : desktopTestRunResults,
                                 listofLogFiles   : listofLogFiles,
-                                listofScreenshots: listofScreenshots
-                            ], true)
-                        
+                                listofScreenshots: listofScreenshots,
+                                testArtifact : testArtifact
+                        ], true)
                         if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
                             TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties, mustHaveArtifacts, false)
                             if (TestsHelper.isBuildDescriptionNeeded(script))

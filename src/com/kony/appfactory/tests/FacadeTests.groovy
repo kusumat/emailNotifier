@@ -143,7 +143,7 @@ class FacadeTests implements Serializable {
      * @return Test Automation job common build parameters along with DesktopWeb channel specific parameters.
      */
     private final getDesktopWebTestAutomationJobParameters() {
-        getTestAutomationCommonJobParameters() +
+        getTestAutomationCommonJobParameters() + getDesktopWebTestAutomationArtifactURLParameter() +
                 [
                         script.string(name: 'FABRIC_APP_URL', value: script.params.FABRIC_APP_URL),
                         script.string(name: 'DESKTOPWEB_TESTS_URL', value: script.params.DESKTOPWEB_TESTS_URL),
@@ -152,6 +152,18 @@ class FacadeTests implements Serializable {
                         script.string(name: 'TEST_FRAMEWORK', value: script.params.TEST_FRAMEWORK),
                         script.string(name: 'JASMINE_TEST_URL', value: script.params.JASMINE_TEST_URL)
                 ]
+
+    }
+
+    /**
+     * This method returns Desktopweb Test Artifact S3 url parameter.
+     *
+     * @return Desktopweb Test Artifact S3 url parameter.
+     */
+    private final getDesktopWebTestAutomationArtifactURLParameter() {
+        !script.params.containsKey('DESKTOPWEB_ARTIFACT_URL') ? [] :
+                [script.string(name: 'DESKTOPWEB_ARTIFACT_URL', value: script.params.DESKTOPWEB_ARTIFACT_URL)]
+
     }
 
     /**

@@ -574,6 +574,12 @@ class EmailTemplateHelper implements Serializable {
                                     class: "testresults",
                                     'Test Name'
                             )
+                            if(binding.testArtifact) {
+                                td(
+                                        class: "testresults",
+                                        'Installer'
+                                )
+                            }
                             td(
                                     class: "testresults",
                                     'Passed'
@@ -601,6 +607,14 @@ class EmailTemplateHelper implements Serializable {
                                             a(href: surefireReportshtml[testNameVar], target: '_blank', testNameKeys[testNameVar])
                                         }
                                 )
+                                if(binding.testArtifact) {
+                                    th(
+                                            class: "testresults",
+                                            {
+                                                binding.testArtifact.url ? a(href: binding.testArtifact.url, target: '_blank', binding.testArtifact.extension.toUpperCase()) : ""
+                                            }
+                                    )
+                                }
                                 suiteWiseSummary.each {
                                     if (testNameKeys[testNameVar].equalsIgnoreCase(it.key)) {
                                         def summaryList = it.value
@@ -636,6 +650,12 @@ class EmailTemplateHelper implements Serializable {
                                     class: "testresults",
                                     'Total'
                             )
+                            if(binding.testArtifact) {
+                                td(
+                                        class: "testresults",
+                                        ''
+                                )
+                            }
                             td(
                                     class: "testresults",
                                     totalPassedTestCases

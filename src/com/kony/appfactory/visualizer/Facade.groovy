@@ -821,6 +821,17 @@ class Facade implements Serializable {
                                 def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
                                         script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
 
+                                if (runDesktopwebTests) {
+                                    /* Finding the desktopweb artifact(war/zip) auth url from the list of channel artifacts */
+                                    def artifactUrl = artifacts.findResults { artifact ->
+                                        String artifactUrl = artifact.authurl ? artifact.authurl : ''
+                                        
+                                        /* Filtering by extension */
+                                        !artifact.name ? '' : (artifact.name.matches("^.*.?(war|zip)\$")) ? artifactUrl : ''
+                                    }
+                                    testAutomationJobBinaryParameters.add(script.string(name: 'DESKTOPWEB_ARTIFACT_URL', value: "${artifactUrl[0]}"))
+                                }
+
                                 def awsCustomEnvParameters = []
 
                                 if (runInCustomTestEnvironment) {
