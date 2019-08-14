@@ -188,6 +188,7 @@ class Channel implements Serializable {
                 [workspace, projectWorkspaceFolderName]?.join(separator)
         /* Expose Visualizer workspace to environment variables to use it in HeadlessBuild.properties */
         script.env['PROJECT_WORKSPACE'] = projectWorkspacePath
+        script.env['VISUALIZER_PROJECT_ROOT_FOLDER_NAME'] = (projectRoot) ? projectRoot.takeRight(1).join('') : projectName
         projectFullPath = [
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
@@ -501,7 +502,7 @@ class Channel implements Serializable {
         /* Setting the projectAppId to the global variable which is needed to find the build artifacts */
         projectAppId = script.env.projectAppId
 		
-        artifactsBasePath = getArtifactTempPath(projectWorkspacePath, projectName, projectAppId, separator, channelVariableName) ?:
+        artifactsBasePath = getArtifactTempPath(projectWorkspacePath, script.env['VISUALIZER_PROJECT_ROOT_FOLDER_NAME'], projectAppId, separator, channelVariableName) ?:
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
 
         def files = null

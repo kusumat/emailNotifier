@@ -171,7 +171,7 @@ class WebChannel extends Channel {
                             */
                             if (artifactExtension == 'zip') {
                                 def copyArtifactsCmd = isUnixNode ? 'cp' : 'copy'
-                                def tempBasePath = [projectWorkspacePath, 'temp', projectName]
+                                def tempBasePath = [projectWorkspacePath, 'temp', script.env['VISUALIZER_PROJECT_ROOT_FOLDER_NAME']]
                                 def destPath = (tempBasePath + ['middleware_mobileweb']).join(separator)
                                 def sourcePath = (tempBasePath + ['build', 'wap', 'build', "${script.env.projectAppId}.zip"]).join(separator)
                                 if (script.fileExists(sourcePath)) {
