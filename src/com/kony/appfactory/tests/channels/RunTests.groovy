@@ -31,7 +31,7 @@ class RunTests implements Serializable {
     protected scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected runCustomHook = script.params.RUN_CUSTOM_HOOKS
     
-    protected isJasmineEnabled = script.params.TEST_FRAMEWORK?.trim()?.equalsIgnoreCase("jasmine")
+    protected isJasmineEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
 
     protected String jettyWebAppsFolder = script.env.JETTY_WEBAPP_PATH ? script.env.JETTY_WEBAPP_PATH + '/testresources' :'/opt/jetty/webapps/testresources'
     

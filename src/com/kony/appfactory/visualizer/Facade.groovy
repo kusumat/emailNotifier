@@ -113,8 +113,6 @@ class Facade implements Serializable {
     private appiumVersion = script.params.APPIUM_VERSION
     private testngFiles = script.params.TESTNG_FILES
     
-    private isJasmineEnabled = script.params.TEST_FRAMEWORK?.trim().equalsIgnoreCase("jasmine")
-
     /* Cloud Build properties */
     protected CredentialsHelper credentialsHelper
     protected BuildStatus status

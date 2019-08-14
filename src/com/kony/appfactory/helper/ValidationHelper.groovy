@@ -255,7 +255,7 @@ class ValidationHelper implements Serializable {
             throw new AppFactoryException("Please select PUBLISH_FABRIC_APP parameter if you want to run DesktopWeb tests!", 'ERROR')
         }
         
-        def isJasmineEnabled = script.params.TEST_FRAMEWORK?.trim().equalsIgnoreCase("jasmine")
+        def isJasmineEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim().equalsIgnoreCase("jasmine")
         if(isJasmineEnabled && script.params.BUILD_MODE != libraryProperties.'buildmode.debug.type') {
             throw new AppFactoryException("Jasmine tests can only be executed when the app is built in Debug mode!", 'ERROR')
         }
