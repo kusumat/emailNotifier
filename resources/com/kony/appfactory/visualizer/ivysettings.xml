@@ -6,14 +6,14 @@
             <filesystem name="local">
                 <artifact pattern="${ivy.settings.dir}/lib/[artifact]-[revision].[ext]"/>
             </filesystem>
-            <url name="S3">
-                <artifact pattern="https://s3-eu-west-1.amazonaws.com/konyappfactorydev-ci0001-storage1/visualizer/plugins/[artifact]_[revision].[ext]" />
-            </url>
-            <url name="WWW">
-                <artifact pattern="http://download.[CLOUD_DOMAIN]/studio/70/plugins/[artifact]_[revision].[ext]" />
+            <url name="V8Prod">
+                <artifact pattern="http://download.kony.com/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>
             <url name="V8">
                 <artifact pattern="http://download.[CLOUD_DOMAIN]/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
+            </url>
+            <url name="V7">
+                <artifact pattern="http://download.[CLOUD_DOMAIN]/studio/70/plugins/[artifact]_[revision].[ext]" />
             </url>
         </chain>
     </resolvers>
