@@ -3,20 +3,26 @@ package com.kony.appfactory.jasmine;
 import org.testng.annotations.Test;
 import org.testng.internal.TestResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
@@ -205,14 +211,10 @@ public class InvokeJasmineTests implements ITestListener {
      * @param filePath html test execution report file path
      * @throws Exception
      */
-    private void checkTestExecutionStatus(String filePath) throws Exception {
+    private void checkTestExecutionStatus(String downloadPath) throws Exception {
         String resultsJSON = null;
         boolean isTestInProgress = false;
-        
-        /* Check the jasmine test run status.
-         * if "report.html" file is available at default location, test run is complete.
-         * */
-        File file = new File(filePath);
+        boolean isHTMLReportExists = false;
         int iterations = 0;
         do {
             /* Check jasmine test is triggered or not.
@@ -235,8 +237,9 @@ public class InvokeJasmineTests implements ITestListener {
             /* Looking for the report.html
              * if it is generated, Test run will be considered as complete.*/
             System.out.println("Looking for the results file...");
-            if(file.exists()) {
-                System.out.println("Jasmine tests execution is completed.");
+            isHTMLReportExists = searchForHTMLReport(downloadPath);
+            if(isHTMLReportExists) {
+                System.out.println("Jasmine tests execution is completed. Jasmine Test execution report is found.");
                 break;
             }
             
@@ -250,10 +253,10 @@ public class InvokeJasmineTests implements ITestListener {
                 break;
             }
             
-            System.out.println("Tests execution is in progress..waiting for results..");
+            System.out.println("Tests execution is in progress.. Waiting for results..");
             iterations = iterations + 1;
             Thread.sleep(30000);
-        } while (!file.exists() && iterations <= 1000 && isTestInProgress);
+        } while (!isHTMLReportExists && iterations <= 1000 && isTestInProgress);
     }
 
     /**
@@ -265,7 +268,7 @@ public class InvokeJasmineTests implements ITestListener {
         try {
             JavascriptExecutor jse = (JavascriptExecutor) driver;
             resultsJSON = jse.executeScript("return JSON.stringify(jasmineEvents)").toString();
-            File jsonFile = new File(getDownloadFilePath()+ File.separator + "report.json");
+            File jsonFile = new File(getDownloadFilePath() + File.separator + "report.json");
             writeToFile(jsonFile, resultsJSON);
             evaluateTestResultStats(resultsJSON);
         } catch (WebDriverException e) {
@@ -273,6 +276,26 @@ public class InvokeJasmineTests implements ITestListener {
             throw new Exception("TEST RESULTS FETCH ERROR!!!");
         }
         return resultsJSON;
+    }
+    
+    /**
+     * @return true if the html report file exists, otherwise false.
+     * @throws Exception
+     */
+    private boolean searchForHTMLReport(String downloadPath) throws Exception {
+        
+        try (Stream<Path> walk = Files.walk(Paths.get(downloadPath))) {
+
+            List<String> result = walk.map(path -> path.toString())
+                    .filter((fileName) -> fileName.endsWith(".html") && fileName.indexOf("TestResult_") > 0).collect(Collectors.toList());
+
+            return (result.size() > 0);
+            
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        return false;
     }
     
     /**
@@ -353,7 +376,7 @@ public class InvokeJasmineTests implements ITestListener {
              * */
             Thread.sleep(300000);
             checkFabricAppConfigForJasmineTest();
-            checkTestExecutionStatus(getDownloadFilePath()+ File.separator + "report.html");
+            checkTestExecutionStatus(getDownloadFilePath());
             resultsInfoJSON = getResultsInfoJSON();
         } catch (Exception e) {
             System.out.println("Exception occured while running the tests. Please check the browser console log (if created) for more details. " + e.getMessage());

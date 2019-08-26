@@ -309,10 +309,13 @@ class DesktopWebTests extends RunTests implements Serializable {
      */
     private publishJasmineResults(s3PublishPath) {
         String jasmineHTMLReport, bowserConsoleLog
-        if (script.fileExists("${testFolder}/report.html")) {
-            jasmineHTMLReport = AwsHelper.publishToS3 bucketPath: s3PublishPath, sourceFileName: "report.html",
-                sourceFilePath: "${testFolder}", script
-            listofLogFiles.put("Detailed Test Report", BuildHelper.createAuthUrl(jasmineHTMLReport, script, true));
+        script.dir(testFolder) {
+            def files = script.findFiles(glob: '**/TestResult_*.html')
+            if (files.size() > 0) {
+                jasmineHTMLReport = AwsHelper.publishToS3 bucketPath: s3PublishPath, sourceFileName: files[0].name,
+                    sourceFilePath: "${testFolder}", script
+                    listofLogFiles.put("Detailed Test Report", BuildHelper.createAuthUrl(jasmineHTMLReport, script, true));
+            }
         }
         if (script.fileExists("${testFolder}/browserConsoleLog.txt")) {
             bowserConsoleLog = AwsHelper.publishToS3 bucketPath: s3PublishPath, sourceFileName: "browserConsoleLog.txt",
