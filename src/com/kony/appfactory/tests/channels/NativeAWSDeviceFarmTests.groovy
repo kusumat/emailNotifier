@@ -430,10 +430,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         def poolNameParameter = buildParameters.findAll { it.key.contains('AVAILABLE_TEST_POOLS') && it.value }
         /* Combine binaries build parameters */
         def nativeUrlParameters = nativeTestBinaryUrlParameter + nativeAppBinaryUrlParameters
-        
-        if (! buildParameters.TEST_FRAMEWORK) {
-            throw new AppFactoryException("You must select at least one of the test framework to run the tests.", 'ERROR')
-        }
 
         if (runInCustomTestEnvironment) {
             /*Filter AWS Test Environment related parameters */
