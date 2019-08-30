@@ -229,11 +229,6 @@ public class InvokeJasmineTests implements ITestListener {
                 throw new Exception("TEST EXECUTION ERROR!!!");
             }
             
-            if(resultsJSON != null) {
-                isTestInProgress = true;
-                evaluateTestResultStats(resultsJSON);
-            }
-            
             /* Looking for the report.html
              * if it is generated, Test run will be considered as complete.*/
             System.out.println("Looking for the results file...");
@@ -242,15 +237,19 @@ public class InvokeJasmineTests implements ITestListener {
                 System.out.println("Jasmine tests execution is completed. Jasmine Test execution report is found.");
                 break;
             }
-            
-            /* Evaluate the test execution stats.
-             * Comparing the current test execution stats (total passed and failed test count)
-             * with total test count, if it matches marking test execution is completed.
-             * */
-            int currentTotalTestsCount = totalPassed + totalFailed;
-            if(currentTotalTestsCount == totalTests) {
-                System.out.println("Jasmine tests execution is completed.");
-                break;
+
+            if(resultsJSON != null) {
+                isTestInProgress = true;
+                evaluateTestResultStats(resultsJSON);
+                /* Evaluate the test execution stats.
+                 * Comparing the current test execution stats (total passed and failed test count)
+                 * with total test count, if it matches marking test execution is completed.
+                 * */
+                int currentTotalTestsCount = totalPassed + totalFailed;
+                if(currentTotalTestsCount == totalTests && currentTotalTestsCount > 0) {
+                    System.out.println("Jasmine tests execution is completed.");
+                    break;
+                }
             }
             
             System.out.println("Tests execution is in progress.. Waiting for results..");
