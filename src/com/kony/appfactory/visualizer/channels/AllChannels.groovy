@@ -36,6 +36,7 @@ class AllChannels implements Serializable {
     private channelArtifacts = []
     private channelObjects = [:]
     protected channelObject
+    private artifactsMeta = [:]
 
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
@@ -197,7 +198,8 @@ class AllChannels implements Serializable {
 
                             channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
                                 it.value.pipelineWrapper {
-                                    /* reserving space for any pre-setups needed for any android builds */
+                                    it.value.artifactMeta.add("version": ["App Version": it.value.androidAppVersion, "Build Version": it.value.androidAppVersionCode])
+                                    artifactsMeta.put(it.value.channelPath, it.value.artifactMeta)
                                 }
                             }
 
@@ -205,7 +207,8 @@ class AllChannels implements Serializable {
 
                             channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
                                 it.value.pipelineWrapper {
-                                    /* reserving space for any pre-setups needed for any ios builds */
+                                    it.value.artifactMeta.add("version": ["App Version": it.value.iosAppVersion, "Build Version": it.value.iosBundleVersion])
+                                    artifactsMeta.put(it.value.channelPath, it.value.artifactMeta)
                                 }
                             }
 
@@ -425,7 +428,8 @@ class AllChannels implements Serializable {
                         if (abortMsg?.trim()) {
                             script.currentBuild.result = 'ABORTED'
                         }
-                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: channelArtifacts, consolelogs: consoleLogsLink, buildNumber: buildNumber, jobName: jobName], true)
+                        script.env['CHANNEL_ARTIFACT_META'] = artifactsMeta?.inspect()
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: channelArtifacts, consolelogs: consoleLogsLink, buildNumber: buildNumber, jobName: jobName, artifactMeta: artifactsMeta], true)
                     }
                 }
             }

@@ -40,6 +40,7 @@ class Facade implements Serializable {
      */
     private artifacts = []
     private mustHaveArtifacts = []
+    private artifactsMeta = [:]
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
 
@@ -399,6 +400,10 @@ class Facade implements Serializable {
         (artifacts) ? Eval.me(artifacts) : [[name: '', url: '', path: '', channelPath: channelPath]]
     }
 
+    private final getArtifactMetaObjects(artifactsMeta) {
+        (artifactsMeta) ? Eval.me(artifactsMeta) : [version: []]
+    }
+
     /**
      * Generates Test Automation job application binaries build parameters.
      * If AVAILABLE_TEST_POOLS build parameter been provided, we need generate values with URLs to application binaries
@@ -463,6 +468,7 @@ class Facade implements Serializable {
 
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
+                    artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
 
                     /* Collect must have artifacts */
                     mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
@@ -540,6 +546,7 @@ class Facade implements Serializable {
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.CHANNEL_ARTIFACTS))
+                artifactsMeta = getArtifactMetaObjects(channelJob.buildVariables?.CHANNEL_ARTIFACT_META)
 
                 /* Collect must have artifacts */
                 mustHaveArtifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
@@ -580,6 +587,7 @@ class Facade implements Serializable {
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
+                artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
 
                 /* Collect must have artifacts */
                 mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
@@ -682,7 +690,6 @@ class Facade implements Serializable {
         /* Allocate a slave for the run */
         script.node(libraryProperties.'facade.node.label') {
             /* Wrapper for colorize the console output in a pipeline build */
-            Map meta = [:]
             script.ansiColor('xterm') {
                 try {
                     /* Wrapper for injecting timestamp to the build console output */
@@ -714,8 +721,6 @@ class Facade implements Serializable {
 
                             if (androidChannels) {
                                 def androidMandatoryParams = ['ANDROID_APP_VERSION', 'ANDROID_VERSION_CODE']
-                                meta.put("ANDROID_APP_VERSION", script.params.ANDROID_APP_VERSION)
-                                meta.put("ANDROID_VERSION_CODE", script.params.ANDROID_VERSION_CODE)
 
                                 if (androidChannels.findAll { it.contains('MOBILE') }) {
                                     androidMandatoryParams.add('ANDROID_MOBILE_APP_ID')
@@ -742,8 +747,6 @@ class Facade implements Serializable {
                             if (iosChannels) {
 
                                 def iosMandatoryParams = ['IOS_DISTRIBUTION_TYPE', 'IOS_BUNDLE_VERSION']
-                                meta.put("IOS_APP_VERSION", script.params.IOS_APP_VERSION)
-                                meta.put("IOS_BUNDLE_VERSION", script.params.IOS_BUNDLE_VERSION)
                                 eitherOrParameters.add(['APPLE_ID', 'APPLE_SIGNING_CERTIFICATES'])
 
                                 if (iosChannels.findAll { it.contains('MOBILE') }) {
@@ -773,8 +776,6 @@ class Facade implements Serializable {
 
                             if (spaChannels || desktopWebChannel) {
                                 def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
-                                meta.put("WEB_APP_VERSION", script.params.WEB_APP_VERSION)
-
                                 checkParams.addAll(webMandatoryParams)
                             }
                             
@@ -896,7 +897,7 @@ class Facade implements Serializable {
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
-                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName], true)
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName, artifactMeta: artifactsMeta], true)
                     }
 
                     script.currentBuild.result = 'FAILURE'
@@ -907,7 +908,7 @@ class Facade implements Serializable {
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
-                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName], true)
+                        NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName, artifactMeta: artifactsMeta], true)
                     }
 
                     script.currentBuild.result = 'FAILURE'
@@ -934,7 +935,7 @@ class Facade implements Serializable {
                                             artifacts              : artifacts,
                                             fabricEnvironmentName  : fabricEnvironmentName,
                                             projectSourceCodeBranch: projectSourceCodeBranch,
-                                            meta:meta
+                                            artifactMeta           : artifactsMeta
                                     ],
                                     true)
                         }
@@ -961,7 +962,7 @@ class Facade implements Serializable {
                 def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, "BUILD ABORTED!!")
                 // Send build results email notification with build status as aborted
                 script.currentBuild.result = 'ABORTED'
-                NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName], true)
+                NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName, artifactMeta: artifactsMeta], true)
             }
             // update status as cancelled and upload latest json to S3
             status.updateCancelBuildStatusOnS3()

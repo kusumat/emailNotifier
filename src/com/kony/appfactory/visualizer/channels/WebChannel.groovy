@@ -28,9 +28,6 @@ class WebChannel extends Channel {
     def resourceList
     def nodeLabel
 
-    /* Create a list with artifact objects for e-mail template */
-    def channelArtifacts = []
-
     /**
      * Class constructor.
      *
@@ -147,7 +144,8 @@ class WebChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
-                        
+
+                        artifactMeta.add("version": ["App Version": webAppVersion])
                         script.stage('Check PreBuild Hook Points') {
                             if (isCustomHookRunBuild) {
                                 triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.prebuild.name')
@@ -227,15 +225,14 @@ class WebChannel extends Channel {
                                         sourceFileName: artifactName, sourceFilePath: artifactPath, script
 
 
-
                                 String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
                                 /* Add War/Zip to MustHaves Artifacts */
                                 mustHaveArtifacts.add([name: artifact.name, path: artifactPath])
-                                channelArtifacts.add([
+                                artifacts.add([
                                         channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, webAppUrl: webAppUrl, jasmineTestsUrl: script.env.JASMINE_TEST_URL
                                 ])
                             }
-                            script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                            script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
                         }
 
                         /* Run Post Build Web Hooks */

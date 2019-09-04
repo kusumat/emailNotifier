@@ -35,9 +35,8 @@ class EmailBuilder {
             td {
                 a(href: binding.url, target: '_blank', binding.name)
             }
-            td(style: "border-right: 1px solid #e8e8e8; width: 65px"){
-                p(style : "font-size: 12px",binding.APP_VERSION)
-                p(style : "font-size: 12px",binding.App_Build_Version)
+            td(style: "border-right: 1px solid #e8e8e8"){
+                binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
             }
         }
     }
@@ -46,17 +45,20 @@ class EmailBuilder {
     static void addSimpleArtifactTableRowFailed(htmlBuilder, binding) {
         htmlBuilder.tr {
             th(binding.channelPath.replaceAll('/', ' '))
-            td(style: "border-right: 1px solid #e8e8e8; width: 65px;", binding.extension)
+            td(style: "border-right: 1px solid #e8e8e8; width: 65px;", binding?.extension)
             td(style: "border-right: 1px solid #e8e8e8; width: 65px; color:red", "Build failed")
+            td(style: "border-right: 1px solid #e8e8e8"){
+                binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
+            }
         }
     }
 
     @NonCPS
     static void addMultiSpanArtifactTableRow(htmlBuilder, binding) {
         int countRows = binding.artifacts.size()
-        for (int i = 0; i < countRows; i++) {
+        for (int rownum = 0; rownum < countRows; rownum++) {
             htmlBuilder.tr {
-                if (i == 0)
+                if (rownum == 0)
                     th(rowspan: countRows, binding.channelPath.replaceAll('/', ' '))
                 td(style: "text-align:left ,border-right: 1px dotted #e8e8e8; width: 65px;", binding.artifacts[i].extension)
                 td {
@@ -65,12 +67,14 @@ class EmailBuilder {
                     else
                         mkp.yield("Build failed")
                 }
-                td(style: "border-right: 1px solid #e8e8e8; width: 65px"){
-                    p(style : "font-size: 12px",binding.APP_VERSION)
-                    p(style : "font-size: 12px",binding.App_Build_Version)
+                if (rownum == 0) {
+                    td(style: "border-right: 1px solid #e8e8e8", rowspan: countRows){
+                        binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
+                    }
                 }
             }
         }
+
     }
 
     @NonCPS

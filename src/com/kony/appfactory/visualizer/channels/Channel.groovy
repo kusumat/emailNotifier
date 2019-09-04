@@ -127,6 +127,8 @@ class Channel implements Serializable {
         headless, ci
     }
 
+    /* artifact meta info like version details */
+    protected artifactMeta = []
     /**
      * Class constructor.
      *
@@ -215,6 +217,7 @@ class Channel implements Serializable {
             }
             script.currentBuild.result = 'FAILURE'
         } finally {
+            script.env['CHANNEL_ARTIFACT_META'] = artifactMeta?.inspect()
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                 upstreamJob = BuildHelper.getUpstreamJobName(script)
@@ -415,8 +418,8 @@ class Channel implements Serializable {
 
     protected void fetchFeatureXML(vizVersion, basePath) {
 
-        String failureMsg = 'Failed to downloaded versions file (feature.xml) for Starter Project.'
-        String successMsg = 'Successfully downloaded plugins versions file (feature.xml) for Starter Project.'
+        String failureMsg = 'Failed to download plugins version file (feature.xml) for the Project.'
+        String successMsg = 'Successfully downloaded plugins version file (feature.xml) for the Project.'
 
         script.catchErrorCustom(failureMsg, successMsg) {
             String downloaderRelativePath = "com/kony/appfactory/feature.xml.downloader/"

@@ -11,6 +11,7 @@ import com.kony.appfactory.helper.AppFactoryException
 class AndroidChannel extends Channel {
     /* Build parameters */
     private final androidAppVersion = script.params.ANDROID_APP_VERSION
+    private final androidAppVersionCode = script.params.ANDROID_VERSION_CODE
     private final keystoreFileId = script.params.ANDROID_KEYSTORE_FILE
     private final keystorePasswordId = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
@@ -135,7 +136,6 @@ class AndroidChannel extends Channel {
             script.ansiColor('xterm') {
                 script.stage('Check provided parameters') {
                     ValidationHelper.checkBuildConfiguration(script)
-
                     def mandatoryParameters = ['APP_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
                     if (channelOs && channelFormFactor) {
                         def appIdType = BuildHelper.getAppIdTypeBasedOnChannleAndFormFactor(channelOs, channelFormFactor)
@@ -162,6 +162,7 @@ class AndroidChannel extends Channel {
                     }
 
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+
                 }
                 script.stage('Check Available Resources') {
                     /*
@@ -199,6 +200,8 @@ class AndroidChannel extends Channel {
                                     scmCredentialsId: scmCredentialsId,
                                     scmUrl: scmUrl
                         }
+                        artifactMeta.add("version": ["App Version": androidAppVersion, "Build Version": androidAppVersionCode])
+
                         /* Run PreBuild Hooks */
                         runPreBuildHook()
 
@@ -243,12 +246,9 @@ class AndroidChannel extends Channel {
 
                         script.stage("Publish artifacts to S3") {
                             /* Rename artifacts for publishing */
-                            artifacts = renameArtifacts(buildArtifacts)
+                            def channelArtifacts = renameArtifacts(buildArtifacts)
 
-                            /* Create a list with artifact objects for e-mail template */
-                            def channelArtifacts = []
-
-                            artifacts?.each { artifact ->
+                            channelArtifacts?.each { artifact ->
                                 String artifactName = artifact.name
                                 String artifactPath = artifact.path
                                 String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
@@ -256,12 +256,12 @@ class AndroidChannel extends Channel {
 
                                 String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
 
-                                channelArtifacts.add([
+                                artifacts.add([
                                         channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl
                                 ])
                             }
 
-                            script.env['CHANNEL_ARTIFACTS'] = channelArtifacts?.inspect()
+                            script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 
                             /* Run PostBuild Hooks */
                             runPostBuildHook()
