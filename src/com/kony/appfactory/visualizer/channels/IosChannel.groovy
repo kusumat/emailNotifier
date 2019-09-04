@@ -196,7 +196,7 @@ class IosChannel extends Channel {
         String errorMessage = 'Failed to create IPA file'
         /* Point Dropins folder based on Headless build and CI build to location where kony plugins are stored */
         String visualizerDropinsPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
-        String codeSignIdentity = (iosDistributionType == 'development') ? 'iPhone Developer' : 'iPhone Distribution'
+        String codeSignIdentity = (iosDistributionType == 'development') ? 'Develop' : 'Distribution'
         String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
         String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithKonylib'].join(separator)
         String iosDummyProjectGenPath = [iosDummyProjectWorkspacePath, 'gen'].join(separator)
