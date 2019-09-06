@@ -287,7 +287,8 @@ class Facade implements Serializable {
                 script.string(name: 'FABRIC_ENV_NAME', value: "${script.params.FABRIC_ENV_NAME}"),
                 script.string(name: 'FABRIC_APP_NAME', value: "${script.params.FABRIC_APP_NAME}"),
                 script.string(name: 'FABRIC_APP_VERSION', value: "${script.params.FABRIC_APP_VERSION}"),
-                script.string(name: 'FABRIC_ACCOUNT_ID', value: "${script.params.FABRIC_ACCOUNT_ID}")
+                script.string(name: 'FABRIC_ACCOUNT_ID', value: "${script.params.FABRIC_ACCOUNT_ID}"),
+                script.string(name: 'IS_KONYQUANTUM_APP_BUILD', value:"${script.params.IS_KONYQUANTUM_APP_BUILD}")
         ]
     }
 

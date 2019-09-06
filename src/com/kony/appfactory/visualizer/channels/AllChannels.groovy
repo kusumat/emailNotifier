@@ -10,6 +10,8 @@ import com.kony.appfactory.helper.JsonHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.visualizer.BuildStatus
 import com.kony.appfactory.helper.AppFactoryException
+import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.CloudBuildHelper
 
 /**
  * Implements logic for all channel builds.
@@ -49,7 +51,7 @@ class AllChannels implements Serializable {
 
     /* Common variables */
     protected final projectName = script.env.PROJECT_NAME
-    protected String projectFileName = "project.zip"
+    protected String projectFileName
 
     protected CredentialsHelper credentialsHelper
 
@@ -75,6 +77,7 @@ class AllChannels implements Serializable {
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
+        projectFileName = libraryProperties.'cloudbuild.sourceproject.download.file.name'
         /* Checking if at least one channel been selected */
         channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?:
                 script.echoCustom('Please select at least one channel to build!', 'ERROR')
@@ -154,19 +157,56 @@ class AllChannels implements Serializable {
                             }
                         }
 
+                        script.env.IS_KONYQUANTUM_APP_BUILD = ValidationHelper.isValidStringParam(script, 'IS_KONYQUANTUM_APP_BUILD') ? script.params.IS_KONYQUANTUM_APP_BUILD : false
+
+                        def checkoutFolder = checkoutRelativeTargetFolder
+
                         script.callStageCustom(buildStatus, "Downloading Project/Application source binaries") {
+                            if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
+                                // if Quantum preview app build, checkout  AppViewer master source code for reading version mapper json
+                                BuildHelper.checkoutProject script:script,
+                                        checkoutType: "scm",
+                                        projectRelativePath: checkoutRelativeTargetFolder,
+                                        scmCredentialsId: libraryProperties.'quantum.app.repo.credential.id',
+                                        scmUrl: libraryProperties.'quantum.app.repo.url',
+                                        scmBranch: libraryProperties.'quantum.app.repo.master.branch'
+                                checkoutFolder = [projectWorkspaceFolderName,
+                                                  libraryProperties.'quantum.childapp.temp.download.dir'].join(separator)
+                            }
+
                             String url = script.params.PROJECT_SOURCE_URL
                             // source code checkout from downloadZipUrl
                             BuildHelper.checkoutProject script: script,
                                     checkoutType: "downloadzip",
-                                    projectRelativePath: checkoutRelativeTargetFolder,
+                                    projectRelativePath: checkoutFolder,
                                     downloadURL: url,
                                     projectFileName: projectFileName
+
+                            // if Quantum preview app build, checkout the AppViewer source for the dependent branch/tag
+                            if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
+                                script.env.QUANTUM_CHILDAPP_VIZ_VERSION = CloudBuildHelper.getQuantumChildAppVizVersion(script, checkoutFolder, projectPropertyFileName)
+                                // Get the mapper json file name for cloud env to be read
+                                def quantumAppMapperJsonFile = CloudBuildHelper.getMapperJsonFileForQuantumAppBuid(
+                                        script.env.CLOUD_DOMAIN,
+                                        libraryProperties.'quantum.app.non_prod.version.mapper.json',
+                                        libraryProperties.'quantum.app.prod.version.mapper.json'
+                                )
+
+                                script.dir(checkoutRelativeTargetFolder) {
+                                    def quantumAppViewerCheckOutVersion = CloudBuildHelper.getQuantumAppCheckoutVersionTag script: script,
+                                            quantumAppMapperJsonFilePath: quantumAppMapperJsonFile,
+                                            quantumChildAppVisualizerVersion: script.env.QUANTUM_CHILDAPP_VIZ_VERSION
+
+                                    // Checkout AppViewer source for version/tag fetched
+                                    String checkoutCommand = "git checkout \"${quantumAppViewerCheckOutVersion}\""
+                                    script.shellCustom(checkoutCommand, true)
+                                }
+                            }
+
                         }
 
                         script.callStageCustom(buildStatus, "Executing Pre-Build tasks") {
                             // setting project root folder path
-
                             if (!script.fileExists([checkoutRelativeTargetFolder, projectPropertyFileName].join(separator))) {
                                 script.dir(checkoutRelativeTargetFolder) {
                                     def projectRoot = script.findFiles glob: '**/' + projectPropertyFileName
@@ -176,7 +216,6 @@ class AllChannels implements Serializable {
                                         script.echoCustom("Unable to recognize Visualizer project source code.", 'ERROR')
                                 }
                             }
-
                             projectDir = script.env.PROJECT_ROOT_FOLDER_NAME ?
                                     [checkoutRelativeTargetFolder, script.env.PROJECT_ROOT_FOLDER_NAME].join(separator) :
                                     checkoutRelativeTargetFolder

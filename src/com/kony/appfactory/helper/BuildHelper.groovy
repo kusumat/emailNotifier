@@ -40,7 +40,6 @@ class BuildHelper implements Serializable {
         def script = args.script
         String checkoutType = args.checkoutType
         String relativeTargetDir = args.projectRelativePath
-        String projectFileName = args.projectFileName
         if (checkoutType.equals("scm")) {
             String scmCredentialsId = args.scmCredentialsId
             String scmUrl = args.scmUrl
@@ -53,6 +52,7 @@ class BuildHelper implements Serializable {
                 )
             }
         } else if (checkoutType.equals("downloadzip")) {
+            String projectFileName = args.projectFileName
             String downloadURL = args.downloadURL
             script.dir(relativeTargetDir) {
                 // download the zip from non-protected url
@@ -95,7 +95,7 @@ class BuildHelper implements Serializable {
     protected static final void downloadFile(script, String sourceUrl, String outputFileName) {
 
         try {
-            def projectDownload = script.shellCustom("curl --silent --show-error --fail -o \'${outputFileName}\' \'${sourceUrl}\'", true, [returnStatus: true, returnStdout: true])
+            def projectDownload = script.shellCustom("curl -L --silent --show-error --fail -o \'${outputFileName}\' \'${sourceUrl}\'", true, [returnStatus: true, returnStdout: true])
             if (projectDownload) {
                 script.currentBuild.result = "FAILED"
             }
@@ -948,7 +948,19 @@ class BuildHelper implements Serializable {
      **/
     @NonCPS
     protected static String getMostRecentNthVersion(versions, index=-1) {
-        def sorted = versions.sort(false) { a, b ->
+        def sorted = getSortedVersionList(versions)
+        sorted[index]
+    }
+    
+    
+    /**
+     * Get the sorted list of versions
+     * @param versionsList list with versions
+     * @return sortedVersionsList
+     */
+    @NonCPS
+    protected static getSortedVersionList(versionsList) {
+        def sortedVersionsList = versionsList.sort(false) { a, b ->
 
             List verA = a.tokenize('.')
             List verB = b.tokenize('.')
@@ -968,7 +980,7 @@ class BuildHelper implements Serializable {
             verA.size() <=> verB.size()
         }
 
-        sorted[index]
+        sortedVersionsList
     }
 
     /**
@@ -979,8 +991,13 @@ class BuildHelper implements Serializable {
      */
     protected final static getVisualizerVersion(script) {
         if(script.env.IS_STARTER_PROJECT.equals("true")) {
-            def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
-            return projectPropertiesJsonContent['konyVizVersion']
+            if(script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")){
+                return script.env.QUANTUM_CHILDAPP_VIZ_VERSION
+            }
+            else {
+                def projectPropertiesJsonContent = script.readJSON file: 'projectProperties.json'
+                return projectPropertiesJsonContent['konyVizVersion']
+            }
         }
 
         def konyPluginsXmlFileContent = script.readFile('konyplugins.xml')

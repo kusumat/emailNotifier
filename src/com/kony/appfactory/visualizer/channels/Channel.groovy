@@ -1,7 +1,5 @@
 package com.kony.appfactory.visualizer.channels
 
-import java.util.regex.Matcher
-
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
@@ -252,11 +250,9 @@ class Channel implements Serializable {
          **/
         def konyPluginExists = script.fileExists file: "konyplugins.xml"
         script.env.IS_STARTER_PROJECT = (ValidationHelper.isValidStringParam(script, 'IS_SOURCE_VISUALIZER') ? script.params.IS_SOURCE_VISUALIZER : false) || !konyPluginExists
-
         /* Get Visualizer version */
         visualizerVersion = BuildHelper.getVisualizerVersion(script)
         script.env.visualizerVersion = visualizerVersion
-
         script.echoCustom("Current Project version: " + visualizerVersion)
 
         /* For CloudBuild, validate if CloudBuild Supported for the given project version */
@@ -328,12 +324,8 @@ class Channel implements Serializable {
         /* Populate Fabric configuration to appfactory.js file */
         populateFabricAppConfig()
 
-        /* Get Project common AppId to be used in the CI/Headless build */
-        script.env.projectAppId = getProjectAppIdKey()
-        
         /* Setting the test resources URL */
         script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
-        
         script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
                 mustHaveArtifacts.add([name: "HeadlessBuild.properties", path: projectFullPath])
@@ -367,15 +359,38 @@ class Channel implements Serializable {
                          *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
                          */
                         ValidationHelper.checkFeatureSupportExist(script, libraryProperties, getFeatureParamsToCheckCIBuildSupport(), VisualizerBuildType.ci)
-
-                        /* Build project using CI tool" */
-                        script.shellCustom('ant -buildfile ci-property.xml', isUnixNode)
+                        
+                        /* Retrieve Visualizer plugins for the project */
+                        script.shellCustom('ant -buildfile ci-property.xml retrieve', isUnixNode)
 
                         /* Run npm install */
                         script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
                             def npmBuildScript = "npm install"
                             script.shellCustom(npmBuildScript, isUnixNode)
                         }
+
+                        /* For AppViewer CloudBuild, lets run extra step for merging child app to shell app */
+                        if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
+                            script.catchErrorCustom('AppViewer packaging failed!!') {
+                                def pluginsPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
+                                def childAppPath = [projectWorkspacePath,
+                                                    libraryProperties.'quantum.childapp.temp.download.dir',
+                                                    libraryProperties.'cloudbuild.sourceproject.download.file.name'].join(separator)
+
+                                String channelsToRun = getChannelsToRun()
+
+                                def nodeBuildScript = ['node appViewerPackager.js', childAppPath.toString(), pluginsPath.toString(), channelsToRun].join(" ")
+                                script.shellCustom(nodeBuildScript, isUnixNode)
+                                script.echoCustom("AppViewer packaging has been completed!!")
+                            }
+                        }
+
+                        /* Get Project common AppId to be used in the CI build */
+                        script.env.projectAppId = getProjectAppIdKey()
+
+                        /* CI */
+                        /* Update headless build properties with all build inputs */
+                        script.shellCustom('ant -buildfile ci-property.xml properties-update', isUnixNode)
 
                         /* Run node build.js */
                         script.catchErrorCustom('CI build failed for this project') {
@@ -395,6 +410,9 @@ class Channel implements Serializable {
                         def slave = isUnixNode ? iosResource : windowsResource
 
                         script.lock(slave) {
+                            /* Get Project common AppId to be used in the Headless build */
+                            script.env.projectAppId = getProjectAppIdKey()
+
                             /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
                             script.shellCustom('ant -buildfile property.xml', isUnixNode)
 
@@ -419,6 +437,21 @@ class Channel implements Serializable {
         }
     }
 
+    protected final getChannelsToRun() {
+        def channelsKeyMap = [
+                "ANDROID_MOBILE_NATIVE": "android",
+                "ANDROID_TABLET_NATIVE": "androidtab",
+                "IOS_MOBILE_NATIVE"    : "iphone",
+                "IOS_TABLET_NATIVE"    : "ipad"
+        ]
+        def channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?:
+                script.echoCustom('Please select at least one channel to merge!', 'ERROR')
+        def channels = []
+        for (item in channelsToRun) {
+            channels.add(channelsKeyMap.get(item))
+        }
+        return channels.join(',')
+    }
 
     protected void fetchFeatureXML(vizVersion, basePath) {
 
