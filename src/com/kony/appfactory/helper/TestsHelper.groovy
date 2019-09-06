@@ -157,4 +157,21 @@ class TestsHelper implements Serializable {
 
         ((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null)
     }
+    
+    
+    /**
+     * Method which constructs the S3 Path for the Test Results storage
+     * @param script Current build instance
+     * @param runArtifact current run artifact results
+     * @param suiteName SuiteName for which the results are to be copied
+     * @return the complete the path on the S3 for the storage of the results.
+     */
+    protected final static getS3ResultsPath(script, runArtifact, suiteName) {
+        def s3BasePath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
+        def resultPath = [s3BasePath]
+        resultPath.add(runArtifact.device.formFactor.toString())
+        resultPath.add(runArtifact.device.name.toString() + '_' + runArtifact.device.platform.toString() + '_' + runArtifact.device.os.toString())
+        resultPath.add(suiteName)
+        resultPath.join('/').replaceAll('\\s', '_')
+    }
 }

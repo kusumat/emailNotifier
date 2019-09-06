@@ -133,7 +133,8 @@ class FacadeTests implements Serializable {
                         script.string(name: 'AVAILABLE_TEST_POOLS', value: script.params.AVAILABLE_TEST_POOLS),
                         script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT),
                         script.string(name: 'APPIUM_VERSION', value: script.params.APPIUM_VERSION),
-                        script.string(name: 'TESTNG_FILES', value: script.params.TESTNG_FILES)
+                        script.string(name: 'TESTNG_FILES', value: script.params.TESTNG_FILES),
+                        script.string(name: 'TEST_FRAMEWORK', value: script.params.TEST_FRAMEWORK)
                 ]
     }
 

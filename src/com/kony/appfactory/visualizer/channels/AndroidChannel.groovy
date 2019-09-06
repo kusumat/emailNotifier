@@ -58,6 +58,25 @@ class AndroidChannel extends Channel {
     }
 
     /**
+     * This method enable the capability to read/write external storage.
+     * 
+     */
+    protected updateAndroidCapabilitiesForJasmineTests()
+    {
+        script.dir(projectFullPath) {
+            def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
+            if (script.fileExists(propertyFileName)) {
+                def projectPropertiesJsonContent = script.readJSON file: propertyFileName
+                projectPropertiesJsonContent.permissions.android.WRITE_EXTERNAL_STORAGE = "true"
+                projectPropertiesJsonContent.tags.android.andmanifesttags = projectPropertiesJsonContent.tags.android.andmanifesttags + '<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\" />'
+                script.writeJSON file: propertyFileName, json: projectPropertiesJsonContent
+            } else {
+                throw new AppFactoryException("Failed to update android capabilities in $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+            }
+        }
+    }
+    
+    /**
      * Signs Android build artifacts.
      * More info could be found: https://developer.android.com/studio/publish/app-signing.html#signing-manually
      *                           https://developer.android.com/studio/command-line/zipalign.html
@@ -210,6 +229,9 @@ class AndroidChannel extends Channel {
                             if (buildMode == libraryProperties.'buildmode.release.protected.type') {
                                 script.echoCustom("Placing encryptions keys for protected mode build.")
                                 copyProtectedKeysToProjectWorkspace()
+                            }
+                            if(buildMode == libraryProperties.'buildmode.debug.type' && isJasmineTestsExecEnabled) {
+                                updateAndroidCapabilitiesForJasmineTests()
                             }
                             build()
                             /* Search for build artifacts */

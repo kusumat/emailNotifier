@@ -41,7 +41,7 @@ class DesktopWebTests extends RunTests implements Serializable {
      * @param script pipeline object.
      */
     DesktopWebTests(script) {
-        super(script)
+        super(script, "DesktopWeb")
     }
 
     /*
@@ -226,58 +226,6 @@ class DesktopWebTests extends RunTests implements Serializable {
         version
     }
     
-    /*
-     * This method prepares the env for running the Jasmine Tests
-     * @param testInvokerFolder is the path of the folder in which we will be creating the TestNG Project for running the Jasmine tests
-     */
-    private prepareEnvForJasmineTests(testInvokerFolder){
-        
-        String jasminePkgFolder = "${projectFullPath}/JasmineScriptsOutput"
-        
-        script.dir(projectFullPath) {
-            
-            // Appending the appfactory reporting js code to retrive the jasmine results as json.
-            String customReporting = script.readFile file: "${projectFullPath}/testresources/Jasmine/Common/customReporter.js"
-            String appfactoryReporting = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/appfactoryReporter.js')
-            script.writeFile file: "${projectFullPath}/testresources/Jasmine/Common/customReporter.js", text: customReporting + appfactoryReporting, encoding: 'UTF-8'
-            
-            BuildHelper.jasmineTestEnvWrapper(script, {
-                
-                script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
-                    def npmInstallScript = "npm install"
-                    script.shellCustom(npmInstallScript, true)
-                }
-                
-                /* Run node generateJasmineArtifacts.js */
-                script.catchErrorCustom('Error while packaging the Jasmine test scripts') {
-                    def nodePkgScript = 'node generateJasmineArtifacts.js --output-dir ' + jasminePkgFolder
-                    script.shellCustom(nodePkgScript, true)
-                }
-            })
-            String fullPathToCopyScripts = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
-
-            // Copying the Desktop jasmine test scripts in the jetty webapps folder
-            script.shellCustom("set +x;mkdir -p $fullPathToCopyScripts", true)
-            script.shellCustom("set +x;cp -R ${jasminePkgFolder}/Desktop $fullPathToCopyScripts", true)
-        }
-        
-        // Copying the TestNG code and pom.xml to build and execute the maven tests to run the Jasmine tests on the browser
-        script.dir(testInvokerFolder) {
-            
-            String mvnSourceFolderPath = 'src/test/java/com/kony/appfactory/jasmine'
-            String invokeJasminePOM = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/pom.xml')
-            String invokeJasmineTestNG = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/TestNG.xml')
-            
-            script.writeFile file: "pom.xml", text: invokeJasminePOM
-            script.writeFile file: "Testng.xml", text: invokeJasmineTestNG
-            
-            script.dir(mvnSourceFolderPath) {
-                String invokeJasmineTestsSrc = script.libraryResource('com/kony/appfactory/jasmineinvoker/web/InvokeJasmineTests.java')
-                script.writeFile file: "InvokeJasmineTests.java", text: invokeJasmineTestsSrc
-            }
-        }
-    }
-    
     /* This method deletes the Jasmine tests which are hosted in the jetty webapps folder */
     private cleanupJasmineTests(){
         
@@ -455,7 +403,7 @@ class DesktopWebTests extends RunTests implements Serializable {
 
                     try {
 
-                        pipelineWrapper("DesktopWeb", {
+                        pipelineWrapper {
                             /*
                             Clean workspace, to be sure that we have not any items from previous build,
                             and build environment completely new.
@@ -473,11 +421,8 @@ class DesktopWebTests extends RunTests implements Serializable {
                                             scmUrl: scmUrl
                                 }
                                 /* Get the automation test folder */
-                                testFolder = getTestsFolderPath(projectFullPath, "DesktopWeb")
+                                testFolder = getTestsFolderPath(projectFullPath)
 
-                                if (!testFolder)
-                                    throw new AppFactoryException("No test automation scripts found for DesktopWeb channel!!", 'ERROR')
-                                
                                 /* Preparing the environment for the Jasmine Tests */
                                 if(isJasmineEnabled){
                                     prepareEnvForJasmineTests(testFolder)
@@ -485,7 +430,7 @@ class DesktopWebTests extends RunTests implements Serializable {
 
                                 script.stage('Build') {
                                     /* Build Test Automation scripts */
-                                    buildTestScripts("DesktopWeb", testFolder)
+                                    buildTestScripts(testFolder)
                                 }
                             }
 
@@ -516,13 +461,14 @@ class DesktopWebTests extends RunTests implements Serializable {
                                     script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
                                 }
                             }
-                        })
+                        }
                     } finally {
                         /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
                         script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
                         script.env['DESKTOP_JASMINE_TEST_RESULTS'] = jasmineTestResults?.inspect()
                         script.env['LOG_FILES_LIST'] = listofLogFiles?.inspect()
                         script.env['SCREENSHOTS_LIST'] = listofScreenshots?.inspect()
+
                         if(isJasmineEnabled){
                             cleanupJasmineTests()
                         }

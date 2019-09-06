@@ -97,6 +97,13 @@
         <condition property="jasmineTestsUrl" value="${env.JASMINE_TEST_URL}" else="">
             <isset property="env.JASMINE_TEST_URL"/>
         </condition>
+    	
+        <condition property="fetchJasmineTestsFromLocal" value="true" else="false">
+            <and>
+                <isset property="env.TEST_FRAMEWORK"/>
+                <equals arg1="${env.TEST_FRAMEWORK}" arg2="jasmine" casesensitive="false" />
+            </and>
+        </condition>
 
         <!-- Set of common properties -->
         <condition property="projectName" value="${env.PROJECT_NAME}" else="">
@@ -268,6 +275,7 @@
             <entry key="web.binary.extension" value="${binaryextensionWEB}"/>
         	<!-- Jasmine Test options -->
         	<entry key="test.automation.server.url" value="${jasmineTestsUrl}"/>
+        	<entry key="test.automation.storage.local" value="${fetchJasmineTestsFromLocal}"/>
         </propertyfile>
 
         <!--APPFACT-545: propertyfile appends escape character to Special Characters, workaround to use exact same password -->

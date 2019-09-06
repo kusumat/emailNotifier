@@ -32,11 +32,13 @@ class RunTests implements Serializable {
     protected runCustomHook = script.params.RUN_CUSTOM_HOOKS
     
     protected isJasmineEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
+    protected jasminePkgFolder
 
     protected String jettyWebAppsFolder = script.env.JETTY_WEBAPP_PATH ? script.env.JETTY_WEBAPP_PATH + '/testresources' :'/opt/jetty/webapps/testresources'
     
     protected nodeLabel
     protected mustHaveArtifacts = []
+    protected String channelType
 
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
@@ -60,12 +62,13 @@ class RunTests implements Serializable {
      *
      * @param script pipeline object.
      */
-    RunTests(script) {
+    RunTests(script, channelType) {
         this.script = script
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        this.channelType = channelType
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         this.hookHelper = new CustomHookHelper(script)
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.kony.CLOUD_ACCOUNT_ID) ?: ''
@@ -81,9 +84,9 @@ class RunTests implements Serializable {
      * @param testFolder The folder in which you want to run the tests.
      *
      */
-    protected final buildTestScripts(testChannel, testFolder) {
-        String successMessage = "Test Automation scripts have been built successfully for ${testChannel}"
-        String errorMessage = "Failed to build the Test Automation scripts for ${testChannel}"
+    protected final buildTestScripts(testFolder) {
+        String successMessage = "Test Automation scripts have been built successfully for ${channelType}"
+        String errorMessage = "Failed to build the Test Automation scripts for ${channelType}"
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(testFolder) {
@@ -112,10 +115,9 @@ class RunTests implements Serializable {
      * and check for a valid POM file. For future additions, make sure to add the latest paths first.
      *
      * @param projectFullPath contains the path for project root.
-     * @param channelType contains whether it is a native or desktopweb channel.
      * @return testsFolderPath contains the base path for tests directory.
      */
-    protected final String getTestsFolderPath(projectFullPath, channelType) {
+    protected final String getTestsFolderPath(projectFullPath) {
         String testsFolderPath
         List<String> testPoms = [] as String[]
         
@@ -134,15 +136,108 @@ class RunTests implements Serializable {
                 break
             }
         }
+        
+        if (!testsFolderPath)
+            throw new AppFactoryException("No test automation scripts found for " + channelType + " channels!!", 'ERROR')
+        
         testsFolderPath
     }
 
+    /*
+     * This method prepares the env for running the Jasmine Tests
+     * @param testInvokerFolder is the path of the folder in which we will be creating the TestNG Project for running the Jasmine tests
+     */
+    protected final prepareEnvForJasmineTests(testInvokerFolder) {
+        String resourceLocation = ['com', 'kony', 'appfactory', 'jasmineinvoker', channelType.toLowerCase()].join(separator) 
+        String appfactoryReporter = resourceLocation + '/appfactoryReporter.js'
+        String testNGClass = resourceLocation + '/InvokeJasmineTests.java'
+        String mavenPOM = resourceLocation + '/pom.xml'
+        String testNGXML = resourceLocation + '/TestNG.xml'
+        String customReporter = [projectFullPath, 'testresources', 'Jasmine', 'Common', 'customReporter.js'].join(separator)
+        
+        script.dir(projectFullPath) {
+            
+            // Appending the appfactory reporting js code to retrive the jasmine results as json.
+            String customReporting = script.readFile file: customReporter
+            String appfactoryReporting = script.libraryResource(appfactoryReporter)
+            script.writeFile file: customReporter, text: customReporting + appfactoryReporting, encoding: 'UTF-8'
+            
+            BuildHelper.jasmineTestEnvWrapper(script, {
+                
+                script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
+                    def npmInstallScript = "npm install"
+                    script.shellCustom(npmInstallScript, true)
+                }
+                
+                /* Run node generateJasmineArtifacts.js */
+                script.catchErrorCustom('Error while packaging the Jasmine test scripts') {
+                    def nodePkgScript = 'node generateJasmineArtifacts.js --output-dir ' + jasminePkgFolder
+                    script.shellCustom(nodePkgScript, true)
+                }
+            })
+            
+            // Only in the case DesktopWeb, we will be hosting the jasmine test scripts through jetty server.
+            if(channelType.equalsIgnoreCase("DesktopWeb")) {
+                String fullPathToCopyScripts = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
+    
+                // Copying the Desktop jasmine test scripts in the jetty webapps folder
+                script.shellCustom("set +x;mkdir -p $fullPathToCopyScripts", true)
+                script.shellCustom("set +x;cp -R ${jasminePkgFolder}/Desktop ${fullPathToCopyScripts}", true)
+            } else {
+                prepareExtraDataPackage("Mobile")
+                prepareExtraDataPackage("Tablet")
+                script.dir(deviceFarmWorkingFolder) {
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Mobile/JasmineDeviceScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Mobile_TestExtraDataPkg.zip", true)
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Tablet/JasmineDeviceScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Tablet_TestExtraDataPkg.zip", true)
+                }
+            }
+        }
+        
+        // Copying the TestNG code and pom.xml to build and execute the maven tests to run the Jasmine tests
+        script.dir(testInvokerFolder) {
+            
+            String mvnSourceFolderPath = 'src/test/java/com/kony/appfactory/jasmine'
+            String invokeJasminePOM = script.libraryResource(mavenPOM)
+            String invokeJasmineTestNG = script.libraryResource(testNGXML)
+            
+            script.writeFile file: "pom.xml", text: invokeJasminePOM
+            script.writeFile file: "Testng.xml", text: invokeJasmineTestNG
+            
+            script.dir(mvnSourceFolderPath) {
+                String invokeJasmineTestsSrc = script.libraryResource(testNGClass)
+                script.writeFile file: "InvokeJasmineTests.java", text: invokeJasmineTestsSrc
+            }
+
+            // In case Native(DeviceFarm) we need to create the assembly xml to assemble the required jars, classes, resources, etc.            
+            if(channelType.equalsIgnoreCase("Native")) {
+                String mvnAssemblyPath = 'src/main/assembly'
+                script.dir(mvnAssemblyPath) {
+                    String assemblyXMLSrc = script.libraryResource(resourceLocation + '/zip.xml')
+                    script.writeFile file: "zip.xml", text: assemblyXMLSrc
+                }
+            }
+        }
+    }
+    
+    /*
+     * This method prepares the extra data package in which the jasmine scripts will be placed in the way the frameworks expects.
+     * @param testInvokerFolder is the path of the folder in which we will be creating the TestNG Project for running the Jasmine tests
+     */
+    protected final prepareExtraDataPackage(formFactor) {
+        def targetFolder = [jasminePkgFolder, formFactor].join(separator)
+        script.dir(targetFolder){
+            script.shellCustom("set +x;mkdir ${targetFolder}/JasmineTests ", true)
+            script.shellCustom("set +x;cp ${jasminePkgFolder}/${formFactor}/automationScripts.zip ${targetFolder}/JasmineTests/ ", true)
+            script.shellCustom("set +x;zip -r JasmineDeviceScripts.zip JasmineTests", true)
+        }
+    }
+    
     /**
      * Wraps block of code with required steps for every build pipeline.
      *
      * @param closure block of code that implements build pipeline.
      */
-    protected final void pipelineWrapper(channelType, closure) {
+    protected final void pipelineWrapper(closure) {
         /* Set environment-dependent variables */
         workspace = script.env.WORKSPACE
         checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
@@ -152,6 +247,7 @@ class RunTests implements Serializable {
         projectFullPath = [
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
+        jasminePkgFolder = [projectFullPath, 'JasmineScriptsOutput'].join(separator)
         try {
             closure()
         } catch (AppFactoryException e) {

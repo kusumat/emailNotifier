@@ -121,6 +121,9 @@ class Channel implements Serializable {
     protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     protected customHookStage
     protected customHookIPAStage
+    
+    /* This variable holds whether the selected test framework is jasmine or other. Based on this we will enable some capabilities (Android - Write to Ext Disk, iOS - UIFileSharingMode to true in plist) */
+    protected boolean isJasmineTestsExecEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
 
     /* Visualizer command-line build types */
     protected final enum VisualizerBuildType {
@@ -156,6 +159,7 @@ class Channel implements Serializable {
         }
         /* Re-setting for global access of build mode */
         this.script.env['BUILD_MODE'] = buildMode
+        this.script.env.TEST_FRAMEWORK = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')
     }
     
     /**

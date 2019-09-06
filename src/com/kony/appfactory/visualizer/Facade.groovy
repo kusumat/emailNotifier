@@ -100,7 +100,6 @@ class Facade implements Serializable {
     private final availableBrowsers = script.params.AVAILABLE_BROWSERS
     private final desktopWebTestsArguments = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
     private final runDesktopwebTests = script.params.RUN_DESKTOPWEB_TESTS
-    private jasmineTestURL = null
 
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
@@ -117,6 +116,9 @@ class Facade implements Serializable {
     /* Cloud Build properties */
     protected CredentialsHelper credentialsHelper
     protected BuildStatus status
+    
+    /* Jasmine Test - To be used in the validations for the build mode and test */
+    private boolean isJasmineEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
 
     /**
      * Class constructor.
@@ -261,6 +263,7 @@ class Facade implements Serializable {
                 script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
                 script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
+                script.stringParam(name: "TEST_FRAMEWORK", value: testFramework),
                 script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
                 script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook)
@@ -294,7 +297,6 @@ class Facade implements Serializable {
      * @return WEB specific build parameters.
      */
     private final getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters = null) {
-        def testFrameworkParam = [script.stringParam(name: "TEST_FRAMEWORK", value: testFramework)]
         def commonWebParameters = getCommonJobBuildParameters() +
         [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
         [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
@@ -302,13 +304,12 @@ class Facade implements Serializable {
         if (spaChannelsToBuildJobParameters && desktopWebChannel) {
             commonWebParameters +
                 [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + 
-                testFrameworkParam +
                 spaChannelsToBuildJobParameters
         } else if (spaChannelsToBuildJobParameters) {
             commonWebParameters +  spaChannelsToBuildJobParameters
         }
         else
-            commonWebParameters + testFrameworkParam
+            commonWebParameters
     }
 
     /**

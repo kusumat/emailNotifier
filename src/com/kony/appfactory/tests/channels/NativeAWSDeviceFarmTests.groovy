@@ -71,10 +71,20 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                         uploadType: 'APPIUM_JAVA_TESTNG_TEST_SPEC',
                                         url       : '']
     ]
+    
+    private testExtraDataPkg = [
+        "${projectName}_TestExtraDataPkg": [extension : 'zip',
+                                            uploadType: 'EXTERNAL_DATA',
+                                            url       : '']
+    ]
+
     protected ymlTemplate = 'com/kony/appfactory/configurations/KonyYamlTestSpec.template'
     protected testSpecUploadFileName = "TestSpec.yml"
     public testSpecUploadFilePath
     private APPIUM_1_8_1_VERSION = "1.8.1"
+    
+    /* Jasmine extra data package arns */
+    private mobileExtraDataPkgArtifactArn, tabletExtraDataPkgArtifactArn
 
     /**
      * Class constructor.
@@ -82,7 +92,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      * @param script pipeline object.
      */
     NativeAWSDeviceFarmTests(script) {
-        super(script)
+        super(script, "Native")
         /* Initializer Device Farm scrips object */
         deviceFarm = new AwsDeviceFarmHelper(script)
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
@@ -112,11 +122,14 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
                             "tablets, but no tablets were found in the device pool", 'ERROR'))
 
+            /* Depending on artifact name we need to chose appropriate jasmine scripts package */
+            def extraDataPkgArn = artifactName.toLowerCase().contains('mobile') ? mobileExtraDataPkgArtifactArn : tabletExtraDataPkgArtifactArn
+            
             /* If we have application binaries and test binaries, schedule the custom run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
                 deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
                 /* Once all parameters gotten, schedule the Device Farm run */
-                def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn, 'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn)
+                def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn, 'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn, extraDataPkgArn)
                 deviceFarmTestRunArns["$artifactName"] = runArn
                 /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
             } else {
@@ -165,6 +178,29 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         )
         /* Add test binaries upload ARN to upload ARNs list */
         deviceFarmUploadArns.add(deviceFarmTestUploadArtifactArn)
+    }
+
+    /**
+     * Uploads Extra Data Package to Device Farm.
+     *
+     * @param deviceFarmProjectArn is the ARN that is associated with a particular project
+     */
+    final String uploadExtraDataPackage(deviceFarmProjectArn, formFactor) {
+        /* Get required parameters for test binaries upload */
+        def testUploadType = testExtraDataPkg.get("${projectName}_TestExtraDataPkg").uploadType
+        def testExtension = testExtraDataPkg.get("${projectName}_TestExtraDataPkg").extension
+        def testUploadFileName = "${projectName}_${formFactor}_TestExtraDataPkg.${testExtension}"
+
+        /* Upload the Jasmine test packages and get upload ARN */
+        def deviceFarmExtraDataPackageArn = deviceFarm.uploadArtifact(
+                deviceFarmProjectArn,
+                testUploadType,
+                testUploadFileName
+        )
+        /* Add Jasmine test packages ARN to upload ARNs list */
+        deviceFarmUploadArns.add(deviceFarmExtraDataPackageArn)
+        
+        deviceFarmExtraDataPackageArn
     }
 
     @NonCPS
@@ -554,7 +590,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 script.node(nodeLabel) {
 
                     try {
-                        pipelineWrapper("Native", {
+                        pipelineWrapper {
                             /*
                             Clean workspace, to be sure that we have not any items from previous build,
                             and build environment completely new.
@@ -572,10 +608,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                             scmCredentialsId: scmCredentialsId,
                                             scmUrl: scmUrl
                                 }
-                                testFolder = getTestsFolderPath(projectFullPath, "Native")
+                                testFolder = getTestsFolderPath(projectFullPath)
 
-                                if (!testFolder)
-                                    throw new AppFactoryException("No test automation scripts found for Native channels!!", 'ERROR')
+                                /* Preparing the environment for the Jasmine Tests */
+                                if(isJasmineEnabled){
+                                    prepareEnvForJasmineTests(testFolder)
+                                }
 
                                 script.stage('Build') {
                                     if (runInCustomTestEnvironment && !appiumVersion) {
@@ -583,7 +621,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                             testSpecUploadFilePath = "${testFolder}/src/test/resources/${testSpecUploadFileName}"
                                     }
                                     /* Build Test Automation scripts */
-                                    buildTestScripts("Native", testFolder)
+                                    buildTestScripts(testFolder)
 
                                     script.dir(testFolder) {
                                         script.shellCustom("mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip", true)
@@ -604,7 +642,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                         throw new AppFactoryException('Failed to find build result artifact!', 'ERROR')
                                 }
                             }
-                        })
+                        }
 
                         /* To make runTests flag true when Tests URL is given instead of passing SCM details */
                         if (testPackage.get("${projectName}_TestApp").url != 'jobWorkspace') {
@@ -644,6 +682,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
                                     script.stage('Upload test package') {
                                         uploadTestBinaries(testPackage, deviceFarmProjectArn)
+                                        
+                                        /* Uploading the Jasmine scripts as extra data package */
+                                        if(isJasmineEnabled){
+                                            mobileExtraDataPkgArtifactArn = uploadExtraDataPackage(deviceFarmProjectArn, 'Mobile')
+                                            tabletExtraDataPkgArtifactArn = uploadExtraDataPackage(deviceFarmProjectArn, 'Tablet')
+                                        }
                                     }
                                     script.stage('Upload test spec') {
                                         script.when(runInCustomTestEnvironment, 'Upload test spec')
@@ -716,13 +760,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      * @returns testngReportsAuthURL the authenticated S3 URL of TestNG test-output
      */
     protected  publishTestReportsToS3(runArtifact, suiteName, folderPath) {
-        def s3BasePath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
-        def s3ArtifactsPath
-        def resultPath = [s3BasePath]
-        resultPath.add(runArtifact.device.formFactor.toString())
-        resultPath.add(runArtifact.device.name.toString() + '_' + runArtifact.device.platform.toString() + '_' + runArtifact.device.os.toString())
-        resultPath.add(suiteName)
-        s3ArtifactsPath = resultPath.join('/').replaceAll('\\s', '_')
+        def s3ArtifactsPath = TestsHelper.getS3ResultsPath(script, runArtifact, suiteName)
         def testngReportsUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactsPath, sourceFilePath: folderPath, script, false
         def testngReportsAuthURL = BuildHelper.createAuthUrl(testngReportsUrl, script, true, "view")
         return testngReportsAuthURL
@@ -772,12 +810,24 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     }
                 }
             }
-            script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/test-output/*  ${deviceFarmWorkingFolder}/${deviceName}/test-output", true)
-            def authUrl = publishTestReportsToS3(testRunArtifacts[0], "Tests Suite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
-            String testNGResultsFileContent = script.readFile("${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml")
-            def test_results = parseTestResults(testNGResultsFileContent)
+            def authUrl, test_results
+            if (isJasmineEnabled) {
+                script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/* ${deviceFarmWorkingFolder}/${deviceName}/", true)
+                String testNGResultsFileContent = script.readFile file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.json"
+                def jasmineTestResults = script.readJSON file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.json"
+                test_results = parseAndgetJasmineResults(jasmineTestResults)
+                def s3path = TestsHelper.getS3ResultsPath(script, testRunArtifacts[0], "JasmineSuite")
+                authUrl = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: "JasmineTestResult.html",
+                            sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}" , script, false
+            } else {
+                script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/test-output/*  ${deviceFarmWorkingFolder}/${deviceName}/test-output", true)
+                authUrl = publishTestReportsToS3(testRunArtifacts[0], "TestNGSuite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
+                String testNGResultsFileContent = script.readFile("${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml")
+                test_results = parseTestResults(testNGResultsFileContent)
+                authUrl = authUrl.replace("*/**", 'index.html')
+            }
             for(runArtifacts in testRunArtifacts) {
-                reportsUrl.put("url", authUrl.replace("*/**", 'index.html'))
+                reportsUrl.put("url", authUrl)
                 runArtifacts.reports = reportsUrl
                 if(test_results) {
                     runArtifacts.totalSuites = test_results.totalSuites
@@ -809,6 +859,30 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         testResultsMap.put('passedTests', testng_results.@passed.join(""))
         testResultsMap.put('failedTests', testng_results.@failed.join(""))
         testResultsMap.put('skippedTests', testng_results.@skipped.join(""))
+        return testResultsMap
+    }
+    
+    /*
+     * Parses Jasmine results file content and gets the test cases counts
+     *
+     * @param jasmineResults Json file content received from Device.
+     * @return testResultsMap the map containing test cases counts
+     */
+    protected Map parseAndgetJasmineResults(jasmineResults) {
+        def testResultsMap = [:]
+        def passedResults, failedResults, totalResults
+        String successMessage = 'Jasmine Test Results have been fetched successfully for Native'
+        String errorMessage = 'Failed to fetch the Jasmine Test Results for Native'
+        
+        script.catchErrorCustom(errorMessage, successMessage) {
+            passedResults = jasmineResults.findAll { event -> event.event.equalsIgnoreCase('specDone') && event.result.status.equalsIgnoreCase("passed") }
+            failedResults = jasmineResults.findAll { event -> event.event.equalsIgnoreCase('specDone') && !event.result.status.equalsIgnoreCase("passed") }
+        }
+        
+        testResultsMap.put('totalSuites', passedResults.size() + failedResults.size())
+        testResultsMap.put('passedTests', passedResults.size())
+        testResultsMap.put('failedTests', failedResults.size())
+        testResultsMap.put('skippedTests', 0)
         return testResultsMap
     }
 
