@@ -186,10 +186,15 @@ class BuildHelper implements Serializable {
         def causedBy
 
         /* If build been triggered by Upstream job */
-        if (cause.class.toString().contains('UpstreamCause')) {
-            /* Than we need to call getRootCause recursively to get the root cause */
-            for (upCause in cause.upstreamCauses) {
-                causedBy = getRootCause(upCause)
+        if (cause instanceof Cause.UpstreamCause) {
+            /* checking if the build cause is DeeplyNestedUpstreamCause because of build depth is more than 10 */
+            if (cause instanceof Cause.UpstreamCause.DeeplyNestedUpstreamCause) {
+                causedBy = ''
+            } else {
+                Cause.UpstreamCause c = (Cause.UpstreamCause) cause;
+                List<Cause> upstreamCauses = c.getUpstreamCauses();
+                for (Cause upstreamCause : upstreamCauses)
+                    causedBy = getRootCause(upstreamCause)
             }
         } else {
             switch (cause.class.toString()) {
