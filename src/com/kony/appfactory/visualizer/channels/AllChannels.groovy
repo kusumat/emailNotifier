@@ -47,6 +47,8 @@ class AllChannels implements Serializable {
     final projectWorkspaceFolderName
     /* Target folder for checkout, default value vis_ws/<project_name> */
     protected checkoutRelativeTargetFolder
+    protected checkoutFolder
+
     protected separator = '/'
 
     /* Common variables */
@@ -159,7 +161,7 @@ class AllChannels implements Serializable {
 
                         script.env.IS_KONYQUANTUM_APP_BUILD = ValidationHelper.isValidStringParam(script, 'IS_KONYQUANTUM_APP_BUILD') ? script.params.IS_KONYQUANTUM_APP_BUILD : false
 
-                        def checkoutFolder = checkoutRelativeTargetFolder
+                        checkoutFolder = checkoutRelativeTargetFolder
 
                         script.callStageCustom(buildStatus, "Downloading Project/Application source binaries") {
                             if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
@@ -170,6 +172,8 @@ class AllChannels implements Serializable {
                                         scmCredentialsId: libraryProperties.'quantum.app.repo.credential.id',
                                         scmUrl: libraryProperties.'quantum.app.repo.url',
                                         scmBranch: libraryProperties.'quantum.app.repo.master.branch'
+
+                                // lets re-set checkoutFolder for downloading actual child app for Quantum preview app build in different location.
                                 checkoutFolder = [projectWorkspaceFolderName,
                                                   libraryProperties.'quantum.childapp.temp.download.dir'].join(separator)
                             }
@@ -220,7 +224,9 @@ class AllChannels implements Serializable {
                                     [checkoutRelativeTargetFolder, script.env.PROJECT_ROOT_FOLDER_NAME].join(separator) :
                                     checkoutRelativeTargetFolder
 
-                            script.dir(projectDir) {
+                            checkoutFolder = (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) ? checkoutFolder : projectDir
+
+                            script.dir(checkoutFolder) {
                                 String projectPropertiesText = script.readFile file: projectPropertyFileName
                                 projectProperties = JsonHelper.parseJson(projectPropertiesText, ProjectPropertiesDTO.class)
                                 modifyPaths(projectProperties)

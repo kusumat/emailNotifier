@@ -370,7 +370,7 @@ class Channel implements Serializable {
                         }
 
                         /* For AppViewer CloudBuild, lets run extra step for merging child app to shell app */
-                        if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
+                        if (script.env.IS_KONYQUANTUM_APP_BUILD?.equalsIgnoreCase("true")) {
                             script.catchErrorCustom('AppViewer packaging failed!!') {
                                 def pluginsPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
                                 def childAppPath = [projectWorkspacePath,
