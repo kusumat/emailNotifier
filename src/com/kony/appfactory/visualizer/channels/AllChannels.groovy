@@ -286,7 +286,7 @@ class AllChannels implements Serializable {
                             }
                         }
 
-                        script.callStageCustom(buildStatus, "Build completed. Copying binaries") {
+                        script.callStageCustom(buildStatus, "Build completed. Checking binaries and copying") {
                             if (androidChannels) {
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
                                     try {
@@ -329,11 +329,11 @@ class AllChannels implements Serializable {
                         }
 
                         script.callStageCustom(buildStatus, "Executing post build tasks") {
-                            script.callStageCustom(buildStatus, "Signing and publishing Android binaries") {
-                                channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
-                                    def android_channel_id = it.key
-                                    def android_channel = it.value
+                            channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
+                                def android_channel_id = it.key
+                                def android_channel = it.value
 
+                                script.callStageCustom(buildStatus, "Signing and publishing ${android_channel_id} binary") {
                                     try {
                                         android_channel.pipelineWrapper {
                                             if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
@@ -372,11 +372,13 @@ class AllChannels implements Serializable {
                                     }
                                 }
                             }
-                            script.callStageCustom(buildStatus, "Generating IPA and publishing iOS binaries") {
-                                /* Search for build artifacts for iOS and publish to S3 */
-                                channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
-                                    def ios_channel_id = it.key
-                                    IosChannel ios_channel = it.value
+
+                            /* Search for build artifacts for iOS and publish to S3 */
+                            channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
+                                def ios_channel_id = it.key
+                                IosChannel ios_channel = it.value
+
+                                script.callStageCustom(buildStatus, "Generating IPA and publishing ${ios_channel_id} binaries") {
                                     try {
                                         ios_channel.pipelineWrapper {
                                             ios_channel.fetchFastlaneConfig()
@@ -438,6 +440,7 @@ class AllChannels implements Serializable {
                                     }
                                 }
                             }
+
                             /* Run PostBuild Hooks */
                             script.stage("Post-build custom hooks") {
                                 channelObjects.each {
