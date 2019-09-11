@@ -60,10 +60,10 @@ class EmailBuilder {
             htmlBuilder.tr {
                 if (rownum == 0)
                     th(rowspan: countRows, binding.channelPath.replaceAll('/', ' '))
-                td(style: "text-align:left ,border-right: 1px dotted #e8e8e8; width: 65px;", binding.artifacts[i].extension)
+                td(style: "text-align:left ,border-right: 1px dotted #e8e8e8; width: 65px;", binding.artifacts[rownum].extension)
                 td {
-                    if(binding.artifacts[i].url)
-                        a(href: binding.artifacts[i].url, target: '_blank', binding.artifacts[i].name)
+                    if(binding.artifacts[rownum].url)
+                        a(href: binding.artifacts[rownum].url, target: '_blank', binding.artifacts[rownum].name)
                     else
                         mkp.yield("Build failed")
                 }
