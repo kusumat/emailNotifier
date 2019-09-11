@@ -1038,7 +1038,8 @@ class BuildHelper implements Serializable {
          **/
         def konyPluginExists = script.fileExists file: "konyplugins.xml"
         script.env.IS_STARTER_PROJECT = (ValidationHelper.isValidStringParam(script, 'IS_SOURCE_VISUALIZER') ? script.params.IS_SOURCE_VISUALIZER : false) || !konyPluginExists
-        
+        script.env.IS_KONYQUANTUM_APP_BUILD = ValidationHelper.isValidStringParam(script, 'IS_KONYQUANTUM_APP_BUILD') ? script.params.IS_KONYQUANTUM_APP_BUILD : false
+
         def libraryProperties = loadLibraryProperties(script, 'com/kony/appfactory/configurations/common.properties')
         def visualizerVersion = getVisualizerVersion(script)
 
