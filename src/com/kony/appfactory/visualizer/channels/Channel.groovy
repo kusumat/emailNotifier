@@ -250,6 +250,8 @@ class Channel implements Serializable {
          **/
         def konyPluginExists = script.fileExists file: "konyplugins.xml"
         script.env.IS_STARTER_PROJECT = (ValidationHelper.isValidStringParam(script, 'IS_SOURCE_VISUALIZER') ? script.params.IS_SOURCE_VISUALIZER : false) || !konyPluginExists
+        script.env.IS_KONYQUANTUM_APP_BUILD = ValidationHelper.isValidStringParam(script, 'IS_KONYQUANTUM_APP_BUILD') ? script.params.IS_KONYQUANTUM_APP_BUILD : false
+
         /* Get Visualizer version */
         visualizerVersion = BuildHelper.getVisualizerVersion(script)
         script.env.visualizerVersion = visualizerVersion
@@ -370,7 +372,7 @@ class Channel implements Serializable {
                         }
 
                         /* For AppViewer CloudBuild, lets run extra step for merging child app to shell app */
-                        if (script.env.IS_KONYQUANTUM_APP_BUILD?.equalsIgnoreCase("true")) {
+                        if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
                             script.catchErrorCustom('AppViewer packaging failed!!') {
                                 def pluginsPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
                                 def childAppPath = [projectWorkspacePath,

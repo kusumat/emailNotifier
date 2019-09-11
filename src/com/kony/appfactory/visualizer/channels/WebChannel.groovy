@@ -216,9 +216,9 @@ class WebChannel extends Channel {
 
                         script.stage("Publish artifacts to S3") {
                             /* Rename artifacts for publishing */
-                            artifacts = renameArtifacts(buildArtifacts)
+                            def channelArtifacts = renameArtifacts(buildArtifacts)
 
-                            artifacts?.each { artifact ->
+                            channelArtifacts?.each { artifact ->
                                 String artifactName = artifact.name
                                 String artifactPath = artifact.path
                                 String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
