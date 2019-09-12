@@ -589,7 +589,8 @@ class Facade implements Serializable {
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
-                artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
+                // For Web related channels, channelPaths and channelNames slightly different.
+                artifactsMeta.put(channelName.replace('_', '').capitalize(), getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
 
                 /* Collect must have artifacts */
                 mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
