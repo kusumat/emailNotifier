@@ -286,7 +286,7 @@ class AllChannels implements Serializable {
                             }
                         }
 
-                        script.callStageCustom(buildStatus, "Build completed. Checking binaries and copying") {
+                        script.callStageCustom(buildStatus, "Build completed. Copying binaries") {
                             if (androidChannels) {
                                 channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
                                     try {
@@ -332,8 +332,9 @@ class AllChannels implements Serializable {
                             channelObjects.findAll { channelId, channelObject -> channelId.contains('ANDROID') }.each {
                                 def android_channel_id = it.key
                                 def android_channel = it.value
+                                def channel_name = getChannelName(android_channel_id)
 
-                                script.callStageCustom(buildStatus, "Signing and publishing ${android_channel_id} binary") {
+                                script.callStageCustom(buildStatus, "Signing and publishing ${channel_name} binary") {
                                     try {
                                         android_channel.pipelineWrapper {
                                             if (android_channel.buildMode != libraryProperties.'buildmode.debug.type') {
@@ -377,8 +378,9 @@ class AllChannels implements Serializable {
                             channelObjects.findAll { channelId, channelObject -> channelId.contains('IOS') }.each {
                                 def ios_channel_id = it.key
                                 IosChannel ios_channel = it.value
+                                def channel_name = getChannelName(ios_channel_id)
 
-                                script.callStageCustom(buildStatus, "Generating IPA and publishing ${ios_channel_id} binaries") {
+                                script.callStageCustom(buildStatus, "Generating IPA and publishing ${channel_name} binaries") {
                                     try {
                                         ios_channel.pipelineWrapper {
                                             ios_channel.fetchFastlaneConfig()
@@ -683,5 +685,18 @@ class AllChannels implements Serializable {
                 }
             }
         }
+    }
+
+    /**
+     * Returns channel name in more readable format..
+     * @param channel build parameter name. eg: ANDROID_MOBILE_NATIVE
+     * @return relative channel name. eg: Android Mobile Native
+     */
+    private final getChannelName(channelId) {
+        def channelName = channelId.tokenize('_').collect() { item ->
+            item.toLowerCase().capitalize()
+        }.join(' ')
+
+        channelName
     }
 }
