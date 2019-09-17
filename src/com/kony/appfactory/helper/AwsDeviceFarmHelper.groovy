@@ -688,6 +688,8 @@ class AwsDeviceFarmHelper implements Serializable {
                             def s3path = resultPath.join('/').replaceAll('\\s', '_')
                             /* Replace all spaces with underscores in artifact name */
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll('\\s', '_')
+                            /* persisting the aws urls for the future use - we currently use for extracting the customer artifacts */
+                            artifact.awsurl = artifact.url
 
                             /* Fetch run artifact */
                             fetchArtifact(artifactFullName, artifact.url)

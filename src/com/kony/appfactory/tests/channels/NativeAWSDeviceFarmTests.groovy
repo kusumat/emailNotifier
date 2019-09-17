@@ -273,11 +273,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         getTestRunArtifacts returns list of one item (run result).
                      */
                     testRunArtifacts = deviceFarm.getTestRunArtifacts(arn)
-
-                    if(runInCustomTestEnvironment)
-                        deviceFarmTestRunResults.addAll(fetchCustomTestResults(testRunArtifacts))
-                    else
-                        deviceFarmTestRunResults.addAll(testRunArtifacts)
+                    deviceFarmTestRunResults.addAll(testRunArtifacts)
 
                 }
                 /* else notify user that result value is empty */
@@ -356,6 +352,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             )
         }
 
+        if(runInCustomTestEnvironment) {
+            def deviceFarmCustomTestRunResults = []
+            deviceFarmTestRunResults.each { testArtifacts -> deviceFarmCustomTestRunResults.addAll(fetchCustomTestResults(testArtifacts)) }
+            deviceFarmTestRunResults = deviceFarmCustomTestRunResults
+        }
+        
         deviceFarmTestRunResults
     }
 
@@ -467,7 +469,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         /* Combine binaries build parameters */
         def nativeUrlParameters = nativeTestBinaryUrlParameter + nativeAppBinaryUrlParameters
 
-        if (runInCustomTestEnvironment) {
+        if (runInCustomTestEnvironment && !isJasmineEnabled) {
             /*Filter AWS Test Environment related parameters */
             def awsCustomEnvMandatoryParameters = ['TESTNG_FILES']
             /* Check all required parameters depending on user input */
@@ -612,6 +614,9 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
                                 /* Preparing the environment for the Jasmine Tests */
                                 if(isJasmineEnabled){
+                                    // Running the Jasmine tests on the custom test environment by default.
+                                    runInCustomTestEnvironment = true
+                                    testngFiles = "Testng.xml"
                                     prepareEnvForJasmineTests(testFolder)
                                 }
 
@@ -777,23 +782,19 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     protected  final def fetchCustomTestResults(testRunArtifacts) {
         def customerArtifactUrl, deviceName, reportsUrl =[:]
         def artifactName = 'Customer Artifacts'
-        for(runArtifacts in testRunArtifacts) {
-            for(suite in runArtifacts.suites) {
-                for (test in suite.tests) {
-                    for (artifact in test.artifacts) {
-                        if(artifact.name == artifactName) {
-                            customerArtifactUrl = artifact.url
-                        }
+        for(suite in testRunArtifacts.suites) {
+            for (test in suite.tests) {
+                for (artifact in test.artifacts) {
+                    if(artifact.name == artifactName) {
+                        customerArtifactUrl = artifact.awsurl
                     }
                 }
             }
         }
         if(customerArtifactUrl != null) {
-            for(runArtifacts in testRunArtifacts) {
-                for(device in runArtifacts.device) {
-                    if(device.getKey() == "name") {
-                        deviceName = device.getValue().replaceAll("[^a-zA-Z0-9]", "");
-                    }
+            for(device in testRunArtifacts.device) {
+                if(device.getKey() == "name") {
+                    deviceName = device.getValue().replaceAll("[^a-zA-Z0-9]", "");
                 }
             }
             artifactName = artifactName.replaceAll('\\s', '_')
@@ -813,31 +814,41 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             def authUrl, test_results
             if (isJasmineEnabled) {
                 script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/* ${deviceFarmWorkingFolder}/${deviceName}/", true)
-                String testNGResultsFileContent = script.readFile file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.json"
-                def jasmineTestResults = script.readJSON file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.json"
-                test_results = parseAndgetJasmineResults(jasmineTestResults)
-                def s3path = TestsHelper.getS3ResultsPath(script, testRunArtifacts[0], "JasmineSuite")
-                authUrl = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: "JasmineTestResult.html",
-                            sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}" , script, false
+                boolean isJasmineJSONReportExists = script.fileExists file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.json"
+                boolean isJasmineHTMLReportExists = script.fileExists file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.html"
+                if(isJasmineJSONReportExists && isJasmineHTMLReportExists) {
+                    def jasmineTestResults = script.readJSON file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.json"
+                    test_results = parseAndgetJasmineResults(jasmineTestResults)
+                    def s3path = TestsHelper.getS3ResultsPath(script, testRunArtifacts, "JasmineSuite")
+                    authUrl = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: "JasmineTestResult.html",
+                                sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}" , script, false
+                } else {
+                    script.echoCustom("Jasmine Test report is not found on the ${deviceName} device. Please check the device logs for more information!!!", "ERROR", false)
+                    script.currentBuild.result = "FAILED"
+                }
             } else {
                 script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/test-output/*  ${deviceFarmWorkingFolder}/${deviceName}/test-output", true)
-                authUrl = publishTestReportsToS3(testRunArtifacts[0], "TestNGSuite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
-                String testNGResultsFileContent = script.readFile("${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml")
-                test_results = parseTestResults(testNGResultsFileContent)
-                authUrl = authUrl.replace("*/**", 'index.html')
+                boolean isTestNGResultsFileExists = script.fileExists file: "${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml"
+                if(isTestNGResultsFileExists) {
+                    authUrl = publishTestReportsToS3(testRunArtifacts, "TestNGSuite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
+                    String testNGResultsFileContent = script.readFile("${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml")
+                    test_results = parseTestResults(testNGResultsFileContent)
+                    authUrl = authUrl.replace("*/**", 'index.html')
+                } else {
+                    script.echoCustom("TestNG report is not found on the ${deviceName} device. Please check the device logs for more information!!!", "ERROR", false)
+                    script.currentBuild.result = "FAILED"
+                }
             }
-            for(runArtifacts in testRunArtifacts) {
-                reportsUrl.put("url", authUrl)
-                runArtifacts.reports = reportsUrl
-                if(test_results) {
-                    runArtifacts.totalSuites = test_results.totalSuites
-                    runArtifacts.failedTests = test_results.failedTests
-                    runArtifacts.passedTests = test_results.passedTests
-                    runArtifacts.skippedTests = test_results.skippedTests
-                    for(suite in runArtifacts.suites) {
-                        if(suite.name == "Tests Suite") {
-                            suite.totalTests = test_results.totalSuites
-                        }
+            reportsUrl.put("url", authUrl)
+            testRunArtifacts.reports = reportsUrl
+            if(test_results) {
+                testRunArtifacts.totalSuites = test_results.totalSuites
+                testRunArtifacts.failedTests = test_results.failedTests
+                testRunArtifacts.passedTests = test_results.passedTests
+                testRunArtifacts.skippedTests = test_results.skippedTests
+                for(suite in testRunArtifacts.suites) {
+                    if(suite.name == "Tests Suite") {
+                        suite.totalTests = test_results.totalSuites
                     }
                 }
             }
