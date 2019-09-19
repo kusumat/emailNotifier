@@ -172,8 +172,11 @@ class CustomHookHelper implements Serializable {
                         defaultParams = [defaultParams,"-D${it.key}=\"${it.value}\""].join(' ')
                     }
 
-                    /* Append current job build_number to defaultParams string. */
-                    defaultParams += " -DPROJECT_BUILDNUMBER=$script.env.BUILD_NUMBER"
+                    /* To store the parent job build number and expose this to custom hook */
+                    def parentJobBuildNumber = BuildHelper.getUpstreamJobNumber(script)
+
+                    /* Append parent job build_number to defaultParams string. */
+                    defaultParams += " -DPROJECT_BUILDNUMBER=$parentJobBuildNumber"
 
                     /* Applying ACLs, allow hookslave user permissions */
                     if(hookLabel.contains(libraryProperties.'ios.node.label')) {
