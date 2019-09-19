@@ -223,10 +223,10 @@ class EmailTemplateHelper implements Serializable {
 
                             if (binding.isNativeAppTestRun) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Device Pools: ', binding.devicePoolName)
-                                if (!binding.missingDevices) {
-                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ', 'None')
-                                } else {
+                                if (binding.missingDevices) {
                                     EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ', binding.missingDevices)
+                                } else {
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Devices not available in pool: ', 'None')
                                 }
 
                                 if (binding.appiumVersion) {
