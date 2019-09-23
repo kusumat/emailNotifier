@@ -273,8 +273,11 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         getTestRunArtifacts returns list of one item (run result).
                      */
                     testRunArtifacts = deviceFarm.getTestRunArtifacts(arn)
+                    
+                    if(runInCustomTestEnvironment)
+                        testRunArtifacts = testRunArtifacts.each { testRunArtifact -> fetchCustomTestResults(testRunArtifact) }
                     deviceFarmTestRunResults.addAll(testRunArtifacts)
-
+                    
                 }
                 /* else notify user that result value is empty */
                 else {
@@ -300,23 +303,22 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     def artifacts = fetchTestBinaryDetails(formFactor, platform)
                     if(artifacts.url.contains(script.env.S3_BUCKET_NAME)) {
                         artifacts.url = BuildHelper.createAuthUrl(artifacts.url, script, true)
-                        testBinaryDetails.put(key, artifacts)
                     }
-                    for (summary in testSummaryMap) {
-                        def summaryDetail = summary.getValue()
-                        if (!summaryDetail.contains('displayName'))
-                            testSummaryMap.put(key, 'displayName:' + displayName + summaryDetail)
-                    }
-                }
-
-                if(runInCustomTestEnvironment) {
-                    for(runArtifacts in testRunArtifacts) {
+                    testBinaryDetails.put(key, artifacts)
+                    
+                    if(runInCustomTestEnvironment) {
                         for(reports in runArtifacts.reports) {
                             authUrl = reports.getValue()
                         }
                         if(key != null && runArtifacts.passedTests != null && runArtifacts.failedTests != null) {
                             def value = 'displayName:' + displayName + 'skipped: ' + runArtifacts.skippedTests + ' warned: ' + 0 + 'failed: '+ runArtifacts.failedTests + 'stopped: ' + 0 + 'passed: '+ runArtifacts.passedTests + 'errored: 0' + 'total tests: ' + runArtifacts.totalSuites + 'reports url: ' + authUrl
                             testSummaryMap.put(key, value)
+                        }
+                    } else {
+                        for (summary in testSummaryMap) {
+                            def summaryDetail = summary.getValue()
+                            if (!summaryDetail.contains('displayName'))
+                                testSummaryMap.put(key, 'displayName:' + displayName + summaryDetail)
                         }
                     }
                 }
@@ -350,12 +352,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     deviceFarmTestRunResults,
                     ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
             )
-        }
-
-        if(runInCustomTestEnvironment) {
-            def deviceFarmCustomTestRunResults = []
-            deviceFarmTestRunResults.each { testArtifacts -> deviceFarmCustomTestRunResults.addAll(fetchCustomTestResults(testArtifacts)) }
-            deviceFarmTestRunResults = deviceFarmCustomTestRunResults
         }
         
         deviceFarmTestRunResults
@@ -780,13 +776,13 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     * @return testRunArtifacts the run result with updated count.
     */
     protected  final def fetchCustomTestResults(testRunArtifacts) {
-        def customerArtifactUrl, deviceName, reportsUrl =[:]
+        def customerArtifactUrl, deviceName, deviceDisplayName, reportsUrl =[:]
         def artifactName = 'Customer Artifacts'
         for(suite in testRunArtifacts.suites) {
             for (test in suite.tests) {
                 for (artifact in test.artifacts) {
                     if(artifact.name == artifactName) {
-                        customerArtifactUrl = artifact.awsurl
+                        customerArtifactUrl = artifact.url
                     }
                 }
             }
@@ -795,6 +791,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             for(device in testRunArtifacts.device) {
                 if(device.getKey() == "name") {
                     deviceName = device.getValue().replaceAll("[^a-zA-Z0-9]", "");
+                    deviceDisplayName = device.getValue()
                 }
             }
             artifactName = artifactName.replaceAll('\\s', '_')
@@ -822,8 +819,9 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     def s3path = TestsHelper.getS3ResultsPath(script, testRunArtifacts, "JasmineSuite")
                     authUrl = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: "JasmineTestResult.html",
                                 sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}" , script, false
+                    authUrl = BuildHelper.createAuthUrl(authUrl, script, true)
                 } else {
-                    script.echoCustom("Jasmine Test report is not found on the ${deviceName} device. Please check the device logs for more information!!!", "ERROR", false)
+                    script.echoCustom("Jasmine Test report is not found for the ${deviceDisplayName} device. Please check the device logs for more information!!!", "ERROR", false)
                     script.currentBuild.result = "FAILED"
                 }
             } else {
@@ -835,7 +833,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     test_results = parseTestResults(testNGResultsFileContent)
                     authUrl = authUrl.replace("*/**", 'index.html')
                 } else {
-                    script.echoCustom("TestNG report is not found on the ${deviceName} device. Please check the device logs for more information!!!", "ERROR", false)
+                    script.echoCustom("TestNG report is not found for the ${deviceDisplayName} device. Please check the device logs for more information!!!", "ERROR", false)
                     script.currentBuild.result = "FAILED"
                 }
             }
