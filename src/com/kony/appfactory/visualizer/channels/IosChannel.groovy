@@ -201,6 +201,7 @@ class IosChannel extends Channel {
         String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithKonylib'].join(separator)
         String iosDummyProjectGenPath = [iosDummyProjectWorkspacePath, 'gen'].join(separator)
         String fastlaneName
+        boolean isFileShareEnabled = false
 
         try {
             /* Extract Visualizer iOS Dummy Project */
@@ -288,6 +289,9 @@ class IosChannel extends Channel {
                      fastlaneName = 'kony_ios_' + buildMode.replaceAll('-', '_')
                  }
                  
+                 /* Enable the flag to read/write to the disk while running the jasmine tests */
+                 isFileShareEnabled = isJasmineTestsExecEnabled && buildMode.equalsIgnoreCase(libraryProperties.'buildmode.debug.type')
+                 
                 /*
                  * APPFACT-779
                  * Custom IOS App display name can be given using the Key "FL_UPDATE_PLIST_DISPLAY_NAME=${projectName}"
@@ -310,7 +314,8 @@ class IosChannel extends Channel {
                     "PROJECT_BUILDMODE=${ProjectBuildMode}",
                     "FASTLANE_TEAM_ID=${script.env.APPLE_DEVELOPER_TEAM_ID}",
                     "FASTLANE_SKIP_UPDATE_CHECK=1",
-                    "APP_VERSION=${script.env.APP_VERSION}"
+                    "APP_VERSION=${script.env.APP_VERSION}",
+                    "ENABLE_FILE_SHARING=${isFileShareEnabled}"
                 ]) {
 
                     if (appleID){
