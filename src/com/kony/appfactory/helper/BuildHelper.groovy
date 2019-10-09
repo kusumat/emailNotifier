@@ -13,6 +13,7 @@ import com.kony.AppFactory.fabric.api.oauth1.KonyOauth1Client
 import com.kony.AppFactory.fabric.api.oauth1.dto.KonyExternalAuthN
 import com.kony.AppFactory.fabric.FabricException;
 import com.kony.AppFactory.fabric.FabricUnreachableException
+import java.util.stream.Collectors;
 
 /**
  * Implements logic related to channel build process.
@@ -248,10 +249,7 @@ class BuildHelper implements Serializable {
             if (currentBuild) {
                 try {
                     reader = TimestamperAPI.get().read(currentBuild, "time=HH:mm:ss&appendLog")
-                    String line
-                    while ((line = reader.readLine()) != null) {
-                        buildLogText = buildLogText + line + "\n";
-                    }
+                    buildLogText = reader.lines().collect(Collectors.joining("\n"));
                 } catch (Exception e) {
                     String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed to capture the Build Log....'
                     script.echoCustom(exceptionMessage, 'ERROR', false)
