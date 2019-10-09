@@ -785,7 +785,17 @@ class Facade implements Serializable {
                             /* Check the valid values for Test Framework */
                             def expectedValuesForTestFramework = ['TestNG', 'Jasmine']
                             ValidationHelper.checkValidValueForParam(script, 'TEST_FRAMEWORK', expectedValuesForTestFramework)
-                            
+
+                            /* 'test' BUILD_MODE type is only applicable for Jasmine TEST_FRAMEWORK in CI build. So let's validate this. */
+                            if(isJasmineEnabled && script.params.BUILD_MODE != libraryProperties.'buildmode.test.type') {
+                                throw new AppFactoryException("Jasmine tests can only be executed when the app is built in Test mode!", 'ERROR')
+                            }
+
+                            /* If user trying to run different framework (other than Jasmine) with 'test' BUILD_MODE selection, CI forcibly run with debug mode, so let's notify the user on same. */
+                            if(!isJasmineEnabled && script.params.BUILD_MODE == libraryProperties.'buildmode.test.type') {
+                                script.echoCustom('Test mode is not applicable for this framework and generating your binaries in debug mode.', 'WARN')
+                            }
+
                             /* Check all required parameters depending on user input */
                             /* For CloudBuild, scan the checkParams list and clean unwanted params */
                             if (script.params.IS_SOURCE_VISUALIZER) {

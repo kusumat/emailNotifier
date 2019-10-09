@@ -184,8 +184,6 @@ class IosChannel extends Channel {
                 }
             }
         }
-
-
     }
 
     /**
@@ -290,7 +288,7 @@ class IosChannel extends Channel {
                  }
                  
                  /* Enable the flag to read/write to the disk while running the jasmine tests */
-                 isFileShareEnabled = isJasmineTestsExecEnabled && buildMode.equalsIgnoreCase(libraryProperties.'buildmode.debug.type')
+                 isFileShareEnabled = isJasmineTestsExecEnabled && isBuildModeTest
                  
                 /*
                  * APPFACT-779

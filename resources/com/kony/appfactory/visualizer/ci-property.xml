@@ -97,6 +97,10 @@
         <condition property="jasmineTestsUrl" value="${env.JASMINE_TEST_URL}" else="">
             <isset property="env.JASMINE_TEST_URL"/>
         </condition>
+
+        <condition property="enableJasmineAutomation" value="${env.ENABLE_JASMINE_AUTOMATION}" else="false">
+            <isset property="env.ENABLE_JASMINE_AUTOMATION"/>
+        </condition>
     	
         <condition property="fetchJasmineTestsFromLocal" value="true" else="false">
             <and>
@@ -278,6 +282,7 @@
         	<!-- Jasmine Test options -->
         	<entry key="test.automation.server.url" value="${jasmineTestsUrl}"/>
         	<entry key="test.automation.storage.local" value="${fetchJasmineTestsFromLocal}"/>
+              <entry key="enableJasmineAutomation" value="${enableJasmineAutomation}"/>
         </propertyfile>
 
         <!--APPFACT-545: propertyfile appends escape character to Special Characters, workaround to use exact same password -->

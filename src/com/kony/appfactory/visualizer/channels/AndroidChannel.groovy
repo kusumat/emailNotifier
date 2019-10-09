@@ -220,7 +220,6 @@ class AndroidChannel extends Channel {
                                     scmUrl: scmUrl
                         }
                         artifactMeta.add("version": ["App Version": androidAppVersion, "Build Version": androidAppVersionCode])
-
                         /* Run PreBuild Hooks */
                         runPreBuildHook()
 
@@ -230,7 +229,7 @@ class AndroidChannel extends Channel {
                                 script.echoCustom("Placing encryptions keys for protected mode build.")
                                 copyProtectedKeysToProjectWorkspace()
                             }
-                            if(buildMode == libraryProperties.'buildmode.debug.type' && isJasmineTestsExecEnabled) {
+                            if(isBuildModeTest && isJasmineTestsExecEnabled) {
                                 updateAndroidCapabilitiesForJasmineTests()
                             }
                             build()

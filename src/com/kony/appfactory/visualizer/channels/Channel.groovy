@@ -101,7 +101,9 @@ class Channel implements Serializable {
     protected final scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    protected final buildMode = (script.params.BUILD_MODE == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
+    /* Flag to decide whether the build mode is 'test' or not */
+    protected final isBuildModeTest = (script.params.BUILD_MODE == 'test') ? true : false
+    protected final buildMode = (script.params.BUILD_MODE == 'release-protected [native-only]') ? 'release-protected' : isBuildModeTest ? 'debug' : script.params.BUILD_MODE
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     protected fabricEnvironmentName
     protected channelFormFactor = script.params.FORM_FACTOR
@@ -328,6 +330,12 @@ class Channel implements Serializable {
 
         /* Setting the test resources URL */
         script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
+
+        /** Set the environment variable "ENABLE_JASMINE_AUTOMATION" to true so that we can set the property "enableJasmineAutomation" to "true" in HeadlessBuild.properties if the customer wants to run Jasmine Tests.
+         *  Since TEST_FRAMEWORK parameter is not present for Cloud Build, we are enabling Jasmine automation when IS_SOURCE_VISUALIZER is true and build mode is 'test'.
+         */
+        script.env.ENABLE_JASMINE_AUTOMATION = (isJasmineTestsExecEnabled && isBuildModeTest) || (script.params.IS_SOURCE_VISUALIZER && isBuildModeTest)
+
         script.catchErrorCustom('Failed to build the project') {
             script.dir(projectFullPath) {
                 mustHaveArtifacts.add([name: "HeadlessBuild.properties", path: projectFullPath])
