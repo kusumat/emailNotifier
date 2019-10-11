@@ -363,7 +363,12 @@ class Channel implements Serializable {
                         /* TODO: currently basePath is only valid for PROD, later release will add support for SIT, QA & Dev */
                         fetchFeatureXML(script.env.visualizerVersion, libraryProperties.'visualizer.dependencies.feature.xml.base.url')
                     }
-
+                    
+                    /* Setting the test resources URL - only if the build is from Appfactory Console */
+                    if (!script.env.IS_STARTER_PROJECT.equals("true")) {
+                        script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
+                    }
+                    
                     if (script.env.isCIBUILD) {
                         /** Check CI build support exist for few features.
                          *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
@@ -379,7 +384,10 @@ class Channel implements Serializable {
                             script.shellCustom(npmBuildScript, isUnixNode)
                         }
 
-                        /* For AppViewer CloudBuild, lets run extra step for merging child app to shell app */
+                        /* For AppViewer CloudBuild, lets run some extra steps
+                         * Merge child app content to shell app with appViewerPackager tool
+                         * Run ant script from the app source to enable isIDEMode flag
+                         */
                         if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
                             script.catchErrorCustom('AppViewer packaging failed!!') {
                                 def pluginsPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
@@ -392,6 +400,10 @@ class Channel implements Serializable {
                                 def nodeBuildScript = ['node appViewerPackager.js', childAppPath.toString(), pluginsPath.toString(), channelsToRun].join(" ")
                                 script.shellCustom(nodeBuildScript, isUnixNode)
                                 script.echoCustom("AppViewer packaging has been completed!!")
+
+                                if (script.fileExists("serverEnv.xml")) {
+                                    script.shellCustom('ant -buildfile serverEnv.xml', isUnixNode)
+                                }
                             }
                         }
 
