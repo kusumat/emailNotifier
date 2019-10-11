@@ -134,7 +134,9 @@ class FacadeTests implements Serializable {
                         script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT),
                         script.string(name: 'APPIUM_VERSION', value: script.params.APPIUM_VERSION),
                         script.string(name: 'TESTNG_FILES', value: script.params.TESTNG_FILES),
-                        script.string(name: 'TEST_FRAMEWORK', value: script.params.TEST_FRAMEWORK)
+                        script.string(name: 'TEST_FRAMEWORK', value: script.params.TEST_FRAMEWORK),
+                        script.string(name: 'TEST_PLAN', value: script.params.TEST_PLAN)
+
                 ]
     }
 
@@ -151,7 +153,9 @@ class FacadeTests implements Serializable {
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
                         script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS),
                         script.string(name: 'TEST_FRAMEWORK', value: BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')),
-                        script.string(name: 'JASMINE_TEST_URL', value: script.params.JASMINE_TEST_URL?.trim())
+                        script.string(name: 'JASMINE_TEST_URL', value: script.params.JASMINE_TEST_URL?.trim()),
+                        script.string(name: 'TEST_PLAN', value: script.params.TEST_PLAN)
+
                 ]
 
     }

@@ -138,7 +138,7 @@ class AwsDeviceFarmHelper implements Serializable {
      * @param configId pool name string.
      * @return string with comma-separated devices.
      */
-    private getDevicesInPool(String configId) {
+    protected getDevicesInPool(String configId) {
         def devices
 
         String successMessage = "Pool $configId found successfully"

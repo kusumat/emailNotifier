@@ -1075,5 +1075,13 @@ class BuildHelper implements Serializable {
             closure()
         }
     }
+
+    /**
+     * This method handles if there are any spaces in directory and trim extra space
+     * @param path indicates path of the file.
+     */
+    protected static String addQuotesIfRequired(path) {
+        return path.trim().contains(" ") ? "\"" + path.trim() + "\"" : path.trim()
+    }
 }
 
