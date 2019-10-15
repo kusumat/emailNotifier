@@ -3,10 +3,18 @@ package com.kony.appfactory.jasmine;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URL;
+import java.util.Map;
+import java.util.Set;
+
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.testng.annotations.Test;
+
+import java.io.IOException;
+import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -24,10 +32,11 @@ public class InvokeJasmineTests {
     public static AndroidDriver <WebElement> androiddriver;
     public static IOSDriver <WebElement> iosdriver;
     public static RemoteWebDriver driver;
+    public boolean isAndroidDevice = false;
     public String jasmineAndroidNativeReportDefaultLocation = "/sdcard/JasmineTestResults/";
-    public String jasmineIosNativeReportDefaultLocation = ""; //Need path
+    public String jasmineIosNativeReportDefaultLocation = "@[APPLICATIONID]/Library/JasmineTestResults/";
     public String jasmineNativeTestReportFileName = "TestResult.html";
-    public String JSONFilePath = "/sdcard/jasmineReport.json";
+    public String jasmineJSONReportFileName = "jasmineReport.json";
     int totalTests = 0;
     int totalPassed = 0;
     int totalFailed = 0;
@@ -41,14 +50,21 @@ public class InvokeJasmineTests {
             return testRunEnvType;
     }
     
-    private String getDefaultReportLocationForDevice() {
+    private boolean isAndroidDevice() {
         String devicePlatform = driver.getCapabilities().getPlatform().toString();
         String devicePlatformName = System.getenv("DEVICEFARM_DEVICE_PLATFORM_NAME");
-        
-        if(devicePlatformName.equalsIgnoreCase("Android") || devicePlatform.equalsIgnoreCase("LINUX")) {
+        return (devicePlatformName.equalsIgnoreCase("Android") || devicePlatform.equalsIgnoreCase("LINUX"));
+    }
+    
+    private String getDefaultReportLocationForDevice() {
+        if(isAndroidDevice) {
             return jasmineAndroidNativeReportDefaultLocation;
         }
         return jasmineIosNativeReportDefaultLocation;
+    }
+    
+    private String getJSONReportLocationForDevice() {
+        return getDefaultReportLocationForDevice() + jasmineJSONReportFileName;
     }
 
     /**
@@ -91,9 +107,10 @@ public class InvokeJasmineTests {
         DesiredCapabilities capabilities = new DesiredCapabilities();
         capabilities.setCapability("noReset", false);
         capabilities.setCapability("autoGrantPermissions", true);
+        capabilities.setCapability("newCommandTimeout", "300");
         if (getTestRunEnvironment().equalsIgnoreCase("RUN_IN_CUSTOM_TEST_ENVIRONMENT")) {
 
-            System.out.println("Running the in the Custom Mode");
+            System.out.println("Running tests in the Custom Test Mode");
             if ("Android".equalsIgnoreCase(System.getenv("DEVICEFARM_DEVICE_PLATFORM_NAME"))) {
                 System.out.println("Initializing the Android Driver!!!!!!!!!!!!");
                 androiddriver = new AndroidDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
@@ -105,10 +122,11 @@ public class InvokeJasmineTests {
                 driver = iosdriver;
             }
             System.out.println("Driver is initialized!!!!!!!!!!!!!!!!!!!!!");
+            isAndroidDevice = isAndroidDevice();
 
         } else {
 
-            System.out.println("Running the in the Standard Mode");
+            System.out.println("Running tests in the Standard Test Mode");
             
             if ("MAC".equalsIgnoreCase(platformName)) {
                 System.out.println("Inside platform MAC............");
@@ -145,14 +163,22 @@ public class InvokeJasmineTests {
 
     private byte[] getFileContentFromDevice(String deviceFilePath) {
         byte[] fileData = null;
+        
+        if(!isAndroidDevice) {
+            String bundleID = (String) ((IOSDriver<?>) driver).getSessionDetail("CFBundleIdentifier");
+            deviceFilePath = deviceFilePath.replace("[APPLICATIONID]", bundleID);
+        }
+        
         try {
             fileData = ((InteractsWithFiles) driver).pullFile(deviceFilePath);
 
             if (fileData == null || fileData.length == 0) {
-                System.out.println("File is empty or not exists.");
+                System.out.println("Oops.. found that jasmine test results file " + deviceFilePath + " is either empty or not exists.");
             }
         } catch (Exception e) {
+            System.out.println("Exception occurred while reading the file from the path: " + deviceFilePath);
         }
+        
         return fileData;
     }
     
@@ -161,15 +187,16 @@ public class InvokeJasmineTests {
         boolean isTestInProgress = false;
         int iterations = 0;
         System.out.println("Looking for the results file...");
+        
         do {
             
             /* Check if jasmine test is triggered or not.
              * If "resultsJSON" object consists of value, marking the status as in-progress.
              * */
             try {
-                byte[] fileContentFromDevice = getFileContentFromDevice(JSONFilePath);
-                if (fileContentFromDevice != null && fileContentFromDevice.length != 0) {
-                    resultsJSON = new String(fileContentFromDevice);
+                byte[] jasmineReportContentFromDevice = getFileContentFromDevice(getJSONReportLocationForDevice());
+                if (jasmineReportContentFromDevice != null && jasmineReportContentFromDevice.length != 0) {
+                    resultsJSON = new String(jasmineReportContentFromDevice);
                 }
             } catch (Exception e) {
                 System.out.println("Unable to find the jasmine Events !!!!");
@@ -189,13 +216,13 @@ public class InvokeJasmineTests {
                 }
             }
             
-            System.out.println("Tests execution seems in progress.. Waiting the results..");
+            System.out.println("Tests execution seems in progress.. Waiting for the results..");
             iterations = iterations + 1;
             Thread.sleep(30000);
-        } while (iterations <= 100 && isTestInProgress);
+        } while (iterations <= 100 && isTestInProgress && driver != null);
 
         saveToFile(htmlResultsFilePath, System.getenv("DEVICEFARM_LOG_DIR") + File.separator + "JasmineTestResult.html");
-        saveToFile(JSONFilePath, System.getenv("DEVICEFARM_LOG_DIR") + File.separator + "JasmineTestResult.json");
+        saveToFile(getJSONReportLocationForDevice(), System.getenv("DEVICEFARM_LOG_DIR") + File.separator + "JasmineTestResult.json");
         
     }
 
@@ -221,8 +248,7 @@ public class InvokeJasmineTests {
             initializeDriver();
             checkTestExecutionStatus(getDefaultReportLocationForDevice() + jasmineNativeTestReportFileName);
         } catch(Exception e) {
-            System.out.println("Exception occured while running the tests!");
-            
+            System.out.println("Exception occured while running the tests!!!!!");
         } finally {
             tearDownAppium();
         }

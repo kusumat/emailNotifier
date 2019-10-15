@@ -8,6 +8,24 @@ var jasmineEvents = [];
 var specDurations = {};
 var suiteDurations = {};
 
+var writeJSONFile = function(fileLoc) {
+	if (new kony.io.File(fileLoc).exists()) {
+        kony.print("Results JSON file already exists!!!");
+    } else {
+        var myFile = new kony.io.File(fileLoc).createFile();
+    }
+    try {
+        var writing = new kony.io.File(fileLoc).write(JSON.stringify(jasmineEvents));
+        if (writing != null) {
+            kony.print("Wrote the Jasmine Events into JSON File.");
+        } else {
+            kony.print("Failed to write the Jasmine events into JSON File.");
+        }
+    } catch (err) {
+        kony.print("Exception occurred while trying to write the jasmine events into JSON File.");
+    }
+};
+
 userReporter = {
     jasmineStarted: function(suiteInfo) {
         reporter.jasmineStarted(suiteInfo);
@@ -53,30 +71,19 @@ userReporter = {
         suiteDone.result = result;
         jasmineEvents.push(suiteDone);
         var platform = (kony.os.deviceInfo().name).toLowerCase();
-        var isExternalStorageAvailable = kony.io.FileSystem.isExternalStorageAvailable();
-        if (isExternalStorageAvailable) {
-            var mainLoc = kony.io.FileSystem.getExternalStorageDirectoryPath();
-            var fileLoc = "/sdcard" + constants.FILE_PATH_SEPARATOR + "jasmineReport.json";
-            if (new kony.io.File(fileLoc).exists()) {
-                kony.print("Json file already exists");
-            } else {
-                var myFile = new kony.io.File(fileLoc).createFile();
+        var fileLoc;
+        if(platform == "Android") {
+            var isExternalStorageAvailable = kony.io.FileSystem.isExternalStorageAvailable();
+            if (isExternalStorageAvailable) {
+                fileLoc = "/sdcard" + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
             }
-            try {
-                var writing = new kony.io.File(fileLoc).write(JSON.stringify(jasmineEvents));
-                if (writing !== null) {
-                    kony.print("Wrote the Jasmine Events into ");
-                } else {
-                    kony.print("writing on nonExisting file returns null");
-                }
-            } catch (err) {
-                kony.print("can't try write on NonExistingFile, causes Error");
-            }
+        } else {
+        	var dataDirectoryPath = kony.io.FileSystem.getDataDirectoryPath();
+        	if (dataDirectoryPath) {
+                fileLoc = dataDirectoryPath + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
+        	}
         }
-        
-        // iOS - to be implemented
-        // iOS App package/Library/JasmineTestResults
-        
+        writeJSONFile(fileLoc);
     },
  
     jasmineDone: function() {

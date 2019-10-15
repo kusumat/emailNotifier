@@ -189,11 +189,13 @@ class RunTests implements Serializable {
                 script.shellCustom("set +x;mkdir -p $fullPathToCopyScripts", true)
                 script.shellCustom("set +x;cp -R ${jasminePkgFolder}/Desktop ${fullPathToCopyScripts}", true)
             } else {
-                prepareExtraDataPackage("Mobile")
-                prepareExtraDataPackage("Tablet")
                 script.dir(deviceFarmWorkingFolder) {
-                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Mobile/JasmineDeviceScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Mobile_TestExtraDataPkg.zip", true)
-                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Tablet/JasmineDeviceScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Tablet_TestExtraDataPkg.zip", true)
+                    prepareExtraDataPackage("Mobile")
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Mobile/AndroidJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Android_Mobile_TestExtraDataPkg.zip", true)
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Mobile/iOSJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_iOS_Mobile_TestExtraDataPkg.zip", true)
+                    prepareExtraDataPackage("Tablet")
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Tablet/AndroidJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Android_Tablet_TestExtraDataPkg.zip", true)
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Tablet/iOSJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_iOS_Tablet_TestExtraDataPkg.zip", true)
                 }
             }
         }
@@ -255,10 +257,17 @@ class RunTests implements Serializable {
     protected final prepareExtraDataPackage(formFactor) {
         def targetFolder = [jasminePkgFolder, formFactor].join(separator)
         script.dir(targetFolder){
+            // Android Packaging
             script.shellCustom("set +x;mkdir ${targetFolder}/JasmineTests ", true)
             script.shellCustom("set +x;cp ${jasminePkgFolder}/${formFactor}/automationScripts.zip ${targetFolder}/JasmineTests/ ", true)
-            script.shellCustom("set +x;zip -r JasmineDeviceScripts.zip JasmineTests", true)
+            script.shellCustom("set +x;zip -r AndroidJasmineScripts.zip JasmineTests", true)
+            
+            // iOS Packaging
+            script.shellCustom("set +x;mkdir ${targetFolder}/AutomationScripts ", true)
+            script.unzip zipFile: "${jasminePkgFolder}/${formFactor}/automationScripts.zip", dir: "${targetFolder}/AutomationScripts/"
+            script.shellCustom("set +x;zip -r iOSJasmineScripts.zip AutomationScripts", true)
         }
+        
     }
 
     /**

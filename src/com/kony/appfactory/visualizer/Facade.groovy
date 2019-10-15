@@ -858,10 +858,15 @@ class Facade implements Serializable {
                                 if (runInCustomTestEnvironment) {
                                     /* Filter AWS Test Environment related parameters */
                                     awsCustomEnvParameters = [script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: runInCustomTestEnvironment),
-                                                              script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"),
                                                               script.string(name: 'TESTNG_FILES', value: "${testngFiles}")
                                     ]
                                 }
+                                
+                                // APPIUM_VERSION variable will be passed on to the test job, even if the jasmine framework is selected.
+                                if (isJasmineEnabled || runInCustomTestEnvironment) {
+                                    awsCustomEnvParameters.add(script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"))
+                                }
+                                
                                 String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
                                         "${script.env.JOB_BASE_NAME}" -
                                         'Builds/'

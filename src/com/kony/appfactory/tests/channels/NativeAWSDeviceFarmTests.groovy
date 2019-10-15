@@ -85,6 +85,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     
     /* Jasmine extra data package arns */
     private mobileExtraDataPkgArtifactArn, tabletExtraDataPkgArtifactArn
+    private extraDataPkgArtifactArnsMap = [:]
 
     /**
      * Class constructor.
@@ -108,7 +109,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      */
     final void uploadAndRun(deviceFarmProjectArn, devicePoolArns) {
         /* Prepare step to run in parallel */
-        def step = { artifactName, artifactURL, artifactExt, uploadType ->
+        def step = { artifactName, artifactURL, artifactExt, uploadType, extraDataPkgArn ->
             /* Upload application binaries to Device Farm */
             def uploadArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
                     uploadType, artifactName + '.' + artifactExt)
@@ -122,9 +123,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
                             "tablets, but no tablets were found in the device pool", 'ERROR'))
 
-            /* Depending on artifact name we need to chose appropriate jasmine scripts package */
-            def extraDataPkgArn = artifactName.toLowerCase().contains('mobile') ? mobileExtraDataPkgArtifactArn : tabletExtraDataPkgArtifactArn
-            
             /* If we have application binaries and test binaries, schedule the custom run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
                 deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
@@ -185,11 +183,11 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      *
      * @param deviceFarmProjectArn is the ARN that is associated with a particular project
      */
-    final String uploadExtraDataPackage(deviceFarmProjectArn, formFactor) {
+    final String uploadExtraDataPackage(deviceFarmProjectArn, platformName, formFactor) {
         /* Get required parameters for test binaries upload */
         def testUploadType = testExtraDataPkg.get("${projectName}_TestExtraDataPkg").uploadType
         def testExtension = testExtraDataPkg.get("${projectName}_TestExtraDataPkg").extension
-        def testUploadFileName = "${projectName}_${formFactor}_TestExtraDataPkg.${testExtension}"
+        def testUploadFileName = "${projectName}_${platformName}_${formFactor}_TestExtraDataPkg.${testExtension}"
 
         /* Upload the Jasmine test packages and get upload ARN */
         def deviceFarmExtraDataPackageArn = deviceFarm.uploadArtifact(
@@ -431,9 +429,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             def artifactUrl = artifact.url
             def artifactExt = artifact.extension
             def uploadType = artifact.uploadType
+            def extraPkg = artifact.extraPkg ? artifact.extraPkg : null
             if (artifactUrl) {
                 def step = {
-                    stepClosure(artifactName, artifactUrl, artifactExt, uploadType)
+                    stepClosure(artifactName, artifactUrl, artifactExt, uploadType, extraPkg)
                 }
 
                 stepsToRun.put("${stageName}${artifactName}", step)
@@ -686,8 +685,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                         
                                         /* Uploading the Jasmine scripts as extra data package */
                                         if(isJasmineEnabled){
-                                            mobileExtraDataPkgArtifactArn = uploadExtraDataPackage(deviceFarmProjectArn, 'Mobile')
-                                            tabletExtraDataPkgArtifactArn = uploadExtraDataPackage(deviceFarmProjectArn, 'Tablet')
+                                            projectArtifacts.each { platformData ->
+                                                def pltArray = platformData.key.split('_')
+                                                platformData.value.extraPkg = uploadExtraDataPackage(deviceFarmProjectArn, pltArray[0], pltArray[1])
+                                            }
                                         }
                                     }
                                     script.stage('Upload test spec') {
