@@ -164,9 +164,7 @@ class RunTests implements Serializable {
             if (channelType.equalsIgnoreCase("DesktopWeb")) {
                 copyTestRunnerFile('Desktop')
             } else {
-                formFactors.each {formFactor ->
-                    copyTestRunnerFile(formFactor)}
-                }
+                formFactors.each { formFactor -> copyTestRunnerFile(formFactor) }
             }
 
             BuildHelper.jasmineTestEnvWrapper(script, {
