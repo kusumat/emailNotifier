@@ -276,10 +276,12 @@ class BuildHelper implements Serializable {
                         credentialsId: "$fabricAppConfigId",
                         applicationNameVariable: 'FABRIC_APP_NAME',
                         environmentNameVariable: 'FABRIC_ENV_NAME',
+                        fabricAccountIdVariable: 'FABRIC_ACCOUNT_ID',
+                        fabricConsoleUrlVariable: 'MF_CONSOLE_URL',
+                        fabricIdentityUrlVariable: 'MF_IDENTITY_URL',
                         applicationKeyVariable: 'APP_KEY',
                         applicationSecretVariable: 'APP_SECRET',
-                        serviceUrlVariable: 'SERVICE_URL',
-                        fabricAccountIdVariable: 'FABRIC_ACCOUNT_ID'
+                        serviceUrlVariable: 'SERVICE_URL'
                 )
         ]) {
             /* Block of code to run */

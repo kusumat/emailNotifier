@@ -179,6 +179,7 @@ class Channel implements Serializable {
                 script.env.FABRIC_APP_NAME = (script.env.FABRIC_APP_NAME) ?: ''
                 script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
+                script.env['CONSOLE_URL'] = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
             }
         }
         /* Set environment-dependent variables */
@@ -325,8 +326,6 @@ class Channel implements Serializable {
         script.echoCustom("Running the build in ${buildMode} mode..")
         /* List of required build resources */
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
-        /* Populate Fabric configuration to appfactory.js file */
-        populateFabricAppConfig()
 
         /* Setting the test resources URL */
         script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
@@ -641,46 +640,6 @@ class Channel implements Serializable {
             throw new AppFactoryException("No artifacts found to rename!", 'ERROR')
         }
         renamedArtifacts
-    }
-
-    /**
-     * Populates Fabric configuration to appfactory.js file.
-     */
-    protected final void populateFabricAppConfig() {
-        String configFileName = libraryProperties.'fabric.config.file.name'
-
-        /* Check if FABRIC_APP_CONFIG build parameter is set */
-        if (fabricAppConfig && !fabricAppConfig.equals("null")) {
-            script.dir(projectFullPath) {
-                script.dir('modules') {
-                    /* Check if appfactory.js file exists */
-                    if (script.fileExists(configFileName)) {
-                        String config = (script.readFile(configFileName)) ?:
-                                script.echoCustom("$configFileName content is empty!", 'ERROR')
-                        String successMessage = 'Fabric app key, secret and service URL were successfully populated'
-                        String errorMessage = 'Failed to populate Fabric app key, secret and service URL'
-
-                        script.catchErrorCustom(errorMessage, successMessage) {
-                            /* Populate values from Fabric configuration */
-                            BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
-                                String updatedConfig = config.
-                                        replaceAll('\\$FABRIC_APP_KEY', "\'${script.env.APP_KEY}\'").
-                                        replaceAll('\\$FABRIC_APP_SECRET', "\'${script.env.APP_SECRET}\'").
-                                        replaceAll('\\$FABRIC_APP_SERVICE_URL', "\'${script.env.SERVICE_URL}\'")
-
-                                script.writeFile file: configFileName, text: updatedConfig
-                            }
-                        }
-                    } else {
-                        script.echoCustom("Skipping population of Fabric app key, secret and service URL, " +
-                                "${configFileName} was not found in the project modules folder!")
-                    }
-                }
-            }
-        } else {
-            script.echoCustom("Skipping population of Fabric app key, secret and service URL, " +
-                    "credentials parameter was not provided!")
-        }
     }
 
     /**

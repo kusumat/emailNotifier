@@ -167,8 +167,8 @@
         <condition property="domainParam" value="${env.domainParam}" else="">
             <isset property="env.domainParam"/>
         </condition>
-    	<condition property="fabricUrl" value="https://manage.${env.CLOUD_DOMAIN}" else="https://manage.kony.com">
-    	    <isset property="env.CLOUD_DOMAIN"/>
+    	<condition property="fabricUrl" value="${env.CONSOLE_URL}" else="https://manage.kony.com">
+    	    <isset property="env.CONSOLE_URL"/>
     	</condition>
         <condition property="fabricEnvironmentName" value="${env.FABRIC_ENV_NAME}" else="">
             <isset property="env.FABRIC_ENV_NAME"/>
