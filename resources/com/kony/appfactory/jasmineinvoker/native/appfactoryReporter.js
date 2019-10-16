@@ -76,13 +76,11 @@ userReporter = {
             var isExternalStorageAvailable = kony.io.FileSystem.isExternalStorageAvailable();
             if (isExternalStorageAvailable) {
                 fileLoc = "/sdcard" + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
-                kony.print("Writing the JSON Results into : " + fileLoc + ", on the platform : " + platform);
             }
         } else {
         	var dataDirectoryPath = kony.io.FileSystem.getDataDirectoryPath();
         	if (dataDirectoryPath) {
                 fileLoc = dataDirectoryPath + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
-                kony.print("Writing the JSON Results into : " + fileLoc + ", on the platform : " + platform);
         	}
         }
         writeJSONFile(fileLoc);
