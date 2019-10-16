@@ -53,12 +53,21 @@ class FabricHelper implements Serializable {
                      passwordVariable: 'fabricPassword',
                      usernameVariable: 'fabricUsername']
             ]) {
-
-                // Adding the cloud type if the domain contains other than kony.com
-                if (script.env.CLOUD_DOMAIN && script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0 ){
-                    def domainParam = script.env.CLOUD_DOMAIN.substring(0, script.env.CLOUD_DOMAIN.indexOf("-kony.com")+1)
-                    fabricCommandOptions['--cloud-type'] = "\"${domainParam}\""
+                // Switch command options(removing account id) if Console Url represents OnPrem Fabric.(Visit https://docs.kony.com/konylibrary/konyfabric/kony_fabric_user_guide/Content/CI_MobileFabric.htm for details).
+                if(!script.env.CONSOLE_URL.matches("https://manage.${script.env.CLOUD_DOMAIN}"))
+                {
+                    fabricCommandOptions.remove('-t')
+                    fabricCommandOptions << ['-cu': "\"${script.env.CONSOLE_URL}\"",
+                                             '-au': "\"${script.env.IDENTITY_URL}\"",]
                 }
+                else {
+                    // Adding the cloud type only for cloud domains other than kony.com
+                    if (script.env.CLOUD_DOMAIN && script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0){
+                        def domainParam = script.env.CLOUD_DOMAIN.substring(0, script.env.CLOUD_DOMAIN.indexOf("-kony.com")+1)
+                        fabricCommandOptions['--cloud-type'] = "\"${domainParam}\""
+                    }
+                }
+
                 /* Collect Fabric command options */
                 String options = fabricCommandOptions?.collect { option, value ->
                     [option, value].join(' ')

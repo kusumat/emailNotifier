@@ -831,6 +831,7 @@ class Facade implements Serializable {
                                         script.echoCustom("Fabric environment value can't be null", 'ERROR')
                                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                                 script.env['CONSOLE_URL'] = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
+                                script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
                             }
                         }
                         /* Run channel builds in parallel */

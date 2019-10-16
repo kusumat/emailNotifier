@@ -180,6 +180,7 @@ class Channel implements Serializable {
                 script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                 script.env['CONSOLE_URL'] = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
+                script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
             }
         }
         /* Set environment-dependent variables */
