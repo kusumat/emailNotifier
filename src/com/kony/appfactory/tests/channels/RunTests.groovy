@@ -32,6 +32,7 @@ class RunTests implements Serializable {
     protected scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected runCustomHook = script.params.RUN_CUSTOM_HOOKS
     protected isJasmineEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
+    protected testFramework = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()
     protected jasminePkgFolder
 
     protected String jettyWebAppsFolder = script.env.JETTY_WEBAPP_PATH ? script.env.JETTY_WEBAPP_PATH + '/testresources' :'/opt/jetty/webapps/testresources'
@@ -54,7 +55,7 @@ class RunTests implements Serializable {
     protected projectFullPath
     /* CustomHookHelper object */
     protected hookHelper
-    protected  String testPlan
+    protected  String jasmineTestPlan
     protected devicePoolName = script.params.AVAILABLE_TEST_POOLS
     /**
      * Class constructor.
@@ -230,17 +231,20 @@ class RunTests implements Serializable {
      * @param formFactor depicts if Desktop, Mobile or Tablet
      */
     protected void copyTestRunnerFile(String formFactor) {
-        testPlan = BuildHelper.getParamValueOrDefault(script, "TEST_PLAN", null)
+        if (formFactor.equalsIgnoreCase("DesktopWeb"))
+            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)
+        else
+            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null)
+
         String testRunnerBasePath = ['testresources', 'Jasmine', formFactor, 'Test Runners'].join(separator)
         String defaultTestRunner = [testRunnerBasePath, 'testRunner.js'].join(separator)
         defaultTestRunner= BuildHelper.addQuotesIfRequired(defaultTestRunner)
-
-        if (!testPlan) {
-            if (!script.fileExists(defaultTestRunner)) {
+        if (!jasmineTestPlan) {
+            jasmineTestPlan = 'testRunner.js'
+            if (!script.fileExists(defaultTestRunner))
                 throw new AppFactoryException("Failed to find ${defaultTestRunner}, please check your application!!", 'ERROR')
-            }
         } else {
-            String testPlanFile = [testRunnerBasePath, testPlan].join(separator)
+            String testPlanFile = [testRunnerBasePath, jasmineTestPlan].join(separator)
             testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
             if (script.fileExists(testPlanFile)) {
                 script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestRunner}", true)

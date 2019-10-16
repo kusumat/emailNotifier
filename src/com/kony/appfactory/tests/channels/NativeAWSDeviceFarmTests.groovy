@@ -737,7 +737,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                 appiumVersion   : appiumVersion,
                                 runInCustomTestEnvironment : runInCustomTestEnvironment,
                                 defaultDeviceFarmTimeLimit : Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit'),
-                                testBinaryDetails : testBinaryDetails
+                                testBinaryDetails : testBinaryDetails,
+                                isJasmineEnabled : isJasmineEnabled,
+                                testFramework : testFramework,
+                                jasmineNativeTestPlan : jasmineTestPlan
                         ], true)
 
                         if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {

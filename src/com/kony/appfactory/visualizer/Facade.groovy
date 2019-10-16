@@ -112,7 +112,8 @@ class Facade implements Serializable {
     private runInCustomTestEnvironment = script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
     private appiumVersion = script.params.APPIUM_VERSION
     private testngFiles = script.params.TESTNG_FILES
-    private testPlan = BuildHelper.getParamValueOrDefault(script, "TEST_PLAN", null)
+    private jasmineWebTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)
+    private jasmineNativeTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null)
     /* Cloud Build properties */
     protected CredentialsHelper credentialsHelper
     protected BuildStatus status
@@ -388,7 +389,8 @@ class Facade implements Serializable {
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
                 script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook),
                 script.string(name: 'TEST_FRAMEWORK', value: "${testFramework}"),
-                script.string(name: 'TEST_PLAN', value: "${testPlan}")
+                script.string(name: 'WEB_TEST_PLAN', value: "${jasmineWebTestPlan}"),
+                script.string(name: 'NATIVE_TEST_PLAN', value: "${jasmineNativeTestPlan}")
         ]
     }
 

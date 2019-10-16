@@ -112,7 +112,8 @@ class FacadeTests implements Serializable {
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                         value: script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID),
                 script.string(name: 'RECIPIENTS_LIST', value: script.params.RECIPIENTS_LIST),
-                script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: script.params.RUN_CUSTOM_HOOKS)
+                script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: script.params.RUN_CUSTOM_HOOKS),
+                script.string(name: 'TEST_FRAMEWORK', value: BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG'))
         ]
     }
     /**
@@ -134,8 +135,7 @@ class FacadeTests implements Serializable {
                         script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT),
                         script.string(name: 'APPIUM_VERSION', value: script.params.APPIUM_VERSION),
                         script.string(name: 'TESTNG_FILES', value: script.params.TESTNG_FILES),
-                        script.string(name: 'TEST_FRAMEWORK', value: script.params.TEST_FRAMEWORK),
-                        script.string(name: 'TEST_PLAN', value: script.params.TEST_PLAN)
+                        script.string(name: 'NATIVE_TEST_PLAN', value: BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null))
 
                 ]
     }
@@ -152,9 +152,8 @@ class FacadeTests implements Serializable {
                         script.string(name: 'DESKTOPWEB_TESTS_URL', value: script.params.DESKTOPWEB_TESTS_URL),
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
                         script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS),
-                        script.string(name: 'TEST_FRAMEWORK', value: BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')),
                         script.string(name: 'JASMINE_TEST_URL', value: script.params.JASMINE_TEST_URL?.trim()),
-                        script.string(name: 'TEST_PLAN', value: script.params.TEST_PLAN)
+                        script.string(name: 'WEB_TEST_PLAN',  value: BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null))
 
                 ]
 

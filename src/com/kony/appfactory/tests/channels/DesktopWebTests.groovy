@@ -484,7 +484,10 @@ class DesktopWebTests extends RunTests implements Serializable {
                                 desktopruns      : desktopTestRunResults,
                                 listofLogFiles   : listofLogFiles,
                                 listofScreenshots: listofScreenshots,
-                                testArtifact : testArtifact
+                                testArtifact : testArtifact,
+                                isJasmineEnabled : isJasmineEnabled,
+                                testFramework : testFramework,
+                                jasmineWebTestPlan : jasmineTestPlan
                         ], true)
                         if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
                             TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties, mustHaveArtifacts, false)
