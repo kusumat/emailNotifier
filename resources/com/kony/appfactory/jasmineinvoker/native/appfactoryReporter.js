@@ -72,7 +72,7 @@ userReporter = {
         jasmineEvents.push(suiteDone);
         var platform = (kony.os.deviceInfo().name).toLowerCase();
         var fileLoc;
-        if(platform == "Android") {
+        if(platform == "android") {
             var isExternalStorageAvailable = kony.io.FileSystem.isExternalStorageAvailable();
             if (isExternalStorageAvailable) {
                 fileLoc = "/sdcard" + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
