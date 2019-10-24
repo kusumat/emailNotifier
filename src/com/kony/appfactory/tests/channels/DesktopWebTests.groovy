@@ -485,7 +485,6 @@ class DesktopWebTests extends RunTests implements Serializable {
                                 listofLogFiles   : listofLogFiles,
                                 listofScreenshots: listofScreenshots,
                                 testArtifact : testArtifact,
-                                isJasmineEnabled : isJasmineEnabled,
                                 testFramework : testFramework,
                                 jasmineWebTestPlan : jasmineTestPlan
                         ], true)

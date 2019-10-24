@@ -220,12 +220,12 @@ class EmailTemplateHelper implements Serializable {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
-                            if(binding.build.isJasmineEnabled) {
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Framework:', binding.build.testFramework)
+                            if(binding.isJasmineEnabled) {
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Framework:', binding.testFramework)
                                 if (binding.isDesktopWebAppTestRun)
-                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Plan:', binding.build.jasmineWebTestPlan)
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Plan:', binding.jasmineWebTestPlan)
                                 if (binding.isNativeAppTestRun)
-                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Plan:', binding.build.jasmineNativeTestPlan)
+                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Plan:', binding.jasmineNativeTestPlan)
                             }
                             if (binding.isNativeAppTestRun) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Device Pools: ', binding.devicePoolName)

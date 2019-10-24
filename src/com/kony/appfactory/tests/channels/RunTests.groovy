@@ -231,28 +231,30 @@ class RunTests implements Serializable {
      * @param formFactor depicts if Desktop, Mobile or Tablet
      */
     protected void copyTestRunnerFile(String formFactor) {
-        if (formFactor.equalsIgnoreCase("DesktopWeb"))
+        if (formFactor.equalsIgnoreCase("Desktop")) {
             jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)
-        else
+        } else {
             jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null)
-
+        }
         String testRunnerBasePath = ['testresources', 'Jasmine', formFactor, 'Test Runners'].join(separator)
         String defaultTestRunner = [testRunnerBasePath, 'testRunner.js'].join(separator)
-        defaultTestRunner= BuildHelper.addQuotesIfRequired(defaultTestRunner)
-        if (!jasmineTestPlan) {
-            jasmineTestPlan = 'testRunner.js'
-            if (!script.fileExists(defaultTestRunner))
-                throw new AppFactoryException("Failed to find ${defaultTestRunner}, please check your application!!", 'ERROR')
-        } else {
-            String testPlanFile = [testRunnerBasePath, jasmineTestPlan].join(separator)
-            testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
-            if (script.fileExists(testPlanFile)) {
-                script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestRunner}", true)
+            if(jasmineTestPlan.equals("")){
+                if (!script.fileExists("${defaultTestRunner}")) {
+                    throw new AppFactoryException("Failed to find ${defaultTestRunner}, please check your application!!", 'ERROR')
+                }
             } else {
-                throw new AppFactoryException("Failed to find ${testPlanFile}, please provide valid TEST_PLAN!!", 'ERROR')
+                String testPlanFile = [testRunnerBasePath, jasmineTestPlan].join(separator)
+                if (script.fileExists("${testPlanFile}")) {
+                    defaultTestRunner = BuildHelper.addQuotesIfRequired(defaultTestRunner)
+                    testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
+                    script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestRunner}", true)
+                } else {
+                    throw new AppFactoryException("Failed to find ${testPlanFile}, please provide valid TEST_PLAN!!", 'ERROR')
+                }
             }
-        }
+
     }
+
 
     /*
      * This method prepares the extra data package in which the jasmine scripts will be placed in the way the frameworks expects.
