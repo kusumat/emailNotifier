@@ -114,7 +114,10 @@ class DesktopWebTests extends RunTests implements Serializable {
                                     break;
                 }
             }
-        }
+        } 
+        
+        def totalTests = suiteTestPassed + suiteTestFailed
+        script.echoCustom('Summary of Test Results :: \n Passed: ' + suiteTestPassed +  ' Failed: ' + suiteTestFailed + ' Total Tests: ' + totalTests)
         
         jasmineTestResults["results"] = suiteMap
         jasmineTestResults["summary"] = suiteSummaryMap
