@@ -26,6 +26,31 @@ var writeJSONFile = function(fileLoc) {
     }
 };
 
+var writeJasmineEventsToFile = function() {
+    var platform = (kony.os.deviceInfo().name).toLowerCase();
+    var fileLoc;
+    if(platform == "android") {
+        var isExternalStorageAvailable = kony.io.FileSystem.isExternalStorageAvailable();
+        if (isExternalStorageAvailable) {
+            var jasmineResultsFolder = "/sdcard" + constants.FILE_PATH_SEPARATOR + "JasmineTestResults";
+	        if (new kony.io.File(jasmineResultsFolder).exists()) {
+	            kony.print("Results folder already exists.");
+	        } else {
+	            kony.print("Results folder doesn't exists. Creating one now.....");
+	            var myDir = new kony.io.File(jasmineResultsFolder).createDirectory();
+	        }
+	        fileLoc = jasmineResultsFolder + constants.FILE_PATH_SEPARATOR + "jasmineReport.json";
+        }
+    } else {
+    	var dataDirectoryPath = kony.io.FileSystem.getDataDirectoryPath();
+    	if (dataDirectoryPath) {
+            fileLoc = dataDirectoryPath + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
+    	}
+    }
+    kony.print("Writing the JSON Results into - " + fileLoc + ", On Platform - " + platform);
+    writeJSONFile(fileLoc);
+};
+
 userReporter = {
     jasmineStarted: function(suiteInfo) {
         reporter.jasmineStarted(suiteInfo);
@@ -34,6 +59,7 @@ userReporter = {
         suiteInfo.order = "Empty"
         jasmineStarted.result = suiteInfo;
         jasmineEvents.push(jasmineStarted);
+        writeJasmineEventsToFile();
     },
     
     suiteStarted: function(result) {
@@ -61,6 +87,7 @@ userReporter = {
         result.duration = new Date((new Date()).toISOString()) - new Date(specDurations[result.id]);
         specDone.result = result;
         jasmineEvents.push(specDone);
+        writeJasmineEventsToFile();
     },
  
     suiteDone: function(result) {
@@ -70,20 +97,6 @@ userReporter = {
         result.duration = new Date((new Date()).toISOString()) - new Date(suiteDurations[result.id]);
         suiteDone.result = result;
         jasmineEvents.push(suiteDone);
-        var platform = (kony.os.deviceInfo().name).toLowerCase();
-        var fileLoc;
-        if(platform == "android") {
-            var isExternalStorageAvailable = kony.io.FileSystem.isExternalStorageAvailable();
-            if (isExternalStorageAvailable) {
-                fileLoc = "/sdcard" + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
-            }
-        } else {
-        	var dataDirectoryPath = kony.io.FileSystem.getDataDirectoryPath();
-        	if (dataDirectoryPath) {
-                fileLoc = dataDirectoryPath + constants.FILE_PATH_SEPARATOR + "JasmineTestResults/jasmineReport.json";
-        	}
-        }
-        writeJSONFile(fileLoc);
     },
  
     jasmineDone: function() {
