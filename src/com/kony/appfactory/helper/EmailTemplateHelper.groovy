@@ -289,7 +289,7 @@ class EmailTemplateHelper implements Serializable {
                     prepareJasmineTestsSummaryTable(htmlBuilder, binding.jasmineruns.summary, binding.listofLogFiles)
                 }
 
-                if (binding.build.result != 'SUCCESS') {
+                if (!binding.deviceruns && !binding.desktopruns && !binding.jasmineruns) {
                     tr {
                         td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
