@@ -238,7 +238,7 @@ class RunTests implements Serializable {
         }
         String testRunnerBasePath = ['testresources', 'Jasmine', formFactor, 'Test Runners'].join(separator)
         String defaultTestRunner = [testRunnerBasePath, 'testRunner.js'].join(separator)
-            if(jasmineTestPlan.equals("")){
+            if(jasmineTestPlan.equals("") || jasmineTestPlan.equals("testRunner.js")){
                 if (!script.fileExists("${defaultTestRunner}")) {
                     throw new AppFactoryException("Failed to find ${defaultTestRunner}, please check your application!!", 'ERROR')
                 }
