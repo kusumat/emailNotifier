@@ -328,9 +328,6 @@ class Channel implements Serializable {
         /* List of required build resources */
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
 
-        /* Setting the test resources URL */
-        script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
-
         /** Set the environment variable "ENABLE_JASMINE_AUTOMATION" to true so that we can set the property "enableJasmineAutomation" to "true" in HeadlessBuild.properties if the customer wants to run Jasmine Tests.
          *  Since TEST_FRAMEWORK parameter is not present for Cloud Build, we are enabling Jasmine automation when IS_SOURCE_VISUALIZER is true and build mode is 'test'.
          */
