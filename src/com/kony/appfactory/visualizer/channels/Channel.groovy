@@ -223,6 +223,10 @@ class Channel implements Serializable {
             }
             script.currentBuild.result = 'FAILURE'
         } finally {
+            // safe deleting keychain file if it still exist for the current build, for uncaught exceptions in Fastlane, like jenkins abort and restart cases.
+            if(channelOs.equalsIgnoreCase('iOS'))
+                script.shellCustom("set +xe; security list-keychains -d user | grep konyappfactory_${projectName}_${jobBuildNumber} | xargs security delete-keychain", true)
+
             script.env['CHANNEL_ARTIFACT_META'] = artifactMeta?.inspect()
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
