@@ -366,7 +366,7 @@ class Channel implements Serializable {
                     }
                     
                     /* Setting the test resources URL - only if the build is from Appfactory Console */
-                    if (!script.env.IS_STARTER_PROJECT.equals("true")) {
+                    if (!script.env.IS_SOURCE_VISUALIZER?.equals("true")) {
                         script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
                     }
                     
