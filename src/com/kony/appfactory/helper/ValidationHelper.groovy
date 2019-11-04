@@ -26,6 +26,20 @@ class ValidationHelper implements Serializable {
             ]
         }
         /*
+            We are checking for the explicit null string check, since in the case of previous (< 8.3) appfactory projects,
+            buildviz job is going to send the newly added param value with the null string.
+        */
+        if(eitherOrParameters.size() > 0) {
+            eitherOrParameters.each{ paramSet ->
+                boolean isParam1Valid = (script.params.containsKey(paramSet[0]) && script.params[paramSet[0]] != null && script.params[paramSet[0]] != "null" && script.params[paramSet[0]]?.trim() != "")
+                boolean isParam2Valid = (script.params.containsKey(paramSet[1]) && script.params[paramSet[1]] != null && script.params[paramSet[1]] != "null" && script.params[paramSet[1]]?.trim() != "")
+                if(!(isParam1Valid ^ isParam2Valid)){
+                    String errorMessage = "One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter."
+                    throw new AppFactoryException("${errorMessage}",'ERROR')
+                }
+            }
+        }
+        /*
             List of the required parameters.
             Please note, that without second(parametersToCheck) argument call - commonRequiredParams list will be used
          */
@@ -41,21 +55,6 @@ class ValidationHelper implements Serializable {
             String errorMessage = [emptyParams.keySet().join(', '), message, "can't be null!"].join(' ')
             /* Break the build and print all empty parameters */
             throw new AppFactoryException(errorMessage, 'ERROR')
-        }
-
-        /* 
-            We are checking for the explicit null string check, since in the case of previous (< 8.3) appfactory projects,
-            buildviz job is going to send the newly added param value with the null string. 
-        */
-        if(eitherOrParameters.size() > 0) {
-            eitherOrParameters.each{ paramSet ->
-                boolean isParam1Valid = (script.params.containsKey(paramSet[0]) && script.params[paramSet[0]] != null && script.params[paramSet[0]] != "null" && script.params[paramSet[0]]?.trim() != "")
-                boolean isParam2Valid = (script.params.containsKey(paramSet[1]) && script.params[paramSet[1]] != null && script.params[paramSet[1]] != "null" && script.params[paramSet[1]]?.trim() != "")
-                if(!(isParam1Valid ^ isParam2Valid)){
-                    String errorMessage = "One of the parameters ${paramSet[0]} or ${paramSet[1]} is mandatory. So please choose appropriate parameter."
-                    throw new AppFactoryException("${errorMessage}",'ERROR')
-                }
-            }
         }
 
         /* Validate required parameters */
