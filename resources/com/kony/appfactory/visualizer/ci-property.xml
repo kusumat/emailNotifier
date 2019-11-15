@@ -363,7 +363,7 @@
         <replaceregexp file="ivy.xml" match="&lt;dependency(.*)name=&quot;(.*)(branding|viz\.api|viz\.chrome|viz\.nodejs|codegen|license|soapui|fpreview|architecture|studio\.cloud|viz\.ide)(.*)&quot;(.*)&gt;" replace="" flags="gm"/>
 	</target>
 
-    <target name="retrieve" depends="clean, generateIvyFromFeatureXML, plugins" description="-> retrieve dependencies with ivy">
+    <target name="retrieve" depends="clean, init-ivy, generateIvyFromFeatureXML, plugins" description="-> retrieve dependencies with ivy">
         <ivy:retrieve pattern="${pluginDir}/[artifact]_[revision].[ext]"/>
     </target>
 
