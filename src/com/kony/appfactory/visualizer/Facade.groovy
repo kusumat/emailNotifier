@@ -435,7 +435,8 @@ class Facade implements Serializable {
                     if(publishFabricApp)
                         [script.stringParam(name: "FABRIC_APP_URL", value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
                 } else
-                    return script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl)
+                    if(availableTestPools)
+                        return script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl)
             } else
                 return null
         }
@@ -842,8 +843,7 @@ class Facade implements Serializable {
 
                                 def testAutomationJobParameters = getTestAutomationJobParameters() ?:
                                         script.echoCustom("runTests job parameters are missing!", 'ERROR')
-                                def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?:
-                                        script.echoCustom("runTests job binary URL parameters are missing!", 'ERROR')
+                                def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?: []
 
                                 if (runDesktopwebTests) {
                                     /* Finding the desktopweb artifact(war/zip) auth url from the list of channel artifacts */
