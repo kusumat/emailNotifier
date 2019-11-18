@@ -45,10 +45,15 @@ class EmailBuilder {
     static void addSimpleArtifactTableRowFailed(htmlBuilder, binding) {
         htmlBuilder.tr {
             th(binding.channelPath.replaceAll('/', ' '))
-            td(style: "border-right: 1px solid #e8e8e8; width: 65px;", binding?.extension)
-            td(style: "border-right: 1px solid #e8e8e8; width: 65px; color:red", "Build failed")
+            if (binding?.extension) {
+                td(style: "border-right: 1px solid #e8e8e8; width: 65px;", binding?.extension)
+                td(style: "border-right: 1px solid #e8e8e8; width: 65px; color:red", "Build failed")
+            }
+            else
+                td(style: "border-right: 1px solid #e8e8e8; width: 65px; color:red", colspan: "2") { mkp.yield("Build failed") }
             td(style: "border-right: 1px solid #e8e8e8"){
-                binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
+                if (binding."${binding.channelPath}")
+                    binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
             }
         }
     }
