@@ -163,9 +163,9 @@ class RunTests implements Serializable {
             script.writeFile file: customReporter, text: customReporting + appfactoryReporting, encoding: 'UTF-8'
 
             if (channelType.equalsIgnoreCase("DesktopWeb")) {
-                copyTestRunnerFile('Desktop')
+                copyTestPlanFile('Desktop')
             } else {
-                formFactors.each { formFactor -> copyTestRunnerFile(formFactor) }
+                formFactors.each { formFactor -> copyTestPlanFile(formFactor) }
             }
 
             BuildHelper.jasmineTestEnvWrapper(script, {
@@ -226,28 +226,28 @@ class RunTests implements Serializable {
             }
         }
     }
-    /** This method checks if test plan file is provided as a field. If not we will consider testRunner.js as test plan.
-     * If test plan is provided, test plan file is renamed to testRunner.js.
+    /** This method checks if test plan file is provided as a field. If not we will consider testPlan.js as test plan.
+     * If test plan is provided, test plan file is renamed to testPlan.js.
      * @param formFactor depicts if Desktop, Mobile or Tablet
      */
-    protected void copyTestRunnerFile(String formFactor) {
+    protected void copyTestPlanFile(String formFactor) {
         if (formFactor.equalsIgnoreCase("Desktop")) {
             jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)
         } else {
             jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null)
         }
-        String testRunnerBasePath = ['testresources', 'Jasmine', formFactor, 'Test Runners'].join(separator)
-        String defaultTestRunner = [testRunnerBasePath, 'testRunner.js'].join(separator)
-            if(jasmineTestPlan.equals("") || jasmineTestPlan.equals("testRunner.js")){
-                if (!script.fileExists("${defaultTestRunner}")) {
-                    throw new AppFactoryException("Failed to find ${defaultTestRunner}, please check your application!!", 'ERROR')
+        String testPlanBasePath = ['testresources', 'Jasmine', formFactor, 'Test Plans'].join(separator)
+        String defaultTestPlan = [testPlanBasePath, 'testPlan.js'].join(separator)
+            if(jasmineTestPlan.equals("") || jasmineTestPlan.equals("testPlan.js")){
+                if (!script.fileExists("${defaultTestPlan}")) {
+                    throw new AppFactoryException("Failed to find ${defaultTestPlan}, please check your application!!", 'ERROR')
                 }
             } else {
-                String testPlanFile = [testRunnerBasePath, jasmineTestPlan].join(separator)
+                String testPlanFile = [testPlanBasePath, jasmineTestPlan].join(separator)
                 if (script.fileExists("${testPlanFile}")) {
-                    defaultTestRunner = BuildHelper.addQuotesIfRequired(defaultTestRunner)
+                    defaultTestPlan = BuildHelper.addQuotesIfRequired(defaultTestPlan)
                     testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
-                    script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestRunner}", true)
+                    script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestPlan}", true)
                 } else {
                     throw new AppFactoryException("Failed to find ${testPlanFile}, please provide valid TEST_PLAN!!", 'ERROR')
                 }
