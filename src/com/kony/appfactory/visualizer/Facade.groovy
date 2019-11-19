@@ -797,7 +797,7 @@ class Facade implements Serializable {
 
                             /* If user trying to run different framework (other than Jasmine) with 'test' BUILD_MODE selection, CI forcibly run with debug mode, so let's notify the user on same. */
                             if(!isJasmineEnabled && script.params.BUILD_MODE == libraryProperties.'buildmode.test.type') {
-                                script.echoCustom('Test mode is not applicable for this framework and generating your binaries in debug mode.', 'WARN')
+                                script.echoCustom('Building application binaries in Debug mode, as the Test mode is not applicable for the selected test framework.', 'WARN')
                             }
 
                             /* Check all required parameters depending on user input */
