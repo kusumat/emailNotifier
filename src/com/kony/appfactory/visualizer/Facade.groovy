@@ -913,6 +913,7 @@ class Facade implements Serializable {
                 }
                 catch (AbortException abortedEx) {
                     cancelCloudBuild()
+                    script.currentBuild.result = 'ABORTED'
                 }
                 catch (AppFactoryException AFEx) {
                     String exceptionMessage = (AFEx.getLocalizedMessage()) ?: 'Something went wrong...'
