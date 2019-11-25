@@ -313,7 +313,8 @@ class IosChannel extends Channel {
                     "FASTLANE_TEAM_ID=${script.env.APPLE_DEVELOPER_TEAM_ID}",
                     "FASTLANE_SKIP_UPDATE_CHECK=1",
                     "APP_VERSION=${script.env.APP_VERSION}",
-                    "ENABLE_FILE_SHARING=${isFileShareEnabled}"
+                    "ENABLE_FILE_SHARING=${isFileShareEnabled}",
+                    "FORM_FACTOR=${channelFormFactor}"
                 ]) {
 
                     if (appleID){
