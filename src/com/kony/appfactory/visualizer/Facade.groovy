@@ -567,7 +567,7 @@ class Facade implements Serializable {
      */
     private final void runWebChannels(spaChannelsToRun = null, desktopWebChannel = null) {
         def channelName = (spaChannelsToRun && desktopWebChannel) ? 'WEB' : spaChannelsToRun ? 'SPA' : desktopWebChannel ? 'DESKTOP_WEB' : null
-        def channelJobBuildParameters
+        def channelJobBuildParameters, channelPath
 
         def channelJobName = (getChannelJobName(channelName)) ?:
                 script.echoCustom("Channel job name can't be null", 'ERROR')
@@ -582,7 +582,11 @@ class Facade implements Serializable {
                     script.echoCustom("Channel job build parameters list can't be null", 'ERROR')
         }
 
-        def channelPath = getChannelPath(channelName)
+        // For Web related channels, channelPaths and channelNames slightly different.
+        if (desktopWebChannel)
+            channelPath = "DESKTOPWEB"
+        else
+            channelPath = getChannelPath(channelName)
         runList[channelName] = {
             script.stage(channelName) {
                 /* Trigger channel job */
@@ -593,8 +597,7 @@ class Facade implements Serializable {
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
-                // For Web related channels, channelPaths and channelNames slightly different.
-                artifactsMeta.put(channelPath.replace('_', '/'), getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
+                artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
 
                 /* Collect must have artifacts */
                 mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))

@@ -74,7 +74,8 @@ class EmailBuilder {
                 }
                 if (rownum == 0) {
                     td(style: "border-right: 1px solid #e8e8e8", rowspan: countRows){
-                        binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
+                        if (binding."${binding.channelPath}")
+                            binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
                     }
                 }
             }
