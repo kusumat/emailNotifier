@@ -36,12 +36,12 @@ class Fabric implements Serializable {
     private final String exportRepositoryUrl
     private final String exportRepositoryBranch
     private final String exportRepositoryCredentialsId
-    private final String cloudAccountId = script.params.CLOUD_ACCOUNT_ID
+    private String cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
-    private final String fabricAppName = script.params.FABRIC_APP_NAME
+    private String fabricAppName = script.params.FABRIC_APP_NAME
     private final String recipientsList = script.params.RECIPIENTS_LIST
     private final String fabricAppVersion
-    
+
     /* Import build parameters */
     private final String commitAuthor = script.params.COMMIT_AUTHOR?.trim() ?: 'Jenkins'
     private final String authorEmail = script.params.AUTHOR_EMAIL
@@ -53,7 +53,10 @@ class Fabric implements Serializable {
     private boolean overwriteExisting
     private boolean overwriteExistingScmBranch
     private boolean overwriteExistingAppVersion
-    /* Migrate specific build parameters for backward compatibility*/
+    /* Migrate specific build parameters for backward compatibility */
+    private importfabricAppConfig = script.params.IMPORT_FABRIC_APP_CONFIG?:null
+    private exportfabricAppConfig = script.params.EXPORT_FABRIC_APP_CONFIG?:null
+
     private String importCloudAccountId
     private String importCloudCredentialsID
     private String exportCloudAccountId
@@ -61,11 +64,13 @@ class Fabric implements Serializable {
     /* Flag for triggering Publish job */
     private final boolean enablePublish = script.params.ENABLE_PUBLISH
     /* Publish build parameters */
-    private final String fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
+    private String fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
     private final boolean setDefaultVersion = script.params.SET_DEFAULT_VERSION
     /* OnPrem Fabric parameters */
     private String consoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_CONSOLE_URL', "https://manage.${script.kony.CLOUD_DOMAIN}")
     private String identityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IDENTITY_URL', "https://manage.${script.kony.CLOUD_DOMAIN}")
+    private fabricAppConfig = script.params.FABRIC_APP_CONFIG?:null
+    def appConfigParameter = BuildHelper.getCurrentParamName(script, 'FABRIC_APP_CONFIG', 'CLOUD_ACCOUNT_ID')
 
     /**
      * Class constructor.
@@ -91,9 +96,6 @@ class Fabric implements Serializable {
         this.script.env['FABRIC_APP_VERSION'] = BuildHelper.getParamValueOrDefault(
                 this.script, 'FABRIC_APP_VERSION', '1.0')
         fabricAppVersion = this.script.env['FABRIC_APP_VERSION']
-        /* Adding CONSOLE_URL and IDENTITY_URL as env if provided. */
-        this.script.env['CONSOLE_URL'] = consoleUrl
-        this.script.env['IDENTITY_URL'] = identityUrl
         
         overwriteExisting = BuildHelper.getParamValueOrDefault(this.script, 'OVERWRITE_EXISTING', true)
         
@@ -451,6 +453,25 @@ class Fabric implements Serializable {
      */
     private final void pipelineWrapper(closure) {
         try {
+            switch (appConfigParameter){
+                case 'FABRIC_APP_CONFIG':
+                    BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
+                        script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
+                                script.echoCustom("Fabric environment value can't be null", 'ERROR')
+                        fabricEnvironmentName = script.env.FABRIC_ENV_NAME
+                        cloudAccountId = script.env.FABRIC_ACCOUNT_ID
+                        fabricAppName = script.env.FABRIC_APP_NAME
+                        script.env['CONSOLE_URL'] = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
+                        script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
+                        consoleUrl = script.env.CONSOLE_URL
+                        identityUrl = script.env.IDENTITY_URL
+                    }
+                    break
+                case 'CLOUD_ACCOUNT_ID':
+                    script.env['CONSOLE_URL'] = consoleUrl
+                    script.env['IDENTITY_URL'] = identityUrl
+                    break
+            }
             closure()
         } catch (AppFactoryException e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
@@ -476,24 +497,6 @@ class Fabric implements Serializable {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 overwriteExisting = BuildHelper.getParamValueOrDefault(script, 'OVERWRITE_EXISTING_SCM_BRANCH', overwriteExisting)
-                /* Data for e-mail notification */
-                emailData = [
-                        fabricAppName         : fabricAppName,
-                        fabricAppVersion      : fabricAppVersion,
-                        fabricEnvironmentName : fabricEnvironmentName,
-                        exportRepositoryUrl   : exportRepositoryUrl,
-                        exportRepositoryBranch: exportRepositoryBranch,
-                        authorEmail           : authorEmail,
-                        commitAuthor          : commitAuthor,
-                        commitMessage         : commitMessage,
-                        commandName           : 'EXPORT'
-
-                ]
-
-                buildDescriptionItems = [
-                        'App Name'      : fabricAppName,
-                        'App Version'   : fabricAppVersion
-                ]
 
                 /* Folder name for storing exported application */
                 String exportFolder = 'export'
@@ -503,17 +506,14 @@ class Fabric implements Serializable {
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             'CLOUD_CREDENTIALS_ID',
-                            'FABRIC_APP_NAME',
                             'FABRIC_APP_VERSION',
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 
                             'AUTHOR_EMAIL'
                     ]
-                    if (consoleUrl) mandatoryParameters << ['FABRIC_IDENTITY_URL']
-                    def eitherOrParameters = [['CLOUD_ACCOUNT_ID', 'FABRIC_CONSOLE_URL']]
-
-                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters, eitherOrParameters)
+                    mandatoryParameters = checkCompatibility(mandatoryParameters, 'export')
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
                 pipelineWrapper {
@@ -558,6 +558,24 @@ class Fabric implements Serializable {
                             }
                         }
                     }
+                    /* Data for e-mail notification */
+                    emailData = [
+                            fabricAppName         : fabricAppName,
+                            fabricAppVersion      : fabricAppVersion,
+                            fabricEnvironmentName : fabricEnvironmentName,
+                            exportRepositoryUrl   : exportRepositoryUrl,
+                            exportRepositoryBranch: exportRepositoryBranch,
+                            authorEmail           : authorEmail,
+                            commitAuthor          : commitAuthor,
+                            commitMessage         : commitMessage,
+                            commandName           : 'EXPORT'
+
+                    ]
+
+                    buildDescriptionItems = [
+                            'App Name'      : fabricAppName,
+                            'App Version'   : fabricAppVersion
+                    ]
                 }
             }
         }
@@ -573,22 +591,6 @@ class Fabric implements Serializable {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 overwriteExisting = BuildHelper.getParamValueOrDefault(script, 'OVERWRITE_EXISTING_APP_VERSION', overwriteExisting)
-                /* Data for e-mail notification */
-                emailData = [
-                        fabricAppName         : fabricAppName,
-                        fabricAppVersion      : fabricAppVersion,
-                        exportRepositoryUrl   : exportRepositoryUrl,
-                        exportRepositoryBranch: exportRepositoryBranch,
-                        overwriteExisting     : overwriteExisting,
-                        publishApp            : enablePublish,
-                        commandName           : 'IMPORT',
-                        fabricEnvironmentName : fabricEnvironmentName
-                ]
-
-                buildDescriptionItems = [
-                        'App Name'      : fabricAppName,
-                        'App Version'   : fabricAppVersion
-                ]
 
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
@@ -596,20 +598,13 @@ class Fabric implements Serializable {
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             'CLOUD_CREDENTIALS_ID',
-                            'FABRIC_APP_NAME',
                             'FABRIC_APP_VERSION',
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID')
                     ]
-                    if (consoleUrl) mandatoryParameters << ['FABRIC_IDENTITY_URL']
-                    def eitherOrParameters = [['CLOUD_ACCOUNT_ID', 'FABRIC_CONSOLE_URL']]
-
-                    if (enablePublish) {
-                        mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
-                    }
-
-                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters, eitherOrParameters)
+                    mandatoryParameters = checkCompatibility(mandatoryParameters, 'import')
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
                 pipelineWrapper {
@@ -644,12 +639,28 @@ class Fabric implements Serializable {
                         
                         script.stage('Trigger Publish job') {
                             if (enablePublish) {
-                                appPublish(cloudAccountId, cloudCredentialsID, consoleUrl, identityUrl)
+                                appPublish(cloudAccountId, cloudCredentialsID, appConfigParameter, consoleUrl, identityUrl)
                             } else {
                                 script.echoCustom("Publish is not selected, Skipping the publish stage execution.")
                             }
                         }
                     }
+                    /* Data for e-mail notification */
+                    emailData = [
+                            fabricAppName         : fabricAppName,
+                            fabricAppVersion      : fabricAppVersion,
+                            exportRepositoryUrl   : exportRepositoryUrl,
+                            exportRepositoryBranch: exportRepositoryBranch,
+                            overwriteExisting     : overwriteExisting,
+                            publishApp            : enablePublish,
+                            commandName           : 'IMPORT',
+                            fabricEnvironmentName : fabricEnvironmentName
+                    ]
+
+                    buildDescriptionItems = [
+                            'App Name'      : fabricAppName,
+                            'App Version'   : fabricAppVersion
+                    ]
                 }
             }
         }
@@ -664,31 +675,14 @@ class Fabric implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                /* Data for e-mail notification */
-                emailData = [
-                        fabricAppName        : fabricAppName,
-                        fabricAppVersion     : fabricAppVersion,
-                        fabricEnvironmentName: fabricEnvironmentName,
-                        commandName          : 'PUBLISH'
-                ]
-
-                buildDescriptionItems = [
-                        'App Name'      : fabricAppName,
-                        'App Version'   : fabricAppVersion
-                ]
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             'CLOUD_CREDENTIALS_ID',
-                            'FABRIC_APP_NAME',
-                            'FABRIC_APP_VERSION',
-                            'FABRIC_ENVIRONMENT_NAME'
-
+                            'FABRIC_APP_VERSION'
                     ]
-                    if (consoleUrl) mandatoryParameters << ['FABRIC_IDENTITY_URL']
-                    def eitherOrParameters = [['CLOUD_ACCOUNT_ID', 'FABRIC_CONSOLE_URL']]
-
-                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters, eitherOrParameters)
+                    mandatoryParameters = checkCompatibility(mandatoryParameters, 'publish')
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
                 pipelineWrapper {
@@ -725,6 +719,18 @@ class Fabric implements Serializable {
                             FabricHelper.fabricCli(script, 'set-appversion', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
                         }
                     }
+                    /* Data for e-mail notification */
+                    emailData = [
+                            fabricAppName        : fabricAppName,
+                            fabricAppVersion     : fabricAppVersion,
+                            fabricEnvironmentName: fabricEnvironmentName,
+                            commandName          : 'PUBLISH'
+                    ]
+
+                    buildDescriptionItems = [
+                            'App Name'      : fabricAppName,
+                            'App Version'   : fabricAppVersion
+                    ]
                 }
             }
         }
@@ -748,35 +754,16 @@ class Fabric implements Serializable {
                 def exportIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
                 def importConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_CONSOLE_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
                 def importIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
+                def appConfigParameter = BuildHelper.getCurrentParamName(script, 'EXPORT_FABRIC_APP_CONFIG', 'EXPORT_CLOUD_ACCOUNT_ID')
 
-                /* Data for e-mail notification to be specified*/
-                emailData = [
-                    fabricAppName         : fabricAppName,
-                    fabricAppVersion      : fabricAppVersion,
-                    exportRepositoryUrl   : exportRepositoryUrl,
-                    exportRepositoryBranch: exportRepositoryBranch,
-                    exportCloudAccountId  : exportCloudAccountId,
-                    importCloudAccountId  : importCloudAccountId,
-                    overwriteExisting     : overwriteExistingScmBranch,
-                    publishApp            : enablePublish,
-                    fabricEnvironmentName : fabricEnvironmentName,
-                    commandName           : 'MIGRATE'
-                ]
-
-                buildDescriptionItems = [
-                        'App Name'      : fabricAppName,
-                        'App Version'   : fabricAppVersion
-                ]
-                
                 /* Folder name for storing exported application */
                 String exportFolder = 'export'
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
-                        script.echoCustom("projectName property can't be null!",'WARN')
-                        
+                        script.echoCustom("projectName property can't be null!", 'WARN')
+
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             'EXPORT_CLOUD_CREDENTIALS_ID',
-                            'FABRIC_APP_NAME',
                             'FABRIC_APP_VERSION',
                             'IMPORT_CLOUD_CREDENTIALS_ID',
                             'PROJECT_SOURCE_CODE_BRANCH',
@@ -784,14 +771,35 @@ class Fabric implements Serializable {
                             'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                             'AUTHOR_EMAIL'
                     ]
-
-                    if (enablePublish) {
-                        mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
+                    switch (appConfigParameter) {
+                        case 'EXPORT_FABRIC_APP_CONFIG':
+                            mandatoryParameters << 'EXPORT_FABRIC_APP_CONFIG' << 'IMPORT_FABRIC_APP_CONFIG'
+                            BuildHelper.fabricConfigEnvWrapper(script, exportfabricAppConfig) {
+                                exportCloudAccountId = script.env.FABRIC_ACCOUNT_ID
+                                exportConsoleUrl = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
+                                exportIdentityUrl = script.env.MF_IDENTITY_URL ?: null
+                                fabricAppName = script.env.FABRIC_APP_NAME
+                            }
+                            BuildHelper.fabricConfigEnvWrapper(script, importfabricAppConfig) {
+                                fabricEnvironmentName = script.env.FABRIC_ENV_NAME
+                                importCloudAccountId = script.env.FABRIC_ACCOUNT_ID
+                                importConsoleUrl = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
+                                importIdentityUrl = script.env.MF_IDENTITY_URL ?: null
+                            }
+                            break
+                        case 'EXPORT_CLOUD_ACCOUNT_ID':
+                            if (enablePublish) {
+                                mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
+                            }
+                            mandatoryParameters << ['FABRIC_APP_NAME']
+                            if ((!script.params.FABRIC_EXPORT_CONSOLE_URL && !script.params.EXPORT_CLOUD_ACCOUNT_ID) || (!script.params.FABRIC_IMPORT_CONSOLE_URL && !script.params.IMPORT_CLOUD_ACCOUNT_ID)) {
+                                throw new AppFactoryException('One of the parameters among (EXPORT_CLOUD_ACCOUNT_ID, FABRIC_EXPORT_CONSOLE_URL) and (IMPORT_CLOUD_ACCOUNT_ID, FABRIC_IMPORT_CONSOLE_URL) is mandatory.')
+                            }
+                            if (script.params.containsKey('FABRIC_EXPORT_CONSOLE_URL') && script.params.FABRIC_EXPORT_CONSOLE_URL) mandatoryParameters << ['FABRIC_EXPORT_IDENTITY_URL']
+                            if (script.params.containsKey('FABRIC_IMPORT_CONSOLE_URL') && script.params.FABRIC_IMPORT_CONSOLE_URL) mandatoryParameters << ['FABRIC_IMPORT_IDENTITY_URL']
+                            break
                     }
-                    if (exportConsoleUrl) mandatoryParameters << ['FABRIC_EXPORT_IDENTITY_URL']
-                    if (importConsoleUrl) mandatoryParameters << ['FABRIC_IMPORT_IDENTITY_URL']
-                    def eitherOrParameters = [['EXPORT_CLOUD_ACCOUNT_ID', 'FABRIC_EXPORT_CONSOLE_URL'], ['IMPORT_CLOUD_ACCOUNT_ID', 'FABRIC_IMPORT_CONSOLE_URL']]
-                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters, eitherOrParameters)
+                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
                 pipelineWrapper {
                     /* Allocate a slave for the run */
@@ -856,12 +864,31 @@ class Fabric implements Serializable {
                         
                         script.stage('Trigger Publish job') {
                             if (enablePublish) {
-                                appPublish(importCloudAccountId, importCloudCredentialsID, importConsoleUrl, importIdentityUrl)
+                                fabricAppConfig = importfabricAppConfig
+                                appPublish(importCloudAccountId, importCloudCredentialsID, appConfigParameter, importConsoleUrl, importIdentityUrl)
                             } else {
                                 script.echoCustom("Publish is not selected, Skipping the publish stage execution.")
                             }
                         }
                     }
+                    /* Data for e-mail notification to be specified*/
+                    emailData = [
+                            fabricAppName         : fabricAppName,
+                            fabricAppVersion      : fabricAppVersion,
+                            exportRepositoryUrl   : exportRepositoryUrl,
+                            exportRepositoryBranch: exportRepositoryBranch,
+                            exportCloudAccountId  : exportCloudAccountId,
+                            importCloudAccountId  : importCloudAccountId,
+                            overwriteExisting     : overwriteExistingScmBranch,
+                            publishApp            : enablePublish,
+                            fabricEnvironmentName : fabricEnvironmentName,
+                            commandName           : 'MIGRATE'
+                    ]
+
+                    buildDescriptionItems = [
+                            'App Name'      : fabricAppName,
+                            'App Version'   : fabricAppVersion
+                    ]
                 }
             }
         }
@@ -976,7 +1003,7 @@ class Fabric implements Serializable {
             }
         }
     }
-    
+
     /**
      * To push app changes to repo
      * @param projectName
@@ -1007,17 +1034,47 @@ class Fabric implements Serializable {
      * @param cloudAccountId
      * @param cloudCredentialsID
      */
-    private void appPublish(String cloudAccountId, String cloudCredentialsID, String consoleUrl = null, String identityUrl = null) {
-         script.build job: "Publish", parameters: [
-             script.string(name: 'FABRIC_APP_VERSION', value: fabricAppVersion),
-             script.booleanParam(name: "SET_DEFAULT_VERSION", value: setDefaultVersion),
-             script.string(name: 'CLOUD_CREDENTIALS_ID', value: cloudCredentialsID),
-             script.string(name: 'CLOUD_ACCOUNT_ID', value: cloudAccountId),
-             script.string(name: 'FABRIC_APP_NAME', value: fabricAppName),
-             script.string(name: 'FABRIC_CONSOLE_URL', value: consoleUrl),
-             script.string(name: 'FABRIC_IDENTITY_URL', value: identityUrl),
-             script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: fabricEnvironmentName),
-             script.string(name: 'RECIPIENTS_LIST', value: recipientsList)
+    private void appPublish(String cloudAccountId, String cloudCredentialsID, def appConfigParam, String consoleUrl = null, String identityUrl = null) {
+        def publishJobParameters = [
+                script.string(name: 'FABRIC_APP_VERSION', value: fabricAppVersion),
+                script.booleanParam(name: "SET_DEFAULT_VERSION", value: setDefaultVersion),
+                script.string(name: 'CLOUD_CREDENTIALS_ID', value: cloudCredentialsID),
+                script.string(name: 'CLOUD_ACCOUNT_ID', value: cloudAccountId),
+                script.string(name: 'FABRIC_APP_NAME', value: fabricAppName),
+                script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: fabricEnvironmentName),
+                script.string(name: 'RECIPIENTS_LIST', value: recipientsList)
         ]
-     }
+        if (appConfigParam.matches("(.*)_APP_CONFIG")) {
+            publishJobParameters << script.credentials(name: 'FABRIC_APP_CONFIG', value: fabricAppConfig)
+        }
+        if (script.params.containsKey('FABRIC_CONSOLE_URL') && script.params.containsKey('FABRIC_IDENTITY_URL')) {
+            publishJobParameters << script.string(name: 'FABRIC_CONSOLE_URL', value: consoleUrl) <<
+                    script.string(name: 'FABRIC_IDENTITY_URL', value: identityUrl)
+        }
+
+        script.build job: "Publish", parameters: publishJobParameters
+    }
+
+    /**
+     * To implement few backward compatibility checks for FABRIC_CONSOLE_URL
+     */
+    private final checkCompatibility(def mandatoryParameters, String jobName) {
+        switch (appConfigParameter) {
+            case 'FABRIC_APP_CONFIG':
+                mandatoryParameters << ['FABRIC_APP_CONFIG']
+                break
+            case 'CLOUD_ACCOUNT_ID':
+                mandatoryParameters << ['FABRIC_APP_NAME']
+                if (!script.params.FABRIC_CONSOLE_URL && !script.params.CLOUD_ACCOUNT_ID) {
+                    throw new AppFactoryException('Please enter one of CLOUD_ACCOUNT_ID or FABRIC_CONSOLE_URL parameters.')
+                }
+                if (script.params.containsKey('FABRIC_CONSOLE_URL') && script.params.FABRIC_CONSOLE_URL) mandatoryParameters << ['FABRIC_IDENTITY_URL']
+                if (enablePublish || jobName == 'publish') {
+                    mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
+                }
+                break
+        }
+
+        return mandatoryParameters
+    }
 }
