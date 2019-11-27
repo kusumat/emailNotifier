@@ -21,6 +21,7 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import io.appium.java_client.InteractsWithFiles;
 import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.appmanagement.ApplicationState;
 import io.appium.java_client.ios.IOSDriver;
 
 /**
@@ -33,6 +34,7 @@ public class InvokeJasmineTests {
     public static IOSDriver <WebElement> iosdriver;
     public static RemoteWebDriver driver;
     public boolean isAndroidDevice = false;
+    public String bundleID = "";
     public String jasmineAndroidNativeReportDefaultLocation = "/sdcard/JasmineTestResults/";
     public String jasmineIosNativeReportDefaultLocation = "@[APPLICATIONID]/Library/JasmineTestResults/";
     public String jasmineNativeTestReportFileName = "TestResult.html";
@@ -115,11 +117,13 @@ public class InvokeJasmineTests {
                 System.out.println("Initializing the Android Driver!!!!!!!!!!!!");
                 androiddriver = new AndroidDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
                 driver = androiddriver;
+                bundleID = (String) androiddriver.getSessionDetail("appPackage");
             } else {
                 capabilities.setCapability("automationName", "XCUITest");
                 System.out.println("Initializing the iOS Driver!!!!!!!!!!!!");
                 iosdriver = new IOSDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
                 driver = iosdriver;
+                bundleID = (String) iosdriver.getSessionDetail("CFBundleIdentifier");
             }
             System.out.println("Driver is initialized!!!!!!!!!!!!!!!!!!!!!");
             isAndroidDevice = isAndroidDevice();
@@ -165,7 +169,6 @@ public class InvokeJasmineTests {
         byte[] fileData = null;
         
         if(!isAndroidDevice) {
-            String bundleID = (String) ((IOSDriver<?>) driver).getSessionDetail("CFBundleIdentifier");
             deviceFilePath = deviceFilePath.replace("[APPLICATIONID]", bundleID);
         }
         
@@ -212,6 +215,20 @@ public class InvokeJasmineTests {
                 int currentTotalTestsCount = totalPassed + totalFailed;
                 if(currentTotalTestsCount == totalTests && currentTotalTestsCount > 0) {
                     System.out.println("Jasmine tests execution is completed.");
+                    break;
+                }
+            }
+            
+            if (isAndroidDevice) {
+                String currentRunningApp = ((AndroidDriver<?>) driver).getCurrentPackage();
+                if (!currentRunningApp.equalsIgnoreCase(bundleID)) {
+                    System.out.println("Application seems crashed or closed. We will try to fetch the jasmine test results if avaliable.");
+                    break;
+                }
+            } else {
+                ApplicationState testAppStatus = ((IOSDriver<?>) driver).queryAppState(bundleID);
+                if (testAppStatus != ApplicationState.RUNNING_IN_FOREGROUND) {
+                    System.out.println("Application seems crashed or closed. We will try to fetch the jasmine test results if avaliable.");
                     break;
                 }
             }
