@@ -403,9 +403,7 @@ class AllChannels implements Serializable {
 
                                             /* Get plist artifact */
                                             ios_channel.plistArtifact = ios_channel.createPlist(ios_channel.authenticatedIPAArtifactUrl)
-                                        }
 
-                                        ios_channel.pipelineWrapper {
                                             String artifactName = ios_channel.plistArtifact.name
                                             String artifactPath = ios_channel.plistArtifact.path
 
@@ -472,6 +470,31 @@ class AllChannels implements Serializable {
                             abortMsg = "BUILD ABORTED!!"
                             script.echoCustom(abortMsg, 'ERROR', false)
                         }
+
+                        /* Collecting MustHaves.
+                         * Let's use first channel object, can be one of MobileChannel and TabletChannel of Android or iOS,
+                         * for collecting musthaves from signle channel object for the entire cloudbuild.
+                         */
+                        def channelObjectsFirstKey = channelObjects.keySet().toArray()[0]
+                        channelObject = channelObjects.get(channelObjectsFirstKey)
+                        channelObject.pipelineWrapper {
+                            try {
+                                channelObject.mustHavePath = [channelObject.projectFullPath, 'mustHaves'].join(separator)
+                                if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
+                                    channelObject.upstreamJob = BuildHelper.getUpstreamJobName(script)
+                                    channelObject.isRebuild = BuildHelper.isRebuildTriggered(script)
+                                    channelObject.PrepareMustHaves()
+                                }
+
+                            }
+                            catch (Exception Ex) {
+                                String exceptionMessage = (Ex.getLocalizedMessage()) ?: 'Something went wrong...'
+                                script.echoCustom(exceptionMessage, 'ERROR', false)
+                                script.currentBuild.result = "UNSTABLE"
+                            }
+                        }
+
+
                         /* Prepare log for cloud build and publish to s3 */
                         def consoleLogsLink = buildStatus.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, abortMsg)
                         // Send build results email notification with proper buildStatus

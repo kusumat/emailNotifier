@@ -137,6 +137,7 @@ class PlatformsDTO implements Serializable{
         return universalFlag
     }
 
+    @NonCPS
     void setMobileDownloadLink(String mobileDownloadLink){
         this.mobileDownloadLink = (!mobileDownloadLink.equals("null")) ? mobileDownloadLink : null
     }

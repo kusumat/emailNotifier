@@ -229,7 +229,7 @@ class Channel implements Serializable {
 
             script.env['CHANNEL_ARTIFACT_META'] = artifactMeta?.inspect()
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
-            if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
+            if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED' && !script.params.IS_SOURCE_VISUALIZER) {
                 upstreamJob = BuildHelper.getUpstreamJobName(script)
                 isRebuild = BuildHelper.isRebuildTriggered(script)
                     PrepareMustHaves()
@@ -911,10 +911,8 @@ class Channel implements Serializable {
     protected final void collectAllInformation() {
         String buildLog = "JenkinsBuild.log"
         script.dir(mustHavePath) {
-            if(!script.params.IS_SOURCE_VISUALIZER) {
-                script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
-                script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
-            }
+            script.writeFile file: buildLog, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
+            script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
 
             /* APPFACT-858 - Custom hooks will be executed only on MAC Machine. Build will be executed on MAC node

@@ -323,7 +323,7 @@ class BuildStatus implements Serializable {
 
         for (channel in channelsToRun) {
             String buildValue = script.env[buildService.concat(channel)]
-            if (buildValue.equals("false")) {
+            if (!buildValue.equals("true")) {
                 successFlag = false
                 updatePlatformStatus(ChannelType.valueOf(channel), Status.FAILED)
             } else {
