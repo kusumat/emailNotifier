@@ -545,7 +545,7 @@ class IosChannel extends Channel {
                                     scmUrl: scmUrl
                         }
 
-                        artifactMeta.add("version": ["App Version": iosAppVersion, "Build Version": iosBundleVersion])
+                        artifactMeta.add("version": ["App Version": script.env.APP_VERSION, "Build Version": iosBundleVersion])
                         /* Run PreBuild Hooks */
                         runPreBuildHook()
 
