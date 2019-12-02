@@ -125,7 +125,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
             /* If we have application binaries and test binaries, schedule the custom run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
-                deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
                 /* Once all parameters gotten, schedule the Device Farm run */
                 def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn, 'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn, extraDataPkgArn)
                 deviceFarmTestRunArns["$artifactName"] = runArn
@@ -134,6 +133,9 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 script.echoCustom("Failed to get uploadArn", 'WARN')
             }
         }
+        
+        deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
+        
         /* Setting the Universal binary url to respective platform input run test job paramaters*/
         if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL) {
             projectArtifacts.'Android_Mobile'.'url' = devicePoolArns.phones ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
