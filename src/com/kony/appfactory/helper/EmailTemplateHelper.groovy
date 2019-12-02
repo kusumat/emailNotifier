@@ -875,7 +875,7 @@ class EmailTemplateHelper implements Serializable {
             if(deviceFarmTimeLimitExceeded)
             tr {
                 td(style: "text-align:left", class: "text-color") {
-                    p(style: "font-size:10px;font-weight:normal", '** Tests got skipped. Device Farm public fleet default time limit exceeded of '+ (binding.defaultDeviceFarmTimeLimit/60000) +' minutes duration.')
+                    p(style: "font-size:10px;font-weight:normal", '** Tests got skipped. Device Farm public fleet default time limit of ' + (binding.defaultDeviceFarmTimeLimit/60000) + ' minutes exceeded.')
                 }
             }
         }

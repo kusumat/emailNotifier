@@ -57,7 +57,7 @@ class NotificationsHelper implements Serializable {
      */
     private static setbuildResult(script, testResultsJson) {
         if ( testResultsJson ) {
-            script.echoCustom("Artifact URL: Results from AWS Device Farm say: ${testResultsJson[0].result}")
+            script.echoCustom("Results from AWS Device Farm say: ${testResultsJson[0].result}")
             switch (testResultsJson[0].result) {
                 case "FAILED":
                     script.currentBuild.result = "UNSTABLE"

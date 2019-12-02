@@ -738,7 +738,7 @@ class AwsDeviceFarmHelper implements Serializable {
         Long timeDifference = endTime.time - testExecutionStartTimeMap[deviceKey]
         Long defaultTestRunTimeLimit = Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit')
         if(timeDifference > defaultTestRunTimeLimit) {
-            script.echoCustom("Sorry! Device Farm public fleet default time limit exceeded of "+ (defaultTestRunTimeLimit/60000) +" minutes. All remaining tests on device " + deviceKey + " will be skipped.", 'WARN')
+            script.echoCustom("Sorry! Device Farm public fleet default time limit of " +(defaultTestRunTimeLimit/60000)+ " minutes exceeded. All remaining tests on device " + deviceKey + " will be skipped.", 'WARN')
         }
     }
 }
