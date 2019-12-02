@@ -16,7 +16,7 @@ class Fabric implements Serializable {
     /* Pipeline object */
     private script
     /* Data that should we sent in e-mail notification */
-    private emailData
+    private emailData = []
     /* Stores data for app change flag */
     private boolean appChanged
     /* Stores data that should be provided in build description section */
@@ -472,6 +472,14 @@ class Fabric implements Serializable {
                     script.env['IDENTITY_URL'] = identityUrl
                     break
             }
+            
+            emailData = [
+                fabricEnvironmentName : fabricEnvironmentName,
+                fabricAppName         : fabricAppName
+            ] + emailData
+            
+            buildDescriptionItems = [ 'App Name': fabricAppName ] + buildDescriptionItems
+                
             closure()
         } catch (AppFactoryException e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
@@ -498,6 +506,21 @@ class Fabric implements Serializable {
             script.ansiColor('xterm') {
                 overwriteExisting = BuildHelper.getParamValueOrDefault(script, 'OVERWRITE_EXISTING_SCM_BRANCH', overwriteExisting)
 
+                /* Data for e-mail notification */
+                emailData = [
+                        fabricAppVersion      : fabricAppVersion,
+                        exportRepositoryUrl   : exportRepositoryUrl,
+                        exportRepositoryBranch: exportRepositoryBranch,
+                        authorEmail           : authorEmail,
+                        commitAuthor          : commitAuthor,
+                        commitMessage         : commitMessage,
+                        commandName           : 'EXPORT'
+                ]
+
+                buildDescriptionItems = [
+                        'App Version'   : fabricAppVersion
+                ]
+                
                 /* Folder name for storing exported application */
                 String exportFolder = 'export'
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
@@ -558,24 +581,6 @@ class Fabric implements Serializable {
                             }
                         }
                     }
-                    /* Data for e-mail notification */
-                    emailData = [
-                            fabricAppName         : fabricAppName,
-                            fabricAppVersion      : fabricAppVersion,
-                            fabricEnvironmentName : fabricEnvironmentName,
-                            exportRepositoryUrl   : exportRepositoryUrl,
-                            exportRepositoryBranch: exportRepositoryBranch,
-                            authorEmail           : authorEmail,
-                            commitAuthor          : commitAuthor,
-                            commitMessage         : commitMessage,
-                            commandName           : 'EXPORT'
-
-                    ]
-
-                    buildDescriptionItems = [
-                            'App Name'      : fabricAppName,
-                            'App Version'   : fabricAppVersion
-                    ]
                 }
             }
         }
@@ -592,6 +597,20 @@ class Fabric implements Serializable {
             script.ansiColor('xterm') {
                 overwriteExisting = BuildHelper.getParamValueOrDefault(script, 'OVERWRITE_EXISTING_APP_VERSION', overwriteExisting)
 
+                /* Data for e-mail notification */
+                emailData = [
+                        fabricAppVersion      : fabricAppVersion,
+                        exportRepositoryUrl   : exportRepositoryUrl,
+                        exportRepositoryBranch: exportRepositoryBranch,
+                        overwriteExisting     : overwriteExisting,
+                        publishApp            : enablePublish,
+                        commandName           : 'IMPORT',
+                ]
+
+                buildDescriptionItems = [
+                        'App Version'   : fabricAppVersion
+                ]
+                
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
 
@@ -645,22 +664,6 @@ class Fabric implements Serializable {
                             }
                         }
                     }
-                    /* Data for e-mail notification */
-                    emailData = [
-                            fabricAppName         : fabricAppName,
-                            fabricAppVersion      : fabricAppVersion,
-                            exportRepositoryUrl   : exportRepositoryUrl,
-                            exportRepositoryBranch: exportRepositoryBranch,
-                            overwriteExisting     : overwriteExisting,
-                            publishApp            : enablePublish,
-                            commandName           : 'IMPORT',
-                            fabricEnvironmentName : fabricEnvironmentName
-                    ]
-
-                    buildDescriptionItems = [
-                            'App Name'      : fabricAppName,
-                            'App Version'   : fabricAppVersion
-                    ]
                 }
             }
         }
@@ -676,6 +679,16 @@ class Fabric implements Serializable {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
 
+                /* Data for e-mail notification */
+                emailData = [
+                        fabricAppVersion     : fabricAppVersion,
+                        commandName          : 'PUBLISH'
+                ]
+
+                buildDescriptionItems = [
+                        'App Version'   : fabricAppVersion
+                ]
+                
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             'CLOUD_CREDENTIALS_ID',
@@ -719,18 +732,6 @@ class Fabric implements Serializable {
                             FabricHelper.fabricCli(script, 'set-appversion', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
                         }
                     }
-                    /* Data for e-mail notification */
-                    emailData = [
-                            fabricAppName        : fabricAppName,
-                            fabricAppVersion     : fabricAppVersion,
-                            fabricEnvironmentName: fabricEnvironmentName,
-                            commandName          : 'PUBLISH'
-                    ]
-
-                    buildDescriptionItems = [
-                            'App Name'      : fabricAppName,
-                            'App Version'   : fabricAppVersion
-                    ]
                 }
             }
         }
@@ -756,6 +757,22 @@ class Fabric implements Serializable {
                 def importIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
                 def appConfigParameter = BuildHelper.getCurrentParamName(script, 'EXPORT_FABRIC_APP_CONFIG', 'EXPORT_CLOUD_ACCOUNT_ID')
 
+                /* Data for e-mail notification to be specified*/
+                emailData = [
+                        fabricAppVersion      : fabricAppVersion,
+                        exportRepositoryUrl   : exportRepositoryUrl,
+                        exportRepositoryBranch: exportRepositoryBranch,
+                        exportCloudAccountId  : exportCloudAccountId,
+                        importCloudAccountId  : importCloudAccountId,
+                        overwriteExisting     : overwriteExistingScmBranch,
+                        publishApp            : enablePublish,
+                        commandName           : 'MIGRATE'
+                ]
+
+                buildDescriptionItems = [
+                        'App Version'   : fabricAppVersion
+                ]
+                
                 /* Folder name for storing exported application */
                 String exportFolder = 'export'
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
@@ -799,6 +816,12 @@ class Fabric implements Serializable {
                             if (script.params.containsKey('FABRIC_IMPORT_CONSOLE_URL') && script.params.FABRIC_IMPORT_CONSOLE_URL) mandatoryParameters << ['FABRIC_IMPORT_IDENTITY_URL']
                             break
                     }
+                    
+                    emailData = [
+                        importCloudAccountId : importCloudAccountId,
+                        exportCloudAccountId : exportCloudAccountId
+                    ] + emailData
+                    
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
                 pipelineWrapper {
@@ -871,24 +894,6 @@ class Fabric implements Serializable {
                             }
                         }
                     }
-                    /* Data for e-mail notification to be specified*/
-                    emailData = [
-                            fabricAppName         : fabricAppName,
-                            fabricAppVersion      : fabricAppVersion,
-                            exportRepositoryUrl   : exportRepositoryUrl,
-                            exportRepositoryBranch: exportRepositoryBranch,
-                            exportCloudAccountId  : exportCloudAccountId,
-                            importCloudAccountId  : importCloudAccountId,
-                            overwriteExisting     : overwriteExistingScmBranch,
-                            publishApp            : enablePublish,
-                            fabricEnvironmentName : fabricEnvironmentName,
-                            commandName           : 'MIGRATE'
-                    ]
-
-                    buildDescriptionItems = [
-                            'App Name'      : fabricAppName,
-                            'App Version'   : fabricAppVersion
-                    ]
                 }
             }
         }
