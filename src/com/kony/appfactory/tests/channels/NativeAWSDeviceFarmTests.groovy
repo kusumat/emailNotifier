@@ -531,8 +531,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             }
         }
         if (deviceFarmTestSpecUploadArtifactArn){
-            def cleanTestSpecFile = "rm -f ${testSpecUploadFileName}"
-            script.shellCustom("$cleanTestSpecFile", true)
+            if (script.fileExists(testSpecUploadFileName))
+                script.shellCustom("rm -f ${testSpecUploadFileName}", true)
         }
     }
 
