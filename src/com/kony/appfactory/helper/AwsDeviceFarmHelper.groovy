@@ -518,6 +518,7 @@ class AwsDeviceFarmHelper implements Serializable {
      * @param completedRunDevicesList This holds the list of devices for which the tests execution is completed
      * @param index This is the index for the list completedRunDevicesList
      * */
+    @NonCPS
     protected void createSummaryOfTestCases(def listJobsArrayList, def testSummaryMap, def testStartTimeMap, def testEndTimeMap, def completedRunDevicesList, def index){
         def keys = listJobsArrayList.counters.keySet()
         String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
