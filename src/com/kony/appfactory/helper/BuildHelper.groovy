@@ -1,6 +1,7 @@
 package com.kony.appfactory.helper
 
 import java.util.regex.Matcher
+import java.util.regex.Pattern
 import org.jenkins.plugins.lockableresources.LockableResources
 import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
@@ -925,7 +926,11 @@ class BuildHelper implements Serializable {
      * return releasedVersionsList
      **/
     protected static String getVisualizerReleasedVersions(script, libraryProperties) {
-        def updatesiteVersionInfoUrl = libraryProperties.'visualizer.dependencies.updatesite.versioninfo.base.url'
+        /* Added the check to use update site link for v9 prod if project version is :9.X.X  */
+        def updatesiteVersionInfoUrl = Pattern.matches("^9\\.\\d+\\.\\d+\$", script.env["visualizerVersion"]) ?
+            libraryProperties.'visualizer.dependencies.updatesite.v9.versioninfo.base.url' :
+            libraryProperties.'visualizer.dependencies.updatesite.versioninfo.base.url'
+            
         updatesiteVersionInfoUrl = updatesiteVersionInfoUrl.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN)
 
         def updatesiteVersionInfoFile = "versionInfo.json"
@@ -1085,5 +1090,6 @@ class BuildHelper implements Serializable {
     protected static String addQuotesIfRequired(path) {
         return path.trim().contains(" ") ? "\"" + path.trim() + "\"" : path.trim()
     }
+    
 }
 

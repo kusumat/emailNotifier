@@ -6,6 +6,9 @@
             <filesystem name="local">
                 <artifact pattern="${ivy.settings.dir}/lib/[artifact]-[revision].[ext]"/>
             </filesystem>
+            <url name="V9Prod">
+                <artifact pattern="http://download.CLOUD_DOMAIN]/visualizer_enterprise/90/plugins/[artifact]_[revision].[ext]"></artifact>
+            </url>
             <url name="V8Prod">
                 <artifact pattern="http://download.kony.com/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>

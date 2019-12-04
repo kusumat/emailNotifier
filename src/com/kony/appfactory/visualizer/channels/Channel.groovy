@@ -361,8 +361,10 @@ class Channel implements Serializable {
                 visualizerEnvWrapper() {
                     /* Download Visualizer Starter feature XML*/
                     if (script.env.IS_STARTER_PROJECT.equals("true")) {
-                        /* TODO: currently basePath is only valid for PROD, later release will add support for SIT, QA & Dev */
-                        fetchFeatureXML(script.env.visualizerVersion, libraryProperties.'visualizer.dependencies.feature.xml.base.url')
+                        /* Added the check to use update site link for v9 prod if project version is :9.X.X  */
+                        def updateSiteVersion = Pattern.matches("^9\\.\\d+\\.\\d+\$", script.env["visualizerVersion"]) ? "90" : "80"
+                        def updateSiteBasePath = libraryProperties.'visualizer.dependencies.feature.xml.base.url'.replaceAll("\\[SITE_VERSION\\]", updateSiteVersion)
+                        fetchFeatureXML(script.env.visualizerVersion, updateSiteBasePath)
                     }
                     
                     /* Setting the test resources URL - only if the build is from Appfactory Console */
