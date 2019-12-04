@@ -41,7 +41,7 @@ class Channel implements Serializable {
     protected buildArtifacts
     /*
         Contains instance of Fabric class for publishing Fabric application,
-        if PUBLISH_FABRIC_APP build parameter set to true.
+        if PUBLISH_FABRIC_APP/PUBLISH_WEB_APP build parameter set to true.
      */
     protected fabricEnvName
     private fabricCliFileName

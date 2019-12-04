@@ -51,7 +51,8 @@ class Facade implements Serializable {
     private cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     private final buildMode = script.params.BUILD_MODE
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
-    private final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    private final publishToFabricParamName = BuildHelper.getCurrentParamName(script, 'PUBLISH_FABRIC_APP', 'PUBLISH_WEB_APP')
+    private final publishWebApp = script.params[publishToFabricParamName]
     private final recipientsList = script.params.RECIPIENTS_LIST
     private final defaultLocale = script.params.DEFAULT_LOCALE
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
@@ -263,7 +264,7 @@ class Facade implements Serializable {
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
                 script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
-                script.booleanParam(name: 'PUBLISH_FABRIC_APP', value: publishFabricApp),
+                script.booleanParam(name: publishToFabricParamName, value: publishWebApp),
                 script.stringParam(name: "TEST_FRAMEWORK", value: testFramework),
                 script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
@@ -432,7 +433,7 @@ class Facade implements Serializable {
             /* Create build parameter for Test Automation job */
             if(artifactName) {
                 if((artifact.name.matches("^.*.?(war|zip)\$"))) {
-                    if(publishFabricApp)
+                    if(publishWebApp)
                         [script.stringParam(name: "FABRIC_APP_URL", value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
                 } else
                     if(availableTestPools)
@@ -807,7 +808,7 @@ class Facade implements Serializable {
                             /* For CloudBuild, scan the checkParams list and clean unwanted params */
                             if (script.params.IS_SOURCE_VISUALIZER) {
                                 def cloudBuildNotExistingParams = [
-                                        'FABRIC_APP_CONFIG', 'PUBLISH_FABRIC_APP', 'RECIPIENTS_LIST',
+                                        'FABRIC_APP_CONFIG', publishToFabricParamName, 'RECIPIENTS_LIST',
                                         'RUN_CUSTOM_HOOKS', 'FORM_FACTOR', 'PROTECTED_KEYS', 'APPLE_ID'
                                 ]
                                 checkParams.removeAll(cloudBuildNotExistingParams)
@@ -841,7 +842,7 @@ class Facade implements Serializable {
                         /* Run channel builds in parallel */
                         script.parallel(runList)
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
-                        if (availableTestPools || (runDesktopwebTests && publishFabricApp)) {
+                        if (availableTestPools || (runDesktopwebTests && publishWebApp)) {
                             script.stage('TESTS') {
 
                                 def testAutomationJobParameters = getTestAutomationJobParameters() ?:

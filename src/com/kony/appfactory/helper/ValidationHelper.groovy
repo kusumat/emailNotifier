@@ -250,8 +250,8 @@ class ValidationHelper implements Serializable {
      * @param libraryProperties
      */
     protected static void checkBuildConfigurationForDesktopWebTest(script, libraryProperties) {
-        if(!script.params.PUBLISH_FABRIC_APP) {
-            throw new AppFactoryException("Please select PUBLISH_FABRIC_APP parameter if you want to run DesktopWeb tests!", 'ERROR')
+        if(!script.params.PUBLISH_FABRIC_APP && !script.params.PUBLISH_WEB_APP) {
+            throw new AppFactoryException("If you want to run DesktopWeb tests, please make sure to select PUBLISH_WEB_APP/PUBLISH_FABRIC_APP build parameter.", 'ERROR')
         }
     }
     

@@ -15,7 +15,8 @@ class WebChannel extends Channel {
     protected fabricCliFileName
     protected libraryProperties
     /* Build parameters */
-    protected final publishFabricApp = script.params.PUBLISH_FABRIC_APP
+    def publishToFabricParamName = BuildHelper.getCurrentParamName(script, 'PUBLISH_FABRIC_APP', 'PUBLISH_WEB_APP')
+    protected final publishWebApp = script.params[publishToFabricParamName]
     protected final desktopWebChannel = script.params.DESKTOP_WEB
     protected final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
@@ -128,7 +129,7 @@ class WebChannel extends Channel {
                                     'APP_VERSION'
                             ]
 
-                            if (publishFabricApp) {
+                            if (publishWebApp) {
                                 mandatoryParameters.addAll(['FABRIC_APP_NAME', 'CLOUD_ACCOUNT_ID'])
                             }
 
@@ -191,8 +192,8 @@ class WebChannel extends Channel {
 
 
                         script.stage('Publish to Fabric') {
-                            /* Publish Fabric application if PUBLISH_FABRIC_APP set to true */
-                            if (publishFabricApp) {
+                            /* Publish Fabric application if PUBLISH_FABRIC_APP/PUBLISH_WEB_APP set to true */
+                            if (publishWebApp) {
                                 if (webChannelType.equalsIgnoreCase("WEB")) {
                                     script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Fabric environment you've chosen.")
                                 }
@@ -207,7 +208,7 @@ class WebChannel extends Channel {
                                 webAppUrl = fetchWebAppUrl("appinfo", fabricCommandOptions)
                                 script.echoCustom("Your published app is accessible at : " + webAppUrl)
                             } else {
-                                script.echoCustom("PUBLISH_FABRIC_APP flag set to false, " +
+                                script.echoCustom("${publishToFabricParamName} flag set to false, " +
                                         "skipping Fabric application publishing...")
 
                             }
