@@ -436,9 +436,10 @@ class Fabric implements Serializable {
      * @param itemsToExpose list of the items to expose.
      */
     private final void setBuildDescription(itemsToExpose) {
-        String descriptionItems = itemsToExpose?.findResults {
-            item -> item.value ? "<p>${item.key}: ${item.value}</p>" : null
-        }?.join('\n')
+        String descriptionItems = itemsToExpose ? itemsToExpose.findResults {
+            item -> if(item.value) "<p>${item.key}: ${item.value}</p>"
+        }?.join('\n') : ""
+
         script.currentBuild.description = """\
             <div id="build-description">
                 ${descriptionItems}
