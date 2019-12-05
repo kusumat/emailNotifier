@@ -12,7 +12,7 @@ import java.math.*;
 class AwsDeviceFarmHelper implements Serializable {
     def script
     def testSummaryMap = [:]
-    def durationMap = [:], testStartTimeMap = [:], testEndTimeMap = [:], mapWithTimeFormat = [:], runArnMap = [:], testExecutionStartTimeMap = [:]
+    def durationMap = [:], testStartTimeMap = [:], testEndTimeMap = [:], mapWithTimeFormat = [:], testExecutionStartTimeMap = [:]
 
     protected libraryProperties
 
@@ -369,8 +369,12 @@ class AwsDeviceFarmHelper implements Serializable {
             // The below line is used to make isAndroidDevicePresentInPool to true if pool has android device and vice versa for iOS devices
             (getDeviceJSON.device.platform.equalsIgnoreCase("Android")) ?(isAndroidDevicePresentInPool=true): (isiOSDevicePresentInPool = true)
 
-            String successMessage = "Test run is scheduled successfully on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
-            String errorMessage = "Failed to schedule run on \'" + getDeviceJSON.device.name + " " + getDeviceJSON.device.os + "\' device."
+            def deviceKey = getDeviceJSON.device.name + ' ' + getDeviceJSON.device.os
+            def deviceDisplayName = getDeviceJSON.device.name + ' OS ' + getDeviceJSON.device.os
+            testSummaryMap.put(deviceKey, 'displayName:' +deviceDisplayName)
+            durationMap.put(deviceKey, 0)
+            String successMessage = "Test run is scheduled successfully on \'" + deviceDisplayName + "\' device."
+            String errorMessage = "Failed to schedule run on \'" + deviceDisplayName + "\' device."
 
             script.catchErrorCustom(errorMessage, successMessage) {
                 String runScript = [
@@ -412,22 +416,36 @@ class AwsDeviceFarmHelper implements Serializable {
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.waitUntil {
-                String runResultScript = "set +x;aws devicefarm get-run --arn ${testRunArn}"
-                String runResultOutput = script.shellCustom(runResultScript, true, [returnStdout: true]).trim()
-                def runResultJSON = script.readJSON text: runResultOutput
-                testRunStatus = runResultJSON.run.status
-                testRunResult = runResultJSON.run.result
+                try {
+                    String runResultScript = "set +x;aws devicefarm get-run --arn ${testRunArn}"
+                    String runResultOutput = script.shellCustom(runResultScript, true, [returnStdout: true]).trim()
+                    def runResultJSON = script.readJSON text: runResultOutput
+                    testRunStatus = runResultJSON.run.status
+                    testRunResult = runResultJSON.run.result
+                }
+                catch(Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                    script.echoCustom(exceptionMessage + "\nFailed to fetch information about the run, retrying..", 'WARN', false)
+                    return false
+                }
 
-                String listJobsScript = "set +x;aws devicefarm list-jobs --arn ${testRunArn} --no-paginate"
-                String listJobsOutput = script.shellCustom(listJobsScript, true, [returnStdout: true]).trim()
-                def listJobsJSON = script.readJSON text: listJobsOutput
-                String deviceKey
+                def listJobsJSON
+
+                try {
+                    String listJobsScript = "set +x;aws devicefarm list-jobs --arn ${testRunArn} --no-paginate"
+                    String listJobsOutput = script.shellCustom(listJobsScript, true, [returnStdout: true]).trim()
+                    listJobsJSON = script.readJSON text: listJobsOutput
+                }
+                catch(Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                    script.echoCustom(exceptionMessage + "\nFailed to fetch information about jobs for the run, retrying..", 'WARN', false)
+                    return false
+                }
 
                 if(listJobsJSON.jobs.size()){
                     for(def i=0; i< listJobsJSON.jobs.size(); i++){
                         listJobsArrayList = listJobsJSON.jobs[i]
-                        deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
-                        runArnMap.put(deviceKey, testRunArn)
+                        String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
 
                         //If the run is already completed on particular device with specific ARN, then continue.
                         if(completedRunDevicesList.contains(listJobsArrayList.arn))
@@ -484,12 +502,14 @@ class AwsDeviceFarmHelper implements Serializable {
                                 break
                             case 'ERRORED':
                                 validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
+                                script.echoCustom("ERRORED!!\n" + listJobsArrayList, 'WARN')
                                 script.echoCustom("Looks like your tests failed with an ERRORED message, it usually happens due to some network issue on AWS device or issue with instance itself. Re-triggering the build might solve the issue.", 'WARN')
                             case 'STOPPED':
                             case 'FAILED':
                                 validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + deviceKey
                                         + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
+                                script.currentBuild.result = 'UNSTABLE'
                                 createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
                                 break
                             default:
@@ -590,8 +610,16 @@ class AwsDeviceFarmHelper implements Serializable {
 
             for(def i=0; i<queryParameters.queryScript.size(); i++) {
                 /* Convert command JSON string result to map */
-                queryOutput[i] = script.readJSON text: script.shellCustom(
-                        queryParameters.queryScript[i], true, [returnStdout: true]).trim()
+                try {
+                    queryOutput[i] = script.readJSON text: script.shellCustom(
+                            queryParameters.queryScript[i], true, [returnStdout: true]).trim()
+                }
+                catch (Exception e) {
+                    String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                    script.echoCustom(exceptionMessage + "\nFailed to fetch test run artifact." + queryParameters.queryScript[i], 'WARN', false)
+                    continue
+                }
+
 
                 /* If we do have result */
                 (queryOutput[i]) ? (resultStructure.addAll(parseQueryOutput(queryOutput[i], queryParameters))) : script.echoCustom("Failed to query Device Farm!", 'WARN')
@@ -735,8 +763,10 @@ class AwsDeviceFarmHelper implements Serializable {
      * @param deviceKey device name
      */
     protected final void validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey){
+        Long timeDifference = 0
         Date endTime = new Date()
-        Long timeDifference = endTime.time - testExecutionStartTimeMap[deviceKey]
+        if(testExecutionStartTimeMap[deviceKey])
+            timeDifference = endTime.time - testExecutionStartTimeMap[deviceKey]
         Long defaultTestRunTimeLimit = Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit')
         if(timeDifference > defaultTestRunTimeLimit) {
             script.echoCustom("Sorry! Device Farm public fleet default time limit of " +(defaultTestRunTimeLimit/60000)+ " minutes exceeded. All remaining tests on device " + deviceKey + " will be skipped.", 'WARN')

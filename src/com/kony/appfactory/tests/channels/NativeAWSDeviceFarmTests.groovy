@@ -31,7 +31,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     protected testngFiles = script.params.TESTNG_FILES
 
     /* Device Farm related variables */
-    private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn, deviceFarmTestSpecUploadArtifactArn
+    private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn, deviceFarmTestSpecUploadArtifactArn, testSummaryMap
     protected deviceFarmUploadArns = [], deviceFarmTestRunArns = [:], deviceFarmTestRunResults = [], summary = [:], duration = [:], runArnMap = [:], testBinaryDetails = [:]
 
     /* Temp folder for Device Farm objects (test run results) */
@@ -128,6 +128,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 /* Once all parameters gotten, schedule the Device Farm run */
                 def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn, 'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn, extraDataPkgArn)
                 deviceFarmTestRunArns["$artifactName"] = runArn
+                testSummaryMap  = deviceFarm.testSummaryMap
                 /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
             } else {
                 script.echoCustom("Failed to get uploadArn", 'WARN')
@@ -264,6 +265,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             /* Prepare step to run in parallel */
             stepsToRun["testResults_${deviceFarmTestRunArnsKeys[i]}"] = {
                 def testRunResult = deviceFarm.getTestRunResult(arn)
+                duration.putAll(deviceFarm.durationMap)
                 /* If we got a test result */
                 if (testRunResult) {
                     /*
@@ -305,20 +307,28 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         artifacts.url = BuildHelper.createAuthUrl(artifacts.url, script, true)
                     }
                     testBinaryDetails.put(key, artifacts)
+                    runArnMap.put(key, arn)
                     
                     if(runInCustomTestEnvironment) {
                         for(reports in runArtifacts.reports) {
                             authUrl = reports.getValue()
                         }
                         if(key != null && runArtifacts.passedTests != null && runArtifacts.failedTests != null) {
-                            def value = 'displayName:' + displayName + 'skipped: ' + runArtifacts.skippedTests + ' warned: ' + 0 + 'failed: '+ runArtifacts.failedTests + 'stopped: ' + 0 + 'passed: '+ runArtifacts.passedTests + 'errored: 0' + 'total tests: ' + runArtifacts.totalSuites + 'reports url: ' + authUrl
+                            def value = 'displayName:' + displayName + ' skipped: ' + runArtifacts.skippedTests + ' warned: ' + 0 + 'failed: '+ runArtifacts.failedTests + 'stopped: ' + 0 + 'passed: '+ runArtifacts.passedTests + 'errored: 0' + 'total tests: ' + runArtifacts.totalSuites + 'reports url: ' + authUrl
                             testSummaryMap.put(key, value)
+                        }
+                        else {
+                            for (summary in testSummaryMap) {
+                                def summaryDetail = summary.getValue()
+                                if (!summaryDetail.contains('displayName'))
+                                    testSummaryMap.put(key, 'displayName:' + displayName + ' ' + summaryDetail)
+                            }
                         }
                     } else {
                         for (summary in testSummaryMap) {
                             def summaryDetail = summary.getValue()
                             if (!summaryDetail.contains('displayName'))
-                                testSummaryMap.put(key, 'displayName:' + displayName + summaryDetail)
+                                testSummaryMap.put(key, 'displayName:' + displayName + ' ' + summaryDetail)
                         }
                     }
                 }
@@ -339,8 +349,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         script.echoCustom("Test execution is completed for all the devices in device pool.", 'INFO')
         script.echoCustom("Summary of Test Results : ", 'INFO')
         separator()
-        duration.putAll(deviceFarm.durationMap)
-        runArnMap.putAll(deviceFarm.runArnMap)
         summary.each {
             script.echoCustom("On " + it.key + ":: " + it.value + ", Duration: " + duration[it.key] + ", Run ARN: " + runArnMap[it.key])
         }

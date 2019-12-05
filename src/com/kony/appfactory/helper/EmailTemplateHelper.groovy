@@ -822,7 +822,7 @@ class EmailTemplateHelper implements Serializable {
                     tr {
                         th(
                                 class: "testresults",
-                                StringUtils.substringBetween(vals[i], "displayName:", "skipped:")
+                                StringUtils.substringBetween(vals[i], "displayName:", "skipped:") ?: ' '
                         )
                         if(binding.testBinaryDetails) {
                             def binaryDetails = binding.testBinaryDetails.get(keys[i])
@@ -836,31 +836,31 @@ class EmailTemplateHelper implements Serializable {
 
                         //if reports url exists then the total test cases count exist between 'total tests:' and 'reports url' otherwise count exists as last value.
                         if(vals[i].contains('reports url'))
-                            th(class: "testresults", StringUtils.substringBetween(vals[i], "total tests:", "reports url"))
+                            th(class: "testresults", StringUtils.substringBetween(vals[i], "total tests:", "reports url") ?: '')
                         else
-                            th(class: "testresults", vals[i].substring(vals[i].lastIndexOf(":") + 1))
+                            th(class: "testresults", vals[i].substring(vals[i].lastIndexOf(":") + 1) ?: '')
 
                         (vals[i].contains("errored")) ? th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "errored:")) :
                                 th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "total tests:"))
                         th(
                                 class: "testresults",
-                                StringUtils.substringBetween(vals[i], "failed:", "stopped:")
+                                StringUtils.substringBetween(vals[i], "failed:", "stopped:") ?: 0
                         )
                         th(
                                 class: "testresults",
-                                StringUtils.substringBetween(vals[i], "skipped:", "warned:")
+                                StringUtils.substringBetween(vals[i], "skipped:", "warned:") ?: 0
                         )
                         th(
                                 class: "testresults",
-                                StringUtils.substringBetween(vals[i], "warned:", "failed:")
+                                StringUtils.substringBetween(vals[i], "warned:", "failed:") ?: 0
                         )
                         th(
                                 class: "testresults",
-                                StringUtils.substringBetween(vals[i], "stopped:", "passed:")
+                                StringUtils.substringBetween(vals[i], "stopped:", "passed:") ?: 0
                         )
                         th(
                                 class: "testresults",
-                                StringUtils.substringBetween(vals[i], "errored:", "total tests:")
+                                StringUtils.substringBetween(vals[i], "errored:", "total tests:") ?: 0
                         )
                         th(
                                 class: "testresults",
