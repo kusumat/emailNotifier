@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.CustomHookHelper
+import java.util.regex.Pattern
 import com.kony.appfactory.helper.AppFactoryException
 
 /**

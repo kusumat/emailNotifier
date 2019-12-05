@@ -475,26 +475,28 @@ class AllChannels implements Serializable {
                          * Let's use first channel object, can be one of MobileChannel and TabletChannel of Android or iOS,
                          * for collecting musthaves from signle channel object for the entire cloudbuild.
                          */
-                        def channelObjectsFirstKey = channelObjects.keySet().toArray()[0]
-                        channelObject = channelObjects.get(channelObjectsFirstKey)
-                        channelObject.pipelineWrapper {
-                            try {
-                                channelObject.mustHavePath = [channelObject.projectFullPath, 'mustHaves'].join(separator)
-                                if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
-                                    channelObject.upstreamJob = BuildHelper.getUpstreamJobName(script)
-                                    channelObject.isRebuild = BuildHelper.isRebuildTriggered(script)
-                                    channelObject.PrepareMustHaves()
+                        if (channelObjects) {
+                            def channelObjectsFirstKey = channelObjects.keySet().toArray()[0]
+                            channelObject = channelObjects.get(channelObjectsFirstKey)
+                            channelObject.pipelineWrapper {
+                                try {
+                                    channelObject.mustHavePath = [channelObject.projectFullPath, 'mustHaves'].join(separator)
+                                    if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
+                                        channelObject.upstreamJob = BuildHelper.getUpstreamJobName(script)
+                                        channelObject.isRebuild = BuildHelper.isRebuildTriggered(script)
+                                        channelObject.PrepareMustHaves()
+                                    }
+    
                                 }
-
+                                catch (Exception Ex) {
+                                    String exceptionMessage = (Ex.getLocalizedMessage()) ?: 'Something went wrong...'
+                                    script.echoCustom(exceptionMessage, 'ERROR', false)
+                                    script.currentBuild.result = "UNSTABLE"
+                                }
                             }
-                            catch (Exception Ex) {
-                                String exceptionMessage = (Ex.getLocalizedMessage()) ?: 'Something went wrong...'
-                                script.echoCustom(exceptionMessage, 'ERROR', false)
-                                script.currentBuild.result = "UNSTABLE"
-                            }
+                            
                         }
-
-
+                        
                         /* Prepare log for cloud build and publish to s3 */
                         def consoleLogsLink = buildStatus.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, abortMsg)
                         // Send build results email notification with proper buildStatus

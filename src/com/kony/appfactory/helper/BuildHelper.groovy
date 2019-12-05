@@ -954,7 +954,12 @@ class BuildHelper implements Serializable {
     @NonCPS
     protected static String getMostRecentNthVersion(versions, index=-1) {
         def sorted = getSortedVersionList(versions)
-        sorted[index]
+        def maxIndexExist = -(sorted.size())
+        if (maxIndexExist <= index) {
+            sorted[index]
+        } else {
+            sorted[maxIndexExist]
+        }
     }
     
     
