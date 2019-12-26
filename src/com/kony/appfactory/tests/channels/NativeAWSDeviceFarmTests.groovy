@@ -321,7 +321,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                             for (summary in testSummaryMap) {
                                 def summaryDetail = summary.getValue()
                                 if (!summaryDetail.contains('displayName'))
-                                    testSummaryMap.put(key, 'displayName:' + displayName + ' ' + summaryDetail)
+                                    testSummaryMap.put(key, 'displayName:' + displayName + ' ' + ' skipped: 0 ' + summaryDetail)
                             }
                         }
                     } else {
@@ -815,10 +815,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     script.shellCustom("mkdir -p test-output", true)
                     script.shellCustom("curl --silent --show-error --fail -o \'${artifactName}\' \'${customerArtifactUrl.toString()}\'", true, [returnStatus: true, returnStdout: true])
                     // extract the final downloaded zip
-                    def zipExtractStatus = script.shellCustom("unzip -q ${artifactName}", true, [returnStatus: true])
-                    if (zipExtractStatus) {
-                        script.currentBuild.result = "FAILED"
-                        throw new AppFactoryException("Failed to extract Customer Artifacts zip", 'ERROR')
+                    if(script.fileExists(artifactName)) {
+                        def zipExtractStatus = script.shellCustom("unzip -q ${artifactName}", true, [returnStatus: true])
+                        if (zipExtractStatus) {
+                            script.currentBuild.result = "FAILED"
+                            throw new AppFactoryException("Failed to extract Customer Artifacts zip", 'ERROR')
+                        }
                     }
                 }
             }
@@ -839,7 +841,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     script.currentBuild.result = "FAILED"
                 }
             } else {
-                script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/test-output/*  ${deviceFarmWorkingFolder}/${deviceName}/test-output", true)
+                script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/*  ${deviceFarmWorkingFolder}/${deviceName}/", true)
                 boolean isTestNGResultsFileExists = script.fileExists file: "${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml"
                 if(isTestNGResultsFileExists) {
                     authUrl = publishTestReportsToS3(testRunArtifacts, "TestNGSuite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")

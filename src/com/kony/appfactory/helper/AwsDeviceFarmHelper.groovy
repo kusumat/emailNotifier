@@ -540,6 +540,7 @@ class AwsDeviceFarmHelper implements Serializable {
      * */
     @NonCPS
     protected void createSummaryOfTestCases(def listJobsArrayList, def testSummaryMap, def testStartTimeMap, def testEndTimeMap, def completedRunDevicesList, def index){
+        Long timeDifference = 0
         def keys = listJobsArrayList.counters.keySet()
         String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
         def counterValues = ""
@@ -550,10 +551,12 @@ class AwsDeviceFarmHelper implements Serializable {
         testSummaryMap.put(deviceKey, counterValues)
         Date endTime = new Date()
         testEndTimeMap.put(deviceKey, endTime.time)
-        use(groovy.time.TimeCategory) {
-            Long timeDifference = testEndTimeMap[deviceKey] - testStartTimeMap[deviceKey]
-            durationMap.put(deviceKey, timeDifference)
+        if(testStartTimeMap.containsKey(deviceKey)) {
+            use(groovy.time.TimeCategory) {
+                timeDifference = testEndTimeMap[deviceKey] - testStartTimeMap[deviceKey]
+            }
         }
+        durationMap.put(deviceKey, timeDifference)
         completedRunDevicesList[index] = listJobsArrayList.arn
         index++
     }
@@ -765,7 +768,7 @@ class AwsDeviceFarmHelper implements Serializable {
     protected final void validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey){
         Long timeDifference = 0
         Date endTime = new Date()
-        if(testExecutionStartTimeMap[deviceKey])
+        if(testExecutionStartTimeMap.containsKey(deviceKey))
             timeDifference = endTime.time - testExecutionStartTimeMap[deviceKey]
         Long defaultTestRunTimeLimit = Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit')
         if(timeDifference > defaultTestRunTimeLimit) {
