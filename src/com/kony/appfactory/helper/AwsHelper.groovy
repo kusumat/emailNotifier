@@ -19,11 +19,8 @@ class AwsHelper implements Serializable {
             the bucket name is part of the domain name in the URL.
             For example: http://bucket.s3.amazonaws.com
          */
-        String bucketUrl = (script.env.S3_BUCKET_URL) ?: script.error("S3 bucket URL value can't be null!")
-        String projectName = (script.env.PROJECT_NAME) ?: script.error("Project name value can't be null!")
-        String s3Path = [projectName, artifactPath].join('/')
-        String s3UrlString = [bucketUrl, s3Path].join('/')
-
+        String bucketUrl = (script.env.S3_BUCKET_URL) ?: script.echoCustom("S3 bucket URL value can't be null!", 'ERROR')
+        String s3UrlString = [bucketUrl, artifactPath].join('/')
         script.catchErrorCustom('Artifact S3 URL is not valid!') {
             /* Transform s3 URL into a URL object, to be able to get protocol, host, path for next step */
             s3Url = s3UrlString.toURL()
@@ -39,7 +36,15 @@ class AwsHelper implements Serializable {
     }
 
     /**
-     * Uploads file on S3 to provided location.
+     * Calls S3 Upload with destination path.
+     *
+     * @param args method named arguments.
+     * @param script pipeline object.
+     * @param exposeUrl flag to expose S3 artifact URL.
+     * @return S3 URL for uploaded artifact.
+     */
+    /**
+     * Calls S3 Upload with destination path.
      *
      * @param args method named arguments.
      * @param script pipeline object.
@@ -47,41 +52,149 @@ class AwsHelper implements Serializable {
      * @return S3 URL for uploaded artifact.
      */
     protected static String publishToS3(Map args, script, boolean exposeUrl = false) {
-        String fileName = (args.sourceFileName) ?: script.error("fileName argument can't be null!")
-        String projectName = (script.env.PROJECT_NAME) ?: script.error("Project name value can't be null!")
-        String bucketName = (script.env.S3_BUCKET_NAME) ?: script.error("Bucket name value can't be null!")
-        String bucketPath = (args.bucketPath) ?: script.error("bucketPath argument can't be null!")
-        String bucketRegion = (script.env.S3_BUCKET_REGION) ?: script.error("Bucket region value can't be null!")
-        String fullBucketPath = [bucketName, projectName, bucketPath].join('/')
-        String artifactFolder = (args.sourceFilePath) ?: script.error("artifactFolder argument can't be null!")
-        String artifactUrl = getS3ArtifactUrl(script, [bucketPath, fileName].join('/'))
-        String successMessage = 'Artifact published successfully.'
-        String errorMessage = 'Failed to publish artifact!'
+        String bucketPath = (args.bucketPath) ?: script.echoCustom("bucketPath argument can't be null!", 'ERROR')
+        String projectName = (script.env.PROJECT_NAME) ?: script.echoCustom("Project name value can't be null!", 'ERROR')
+        String accountId = (script.env.CLOUD_ACCOUNT_ID) ?: script.echoCustom("Account ID value can't be null!", 'ERROR')
+
+        String fullBucketPath = [accountId, projectName, bucketPath].join('/')
+
+        /* Return uploaded artifact S3 URL */
+        publishToS3(args, fullBucketPath, script, exposeUrl)
+    }
+
+    /**
+     * Uploads file/directory to S3 destination path.
+     *
+     * @param args the map which contains source details that needs to be uploaded.
+     * If map contains both sourceFileName and sourceFilePath, then it uploads the specified file to S3.
+     * If map contains only the sourceFilePath, then it uploads the files & directories in the specified path to S3.
+     * @param finalBucketPath destination S3 bucket url.
+     * @param script pipeline object.
+     * @param exposeUrl flag to expose S3 artifact URL.
+     */
+    protected static String publishToS3(Map args, String finalBucketPath, script, boolean exposeUrl = false) {
+        String fileName = args.sourceFileName
+        String artifactFolder = (args.sourceFilePath) ?: script.echoCustom("artifactFolder argument can't be null!", 'ERROR')
+        String s3BucketRegion = (script.env.S3_BUCKET_REGION) ?: script.echoCustom("Bucket region value can't be null!", 'ERROR')
+        String bucketName = (script.env.S3_BUCKET_NAME) ?: script.echoCustom("Bucket name value can't be null!", 'ERROR')
+        boolean flatten = true
+
+        String S3BucketPath = [bucketName, finalBucketPath].join('/')
+
+        String successMessage = fileName + ' published successfully.'
+        String errorMessage = 'Failed to publish ' + fileName + '!'
+
+        if(!fileName) {
+            fileName = '*/**'
+            flatten = false
+            artifactFolder = artifactFolder.endsWith('/') ? artifactFolder.substring(0, artifactFolder.length()-1) : artifactFolder
+            String folderName = artifactFolder.substring(artifactFolder.lastIndexOf("/") + 1)
+            successMessage = folderName + ' published successfully.'
+            errorMessage = 'Failed to publish ' + folderName + '!'
+        }
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
                 script.step([$class                              : 'S3BucketPublisher',
-                             consoleLogLevel                     : 'INFO',
+                             consoleLogLevel                     : 'WARNING',
                              dontWaitForConcurrentBuildCompletion: false,
                              entries                             : [
-                                     [bucket           : fullBucketPath,
-                                      flatten          : true,
+                                     [bucket           : S3BucketPath,
+                                      flatten          : flatten,
                                       keepForever      : true,
                                       managedArtifacts : false,
-                                      noUploadOnFailure: true,
-                                      selectedRegion   : bucketRegion,
+                                      noUploadOnFailure: false,
+                                      selectedRegion   : s3BucketRegion,
                                       sourceFile       : fileName]
                              ],
                              pluginFailureResultConstraint       : 'FAILURE'])
 
             }
         }
+        String artifactUrl = getS3ArtifactUrl(script, [finalBucketPath, fileName].join('/'))
 
         if (exposeUrl) {
-            script.echo "Artifact($fileName) URL: ${artifactUrl}"
+            script.echoCustom("Artifact($fileName) URL: ${artifactUrl}")
         }
 
         /* Return uploaded artifact S3 URL */
         artifactUrl
+    }
+
+    /**
+     * Downloads the child job artifacts and then deletes them from S3 while preparing musthaves.
+     * @param mustHaveArtifacts Artifacts that are to be captured in musthaves zip file.
+     */
+    static void downloadChildJobMustHavesFromS3(script, mustHaveArtifacts) {
+        mustHaveArtifacts.each { mustHaveArtifact ->
+            if (mustHaveArtifact.path.trim().length() > 0) {
+                s3Download(script, mustHaveArtifact.name, [mustHaveArtifact.path, mustHaveArtifact.name].join('/'));
+                s3Delete(script, [mustHaveArtifact.path, mustHaveArtifact.name].join('/'))
+            }
+        }
+    }
+
+    /**
+     * Publish MustHaves artifacts to s3, create authenticated Url and sets the environment variable MUSTHAVE_ARTIFACTS.
+     * @param script current build instance
+     * @param s3ArtifactPath Path where we are going to publish the S3 artifacts
+     * @param mustHaveFile The file for which we are going to create a zip
+     * @param projectFullPath The full path of the project for which we are creating the MustHaves
+     * @param upstreamJob Indicates whether there is any parent job or not
+     * @param isRebuild Indicates whether this is a rebuilt job or a fresh job
+     * @param channelVariableName The channel for which we are creating the MustHaves
+     * @param mustHaves Collection which contains all the artifacts that you want to collect in MustHaves
+     * @return s3MustHaveAuthUrl The authenticated URL of the S3 url
+     */
+    protected static def publishMustHavesToS3(script, s3ArtifactPath, mustHaveFile, projectFullPath, upstreamJob, isRebuild, channelVariableName, mustHaves) {
+        String s3FullMustHavePath = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME, s3ArtifactPath].join('/')
+        String s3MustHaveUrl = publishToS3 sourceFileName: mustHaveFile,
+                sourceFilePath: projectFullPath, s3FullMustHavePath, script
+        def s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveUrl, script, false)
+        /* We will be keeping the s3 url of the must haves into the collection only if the
+         * channel job is triggered by the parent job that is buildVisualiser job.
+         * Handling the case where we rebuild a child job, from an existing job which was
+         * triggered by the buildVisualiser job.
+         */
+        if (upstreamJob != null && !isRebuild) {
+            mustHaves.add([
+                    channelVariableName: channelVariableName, name: mustHaveFile, path: s3FullMustHavePath
+            ])
+            script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
+        }
+
+        s3MustHaveAuthUrl
+    }
+
+    /**
+     * This is utility method to download artifacts from s3 from a specified path.
+     *  -> This method always refers to build bucket configured for AppFactory.
+     *  -> It used environment variables configured in Jenkins configure screen.
+     * @param script
+     * @param fileName Name of file needs to be downloaded
+     * @param filePath S3 Path to file to be downloaded
+     */
+    static void s3Download(script, String fileName, String filePath) {
+        script.withAWS(region: script.env.S3_BUCKET_REGION, role: script.env.S3_BUCKET_IAM_ROLE) {
+            script.s3Download bucket: script.env.S3_BUCKET_NAME,
+                    file: fileName,
+                    force: true,
+                    path: filePath
+        }
+    }
+
+    /**
+     * This is utility method to delete artifacts from s3 from a specified path.
+     *  -> This method always refers to build bucket configured for AppFactory.
+     *  -> It used environment variables configured in Jenkins configure screen.
+     * @param script
+     * @param filePath S3 Path to file to be Deleted 
+     *
+     * Documentation: https://jenkins.io/doc/pipeline/steps/pipeline-aws/#s3delete-delete-file-from-s3
+     */
+    static void s3Delete(script, String filePath) {
+        script.withAWS(region: script.env.S3_BUCKET_REGION, role: script.env.S3_BUCKET_IAM_ROLE) {
+            script.s3Delete(bucket: script.env.S3_BUCKET_NAME, path: filePath)
+        }
     }
 }

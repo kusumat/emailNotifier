@@ -5,8 +5,8 @@
     <property name="ivy.jar.file" value="${ivy.home}/ivy.jar"/>
 
     <target name="main"
-            depends="init-ivy,property,wipe"
-            description="-> generate properties, generate ivy.xlm, retrieve artifacts, delete duplicates"/>
+            depends="init-ivy,property,projectprop-xml-update,wipe"
+            description="-> generate properties, update projectprop xml, generate ivy.xml, retrieve artifacts, wipes out kony plugins from plugins directory"/>
 
     <target name="download-ivy" unless="offline">
         <get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
@@ -40,8 +40,8 @@
         <condition property="androidTabletSPA" value="${env.ANDROID_TABLET_SPA}" else="false">
             <isset property="env.ANDROID_TABLET_SPA"/>
         </condition>
-        <condition property="iosWatchNative" value="${env.IOS_WATCH_NATIVE}" else="false">
-            <isset property="env.IOS_WATCH_NATIVE"/>
+        <condition property="iosWatchNative" value="${env.APPLE_WATCH_EXTENSION}" else="false">
+            <isset property="env.APPLE_WATCH_EXTENSION"/>
         </condition>
         <condition property="iosMobileNative" value="${env.IOS_MOBILE_NATIVE}" else="false">
             <isset property="env.IOS_MOBILE_NATIVE"/>
@@ -80,8 +80,8 @@
         <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_KIOSK}" else="false">
             <isset property="env.WINDOWS_DESKTOP_KIOSK"/>
         </condition>
-        <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_WEB}" else="false">
-            <isset property="env.WINDOWS_DESKTOP_WEB"/>
+        <condition property="desktopWeb" value="${env.DESKTOP_WEB}" else="false">
+            <isset property="env.DESKTOP_WEB"/>
         </condition>
         <condition property="blackberryMobileSPA" value="${env.BLACKBERRY_MOBILE_SPA}" else="false">
             <isset property="env.BLACKBERRY_MOBILE_SPA"/>
@@ -94,6 +94,9 @@
         <condition property="projectName" value="${env.PROJECT_NAME}" else="">
             <isset property="env.PROJECT_NAME"/>
         </condition>
+        <condition property="projectAppId" value="${env.projectAppId}" else="">
+            <isset property="env.projectAppId"/>
+        </condition>
         <condition property="androidHome" value="${env.ANDROID_HOME}" else="">
             <isset property="env.ANDROID_HOME"/>
         </condition>
@@ -103,14 +106,14 @@
         <condition property="visualizerHome" value="${env.VISUALIZER_HOME}" else="">
             <isset property="env.VISUALIZER_HOME"/>
         </condition>
-        <condition property="buildMode" value="${env.BUILD_MODE}" else="">
-            <isset property="env.BUILD_MODE"/>
+        <condition property="buildMode" value="release" else="${env.BUILD_MODE}">
+            <and>
+                <isset property="env.BUILD_MODE"/>
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected"/>
+            </and>
         </condition>
         <condition property="appVersion" value="${env.APP_VERSION}" else="">
             <isset property="env.APP_VERSION"/>
-        </condition>
-        <condition property="mapGoogleKey" value="${env.GOOGLE_MAPS_KEY}" else="">
-            <isset property="env.GOOGLE_MAPS_KEY"/>
         </condition>
         <condition property="defaultLocale" value="${env.DEFAULT_LOCALE}" else="">
             <isset property="env.DEFAULT_LOCALE"/>
@@ -130,15 +133,39 @@
         <condition property="cloudPassword" value="${env.CLOUD_PASSWORD}" else="">
             <isset property="env.CLOUD_PASSWORD"/>
         </condition>
-        <condition property="cloudAccountId" value="${env.CLOUD_ACCOUNT_ID}" else="">
-            <isset property="env.CLOUD_ACCOUNT_ID"/>
+        <condition property="fabricAccountId" value="${env.FABRIC_ACCOUNT_ID}" else="${env.CLOUD_ACCOUNT_ID}">
+            <isset property="env.FABRIC_ACCOUNT_ID"/>
         </condition>
-        <property name="fabricUrl" value="https://manage.kony.com"/>
+        <condition property="domainParam" value="${env.domainParam}" else="">
+            <isset property="env.domainParam"/>
+        </condition>
+        <condition property="fabricUrl" value="${env.CONSOLE_URL}" else="https://manage.kony.com">
+            <isset property="env.CONSOLE_URL"/>
+        </condition>
         <condition property="fabricEnvironmentName" value="${env.FABRIC_ENV_NAME}" else="">
             <isset property="env.FABRIC_ENV_NAME"/>
         </condition>
         <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
             <isset property="env.FABRIC_APP_NAME"/>
+        </condition>
+        <!-- set of protected build properties -->
+        <condition property="protectedIosBuild" value="true" else="false">
+            <and>
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected"/>
+                <or>
+                    <equals arg1="${iosMobileNative}" arg2="true"/>
+                    <equals arg1="${iosTabletNative}" arg2="true"/>
+                </or>
+            </and>
+        </condition>
+        <condition property="protectedAndroidBuild" value="true" else="false">
+            <and>
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected"/>
+                <or>
+                    <equals arg1="${androidMobileNative}" arg2="true"/>
+                    <equals arg1="${androidTabletNative}" arg2="true"/>
+                </or>
+            </and>
         </condition>
         <property name="visInner" value="${visualizerHome}${separator}Kony_Visualizer_Enterprise"/>
         <property name="visBundles"
@@ -156,21 +183,22 @@
         </propertyfile>
 
         <propertyfile file="HeadlessBuild.properties" comment="Autogenerated file">
-            <entry key="project.name" value="${projectName}"/>
+            <entry key="project.name" value="${env.VISUALIZER_PROJECT_ROOT_FOLDER_NAME}"/>
             <!-- Mode been hardcoded to 0 to fit requirement of publishing Fabric application with Fabric CLI -->
             <entry key="mode" value="0"/>
             <entry key="build.mode" value="${buildMode}"/>
-            <entry key="appid" value="${projectName}"/>
+            <entry key="appid" value="${projectAppId}"/>
             <entry key="version" value="${appVersion}"/>
-            <entry key="map_google_key" value="${mapGoogleKey}"/>
             <entry key="default_locale" value="${defaultLocale}"/>
             <entry key="android.packagename" value="${androidPackageName}"/>
             <entry key="android.versioncode" value="${androidVersionCode}"/>
             <entry key="ios.bundleversion" value="${iosBundleVersion}"/>
             <entry key="cloud.username" value="${cloudUsername}"/>
-            <entry key="cloud.password" value="${cloudPassword}"/>
-            <entry key="account.id" value="${cloudAccountId}"/>
-            <entry key="cloud.environment" value=""/>
+            <!--APPFACT-545, direct assignment leads in adding escape character '\' with all special characters.
+                Instead using replace task to add proper value of password -->
+            <entry key="cloud.password" value="CLOUD_PASSWORD"/>
+            <entry key="account.id" value="${fabricAccountId}"/>
+            <entry key="cloud.environment" value="${domainParam}"/>
             <entry key="mobilefabric.url" value="${fabricUrl}"/>
             <entry key="environment.name" value="${fabricEnvironmentName}"/>
             <entry key="mf.appname" value="${fabricAppName}"/>
@@ -192,7 +220,7 @@
             <entry key="spa.androidtablet" value="${androidTabletSPA}"/>
             <entry key="spa.windowstablet" value="${windowsTabletSPA}"/>
             <entry key="desktop_kiosk" value="${windowsDesktopKiosk}"/>
-            <entry key="desktopweb" value="${windowsDesktopKiosk}"/>
+            <entry key="desktopweb" value="${desktopWeb}"/>
             <entry key="iphonewatch" value="${iosWatchNative}"/>
             <entry key="mac.ipaddress" value=""/>
             <entry key="mac.username" value=""/>
@@ -208,7 +236,22 @@
             <entry key="combinewar.war" value="false"/>
             <entry key="combinewar.ear" value="false"/>
             <entry key="combinewar.dependencylibraries" value=""/>
+            <!-- Protected build mode options -->
+            <entry key="protectedmodeenabled.ios" value="${protectedIosBuild}"/>
+            <entry key="protectedmodeenabled.android" value="${protectedAndroidBuild}"/>
         </propertyfile>
+
+        <!--APPFACT-545: propertyfile appends escape character to Special Characters, workaround to use exact same password -->
+        <replace file="HeadlessBuild.properties" token="CLOUD_PASSWORD" value="${cloudPassword}"/>
+    </target>
+
+    <!--APPFACT-861: For 7.x projects we are updating directly in projectprop.xml for protected builds enablement.-->
+    <target name="projectprop-xml-update" description="-> updating xml attributes with params">
+        <replaceregexp file="projectprop.xml" match="(.*)protectedmodeenabled_android(.*)$"
+                       replace="\1protectedmodeenabled_android&quot; value=&quot;${protectedAndroidBuild}&quot;/>"
+                       flags="gm"/>
+        <replaceregexp file="projectprop.xml" match="(.*)protectedmodeenabled_ios(.*)$"
+                       replace="\1protectedmodeenabled_ios&quot; value=&quot;${protectedIosBuild}&quot;/>" flags="gm"/>
     </target>
 
     <target name="plugins" description="-> generate ivy.xml from konyplugins.xml">
@@ -226,23 +269,24 @@
         <replace file="ivy.xml" token="plugin-id" value="name"/>
         <replace file="ivy.xml" token="version-no" value="rev"/>
         <replaceregexp file="ivy.xml" match="plugin-name.*$" replace="/>" flags="gm"/>
-        <replace file="ivy.xml"> 
+        <replace file="ivy.xml">
             <replacetoken><![CDATA[</plugins>]]></replacetoken>
             <replacevalue><![CDATA[    </dependencies>
 </ivy-module>]]></replacevalue>
         </replace>
         <replace file="ivy.xml" token="win64" value="${plugin.os.ver}"/>
         <replace file="ivy.xml" token="mac64" value="${plugin.os.ver}"/>
-	</target>
+    </target>
 
     <target name="retrieve" depends="plugins" description="-> retrieve dependencies with ivy">
         <ivy:retrieve pattern="${visInner}/dropins/[artifact]_[revision].[ext]"/>
     </target>
 
-    <target name="wipe" depends="clean,retrieve,plugins" description="-> wipe duplacates in plugins directory">
+    <target name="wipe" depends="clean,retrieve,plugins" description="-> wipes out kony plugins from plugins directory">
         <delete>
-            <fileset dir="${visInner}/plugins" includes="**/*">
-                <present targetdir="${visInner}/dropins" />
+            <fileset dir="${visInner}/plugins">
+                <include name="com.pat.*.jar"/>
+                <include name="com.kony.*.jar"/>
             </fileset>
         </delete>
     </target>

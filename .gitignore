@@ -1,0 +1,9 @@
+/.classpath
+/target
+/.project
+/.settings
+/work
+/.idea
+*.iml
+CodeNarcReport.html
+/build/

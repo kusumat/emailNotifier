@@ -1,0 +1,7 @@
+Skips or Displays a Stage in Stage view based on condition.
+<b>Options: </b>
+<ul>
+    <li><b><i>boolean</i></b> <u>condition</u>, Boolean condition based on which Stage will be displayed or hidden.</li>
+    <li><b><i>String</i></b> <u>stage</u>, Stage name that is going to be used.</li>
+    <li><b><i>closure</i></b> <u>body</u>, The closure or logic inside the stage that has to be executed.</li>
+</ul>

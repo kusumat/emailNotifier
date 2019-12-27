@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suite name="Suite" parallel="false">
+	<listeners>
+     		<listener class-name="com.kony.appfactory.jasmine.InvokeJasmineTests"/>
+	</listeners>
+	<test name="Test" parallel="methods" thread-count="2">
+		<classes>
+			<class name="com.kony.appfactory.jasmine.InvokeJasmineTests"></class>
+		</classes>
+	</test> <!-- Test -->
+</suite> <!-- Suite -->
