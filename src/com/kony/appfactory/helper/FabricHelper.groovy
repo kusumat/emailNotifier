@@ -30,7 +30,7 @@ class FabricHelper implements Serializable {
      *
      * @param script Build script object.
      * @param fabricCommand command name.
-     * @param cloudCredentialsID Kony Cloud credentials Id in Jenkins credentials store.
+     * @param fabricCredentialsID Kony Fabric credentials Id in Jenkins credentials store.
      * @param isUnixNode UNIX node flag.
      * @param fabricCliFileName fabric cli file name that need to executed.
      * @param fabricCommandOptions options for Fabric command.
@@ -38,10 +38,10 @@ class FabricHelper implements Serializable {
      *
      * @return returnStatus/returnStdout
      */
-    protected static final String fabricCli(script, fabricCommand, cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions = [:], args = [:]) {
+    protected static final String fabricCli(script, fabricCommand, fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions = [:], args = [:]) {
         /* Check required arguments */
         (fabricCommand) ?: script.echoCustom("fabricCommand argument can't be null",'ERROR')
-        (cloudCredentialsID) ?: script.echoCustom("cloudCredentialsID argument can't be null",'ERROR')
+        (fabricCredentialsID) ?: script.echoCustom("fabricCredentialsID argument can't be null",'ERROR')
         
         String commandOutput
         String errorMessage = ['Failed to run', fabricCommand, 'command'].join(' ')
@@ -49,7 +49,7 @@ class FabricHelper implements Serializable {
         script.catchErrorCustom(errorMessage) {
             script.withCredentials([
                     [$class          : 'UsernamePasswordMultiBinding',
-                     credentialsId   : cloudCredentialsID,
+                     credentialsId   : fabricCredentialsID,
                      passwordVariable: 'fabricPassword',
                      usernameVariable: 'fabricUsername']
             ]) {

@@ -18,7 +18,6 @@ class WebChannel extends Channel {
     def publishToFabricParamName = BuildHelper.getCurrentParamName(script, 'PUBLISH_FABRIC_APP', 'PUBLISH_WEB_APP')
     protected final publishWebApp = script.params[publishToFabricParamName]
     protected final desktopWebChannel = script.params.DESKTOP_WEB
-    protected final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
     /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
     def appVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     protected final webAppVersion = script.params[appVersionParameterName]
@@ -203,7 +202,7 @@ class WebChannel extends Channel {
                                                             '-a': "\"${script.env.FABRIC_APP_NAME}\"",
                                                             '-e': "\"${script.env.FABRIC_ENV_NAME}\"",]
                                 /* Prepare string with shell script to run */
-                                FabricHelper.fabricCli(script, 'publish', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions)
+                                FabricHelper.fabricCli(script, 'publish', fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions)
                                 script.echoCustom("Published to Fabric Successfully, Fetching AppInfo")
                                 webAppUrl = fetchWebAppUrl("appinfo", fabricCommandOptions)
                                 script.echoCustom("Your published app is accessible at : " + webAppUrl)
@@ -295,7 +294,7 @@ class WebChannel extends Channel {
     protected fetchWebAppUrl(cliCommand = "appinfo", fabricCommandOptions = [:]) {
         def webAppUrlText
         
-        webAppUrlText = FabricHelper.fabricCli(script, cliCommand, cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions, [returnStdout: true])
+        webAppUrlText = FabricHelper.fabricCli(script, cliCommand, fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions, [returnStdout: true])
 
         def jsonSlurper = new JsonSlurper()
         webAppUrlText = webAppUrlText.substring(webAppUrlText.indexOf("{"), webAppUrlText.lastIndexOf("}") + 1)

@@ -12,6 +12,7 @@ class ValidationHelper implements Serializable {
      * @param [parametersToCheck] parameters that need to be validated.
      */
     protected static void checkBuildConfiguration(script, parametersToCheck = [], eitherOrParameters = []) {
+        def fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
         /* List of the parameters that every channel job requires */
         def commonRequiredParams
         if(script.params.IS_SOURCE_VISUALIZER) {
@@ -22,7 +23,7 @@ class ValidationHelper implements Serializable {
         else {
             commonRequiredParams = [
                     'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_SOURCE_CODE_BRANCH', 'BUILD_MODE',
-                    'CLOUD_CREDENTIALS_ID', 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER'
+                    fabricCredentialsParamName, 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER'
             ]
         }
         /*

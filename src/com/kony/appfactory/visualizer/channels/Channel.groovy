@@ -101,7 +101,8 @@ class Channel implements Serializable {
     /* Common build parameters */
     protected final scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    protected final cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
+    protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
+    protected final fabricCredentialsID = script.params[fabricCredentialsParamName]
     /* Flag to decide whether the build mode is 'test' or not */
     protected final isBuildModeTest = (script.params.BUILD_MODE == 'test') ? true : false
     protected final buildMode = (script.params.BUILD_MODE == 'release-protected [native-only]') ? 'release-protected' : isBuildModeTest ? 'debug' : script.params.BUILD_MODE
@@ -246,7 +247,7 @@ class Channel implements Serializable {
 
     /**
      * Wraps code with required environment variables (home paths of dependencies,
-     *  updates PATH environment variable, Kony cloud credentials).
+     *  updates PATH environment variable, Kony Fabric credentials).
      *
      * @param closure block of code.
      */
@@ -312,7 +313,7 @@ class Channel implements Serializable {
         }.join(pathSeparator)
 
         /* Collect all additional environment variables that required for build */
-        def credentialsTypeList = [script.usernamePassword(credentialsId: "${cloudCredentialsID}",
+        def credentialsTypeList = [script.usernamePassword(credentialsId: "${fabricCredentialsID}",
                 passwordVariable: 'CLOUD_PASSWORD', usernameVariable: 'CLOUD_USERNAME')]
 
         script.withEnv(["PATH+TOOLS=${script.env.NODE_HOME}${pathSeparator}${toolBinPath}"]) {

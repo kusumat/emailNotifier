@@ -37,7 +37,8 @@ class Fabric implements Serializable {
     private final String exportRepositoryBranch
     private final String exportRepositoryCredentialsId
     private String cloudAccountId = script.params.CLOUD_ACCOUNT_ID
-    private final String cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
+    private final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
+    private final String fabricCredentialsID = script.params[fabricCredentialsParamName]
     private String fabricAppName = script.params.FABRIC_APP_NAME
     private final String recipientsList = script.params.RECIPIENTS_LIST
     private final String fabricAppVersion
@@ -58,9 +59,9 @@ class Fabric implements Serializable {
     private exportfabricAppConfig = script.params.EXPORT_FABRIC_APP_CONFIG?:null
 
     private String importCloudAccountId
-    private String importCloudCredentialsID
+    private String importFabricCredentialsID
     private String exportCloudAccountId
-    private String exportCloudCredentialsID
+    private String exportFabricCredentialsID
     /* Flag for triggering Publish job */
     private final boolean enablePublish = script.params.ENABLE_PUBLISH
     /* Publish build parameters */
@@ -529,7 +530,7 @@ class Fabric implements Serializable {
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            'CLOUD_CREDENTIALS_ID',
+                            fabricCredentialsParamName,
                             'FABRIC_APP_VERSION',
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
@@ -552,7 +553,7 @@ class Fabric implements Serializable {
                         }
 
                         script.stage('Export project from Fabric') {
-                            exportProjectFromFabric(cloudAccountId, cloudCredentialsID, projectName)
+                            exportProjectFromFabric(cloudAccountId, fabricCredentialsID, projectName)
                         }
 
                         script.stage('Fetch project from remote git repository') {
@@ -617,7 +618,7 @@ class Fabric implements Serializable {
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            'CLOUD_CREDENTIALS_ID',
+                            fabricCredentialsParamName,
                             'FABRIC_APP_VERSION',
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
@@ -654,12 +655,12 @@ class Fabric implements Serializable {
                         }
                         
                         script.stage('Import project to Fabric') {
-                            importProjectToFabric(cloudAccountId, cloudCredentialsID, overwriteExisting)
+                            importProjectToFabric(cloudAccountId, fabricCredentialsID, overwriteExisting)
                         }
                         
                         script.stage('Trigger Publish job') {
                             if (enablePublish) {
-                                appPublish(cloudAccountId, cloudCredentialsID, appConfigParameter, consoleUrl, identityUrl)
+                                appPublish(cloudAccountId, fabricCredentialsID, appConfigParameter, consoleUrl, identityUrl)
                             } else {
                                 script.echoCustom("Publish is not selected, Skipping the publish stage execution.")
                             }
@@ -692,7 +693,7 @@ class Fabric implements Serializable {
                 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            'CLOUD_CREDENTIALS_ID',
+                            fabricCredentialsParamName,
                             'FABRIC_APP_VERSION'
                     ]
                     mandatoryParameters = checkCompatibility(mandatoryParameters, 'publish')
@@ -719,7 +720,7 @@ class Fabric implements Serializable {
                                     '-v': "\"$fabricAppVersion\""
                             ]
 
-                            FabricHelper.fabricCli(script, 'publish', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
+                            FabricHelper.fabricCli(script, 'publish', fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
                         }
 
                         if (setDefaultVersion) {
@@ -730,7 +731,7 @@ class Fabric implements Serializable {
                                     '-v': "\"$fabricAppVersion\""
                             ]
 
-                            FabricHelper.fabricCli(script, 'set-appversion', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
+                            FabricHelper.fabricCli(script, 'set-appversion', fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
                         }
                     }
                 }
@@ -749,9 +750,11 @@ class Fabric implements Serializable {
             script.ansiColor('xterm') {
                 overwriteExistingScmBranch = script.params.OVERWRITE_EXISTING_SCM_BRANCH
                 exportCloudAccountId = script.params.EXPORT_CLOUD_ACCOUNT_ID
-                exportCloudCredentialsID = script.params.EXPORT_CLOUD_CREDENTIALS_ID
+                def exportFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'EXPORT_CLOUD_CREDENTIALS_ID', 'EXPORT_FABRIC_CREDENTIALS_ID')
+                exportFabricCredentialsID = script.params[exportFabricCredsParamName]
                 importCloudAccountId = script.params.IMPORT_CLOUD_ACCOUNT_ID
-                importCloudCredentialsID = script.params.IMPORT_CLOUD_CREDENTIALS_ID
+                def importFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'IMPORT_CLOUD_CREDENTIALS_ID', 'IMPORT_FABRIC_CREDENTIALS_ID')
+                importFabricCredentialsID = script.params[importFabricCredsParamName]
                 def exportConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_CONSOLE_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
                 def exportIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
                 def importConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_CONSOLE_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
@@ -781,9 +784,9 @@ class Fabric implements Serializable {
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            'EXPORT_CLOUD_CREDENTIALS_ID',
+                            exportFabricCredsParamName,
                             'FABRIC_APP_VERSION',
-                            'IMPORT_CLOUD_CREDENTIALS_ID',
+                            importFabricCredsParamName,
                             'PROJECT_SOURCE_CODE_BRANCH',
                             'PROJECT_SOURCE_CODE_REPOSITORY_URL',
                             'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
@@ -839,7 +842,7 @@ class Fabric implements Serializable {
                         }
                         
                         script.stage('Export project from Fabric') {
-                            exportProjectFromFabric(exportCloudAccountId, exportCloudCredentialsID, projectName, exportConsoleUrl, exportIdentityUrl)
+                            exportProjectFromFabric(exportCloudAccountId, exportFabricCredentialsID, projectName, exportConsoleUrl, exportIdentityUrl)
                         }
                         
                         script.stage('Fetch project from remote git repository') {
@@ -883,13 +886,13 @@ class Fabric implements Serializable {
                         }
                         
                         script.stage('Import project to Fabric') {
-                            importProjectToFabric(importCloudAccountId, importCloudCredentialsID, overwriteExistingAppVersion, importConsoleUrl,importIdentityUrl)
+                            importProjectToFabric(importCloudAccountId, importFabricCredentialsID, overwriteExistingAppVersion, importConsoleUrl,importIdentityUrl)
                         }
                         
                         script.stage('Trigger Publish job') {
                             if (enablePublish) {
                                 fabricAppConfig = importfabricAppConfig
-                                appPublish(importCloudAccountId, importCloudCredentialsID, appConfigParameter, importConsoleUrl, importIdentityUrl)
+                                appPublish(importCloudAccountId, importFabricCredentialsID, appConfigParameter, importConsoleUrl, importIdentityUrl)
                             } else {
                                 script.echoCustom("Publish is not selected, Skipping the publish stage execution.")
                             }
@@ -925,10 +928,10 @@ class Fabric implements Serializable {
     /**
      * To export project from fabric
      * @param cloudAccountId
-     * @param cloudCredentialsID
+     * @param fabricCredentialsID
      * @param projectName
      */
-    private void exportProjectFromFabric(String cloudAccountId, String cloudCredentialsID, String projectName, String consoleUrl = null, String identityUrl = null) {
+    private void exportProjectFromFabric(String cloudAccountId, String fabricCredentialsID, String projectName, String consoleUrl = null, String identityUrl = null) {
         def fabricCliOptions = [
             '-t': "\"$cloudAccountId\"",
             '-a': "\"$fabricAppName\"",
@@ -939,16 +942,16 @@ class Fabric implements Serializable {
             script.env.CONSOLE_URL = consoleUrl
             script.env.IDENTITY_URL = identityUrl
         }
-    FabricHelper.fabricCli(script, 'export', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
+    FabricHelper.fabricCli(script, 'export', fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
     }
     
     /**
      * To import project to fabric
      * @param cloudAccountId
-     * @param cloudCredentialsID
+     * @param fabricCredentialsID
      * @param overwriteExisting
      */
-    private void importProjectToFabric(String cloudAccountId, String cloudCredentialsID, boolean overwriteExisting, String consoleUrl = null, String identityUrl = null) {
+    private void importProjectToFabric(String cloudAccountId, String fabricCredentialsID, boolean overwriteExisting, String consoleUrl = null, String identityUrl = null) {
         def commonOptions = [
             '-t': "\"$cloudAccountId\"",
             '-f': "\"${fabricAppName}.zip\"",
@@ -960,7 +963,7 @@ class Fabric implements Serializable {
         }
         def fabricCliOptions = (overwriteExisting) ? commonOptions + ['-a': "\"$fabricAppName\""] :
             commonOptions
-        FabricHelper.fabricCli(script, 'import', cloudCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
+        FabricHelper.fabricCli(script, 'import', fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCliOptions)
     }
     
     /**
@@ -1038,13 +1041,13 @@ class Fabric implements Serializable {
      /**
      * To trigger publish job
      * @param cloudAccountId
-     * @param cloudCredentialsID
+     * @param fabricCredentialsID
      */
-    private void appPublish(String cloudAccountId, String cloudCredentialsID, def appConfigParam, String consoleUrl = null, String identityUrl = null) {
+    private void appPublish(String cloudAccountId, String fabricCredentialsID, def appConfigParam, String consoleUrl = null, String identityUrl = null) {
         def publishJobParameters = [
                 script.string(name: 'FABRIC_APP_VERSION', value: fabricAppVersion),
                 script.booleanParam(name: "SET_DEFAULT_VERSION", value: setDefaultVersion),
-                script.string(name: 'CLOUD_CREDENTIALS_ID', value: cloudCredentialsID),
+                script.string(name: fabricCredentialsParamName, value: fabricCredentialsID),
                 script.string(name: 'CLOUD_ACCOUNT_ID', value: cloudAccountId),
                 script.string(name: 'FABRIC_APP_NAME', value: fabricAppName),
                 script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: fabricEnvironmentName),

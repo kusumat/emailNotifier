@@ -48,7 +48,8 @@ class Facade implements Serializable {
     private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    private cloudCredentialsID = script.params.CLOUD_CREDENTIALS_ID
+    protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
+    private fabricCredentialsID = script.params[fabricCredentialsParamName]
     private final buildMode = script.params.BUILD_MODE
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final publishToFabricParamName = BuildHelper.getCurrentParamName(script, 'PUBLISH_FABRIC_APP', 'PUBLISH_WEB_APP')
@@ -262,7 +263,7 @@ class Facade implements Serializable {
                 script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${projectSourceCodeBranch}"),
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
-                script.credentials(name: 'CLOUD_CREDENTIALS_ID', value: "${cloudCredentialsID}"),
+                script.credentials(name: fabricCredentialsParamName, value: "${fabricCredentialsID}"),
                 script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
                 script.booleanParam(name: publishToFabricParamName, value: publishWebApp),
                 script.stringParam(name: "TEST_FRAMEWORK", value: testFramework),
@@ -503,8 +504,8 @@ class Facade implements Serializable {
         /* Setting blank credential id so that CloudBuild service won't fail to find Cloud credentials.
          Note: This account is not relevant for Visualizer CI build to run, just to ensure single-tenant backward flow
          works. Setting one blank account for this build scope. Post the build, it will get this removed.*/
-        cloudCredentialsID = "CloudID-" + buildNumber
-        credentialsHelper.addUsernamePassword(cloudCredentialsID, "Cloud Creds", "dummyuser", "dummypasswd")
+        fabricCredentialsID = "CloudID-" + buildNumber
+        credentialsHelper.addUsernamePassword(fabricCredentialsID, "Cloud Creds", "dummyuser", "dummypasswd")
 
         // Let's check whether third party authentication is enabled or not
         BuildHelper.getExternalAuthInfoForCloudBuild(script, script.env['CLOUD_DOMAIN'], script.kony['MF_API_VERSION'], script.env['CLOUD_ENVIRONMENT_GUID'])
