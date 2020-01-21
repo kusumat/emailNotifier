@@ -242,6 +242,7 @@ class RunTests implements Serializable {
                 if (!script.fileExists("${defaultTestPlan}")) {
                     throw new AppFactoryException("Failed to find ${defaultTestPlan}, please check your application!!", 'ERROR')
                 }
+                jasmineTestPlan = "testPlan.js"
             } else {
                 String testPlanFile = [testPlanBasePath, jasmineTestPlan].join(separator)
                 if (script.fileExists("${testPlanFile}")) {

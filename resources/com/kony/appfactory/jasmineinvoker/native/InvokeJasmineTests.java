@@ -189,8 +189,10 @@ public class InvokeJasmineTests {
         String resultsJSON = null;
         boolean isTestInProgress = false;
         int iterations = 0;
-        System.out.println("Looking for the results file...");
+        // Sleeping for 30 seconds to let jasmine tests initialize and start execution.
+        Thread.sleep(30000);
         
+        System.out.println("Looking for the results file...");
         do {
             
             /* Check if jasmine test is triggered or not.
@@ -217,6 +219,9 @@ public class InvokeJasmineTests {
                     System.out.println("Jasmine tests execution is completed.");
                     break;
                 }
+            } else if (!isTestInProgress && iterations > 10) {  // Here we give a 150 seconds time to start jasmine tests execution.
+                System.out.println("Jasmine tests doesn't seem to be initiated in the expected time (150 seconds). Please look into the device logs for more information.");
+                break;
             }
             
             if (isAndroidDevice) {
@@ -235,8 +240,8 @@ public class InvokeJasmineTests {
             
             System.out.println("Tests execution seems in progress.. Waiting for the results..");
             iterations = iterations + 1;
-            Thread.sleep(30000);
-        } while (iterations <= 100 && isTestInProgress && driver != null);
+            Thread.sleep(15000);
+        } while (iterations <= 100 && driver != null);
 
         saveToFile(htmlResultsFilePath, System.getenv("DEVICEFARM_LOG_DIR") + File.separator + "JasmineTestResult.html");
         saveToFile(getJSONReportLocationForDevice(), System.getenv("DEVICEFARM_LOG_DIR") + File.separator + "JasmineTestResult.json");

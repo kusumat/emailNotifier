@@ -4,12 +4,14 @@
     <property name="ivy.home" value="${ant.library.dir}"/>
     <property name="ivy.jar.file" value="${ivy.home}/ivy.jar"/>
 
+    <available classname="org.apache.ivy.Main" property="ivy.installed"/>
+
     <target name="main"
             depends="init-ivy,property,projectprop-xml-update,wipe"
             description="-> generate properties, update projectprop xml, generate ivy.xml, retrieve artifacts, wipes out kony plugins from plugins directory"/>
 
-    <target name="download-ivy" unless="offline">
-        <get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+    <target name="download-ivy" unless="ivy.installed">
+        <get src="http://search.maven.org/remotecontent?filepath=org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
              dest="${ivy.jar.file}"
              usetimestamp="true"/>
     </target>
