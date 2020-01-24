@@ -37,6 +37,9 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     /* Temp folder for Device Farm objects (test run results) */
     private deviceFarmWorkingFolder
 
+    /*scm meta info like commitID ,commitLogs */
+    protected scmMeta = [:]
+
     private runTests = false
     /* Device Farm AWS region */
     private awsRegion
@@ -608,7 +611,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                             /* Build test automation scripts if URL with test binaries was not provided */
                             if (testPackage.get("${projectName}_TestApp").url == 'jobWorkspace') {
                                 script.stage('Checkout') {
-                                    BuildHelper.checkoutProject script: script,
+                                    scmMeta = BuildHelper.checkoutProject script: script,
                                             projectRelativePath: checkoutRelativeTargetFolder,
                                             scmBranch: scmBranch,
                                             checkoutType: "scm",

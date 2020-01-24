@@ -57,7 +57,7 @@ class EmailTemplateHelper implements Serializable {
 
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
-                            
+
                             if (binding.fabricEnvironmentName)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric Environment Name:', binding.fabricEnvironmentName)
                         }
@@ -99,6 +99,36 @@ class EmailTemplateHelper implements Serializable {
                     }
                     if (templateType.equals('cloudBuild'))
                         EmailBuilder.addBuildConsoleLogFields(htmlBuilder, [consolelogs: binding.consolelogs])
+                }
+            }
+            if (!(binding.build.result == 'FAILURE') && templateType.equals('buildVisualizerApp')) {
+                htmlBuilder.br()
+                htmlBuilder.table(style: "width:100%") {
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            h4(class: "subheading", 'Source Code Details')
+                        }
+                    }
+                    tr {
+                        td {
+                            if (binding.scmMeta != null && !binding.scmMeta.isEmpty()) {
+                                table(role: "presentation", cellspacing: "0", cellpadding: "0", style: "width:100%;text-align:left", class: "text-color table-border-channels") {
+                                    thead(class: "table-border-channels") {
+                                        tr {
+                                            th(style: "text-align:center", width: "25%", 'CHANNEL')
+                                            th(style: "text-align:center", width: "20%", 'COMMIT ID')
+                                            th(style: "text-align:center", width: "55%", 'COMMIT LOGS')
+                                        }
+                                    }
+                                    tbody(class: "table-border-channels") {
+                                        EmailBuilder.addScmTableRow(htmlBuilder, binding.scmMeta)
+                                    }
+                                }
+                            } else {
+                                p(style: "font-size:14px;", "ERROR!! Failed at checkout or pre-checkout stage. Please refer to the log.")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -273,7 +303,7 @@ class EmailTemplateHelper implements Serializable {
                             p(style: "font-weight:bold", "Brief Summary of DesktopWeb Test Results:")
                         }
                     }
-                    
+
                     prepareContentForDesktopWebTestsSummaryTable(suiteList, testNameMap, classNameMap, testMethodNameMap, statusOfTestsMap, suiteWiseSummary)
                     displayBriefSummaryOfDesktopWebTestResults(htmlBuilder, binding, suiteWiseSummary)
 
@@ -313,14 +343,14 @@ class EmailTemplateHelper implements Serializable {
     @NonCPS
     protected static void getdesktopTestInfoTable(htmlBuilder, testRunInfo) {
         htmlBuilder.tr {
-                td {
-                    table(style: "width:100%", class: "text-color table-border cell-spacing") {
-                        EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Browser: ', testRunInfo["browserVersion"])
-                    }
+            td {
+                table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Selected Browser: ', testRunInfo["browserVersion"])
                 }
             }
+        }
     }
-    
+
     /**
      * Creates HTML content related to the browser info.
      *
@@ -484,7 +514,7 @@ class EmailTemplateHelper implements Serializable {
             }
         }
     }
-    
+
     /*
      *This method is used to parse each suite and collect suite-wise tests results
      */
@@ -712,29 +742,29 @@ class EmailTemplateHelper implements Serializable {
                                         }
                                         tr {
                                             if(binding.listofLogFiles.containsKey(mapForTestCaseAndStatusVar.key)){
-                                            th(
-                                                    class: "testresults-left-aligned",
-                                                    mapForTestCaseAndStatusVar.key + ".log"
-                                            )
-                                            th(
-                                                    class: "testresults-left-aligned",
-                                                    {
-                                                        a(href: binding.listofLogFiles[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
-                                                    }
-                                            )}
+                                                th(
+                                                        class: "testresults-left-aligned",
+                                                        mapForTestCaseAndStatusVar.key + ".log"
+                                                )
+                                                th(
+                                                        class: "testresults-left-aligned",
+                                                        {
+                                                            a(href: binding.listofLogFiles[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
+                                                        }
+                                                )}
                                         }
                                         tr {
                                             if(binding.listofLogFiles.containsKey(mapForTestCaseAndStatusVar.key)) {
-                                            th(
-                                                    class: "testresults-left-aligned",
-                                                    mapForTestCaseAndStatusVar.key + ".jpg"
-                                            )
-                                            th(
-                                                    class: "testresults-left-aligned",
-                                                    {
-                                                        a(href: binding.listofScreenshots[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
-                                                    }
-                                            )}
+                                                th(
+                                                        class: "testresults-left-aligned",
+                                                        mapForTestCaseAndStatusVar.key + ".jpg"
+                                                )
+                                                th(
+                                                        class: "testresults-left-aligned",
+                                                        {
+                                                            a(href: binding.listofScreenshots[mapForTestCaseAndStatusVar.key], target: '_blank', 'Download File')
+                                                        }
+                                                )}
                                         }
                                     }
                                 }
@@ -873,11 +903,11 @@ class EmailTemplateHelper implements Serializable {
                 br()
             }
             if(deviceFarmTimeLimitExceeded)
-            tr {
-                td(style: "text-align:left", class: "text-color") {
-                    p(style: "font-size:10px;font-weight:normal", '** Tests got skipped. Device Farm public fleet default time limit of ' + (binding.defaultDeviceFarmTimeLimit/60000) + ' minutes exceeded.')
+                tr {
+                    td(style: "text-align:left", class: "text-color") {
+                        p(style: "font-size:10px;font-weight:normal", '** Tests got skipped. Device Farm public fleet default time limit of ' + (binding.defaultDeviceFarmTimeLimit/60000) + ' minutes exceeded.')
+                    }
                 }
-            }
         }
     }
 
@@ -1076,5 +1106,4 @@ class EmailTemplateHelper implements Serializable {
         }
         return value
     }
-
 }

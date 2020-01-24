@@ -58,7 +58,7 @@ class WindowsChannel extends Channel {
 
                             script.stage('Checkout') {
                                 // source code checkout from scm
-                                BuildHelper.checkoutProject script: script,
+                                scmMeta = BuildHelper.checkoutProject script: script,
                                         checkoutType: "scm",
                                         projectRelativePath: checkoutRelativeTargetFolder,
                                         scmBranch: scmBranch,

@@ -40,6 +40,8 @@ class BuildHelper implements Serializable {
      */
     protected static void checkoutProject(Map args) {
         def script = args.script
+        def scmVars = null
+        def scmMeta = [:]
         String checkoutType = args.checkoutType
         String relativeTargetDir = args.projectRelativePath
         if (checkoutType.equals("scm")) {
@@ -47,12 +49,13 @@ class BuildHelper implements Serializable {
             String scmUrl = args.scmUrl
             String scmBranch = args.scmBranch
             script.catchErrorCustom('Failed to checkout the project') {
-                script.checkout(
-                        changelog: false,
+                 scmVars = script.checkout(
+                        changelog: true,
                         poll: false,
                         scm: getScmConfiguration(relativeTargetDir, scmCredentialsId, scmUrl, scmBranch)
                 )
             }
+            scmMeta = getScmDetails(script, scmBranch, scmVars, scmUrl)
         } else if (checkoutType.equals("downloadzip")) {
             String projectFileName = args.projectFileName
             String downloadURL = args.downloadURL
@@ -69,6 +72,7 @@ class BuildHelper implements Serializable {
         } else {
             throw new AppFactoryException("Unknown checkout source type found!!", "ERROR")
         }
+        scmMeta
     }
 
     /**
@@ -175,6 +179,30 @@ class BuildHelper implements Serializable {
         }
 
         scm
+    }
+
+    private static getScmDetails(script, currentBuildBranch, scmVars, scmUrl) {
+        List<String> logsList = new ArrayList<String>();
+        if (script.currentBuild.getPreviousBuild() == null)
+            logsList.add("Previous Build is unavailable, to fetch the diff.")
+        else {
+            String previousBuildBranch = script.currentBuild.getPreviousBuild().getRawBuild().actions.find { it instanceof ParametersAction }?.parameters.find { it.name == 'PROJECT_SOURCE_CODE_BRANCH' }?.value
+            if (!currentBuildBranch.equals(previousBuildBranch))
+                logsList.add("Unable to fetch diff, your previous build is on a different branch.")
+            else if (script.currentBuild.changeSets.isEmpty())
+                logsList.add("No diff is availble")
+            else {
+                def changeLogSets = script.currentBuild.changeSets
+                for (entries in changeLogSets) {
+                    for (entry in entries) {
+                        for (file in entry.affectedFiles) {
+                            logsList.add(file.editType.name + ": " + file.path)
+                        }
+                    }
+                }
+            }
+        }
+        return [commitID: scmVars.GIT_COMMIT, scmUrl: scmUrl, commitLogs: logsList]
     }
     /**
      * Gets the root cause of the build.

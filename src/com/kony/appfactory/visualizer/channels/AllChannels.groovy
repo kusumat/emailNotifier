@@ -39,6 +39,7 @@ class AllChannels implements Serializable {
     private channelObjects = [:]
     protected channelObject
     private artifactsMeta = [:]
+    private scmMeta = [:]
 
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
@@ -166,7 +167,7 @@ class AllChannels implements Serializable {
                         script.callStageCustom(buildStatus, "Downloading Project/Application source binaries") {
                             if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
                                 // if Quantum preview app build, checkout  AppViewer master source code for reading version mapper json
-                                BuildHelper.checkoutProject script:script,
+                                scmMeta = BuildHelper.checkoutProject script:script,
                                         checkoutType: "scm",
                                         projectRelativePath: checkoutRelativeTargetFolder,
                                         scmCredentialsId: libraryProperties.'quantum.app.repo.credential.id',
@@ -180,7 +181,7 @@ class AllChannels implements Serializable {
 
                             String url = script.params.PROJECT_SOURCE_URL
                             // source code checkout from downloadZipUrl
-                            BuildHelper.checkoutProject script: script,
+                            scmMeta = BuildHelper.checkoutProject script: script,
                                     checkoutType: "downloadzip",
                                     projectRelativePath: checkoutFolder,
                                     downloadURL: url,

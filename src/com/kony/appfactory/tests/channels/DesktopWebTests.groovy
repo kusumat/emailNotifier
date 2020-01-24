@@ -20,6 +20,8 @@ class DesktopWebTests extends RunTests implements Serializable {
 
     private static desktopTestRunResults = [:]
     private static jasmineTestResults = [:]
+    /*scm meta info like commitID ,commitLogs */
+    protected scmMeta = [:]
     /* desktopweb tests Map variables */
     def static browserVersionsMap = [:], listofLogFiles = [:], listofScreenshots = [:], summary = [:], testList = [:], testMethodMap = [:], classList = [:], testStatusMap = [:], duration = [:], runArnMap = [:]
     def suiteNameList = [], surefireReportshtmlAuthURL = []
@@ -416,7 +418,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                             /* Build test automation scripts if URL with test binaries was not provided */
                             if (!isTestScriptGiven) {
                                 script.stage('Checkout') {
-                                    BuildHelper.checkoutProject script: script,
+                                    scmMeta = BuildHelper.checkoutProject script: script,
                                             projectRelativePath: checkoutRelativeTargetFolder,
                                             scmBranch: scmBranch,
                                             checkoutType: "scm",

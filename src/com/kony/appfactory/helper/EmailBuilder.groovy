@@ -26,7 +26,7 @@ class EmailBuilder {
             }
         }
     }
-    
+
     @NonCPS
     static void addSimpleArtifactTableRowSuccess(htmlBuilder, binding) {
         htmlBuilder.tr {
@@ -57,6 +57,38 @@ class EmailBuilder {
             }
         }
     }
+
+    @NonCPS
+    static void addScmTableRow(htmlBuilder, scmMeta) {
+        def channelList = scmMeta.keySet()
+        /* This map will hold the channels having same commitID as :- {commitID(key) :[channelsList](value)} */
+        Map<String, List<String>> commitIdMapForChannels = new HashMap<String, List<String>>();
+        for (channel in channelList) {
+            commitIdMapForChannels.putIfAbsent(scmMeta[channel].commitID, new ArrayList<String>());
+            commitIdMapForChannels.get(scmMeta[channel].commitID).add(channel);
+        }
+        def commitIdList = commitIdMapForChannels.keySet()
+        commitIdList.each { id ->
+            commitIdMapForChannels[id].eachWithIndex { channel, index ->
+                htmlBuilder.tr {
+                    th(channel.replaceAll('/', ' '))
+                    /* The channels having same commitID's are rowSpanned and then displaying the commitID, commitLogs only once at the beginning */
+                    if (index == 0) {
+                        td(style: "text-align:center; border-right: 1px solid #e8e8e8; width: 65px", rowspan: commitIdMapForChannels[id].size()) {
+                            String commitIdUrl = scmMeta[channel].scmUrl.replace(".git", "/commit/") + scmMeta[channel].commitID
+                            a(href: commitIdUrl, target: '_blank', scmMeta[channel].commitID.substring(0, 7))
+                        }
+                        td(style: "border-right: 1px solid #e8e8e8", rowspan: IdToChannelMap[id].size()) {
+                            def logsList = scmMeta[channel].commitLogs
+                            for (def pathIndex = 0; pathIndex < 10 && pathIndex < logsList.size(); pathIndex++)
+                                p(style: "font-size:12px;", logsList[pathIndex])
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     @NonCPS
     static void addMultiSpanArtifactTableRow(htmlBuilder, binding) {

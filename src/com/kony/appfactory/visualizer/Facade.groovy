@@ -41,6 +41,7 @@ class Facade implements Serializable {
     private artifacts = []
     private mustHaveArtifacts = []
     private artifactsMeta = [:]
+    private scmMeta = [:]
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
 
@@ -411,6 +412,10 @@ class Facade implements Serializable {
         (artifactsMeta) ? Eval.me(artifactsMeta) : [version: []]
     }
 
+    private final getScmMetaObjects(scmMeta) {
+        (scmMeta) ? Eval.me(scmMeta) : [commitID: '', commitLogs: []]
+    }
+
     /**
      * Generates Test Automation job application binaries build parameters.
      * If AVAILABLE_TEST_POOLS build parameter been provided, we need generate values with URLs to application binaries
@@ -477,6 +482,9 @@ class Facade implements Serializable {
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
                     artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
+
+                    /* Collect source code details results */
+                    scmMeta.put(channelPath,getScmMetaObjects(channelJob.buildVariables.CHANNEL_SCM_META))
 
                     /* Collect must have artifacts */
                     mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
@@ -600,6 +608,9 @@ class Facade implements Serializable {
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
                 artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
+
+                /* Collect source code details results */
+                scmMeta.put(channelPath,getScmMetaObjects(channelJob.buildVariables.CHANNEL_SCM_META))
 
                 /* Collect must have artifacts */
                 mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
@@ -964,7 +975,8 @@ class Facade implements Serializable {
                                             artifacts              : artifacts,
                                             fabricEnvironmentName  : fabricEnvironmentName,
                                             projectSourceCodeBranch: projectSourceCodeBranch,
-                                            artifactMeta           : artifactsMeta
+                                            artifactMeta           : artifactsMeta,
+                                            scmMeta                : scmMeta
                                     ],
                                     true)
                         }

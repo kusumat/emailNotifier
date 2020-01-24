@@ -134,6 +134,10 @@ class Channel implements Serializable {
 
     /* artifact meta info like version details */
     protected artifactMeta = []
+
+    /*scm meta info like commitID ,commitLogs */
+    protected scmMeta = [:]
+
     /**
      * Class constructor.
      *
@@ -230,6 +234,7 @@ class Channel implements Serializable {
                 script.shellCustom("set +xe; security list-keychains -d user | grep konyappfactory_${projectName}_${jobBuildNumber} | xargs security delete-keychain", true)
 
             script.env['CHANNEL_ARTIFACT_META'] = artifactMeta?.inspect()
+            script.env['CHANNEL_SCM_META'] = scmMeta?.inspect()
             mustHavePath = [projectFullPath, 'mustHaves'].join(separator)
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED' && !script.params.IS_SOURCE_VISUALIZER) {
                 upstreamJob = BuildHelper.getUpstreamJobName(script)
