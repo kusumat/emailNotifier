@@ -78,7 +78,7 @@ class EmailBuilder {
                             String commitIdUrl = scmMeta[channel].scmUrl.replace(".git", "/commit/") + scmMeta[channel].commitID
                             a(href: commitIdUrl, target: '_blank', scmMeta[channel].commitID.substring(0, 7))
                         }
-                        td(style: "border-right: 1px solid #e8e8e8", rowspan: IdToChannelMap[id].size()) {
+                        td(style: "border-right: 1px solid #e8e8e8", rowspan: commitIdMapForChannels[id].size()) {
                             def logsList = scmMeta[channel].commitLogs
                             for (def pathIndex = 0; pathIndex < 10 && pathIndex < logsList.size(); pathIndex++)
                                 p(style: "font-size:12px;", logsList[pathIndex])
