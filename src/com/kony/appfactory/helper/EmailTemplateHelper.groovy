@@ -795,12 +795,10 @@ class EmailTemplateHelper implements Serializable {
                             class: "testresults",
                             'DEVICE'
                     )
-                    if(binding.testBinaryDetails)
-                        td(
-                                class: "testresults",
-                                'INSTALLER'
-                        )
-
+                    td(
+                            class: "testresults",
+                            'INSTALLER'
+                    )
                     td(
                             class: "testresults",
                             'TOTAL'
@@ -829,8 +827,7 @@ class EmailTemplateHelper implements Serializable {
                     td("")
                     td("")
                     td("")
-                    if(binding.testBinaryDetails)
-                        td("")
+                    td("")
                     td(class: "fail", "Failed")
                     td(class: "skip", "Skipped")
                     td(class: "warn", "Warned")
@@ -842,63 +839,52 @@ class EmailTemplateHelper implements Serializable {
                 testsSummary.putAll(binding.summaryofResults)
                 def keys = testsSummary?.keySet()
                 def vals = testsSummary?.values()
-                for (int i = 0; i < vals.size(); i++) {
-                    def url = "https:" + vals[i].substring(vals[i].lastIndexOf(":") + 1)
+                testsSummary.each { deviceName, resultsObject ->
                     use(groovy.time.TimeCategory) {
-                        testRunDuration = changeTimeFormat(binding.duration[keys[i]])
+                        testRunDuration = changeTimeFormat(resultsObject.getTestDuration())
                     }
-                    if(binding.duration[keys[i]] > binding.defaultDeviceFarmTimeLimit)
+                    if(resultsObject.getTestDuration() > binding.defaultDeviceFarmTimeLimit)
                         deviceFarmTimeLimitExceeded = true
+
                     tr {
-                        th(
-                                class: "testresults",
-                                StringUtils.substringBetween(vals[i], "displayName:", "skipped:") ?: ' '
+                        th(class: "testresults", deviceName)
+                        
+                        th(class: "testresults",
+                            {
+                                (resultsObject.getBinaryURL().trim().length() > 0) ? a(href: resultsObject.getBinaryURL(), target: '_blank', (resultsObject.getBinaryExt()).toUpperCase()) : 'NOT AVAILABLE'
+                            }
                         )
-                        if(binding.testBinaryDetails) {
-                            def binaryDetails = binding.testBinaryDetails.get(keys[i])
-                            th(
-                                    class: "testresults",
-                                    {
-                                        (!binaryDetails) ?: a(href: binaryDetails.url, target: '_blank', (binaryDetails.extension).toUpperCase())
-                                    }
-                            )
-                        }
-
-                        //if reports url exists then the total test cases count exist between 'total tests:' and 'reports url' otherwise count exists as last value.
-                        if(vals[i].contains('reports url'))
-                            th(class: "testresults", StringUtils.substringBetween(vals[i], "total tests:", "reports url") ?: '')
-                        else
-                            th(class: "testresults", vals[i].substring(vals[i].lastIndexOf(":") + 1) ?: '')
-
-                        (vals[i].contains("errored")) ? th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "errored:")) :
-                                th(class: "testresults", StringUtils.substringBetween(vals[i], "passed:", "total tests:"))
-                        th(
-                                class: "testresults",
-                                StringUtils.substringBetween(vals[i], "failed:", "stopped:") ?: 0
-                        )
-                        th(
-                                class: "testresults",
-                                StringUtils.substringBetween(vals[i], "skipped:", "warned:") ?: 0
-                        )
-                        th(
-                                class: "testresults",
-                                StringUtils.substringBetween(vals[i], "warned:", "failed:") ?: 0
-                        )
-                        th(
-                                class: "testresults",
-                                StringUtils.substringBetween(vals[i], "stopped:", "passed:") ?: 0
-                        )
-                        th(
-                                class: "testresults",
-                                StringUtils.substringBetween(vals[i], "errored:", "total tests:") ?: 0
-                        )
-                        th(
-                                class: "testresults",
-                                testRunDuration
-                        )
-                        if(binding.runInCustomTestEnvironment)
-                            (vals[i].contains('reports url')) ? th(class: "testresults", { a(href: url, target: '_blank', "Test Report")}) : th(class: "testresults", 'Not Found')
-                    }
+                    
+                        th(class: "testresults", resultsObject.getResultsCount().getTotal() ?: '')
+                            
+                                th(class: "testresults", resultsObject.getResultsCount().getPassed() ?: '')
+                                th(
+                                        class: "testresults",
+                                        resultsObject.getResultsCount().getFailed() ?: 0
+                                        )
+                                th(
+                                        class: "testresults",
+                                        resultsObject.getResultsCount().getSkipped() ?: 0
+                                        )
+                                th(
+                                        class: "testresults",
+                                        resultsObject.getResultsCount().getWarned() ?: 0
+                                        )
+                                th(
+                                        class: "testresults",
+                                        resultsObject.getResultsCount().getStopped() ?: 0
+                                        )
+                                th(
+                                        class: "testresults",
+                                        resultsObject.getResultsCount().getErrored() ?: 0
+                                        )
+                                th(
+                                        class: "testresults",
+                                        testRunDuration
+                                        )
+                                if(binding.runInCustomTestEnvironment)
+                                    (resultsObject.getResultsLink()) ? th(class: "testresults", { a(href: resultsObject.getResultsLink(), target: '_blank', "Test Report")}) : th(class: "testresults", 'Not Found')
+                }
                 }
                 br()
             }

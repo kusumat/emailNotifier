@@ -6,13 +6,16 @@ import java.text.SimpleDateFormat
 import groovy.time.TimeCategory
 import java.math.*;
 
+import com.kony.appfactory.dto.tests.DetailedNativeResults
+import com.kony.appfactory.dto.tests.ResultsCount
+import com.kony.appfactory.dto.tests.Device
+
 /**
  * Implements Device Farm logic.
  */
 class AwsDeviceFarmHelper implements Serializable {
     def script
-    def testSummaryMap = [:]
-    def durationMap = [:], testStartTimeMap = [:], testEndTimeMap = [:], mapWithTimeFormat = [:], testExecutionStartTimeMap = [:]
+    def testStartTimeMap = [:], mapWithTimeFormat = [:], testExecutionStartTimeMap = [:]
 
     protected libraryProperties
 
@@ -371,8 +374,6 @@ class AwsDeviceFarmHelper implements Serializable {
 
             def deviceKey = getDeviceJSON.device.name + ' ' + getDeviceJSON.device.os
             def deviceDisplayName = getDeviceJSON.device.name + ' OS ' + getDeviceJSON.device.os
-            testSummaryMap.put(deviceKey, 'displayName:' +deviceDisplayName)
-            durationMap.put(deviceKey, 0)
             String successMessage = "Test run is scheduled successfully on \'" + deviceDisplayName + "\' device."
             String errorMessage = "Failed to schedule run on \'" + deviceDisplayName + "\' device."
 
@@ -406,7 +407,7 @@ class AwsDeviceFarmHelper implements Serializable {
      * @param testRunArn scheduled run ARN.
      * @return string with run result, possible values: PENDING, PASSED, WARNED, FAILED, SKIPPED, ERRORED, STOPPED.
      */
-    protected final getTestRunResult(testRunArn) {
+    protected final getTestRunResult(testRunArn, results) {
         String testRunStatus, testRunResult
         def listJobsArrayList
         String successMessage = 'Test run results fetched successfully'
@@ -444,9 +445,10 @@ class AwsDeviceFarmHelper implements Serializable {
 
                 if(listJobsJSON.jobs.size()){
                     for(def i=0; i< listJobsJSON.jobs.size(); i++){
+                        DetailedNativeResults result = new DetailedNativeResults()
                         listJobsArrayList = listJobsJSON.jobs[i]
                         String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
-
+                        
                         //If the run is already completed on particular device with specific ARN, then continue.
                         if(completedRunDevicesList.contains(listJobsArrayList.arn))
                             continue
@@ -485,37 +487,34 @@ class AwsDeviceFarmHelper implements Serializable {
                             default:
                                 break
                         }
+                        validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                         switch (listJobsArrayList.result) {
                             case 'PASSED':
-                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Test Execution is completed on \'"+ deviceKey
                                         + "\' and over all test result is PASSED", 'INFO')
-                                createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
+                                createSummaryOfTestCases(listJobsArrayList, result, completedRunDevicesList, index)
                                 break
                             case 'WARNED':
-                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Build is warned for unknown reason on the device \'" + deviceKey + "\'", 'WARN')
                                 break
                             case 'SKIPPED':
-                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Test Execution is skipped on the device \'" + deviceKey + "\'", 'INFO')
                                 break
                             case 'ERRORED':
-                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("ERRORED!!\n" + listJobsArrayList, 'WARN')
                                 script.echoCustom("Looks like your tests failed with an ERRORED message, it usually happens due to some network issue on AWS device or issue with instance itself. Re-triggering the build might solve the issue.", 'WARN')
                             case 'STOPPED':
                             case 'FAILED':
-                                validateRunWithDeviceFarmTimeLimitAndDisplay(deviceKey)
                                 script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + deviceKey
                                         + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
                                 script.currentBuild.result = 'UNSTABLE'
-                                createSummaryOfTestCases(listJobsArrayList, testSummaryMap, testStartTimeMap, testEndTimeMap, completedRunDevicesList, index)
+                                createSummaryOfTestCases(listJobsArrayList, result, completedRunDevicesList, index)
                                 break
                             default:
                                 break
                         }
-
+                        result.setTestStatus(listJobsArrayList.result)
+                        results.put(deviceKey, result)
                     }
                 }
                 else
@@ -532,31 +531,31 @@ class AwsDeviceFarmHelper implements Serializable {
     /**
      * Collect the details that are to be printed in console output at the end of tests execution such as duration, summary specific to each device.
      * @param listJobsArrayList List that is returned when we run list-jobs aws command
-     * @param testSummaryMap Map used to collect the summary of test cases for each device
-     * @param testEndTimeMap Map used to collect the time at which the tests execution is completed for each device
-     * @param testStartTimeMap Map used to collect the time at which the tests execution is started for each device
+     * @param results object which contains the results of that specific device
      * @param completedRunDevicesList This holds the list of devices for which the tests execution is completed
      * @param index This is the index for the list completedRunDevicesList
      * */
     @NonCPS
-    protected void createSummaryOfTestCases(def listJobsArrayList, def testSummaryMap, def testStartTimeMap, def testEndTimeMap, def completedRunDevicesList, def index){
+    protected void createSummaryOfTestCases(def listJobsArrayList, def results, def completedRunDevicesList, def index){
         Long timeDifference = 0
-        def keys = listJobsArrayList.counters.keySet()
         String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
-        def counterValues = ""
-        for(int j = 0; j < keys.size()-1; j++){
-            counterValues += keys[j] + ": " + listJobsArrayList.counters.get(keys[j]) + " "
-        }
-        counterValues += "total tests: " + listJobsArrayList.counters.get('total')
-        testSummaryMap.put(deviceKey, counterValues)
+        Device device = new Device(listJobsArrayList.name, listJobsArrayList.device.os, listJobsArrayList.device.formFactor, listJobsArrayList.device.platform)
+        results.setDevice(device)
+        ResultsCount counts = new ResultsCount(listJobsArrayList.counters.get('total'),
+            listJobsArrayList.counters.get('passed'),
+            listJobsArrayList.counters.get('failed'),
+            listJobsArrayList.counters.get('skipped'),
+            listJobsArrayList.counters.get('warned'),
+            listJobsArrayList.counters.get('stopped'),
+            listJobsArrayList.counters.get('errored'))
+        results.setResultsCount(counts)
         Date endTime = new Date()
-        testEndTimeMap.put(deviceKey, endTime.time)
         if(testStartTimeMap.containsKey(deviceKey)) {
             use(groovy.time.TimeCategory) {
-                timeDifference = testEndTimeMap[deviceKey] - testStartTimeMap[deviceKey]
+                timeDifference = endTime.time - testStartTimeMap[deviceKey]
             }
         }
-        durationMap.put(deviceKey, timeDifference)
+        results.setTestDuration(timeDifference)
         completedRunDevicesList[index] = listJobsArrayList.arn
         index++
     }
