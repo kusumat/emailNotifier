@@ -102,7 +102,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         /* Initializer Device Farm scrips object */
         deviceFarm = new AwsDeviceFarmHelper(script)
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
-        runInCustomTestEnvironment = BuildHelper.getParamValueOrDefault(script, "RUN_IN_CUSTOM_TEST_ENVIRONMENT", false)
+        runInCustomTestEnvironment = (script.params.containsKey("TEST_ENVIRONMENT")) ? ((script.params.TEST_ENVIRONMENT == "Custom") ? true : false) : BuildHelper.getParamValueOrDefault(script, "RUN_IN_CUSTOM_TEST_ENVIRONMENT", false)
         appiumVersion = BuildHelper.getParamValueOrDefault(script, "APPIUM_VERSION", null)
     }
 
@@ -138,7 +138,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 script.echoCustom("Failed to get uploadArn", 'WARN')
             }
         }
-        
+
         deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
         
         /* Setting the Universal binary url to respective platform input run test job paramaters*/

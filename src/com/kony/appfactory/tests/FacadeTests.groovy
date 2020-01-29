@@ -122,7 +122,7 @@ class FacadeTests implements Serializable {
      * @return Test Automation job common build parameters along with Native channel specific parameters.
      */
     private final getNativeTestAutomationJobParameters() {
-        getTestAutomationCommonJobParameters() +
+        def nativeTestAutomationParams = getTestAutomationCommonJobParameters() +
                 [
                         script.string(name: 'ANDROID_UNIVERSAL_NATIVE_BINARY_URL', value: script.params.ANDROID_UNIVERSAL_NATIVE_BINARY_URL),
                         script.string(name: 'ANDROID_MOBILE_NATIVE_BINARY_URL', value: script.params.ANDROID_MOBILE_NATIVE_BINARY_URL),
@@ -132,12 +132,16 @@ class FacadeTests implements Serializable {
                         script.string(name: 'IOS_TABLET_NATIVE_BINARY_URL', value: script.params.IOS_TABLET_NATIVE_BINARY_URL),
                         script.string(name: 'NATIVE_TESTS_URL', value: script.params.NATIVE_TESTS_URL),
                         script.string(name: 'AVAILABLE_TEST_POOLS', value: script.params.AVAILABLE_TEST_POOLS),
-                        script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT),
+                        script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: (script.params.containsKey("TEST_ENVIRONMENT")) ? ((script.params.TEST_ENVIRONMENT == 'Custom') ? true : false) : script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT),
                         script.string(name: 'APPIUM_VERSION', value: script.params.APPIUM_VERSION),
                         script.string(name: 'TESTNG_FILES', value: script.params.TESTNG_FILES),
                         script.string(name: 'NATIVE_TEST_PLAN', value: BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null))
 
                 ]
+        if (script.params.containsKey("TEST_ENVIRONMENT")) {
+            nativeTestAutomationParams.add(script.string(name: 'TEST_ENVIRONMENT', value: script.params.TEST_ENVIRONMENT))
+        }
+        nativeTestAutomationParams
     }
 
     /**
