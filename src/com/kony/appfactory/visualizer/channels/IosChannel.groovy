@@ -230,6 +230,8 @@ class IosChannel extends Channel {
                     }
                 }
                 catch (Exception err) {
+                    channelBuildStats.put('errmsg', (err.getLocalizedMessage()) ?: 'Something went wrong...')
+                    channelBuildStats.put('errstack', err.getStackTrace().toString())
                     if (script.fileExists(karExtractErrorLog)) {
                         script.shellCustom("cat ${karExtractErrorLog}", true)
                         mustHaveArtifacts.add([name: karExtractErrorLog, path: iosDummyProjectGenPath])
@@ -386,6 +388,8 @@ class IosChannel extends Channel {
             artifacts.add([
                     channelPath: channelPath, name: karArtifact.name, karAuthUrl: authenticatedKARArtifactUrl
             ])
+            channelBuildStats.put('errmsg', exceptionMessage)
+            channelBuildStats.put('errstack', e.getStackTrace().toString())
 
             throw new AppFactoryException(errorMessage, 'ERROR')
         }
@@ -478,6 +482,7 @@ class IosChannel extends Channel {
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void createPipeline() {
+        channelBuildStats.put("aver", iosAppVersion)
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
@@ -547,7 +552,9 @@ class IosChannel extends Channel {
 
                         artifactMeta.add("version": ["App Version": script.env.APP_VERSION, "Build Version": iosBundleVersion])
                         /* Run PreBuild Hooks */
+                        Date preBuildHookStart = new Date()
                         runPreBuildHook()
+                        channelBuildStats.put('prehookdur', BuildHelper.getDuration(preBuildHookStart, new Date()))
 
                         script.stage('Update Bundle ID') {
                             updateIosBundleId()
@@ -564,6 +571,7 @@ class IosChannel extends Channel {
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
                             mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
+                            channelBuildStats.put('binsize', getBinarySize(karArtifact.path,karArtifact.name))
                         }
 
                         script.stage('Generate IPA file') {
@@ -572,6 +580,7 @@ class IosChannel extends Channel {
                             def foundArtifacts = getArtifactLocations('ipa')
                             /* Rename artifacts for publishing */
                             ipaArtifact = renameArtifacts(foundArtifacts).first()
+                            channelBuildStats.put('binsize', getBinarySize(ipaArtifact.path, ipaArtifact.name))
                         }
 
                         script.stage("Publish IPA artifact to S3") {
@@ -604,7 +613,9 @@ class IosChannel extends Channel {
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 
                         /* Run PostBuild Hooks */
+                        Date postBuildHookStart = new Date()
                         runPostBuildHook()
+                        channelBuildStats.put('posthookdur', BuildHelper.getDuration(postBuildHookStart, new Date()))
                     }
                 }
             }

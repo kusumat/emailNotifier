@@ -149,6 +149,7 @@ class AndroidChannel extends Channel {
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void createPipeline() {
+        channelBuildStats.put("aver", androidAppVersion)
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
@@ -222,7 +223,9 @@ class AndroidChannel extends Channel {
 
                         artifactMeta.add("version": ["App Version": androidAppVersion, "Build Version": androidAppVersionCode])
                         /* Run PreBuild Hooks */
+                        Date preBuildHookStart = new Date()
                         runPreBuildHook()
+                        channelBuildStats.put('prehookdur', BuildHelper.getDuration(preBuildHookStart, new Date()))
 
                         script.stage('Build') {
                             /* Copy protected keys to project workspace if build mode is "release-protected" */
@@ -236,6 +239,11 @@ class AndroidChannel extends Channel {
                             build()
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension)
+                            for (artifact in buildArtifacts) {
+                                script.dir(artifact.path) {
+                                    channelBuildStats.put('binsize', getBinarySize(artifact.path, artifact.name))
+                                }
+                            }
                             if (!buildArtifacts) {
                                 throw new AppFactoryException('Build artifacts were not found!', 'ERROR')
                             }
@@ -286,7 +294,9 @@ class AndroidChannel extends Channel {
                             script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 
                             /* Run PostBuild Hooks */
+                            Date postBuildHookStart = new Date()
                             runPostBuildHook()
+                            channelBuildStats.put('posthookdur', BuildHelper.getDuration(postBuildHookStart, new Date()))
                         }
                     }
                 }

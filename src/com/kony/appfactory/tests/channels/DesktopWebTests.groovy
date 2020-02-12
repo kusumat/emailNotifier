@@ -20,8 +20,6 @@ class DesktopWebTests extends RunTests implements Serializable {
 
     private static desktopTestRunResults = [:]
     private static jasmineTestResults = [:]
-    /*scm meta info like commitID ,commitLogs */
-    protected scmMeta = [:]
     /* desktopweb tests Map variables */
     def static browserVersionsMap = [:], listofLogFiles = [:], listofScreenshots = [:], summary = [:], testList = [:], testMethodMap = [:], classList = [:], testStatusMap = [:], duration = [:], runArnMap = [:]
     def suiteNameList = [], surefireReportshtmlAuthURL = []
@@ -456,7 +454,9 @@ class DesktopWebTests extends RunTests implements Serializable {
 
                                 if (runCustomHook) {
                                     if (overAllTestsResultsStatus) {
+                                        Date postTestHookStart = new Date()
                                         def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
+                                        channelTestsStats.put('posttesthookdur', BuildHelper.getDuration(postTestHookStart, new Date()))
                                         if (!isSuccess)
                                             throw new Exception("Something went wrong with the Custom hooks execution.")
                                     } else {
@@ -468,6 +468,8 @@ class DesktopWebTests extends RunTests implements Serializable {
                             }
                         }
                     } finally {
+                        script.env['SCM_COMMIT_ID'] = scmMeta['commitID']
+                        script.statspublish channelTestsStats.inspect()
                         /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
                         script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
                         script.env['DESKTOP_JASMINE_TEST_RESULTS'] = jasmineTestResults?.inspect()

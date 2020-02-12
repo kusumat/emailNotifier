@@ -55,7 +55,7 @@ public class Device implements Serializable {
       public void setPlatform(String platform){
          this.platform = platform;
       }
-      
+
       @NonCPS
       @Override
       String toString() {
@@ -64,7 +64,7 @@ public class Device implements Serializable {
                   os: getOS(),
                   formfactor: getFormFactor(),
                   platform: getPlatform()
-                  
+          
           return json.toPrettyString()
       }
 }

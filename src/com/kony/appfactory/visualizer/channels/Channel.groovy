@@ -4,9 +4,11 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.CustomHookHelper
+
 import java.util.regex.Pattern
 import com.kony.appfactory.helper.AppFactoryException
-
+import hudson.FilePath
+import jenkins.model.Jenkins
 /**
  * Implements logic for building channels. Contains common methods that are used during the channel build.
  */
@@ -135,6 +137,9 @@ class Channel implements Serializable {
     /* artifact meta info like version details */
     protected artifactMeta = []
 
+    /* Build Stats */
+    def channelBuildStats = [:]
+
     /*scm meta info like commitID ,commitLogs */
     protected scmMeta = [:]
 
@@ -219,6 +224,9 @@ class Channel implements Serializable {
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
         isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, runCustomHook, libraryProperties)
+        channelBuildStats.put("atype", channelType)
+        channelBuildStats.put("plat", channelOs)
+        channelBuildStats.put("chnl", channelFormFactor)
         try {
             closure()
         } catch (Exception e) {
@@ -228,7 +236,16 @@ class Channel implements Serializable {
                 throw new AppFactoryException(exceptionMessage)
             }
             script.currentBuild.result = 'FAILURE'
+            channelBuildStats.put('errstack', e.getStackTrace().toString())
+            channelBuildStats.put('errmsg', exceptionMessage)
         } finally {
+            channelBuildStats.put('buildagent', script.env.NODE_NAME)
+            channelBuildStats.put('buildtriggeredby', BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()))
+            channelBuildStats.put('srcurl', scmUrl)
+            channelBuildStats.put('srccmtid', scmMeta['commitID'])
+            // Publish Platform metrics keys to build Stats Action class.
+            script.statspublish channelBuildStats.inspect()
+
             // safe deleting keychain file if it still exist for the current build, for uncaught exceptions in Fastlane, like jenkins abort and restart cases.
             if(channelOs.equalsIgnoreCase('iOS'))
                 script.shellCustom("set +xe; security list-keychains -d user | grep konyappfactory_${projectName}_${jobBuildNumber} | xargs security delete-keychain", true)
@@ -242,7 +259,6 @@ class Channel implements Serializable {
                     PrepareMustHaves()
             }
             setBuildDescription()
-
             /* Been agreed to send notification from channel job only if result equals 'FAILURE' and if it's not CloudBuild */
             if (script.currentBuild.result == 'FAILURE' && !script.params.IS_SOURCE_VISUALIZER) {
                 NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: scmBranch])
@@ -271,6 +287,7 @@ class Channel implements Serializable {
         visualizerVersion = BuildHelper.getVisualizerVersion(script)
         script.env.visualizerVersion = visualizerVersion
         script.echoCustom("Current Project version: " + visualizerVersion)
+        channelBuildStats.put('vizver', visualizerVersion)
 
         /* For CloudBuild, validate if CloudBuild Supported for the given project version */
         if (script.env.IS_STARTER_PROJECT.equals("true")) {
@@ -285,6 +302,7 @@ class Channel implements Serializable {
                 // Find n-4 release from most recent version.
                 mostRecentVersion = BuildHelper.getMostRecentNthVersion(versions, -4)
             }
+            channelBuildStats.put('buildver', mostRecentVersion)
             def compareCIVizVersions = ValidationHelper.compareVersions(visualizerVersion, mostRecentVersion?.trim())
             if (compareCIVizVersions < 0)
                 visualizerVersion = mostRecentVersion?.trim()
@@ -366,6 +384,7 @@ class Channel implements Serializable {
 
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
+                    Date plugindlStart = new Date()
                     /* Download Visualizer Starter feature XML*/
                     if (script.env.IS_STARTER_PROJECT.equals("true")) {
                         /* Added the check to use update site link for v9 prod if project version is :9.X.X  */
@@ -373,7 +392,7 @@ class Channel implements Serializable {
                         def updateSiteBasePath = libraryProperties.'visualizer.dependencies.feature.xml.base.url'.replaceAll("\\[SITE_VERSION\\]", updateSiteVersion)
                         fetchFeatureXML(script.env.visualizerVersion, updateSiteBasePath)
                     }
-                    
+
                     /* Setting the test resources URL - only if the build is from Appfactory Console */
                     if (!script.env.IS_SOURCE_VISUALIZER?.equals("true")) {
                         script.env.JASMINE_TEST_URL = libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + jobBuildNumber + '/'
@@ -387,7 +406,7 @@ class Channel implements Serializable {
                         
                         /* Retrieve Visualizer plugins for the project */
                         script.shellCustom('ant -buildfile ci-property.xml retrieve', isUnixNode)
-
+                        channelBuildStats.put('plugindldur', BuildHelper.getDuration(plugindlStart, new Date()))
                         /* Run npm install */
                         script.catchErrorCustom('Something went wrong, FAILED to run "npm install" on this project') {
                             def npmBuildScript = "npm install"
@@ -1009,6 +1028,8 @@ class Channel implements Serializable {
             def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
             if (script.fileExists(propertyFileName)) {
                 def projectPropertiesJsonContent = script.readJSON file: propertyFileName
+                channelBuildStats.put('aid', projectPropertiesJsonContent['appidkey'])
+                channelBuildStats.put('aname', projectPropertiesJsonContent['appnamekey'])
                 return projectPropertiesJsonContent['appidkey']
             } else {
                 throw new AppFactoryException("Failed to find $propertyFileName file, please check your Visualizer project!!", 'ERROR')
@@ -1046,6 +1067,16 @@ class Channel implements Serializable {
                 script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
             }
         }
+    }
+
+    protected final long getBinarySize(String path, String name){
+        def separator = isUnixNode ? '/' : '\\'
+        def currentComputerName = script.env['NODE_NAME']
+        def currentComputer = Jenkins.getInstance().getComputers().find { computer ->
+            return computer.getDisplayName().equals(currentComputerName)
+        }
+        FilePath  fp = new FilePath (currentComputer.getChannel(), path + separator + name)
+        return fp.length();
     }
 }
 

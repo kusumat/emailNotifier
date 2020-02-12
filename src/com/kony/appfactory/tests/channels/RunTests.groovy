@@ -57,6 +57,12 @@ class RunTests implements Serializable {
     protected hookHelper
     protected  String jasmineTestPlan
     protected devicePoolName = script.params.AVAILABLE_TEST_POOLS
+    protected runTestsStats = [:]
+    protected channelTestsStats = [:]
+
+    /*scm meta info like commitID ,commitLogs */
+    protected scmMeta = [:]
+
     /**
      * Class constructor.
      *

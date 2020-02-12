@@ -120,9 +120,12 @@ class Facade implements Serializable {
     /* Cloud Build properties */
     protected CredentialsHelper credentialsHelper
     protected BuildStatus status
-    
+
     /* Jasmine Test - To be used in the validations for the build mode and test */
     private boolean isJasmineEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
+    /* Build Stats */
+    def buildStats = [:]
+    def runListStats = [:]
 
     /**
      * Class constructor.
@@ -479,6 +482,8 @@ class Facade implements Serializable {
                     /* Collect job results */
                     jobResultList.add(channelJob.currentResult)
 
+                    /* collect job run id to build stats */
+                    runListStats.put(script.params.PROJECT_NAME + "/Visualizer/Builds/" + channelJobName, channelJob.number)
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
                     artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
@@ -559,7 +564,8 @@ class Facade implements Serializable {
                         propagate: false
                 /* Collect job results */
                 jobResultList.add(channelJob.currentResult)
-
+                /* collect job run id to build stats */
+                runListStats.put(script.params.PROJECT_NAME + "/Visualizer/Builds/" + channelJobName, channelJob.number)
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.CHANNEL_ARTIFACTS))
                 artifactsMeta = getArtifactMetaObjects(channelJob.buildVariables?.CHANNEL_ARTIFACT_META)
@@ -604,6 +610,9 @@ class Facade implements Serializable {
                         propagate: false
                 /* Collect job result */
                 jobResultList.add(channelJob.currentResult)
+
+                /* collect job run id to build stats */
+                runListStats.put(script.params.PROJECT_NAME + "/Visualizer/Builds/" + channelJobName, channelJob.number)
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
@@ -851,6 +860,8 @@ class Facade implements Serializable {
                                 script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
                             }
                         }
+                        buildStats.put("projectname", projectName)
+                        buildStats.put('buildplat', getBuildPlat(channelsToRun))
                         /* Run channel builds in parallel */
                         script.parallel(runList)
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
@@ -903,6 +914,8 @@ class Facade implements Serializable {
                                         propagate: false
                                 def testAutomationJobResult = testAutomationJob.currentResult
 
+                                /* collect job run id to build stats */
+                                runListStats.put(testAutomationJobName, testAutomationJob.number)
                                 /* Collect job result */
                                 jobResultList.add(testAutomationJobResult)
 
@@ -932,40 +945,51 @@ class Facade implements Serializable {
                 catch (FlowInterruptedException interruptEx) {
                     cancelCloudBuild()
                     script.currentBuild.result = 'ABORTED'
+                    buildStats.put('errmsg', (interruptEx.getLocalizedMessage()) ?: 'Something went wrong...' )
+                    buildStats.put('errstack', interruptEx.getStackTrace().toString())
                 }
                 catch (AbortException abortedEx) {
                     cancelCloudBuild()
                     script.currentBuild.result = 'ABORTED'
+                    buildStats.put('errmsg', (abortedEx.getLocalizedMessage()) ?: 'Something went wrong...' )
+                    buildStats.put('errstack', abortedEx.getStackTrace().toString())
                 }
                 catch (AppFactoryException AFEx) {
                     String exceptionMessage = (AFEx.getLocalizedMessage()) ?: 'Something went wrong...'
                     script.echoCustom(exceptionMessage, 'ERROR', false)
-
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
                         NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName, artifactMeta: artifactsMeta], true)
                     }
 
                     script.currentBuild.result = 'FAILURE'
+                    buildStats.put('errmsg', exceptionMessage)
+                    buildStats.put('errstack', AFEx.getStackTrace().toString())
                 }
                 catch (Exception e) {
                     String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong ...'
                     script.echoCustom(exceptionMessage, 'ERROR', false)
-
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         def consoleLogsLink = status.createAndUploadLogFile(script.env.JOB_NAME, script.env.BUILD_ID, exceptionMessage)
                         NotificationsHelper.sendEmail(script, 'cloudBuild', [artifacts: artifacts, consolelogs: consoleLogsLink, jobName: jobName, artifactMeta: artifactsMeta], true)
                     }
 
                     script.currentBuild.result = 'FAILURE'
+                    buildStats.put('errmsg', exceptionMessage)
+                    buildStats.put('errstack', e.getStackTrace().toString())
 
                 } finally {
+                    buildStats.put("pipeline-run-jobs", runListStats)
+                    // Publish Facade metrics keys to build Stats Action class.
+                    script.statspublish buildStats.inspect()
+
                     String s3MustHaveAuthUrl = ''
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
                         s3MustHaveAuthUrl = prepareMustHaves()
                     }
 
                     setBuildDescription(s3MustHaveAuthUrl)
+
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
                         credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
@@ -990,6 +1014,13 @@ class Facade implements Serializable {
                 }
             }
         }
+    }
+
+    @NonCPS
+    private String  getBuildPlat(channelsToRun)
+    {
+        String ChannelsSelected = channelsToRun.stream().map{channel -> channel.substring(0, channel.indexOf("_"))}.collect{ it.capitalize() }.join(', ')
+        return ChannelsSelected
     }
 
     /**

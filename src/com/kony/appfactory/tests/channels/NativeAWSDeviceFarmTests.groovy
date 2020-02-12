@@ -39,9 +39,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     /* Temp folder for Device Farm objects (test run results) */
     private deviceFarmWorkingFolder
 
-    /*scm meta info like commitID ,commitLogs */
-    protected scmMeta = [:]
-
     private runTests = false
     /* Device Farm AWS region */
     private awsRegion
@@ -76,22 +73,24 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                         uploadType: 'APPIUM_JAVA_TESTNG_TEST_SPEC',
                                         url       : '']
     ]
-    
+
     private testExtraDataPkg = [
-        "${projectName}_TestExtraDataPkg": [extension : 'zip',
-                                            uploadType: 'EXTERNAL_DATA',
-                                            url       : '']
+            "${projectName}_TestExtraDataPkg": [extension : 'zip',
+                                                uploadType: 'EXTERNAL_DATA',
+                                                url       : '']
     ]
 
     protected ymlTemplate = 'com/kony/appfactory/configurations/KonyYamlTestSpec.template'
     protected testSpecUploadFileName = "TestSpec.yml"
     public testSpecUploadFilePath
     private APPIUM_1_8_1_VERSION = "1.8.1"
-    
+
     /* Jasmine extra data package arns */
     private mobileExtraDataPkgArtifactArn, tabletExtraDataPkgArtifactArn
     private extraDataPkgArtifactArnsMap = [:]
-
+    private deviceStatsList = []
+    private deviceStats = [:]
+    private Date pretestdurstart, devicewaitstart
     /**
      * Class constructor.
      *
@@ -130,8 +129,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
             /* If we have application binaries and test binaries, schedule the custom run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
+                devicewaitstart = new Date()
                 /* Once all parameters gotten, schedule the Device Farm run */
                 def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn, 'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn, extraDataPkgArn)
+                pretestdurstart = new Date()
                 deviceFarmTestRunArns["$artifactName"] = runArn
                 /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
             } else {
@@ -140,7 +141,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         }
 
         deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
-        
+
         /* Setting the Universal binary url to respective platform input run test job paramaters*/
         if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL) {
             projectArtifacts.'Android_Mobile'.'url' = devicePoolArns.phones ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
@@ -204,7 +205,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         )
         /* Add Jasmine test packages ARN to upload ARNs list */
         deviceFarmUploadArns.add(deviceFarmExtraDataPackageArn)
-        
+
         deviceFarmExtraDataPackageArn
     }
 
@@ -279,17 +280,18 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         getTestRunArtifacts returns list of one item (run result).
                      */
                     testRunArtifacts = deviceFarm.getTestRunArtifacts(arn)
-                    
+
                     if(runInCustomTestEnvironment)
                         testRunArtifacts = testRunArtifacts.each { testRunArtifact -> fetchCustomTestResults(testRunArtifact) }
                     deviceFarmTestRunResults.addAll(testRunArtifacts)
-                    
+
                 }
                 /* else notify user that result value is empty */
                 else {
                     script.echoCustom("Test run result for ${deviceFarmTestRunArnsKeys[i]} is empty!", 'WARN')
                 }
-                def key, authUrl, name, os, displayName
+
+                def key, authUrl, name, os, displayName, deviceMinutes
 
                 for(runArtifacts in testRunArtifacts) {
                     DetailedNativeResults result = results.get(runArtifacts.device.name + ' ' + runArtifacts.device.os)
@@ -306,14 +308,33 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                             authUrl = reports.getValue()
                         }
                         result.setResultsLink(authUrl)
-                        result.getResultsCount().setTotal(runArtifacts.totalSuites.isInteger() ? runArtifacts.totalSuites.toInteger() : 0)
-                        result.getResultsCount().setPassed(runArtifacts.passedTests.isInteger() ? runArtifacts.passedTests.toInteger() : 0)
-                        result.getResultsCount().setFailed(runArtifacts.failedTests.isInteger() ? runArtifacts.failedTests.toInteger() : 0)
-                        result.getResultsCount().setSkipped(runArtifacts.skippedTests.isInteger() ? runArtifacts.skippedTests.toInteger() : 0)
+                        result.getResultsCount().setTotal(runArtifacts.totalSuites ? (runArtifacts.totalSuites instanceof Integer ? runArtifacts.totalSuites : 0) : 0)
+                        result.getResultsCount().setPassed(runArtifacts.passedTests? (runArtifacts.passedTests instanceof Integer ? runArtifacts.passedTests : 0) : 0)
+                        result.getResultsCount().setFailed(runArtifacts.failedTests? (runArtifacts.failedTests instanceof Integer ? runArtifacts.failedTests : 0) : 0)
+                        result.getResultsCount().setSkipped(runArtifacts.skippedTests? (runArtifacts.skippedTests instanceof Integer ? runArtifacts.skippedTests  : 0) : 0)
                         result.getResultsCount().setWarned(0)
                         result.getResultsCount().setStopped(0)
                         result.getResultsCount().setErrored(0)
                     }
+                    deviceStats.put('atype', channelType)
+                    deviceStats.put('plat', result.getDevice().getPlatform())
+                    deviceStats.put('chnl', result.getDevice().getFormFactor())
+                    deviceStats.put('dm', runArtifacts.getDevice().getName())
+                    deviceStats.put('deviceosver', runArtifacts.getDevice().getOS())
+                    deviceStats.put('allottedtime', result.getDeviceMinutes())
+                    deviceStats.put('devicedevwaitdur', BuildHelper.getDuration(devicewaitstart, deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os)))
+                    deviceStats.put('tsstarttestplat', deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os))
+                    deviceStats.put('testskip',result.getResultsCount().setSkipped(runArtifacts.skippedTests? (runArtifacts.skippedTests instanceof Integer ? runArtifacts.skippedTests  : 0) : 0))
+                    deviceStats.put('testpass',result.getResultsCount().setPassed(runArtifacts.passedTests? (runArtifacts.passedTests instanceof Integer ? runArtifacts.passedTests : 0) : 0))
+                    deviceStats.put('testfail',result.getResultsCount().setFailed(runArtifacts.failedTests? (runArtifacts.failedTests instanceof Integer ? runArtifacts.failedTests : 0) : 0))
+                    deviceStats.put('testwarn', 0)
+                    deviceStats.put('teststop', 0)
+                    deviceStats.put('testerror', 0)
+
+                    script.echoCustom("Pushing stats of single build run to StatsAction:: ${deviceStats}")
+                    script.statspublish deviceStats.inspect()
+
+                    deviceStatsList.add(deviceStats)
                     summary.put(result.getDevice().getName() + ' ' + result.getDevice().getOS(), result)
                 }
             }
@@ -354,7 +375,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
             )
         }
-        
+
         deviceFarmTestRunResults
     }
 
@@ -585,7 +606,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 }
 
                 nodeLabel = TestsHelper.getTestNode(script, libraryProperties, isJasmineEnabled)
-                
+
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
 
@@ -685,7 +706,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
                                     script.stage('Upload test package') {
                                         uploadTestBinaries(testPackage, deviceFarmProjectArn)
-                                        
+
                                         /* Uploading the Jasmine scripts as extra data package */
                                         if(isJasmineEnabled){
                                             projectArtifacts.each { platformData ->
@@ -720,8 +741,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                     script.currentBuild.result = nativeTestsResultStatus ? 'SUCCESS' : 'UNSTABLE'
 
                                     if (runCustomHook) {
+                                        Date postTestHookStart = new Date()
                                         nativeTestsResultStatus ? runCustomHooks() :
                                                 script.echoCustom('Tests got failed for Native Channel. Hence CustomHooks execution is skipped.', 'WARN')
+                                            channelTestsStats.put('posttesthookdur', BuildHelper.getDuration(postTestHookStart, new Date()))
                                     } else
                                         script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
                                 }
@@ -729,6 +752,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         }
                     }
                     finally {
+                        script.env['SCM_COMMIT_ID'] = scmMeta['commitID']
+                        //push stats to statspublish
+                        script.statspublish channelTestsStats.inspect()
+
                         NotificationsHelper.sendEmail(script, 'runTests', [
                                 isNativeAppTestRun : true,
                                 deviceruns      : deviceFarmTestRunResults,
@@ -773,13 +800,13 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
     }
 
-   /**
-    * Downloads customer artifacts
-    * Parsing testng-results and updating the count of total failed/passed/skipped/total tests to display in email notification.
-    *
-    * @param testRunArtifacts the run result from devicefarm.
-    * @return testRunArtifacts the run result with updated count.
-    */
+    /**
+     * Downloads customer artifacts
+     * Parsing testng-results and updating the count of total failed/passed/skipped/total tests to display in email notification.
+     *
+     * @param testRunArtifacts the run result from devicefarm.
+     * @return testRunArtifacts the run result with updated count.
+     */
     protected  final def fetchCustomTestResults(testRunArtifacts) {
         def customerArtifactUrl, deviceName, deviceDisplayName, reportsUrl =[:]
         def artifactName = 'Customer Artifacts'
@@ -825,7 +852,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     test_results = parseAndgetJasmineResults(jasmineTestResults)
                     def s3path = TestsHelper.getS3ResultsPath(script, testRunArtifacts, "JasmineSuite")
                     authUrl = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: "JasmineTestResult.html",
-                                sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}" , script, false
+                            sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}" , script, false
                     authUrl = BuildHelper.createAuthUrl(authUrl, script, true)
                 } else {
                     script.echoCustom("Jasmine Test report is not found for the ${deviceDisplayName} device. Please check the device logs for more information!!!", "ERROR", false)
@@ -856,6 +883,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         suite.totalTests = test_results.totalSuites
                     }
                 }
+            } else {
+                testRunArtifacts.totalSuites = testRunArtifacts.failedTests = testRunArtifacts.passedTests = testRunArtifacts.skippedTests = 0
             }
         }
         return testRunArtifacts
@@ -877,7 +906,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         testResultsMap.put('skippedTests', testng_results.@skipped.join(""))
         return testResultsMap
     }
-    
+
     /*
      * Parses Jasmine results file content and gets the test cases counts
      *
@@ -889,12 +918,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         def passedResults, failedResults, totalResults
         String successMessage = 'Jasmine Test Results have been fetched successfully for Native'
         String errorMessage = 'Failed to fetch the Jasmine Test Results for Native'
-        
+
         script.catchErrorCustom(errorMessage, successMessage) {
             passedResults = jasmineResults.findAll { event -> event.event.equalsIgnoreCase('specDone') && event.result.status.equalsIgnoreCase("passed") }
             failedResults = jasmineResults.findAll { event -> event.event.equalsIgnoreCase('specDone') && !event.result.status.equalsIgnoreCase("passed") }
         }
-        
+
         testResultsMap.put('totalSuites', passedResults.size() + failedResults.size())
         testResultsMap.put('passedTests', passedResults.size())
         testResultsMap.put('failedTests', failedResults.size())

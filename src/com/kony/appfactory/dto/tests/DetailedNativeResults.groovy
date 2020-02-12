@@ -15,6 +15,7 @@ public class DetailedNativeResults implements Serializable {
       private String binaryExt;
       private long testDuration;
       private String resultsLink;
+      private long deviceMinutes;
 
       public DetailedNativeResults() {
           this.device = new Device();
@@ -25,6 +26,7 @@ public class DetailedNativeResults implements Serializable {
           this.binaryExt = new String();
           this.testDuration = 0;
           this.resultsLink = new String();
+          this.deviceMinutes = 0;
       }
       
       @NonCPS
@@ -91,6 +93,16 @@ public class DetailedNativeResults implements Serializable {
       public void setResultsLink(String resultsLink){
          this.resultsLink = resultsLink;
       }
+
+    @NonCPS
+    public long getDeviceMinutes() {
+        return deviceMinutes
+    }
+
+    @NonCPS
+    public void setDeviceMinutes(long deviceMinutes) {
+        this.deviceMinutes = deviceMinutes
+    }
 
       @NonCPS
       @Override

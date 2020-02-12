@@ -266,6 +266,7 @@ class BuildHelper implements Serializable {
         causedBy
     }
 
+
     /**
      * Get the build log for a specific build of a specific job
      */
@@ -1123,6 +1124,20 @@ class BuildHelper implements Serializable {
     protected static String addQuotesIfRequired(path) {
         return path.trim().contains(" ") ? "\"" + path.trim() + "\"" : path.trim()
     }
-    
+
+    /**
+     * This method returns the difference between the given timestamps.
+     * @param startDate
+     * @param endDate
+     * @return duration
+     */
+
+    @NonCPS
+    private static long getDuration(Date startDate, Date endDate) {
+        use(groovy.time.TimeCategory) {
+            long duration = endDate.time - startDate.time
+            return duration
+        }
+    }
 }
 

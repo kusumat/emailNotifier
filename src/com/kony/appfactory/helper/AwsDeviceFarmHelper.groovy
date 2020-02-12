@@ -15,10 +15,10 @@ import com.kony.appfactory.dto.tests.Device
  */
 class AwsDeviceFarmHelper implements Serializable {
     def script
-    def testStartTimeMap = [:], mapWithTimeFormat = [:], testExecutionStartTimeMap = [:]
+    def testStartTimeMap = [:], mapWithTimeFormat = [:]
+    public def testExecutionStartTimeMap = [:]
 
     protected libraryProperties
-
     /**
      * Class constructor.
      *
@@ -362,7 +362,6 @@ class AwsDeviceFarmHelper implements Serializable {
         def getDevicePoolJSON = script.readJSON text: getDevicePoolOutput
         def list = getDevicePoolJSON.devicePool.rules[0].value.tokenize(",")
         def isAndroidDevicePresentInPool = false, isiOSDevicePresentInPool = false
-
         for(def i=0; i <list.size(); i++){
             def deviceArn = list[i].minus('[').minus(']')
             String getDeviceScript = "set +x;aws devicefarm get-device --arn ${deviceArn}"
@@ -477,7 +476,7 @@ class AwsDeviceFarmHelper implements Serializable {
                                 break
                             case 'RUNNING':
                                 if(! testExecutionStartTimeMap.containsKey(deviceKey))
-                                    testExecutionStartTimeMap.put(deviceKey, new Date().time)
+                                    testExecutionStartTimeMap.put(deviceKey, new Date())
                                 script.echoCustom("Tests are running on \'" + deviceKey
                                         + "\'... will fetch final results once the execution is completed.", 'INFO')
                                 break
@@ -541,6 +540,7 @@ class AwsDeviceFarmHelper implements Serializable {
         String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
         Device device = new Device(listJobsArrayList.name, listJobsArrayList.device.os, listJobsArrayList.device.formFactor, listJobsArrayList.device.platform)
         results.setDevice(device)
+        results.setDeviceMinutes(listJobsArrayList.deviceMinutes.get('total'))
         ResultsCount counts = new ResultsCount(listJobsArrayList.counters.get('total'),
             listJobsArrayList.counters.get('passed'),
             listJobsArrayList.counters.get('failed'),
@@ -768,7 +768,7 @@ class AwsDeviceFarmHelper implements Serializable {
         Long timeDifference = 0
         Date endTime = new Date()
         if(testExecutionStartTimeMap.containsKey(deviceKey))
-            timeDifference = endTime.time - testExecutionStartTimeMap[deviceKey]
+            timeDifference = endTime.time - testExecutionStartTimeMap[deviceKey].time
         Long defaultTestRunTimeLimit = Long.parseLong(libraryProperties.'test.automation.device.farm.default.time.run.limit')
         if(timeDifference > defaultTestRunTimeLimit) {
             script.echoCustom("Sorry! Device Farm public fleet default time limit of " +(defaultTestRunTimeLimit/60000)+ " minutes exceeded. All remaining tests on device " + deviceKey + " will be skipped.", 'WARN')

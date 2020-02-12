@@ -84,6 +84,11 @@ class FacadeTests implements Serializable {
     /* Contains the email data that has to be sent to sendEmail to display in email body */
     def emailData = [:]
 
+    /* Build Stats */
+    def buildStats = [:]
+    def runListStats = [:]
+    private runInCustomTestEnvironment = (script.params.containsKey("TEST_ENVIRONMENT")) ? ((script.params.TEST_ENVIRONMENT == 'Custom') ? true : false ) : script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
+
     /**
      * Class constructor.
      *
@@ -218,6 +223,9 @@ class FacadeTests implements Serializable {
                             parameters: parametersForRunningTests["${it.value}"].parameters,
                             propagate: false
 
+                    /* collect job run id to build stats */
+                    runListStats.put(parametersForRunningTests["${it.value}"].jobName, testsJob.number)
+
                     testsJobOutput += [("${it.value}".trim()): testsJob]
                     runResults.add(testsJob.currentResult)
 
@@ -246,40 +254,59 @@ class FacadeTests implements Serializable {
         nativeAWSDeviceFarmTests = new NativeAWSDeviceFarmTests(script)
         if(!isNativeApp && !isDesktopWebApp)
             throw new AppFactoryException("Please provide atleast one of the Native Binary URLs or FABRIC_APP_URL to proceed with the build.", 'ERROR')
-        if (isParallelRun()) {
-            script.timestamps {
-                /* Wrapper for colorize the console output in a pipeline build */
-                script.ansiColor('xterm') {
-                    script.stage('Validate parameters') {
-                        if (isNativeApp)
-                            nativeAWSDeviceFarmTests.validateBuildParameters(script.params)
-                        if (isDesktopWebApp)
-                            desktopWebTests.validateBuildParameters(script.params)
-                    }
-                    /* Use master for the run */
-                    script.node(libraryProperties.'facade.node.label') {
-                        prepareRun()
-                        script.parallel(runList)
-                        if (runResults.contains('FAILURE') ||
-                                runResults.contains('UNSTABLE') ||
-                                runResults.contains('ABORTED')
-                        ) {
-                            /* Set job result to 'UNSTABLE' if above check is true */
-                            script.currentBuild.result = 'UNSTABLE'
-                            TestsHelper.PrepareMustHaves(script, runCustomHook, "Tests_${script.env.BUILD_NUMBER}", libraryProperties, mustHaveArtifacts)
-                            if (TestsHelper.isBuildDescriptionNeeded(script))
-                                TestsHelper.setBuildDescription(script)
-                        } else {
-                            /* Set job result to 'SUCCESS' if above check is false */
-                            script.currentBuild.result = 'SUCCESS'
+        /* Allocate a slave for the run */
+        script.node(libraryProperties.'facade.node.label') {
+            try {
+                if (isParallelRun()) {
+                    script.timestamps {
+                        /* Wrapper for colorize the console output in a pipeline build */
+                        script.ansiColor('xterm') {
+                            script.stage('Validate parameters') {
+                                if (isNativeApp)
+                                    nativeAWSDeviceFarmTests.validateBuildParameters(script.params)
+                                if (isDesktopWebApp)
+                                    desktopWebTests.validateBuildParameters(script.params)
+                            }
+                                prepareRun()
+                                script.parallel(runList)
+                                if (runResults.contains('FAILURE') ||
+                                        runResults.contains('UNSTABLE') ||
+                                        runResults.contains('ABORTED')
+                                ) {
+                                    /* Set job result to 'UNSTABLE' if above check is true */
+                                    script.currentBuild.result = 'UNSTABLE'
+                                    TestsHelper.PrepareMustHaves(script, runCustomHook, "Tests_${script.env.BUILD_NUMBER}", libraryProperties, mustHaveArtifacts)
+                                    if (TestsHelper.isBuildDescriptionNeeded(script))
+                                        TestsHelper.setBuildDescription(script)
+                                } else {
+                                    /* Set job result to 'SUCCESS' if above check is false */
+                                    script.currentBuild.result = 'SUCCESS'
+                                }
                         }
                     }
+                } else {
+                    runTestsSequentially()
                 }
             }
-        } else {
-            runTestsSequentially()
+            catch (AppFactoryException e) {
+                buildStats.put('errmsg', exceptionMessage)
+                buildStats.put('errstack', e.getStackTrace().toString())
+            } catch (Exception e) {
+                buildStats.put('errmsg', exceptionMessage)
+                buildStats.put('errstack', e.getStackTrace().toString())
+            }
+            finally {
+                buildStats.put("pipeline-run-jobs", runListStats)
+                buildStats.put('testfwk', BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG'))
+                buildStats.put('testfwkver', script.params.APPIUM_VERSION)
+                buildStats.put('runmode', runInCustomTestEnvironment ? 'custom' : 'standard' )
+                buildStats.put('testtriggeredby', BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()))
+                buildStats.put('srcurl', script.env.PROJECT_SOURCE_CODE_URL)
+                buildStats.put('srccmtid', testsJob.buildVariables.SCM_COMMIT_ID)
+                //push stats to statusAction
+                script.statspublish buildStats.inspect()
+            }
         }
-
     }
 
     /* To maintain backward compatibility, we are using this method */

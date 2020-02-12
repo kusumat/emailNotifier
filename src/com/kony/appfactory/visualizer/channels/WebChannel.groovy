@@ -93,6 +93,7 @@ class WebChannel extends Channel {
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void pipelineWrapperForWebChannels(webChannelType) {
+        channelBuildStats.put("aver", webAppVersion)
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
@@ -148,8 +149,9 @@ class WebChannel extends Channel {
                         artifactMeta.add("version": ["App Version": webAppVersion])
                         script.stage('Check PreBuild Hook Points') {
                             if (isCustomHookRunBuild) {
+                                Date preBuildHookStart = new Date()
                                 triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.prebuild.name')
-
+                                channelBuildStats.put('prehookdur', BuildHelper.getDuration(preBuildHookStart, new Date()))
                             } else {
                                 script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                             }
@@ -186,6 +188,11 @@ class WebChannel extends Channel {
                             /* Add War/Zip to MustHaves Artifacts */
                             buildArtifacts?.each { artifact ->
                                 mustHaveArtifacts.add([name: artifact.name, path: artifact.path])
+                            }
+                            for (artifact in buildArtifacts) {
+                                script.dir(artifact.path) {
+                                    channelBuildStats.put('binsize', getBinarySize(artifact.path, artifact.name));
+                                }
                             }
                         }
 
@@ -239,7 +246,9 @@ class WebChannel extends Channel {
                         script.stage('Check PostBuild Hook Points') {
                             if (script.currentBuild.currentResult == 'SUCCESS') {
                                 if (isCustomHookRunBuild) {
+                                    Date postBuildHookStart = new Date()
                                     triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.postbuild.name')
+                                    channelBuildStats.put('posthookdur', BuildHelper.getDuration(postBuildHookStart, new Date()))
                                 } else {
                                     script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }
