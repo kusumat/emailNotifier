@@ -1,0 +1,44 @@
+<project name="create-duplicate-apk" default="build">
+    <target name="build" depends="executeUserPostCompileTask,mobile,tablet"/>
+
+    <target name="check-for-user-postCompileTask">
+        <available file="user_defined_androidpostcompiletask.xml" property="is-user-define-postcompile-file-exists"/>
+    </target>
+    <!-- check for user postcompiletask.xml if exists executing the user_postcompiletask -->
+    <target name="executeUserPostCompileTask" depends="check-for-user-postCompileTask" if="is-user-define-postcompile-file-exists">
+        <ant antfile="user_defined_androidpostcompiletask.xml"/>
+    </target>
+    <!-- creating duplicate apk at "luanndroid" path, if either universal or mobile channel is selected -->
+    <target name="mobile" depends="universal-or-mobile" if="do-create-mobile-apk">
+        <property name="mobileBinaryDirectory"
+                  value="../temp/${env.VISUALIZER_PROJECT_ROOT_FOLDER_NAME}/build/luaandroid/dist"/>
+        <mkdir dir="${mobileBinaryDirectory}"/>
+        <echo file="${mobileBinaryDirectory}/luavmandroid.apk" append="true">duplicate(Dummy) mobile apk</echo>
+    </target>
+    <!-- creating duplicate apk at "luatabrcandroid" path, if either universal or tablet channel is selected -->
+    <target name="tablet" depends="universal-or-tablet" if="do-create-tablet-apk">
+        <property name="tabletBinaryDirectory"
+                  value="../temp/${env.VISUALIZER_PROJECT_ROOT_FOLDER_NAME}/build/luatabrcandroid/dist"/>
+        <mkdir dir="${tabletBinaryDirectory}"/>
+        <echo file="${tabletBinaryDirectory}/luavmandroid.apk" append="true">duplicate(Dummy) tablet apk</echo>
+    </target>
+
+    <target name="universal-or-mobile">
+        <condition property="do-create-mobile-apk">
+            <or>
+                <equals arg1="${env.FORM_FACTOR}" arg2="Universal"/>
+                <equals arg1="${env.FORM_FACTOR}" arg2="Mobile"/>
+            </or>
+        </condition>
+    </target>
+
+    <target name="universal-or-tablet">
+        <condition property="do-create-tablet-apk">
+            <or>
+                <equals arg1="${env.FORM_FACTOR}" arg2="Universal"/>
+                <equals arg1="${env.FORM_FACTOR}" arg2="Tablet"/>
+            </or>
+        </condition>
+    </target>
+
+</project>

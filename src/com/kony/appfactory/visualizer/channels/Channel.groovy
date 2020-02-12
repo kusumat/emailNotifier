@@ -111,6 +111,9 @@ class Channel implements Serializable {
     protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     protected fabricEnvironmentName
     protected channelFormFactor = script.params.FORM_FACTOR
+    /* Flag to decide whether to generate aab or apk */
+    protected final androidAppBundle = script.params.ANDROID_APP_BUNDLE
+
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
     protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
@@ -653,7 +656,7 @@ class Channel implements Serializable {
                     with debug and release suffixes, working only with required one.
                  */
                 artifactsBuildModeSuffix = (buildMode == libraryProperties.'buildmode.debug.type') ? 'debug' : 'release'
-                if (channelVariableName?.contains('ANDROID') && !artifactName.contains(artifactsBuildModeSuffix)) {
+                if (channelVariableName?.contains('ANDROID') && !artifactName.contains(artifactsBuildModeSuffix) && !androidAppBundle) {
                     continue
                 }
 
@@ -762,21 +765,19 @@ class Channel implements Serializable {
             def tempBasePath = [projectWorkspacePath, 'temp', projectName]
             (tempBasePath + it).join(separator)
         }
-
+        String androidBinaryLocation = androidAppBundle ? 'bundle' + separator + (buildMode.contains('release') ? 'release' : 'debug') : 'apk'
         switch (channelVariableName) {
             case 'ANDROID_UNIVERSAL_NATIVE':
-                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectAppId, 'build', 'outputs', 'apk'])
+                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectAppId, 'build', 'outputs', androidBinaryLocation])
                 break
             case 'IOS_UNIVERSAL_NATIVE':
                 artifactsTempPath = getPath(['build', 'server', 'iphonekbf'])
                 break
             case 'ANDROID_MOBILE_NATIVE':
-                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectAppId, 'build', 'outputs', 'apk'])
+                artifactsTempPath = getPath(['build', 'luaandroid', 'dist', projectAppId, 'build', 'outputs', androidBinaryLocation])
                 break
             case 'ANDROID_TABLET_NATIVE':
-                artifactsTempPath = getPath(
-                        ['build', 'luatabrcandroid', 'dist', projectAppId, 'build', 'outputs', 'apk']
-                )
+                artifactsTempPath = getPath(['build', 'luatabrcandroid', 'dist', projectAppId, 'build', 'outputs', androidBinaryLocation])
                 break
             case 'IOS_MOBILE_NATIVE':
                 artifactsTempPath = getPath(['build', 'server', 'iphonekbf'])
@@ -824,7 +825,7 @@ class Channel implements Serializable {
                 artifactExtension = 'war'
                 break
             case ~/^.*ANDROID.*$/:
-                artifactExtension = 'apk'
+                artifactExtension = androidAppBundle ? 'aab' : 'apk'
                 break
             case ~/^.*IOS.*$/:
                 artifactExtension = 'KAR'

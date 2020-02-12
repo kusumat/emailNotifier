@@ -92,7 +92,7 @@ class AndroidChannel extends Channel {
             script.catchErrorCustom(errorMessage) {
                 for (artifact in buildArtifacts) {
                     script.dir(artifact.path) {
-                        def finalArtifactName = artifact.name.replaceAll('unsigned', 'aligned')
+                        def finalArtifactName = androidAppbundle ? artifact.name.replace('.aab','_signed.aab') : artifact.name.replaceAll('unsigned', 'aligned')
 
                         script.shellCustom(
                                 [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
@@ -236,6 +236,30 @@ class AndroidChannel extends Channel {
                             if(isBuildModeTest && isJasmineTestsExecEnabled) {
                                 updateAndroidCapabilitiesForJasmineTests()
                             }
+
+                            /* Workaround to support androidAppBundle generation,this should be modified or removed once ci-build support the 'AAB' generation*/
+                            if (androidAppBundle) {
+                                String shellCommand = (isUnixNode) ? 'mv' : 'rename'
+                                String postCompileTaskFile = "androidpostcompiletask.xml"
+                                String renamePostCompileTaskFile = "user_defined_" + postCompileTaskFile
+                                String command = [shellCommand, postCompileTaskFile, renamePostCompileTaskFile].join(' ')
+
+                                String appfactoryPostCompileTaskRelativePath = "com/kony/appfactory/visualizer/"
+                                def appfactoryPostCompileTaskForAabSupport =
+                                        script.libraryResource(appfactoryPostCompileTaskRelativePath + 'appfactoryPostCompileTaskForAabSupport.xml')
+
+                                script.dir(projectFullPath) {
+                                    /* rename user defined post compile task*/
+                                    (!script.fileExists(postCompileTaskFile)) ?: script.shellCustom(command, isUnixNode)
+
+                                    /** placing the appfactory androidpostcompiletask.xml in the project workspace,
+                                     this file first executes the user's androidpostcompiletask if it exists
+                                     then creates the duplicate luavmandroid.apk file to skip the ci-build failure
+                                     */
+                                    script.writeFile file: postCompileTaskFile, text: appfactoryPostCompileTaskForAabSupport
+                                }
+                            }
+
                             build()
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension)
