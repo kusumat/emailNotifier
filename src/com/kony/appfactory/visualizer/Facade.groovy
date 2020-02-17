@@ -862,7 +862,7 @@ class Facade implements Serializable {
                                 script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
                             }
                         }
-                        buildStats.put("projectname", projectName)
+                        buildStats.put("projname", projectName)
                         buildStats.put('buildplat', getBuildPlat(channelsToRun))
                         /* Run channel builds in parallel */
                         script.parallel(runList)
