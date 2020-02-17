@@ -73,6 +73,15 @@ class Fabric implements Serializable {
     private fabricAppConfig = script.params.FABRIC_APP_CONFIG?:null
     def appConfigParameter = BuildHelper.getCurrentParamName(script, 'FABRIC_APP_CONFIG', 'CLOUD_ACCOUNT_ID')
 
+    /*scm meta info like commitID ,commitLogs */
+    protected scmMeta = [:]
+
+    /* Build Stats */
+    def publishJob
+    private fabricStats = [:]
+    private fabricRunListStats = [:]
+    private fabricTask = ""
+
     /**
      * Class constructor.
      *
@@ -486,12 +495,29 @@ class Fabric implements Serializable {
         } catch (AppFactoryException e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
             script.echoCustom(exceptionMessage, e.getErrorType(), false)
+            fabricStats.put('faberrmsg', exceptionMessage)
+            fabricStats.put('faberrstack', e.getStackTrace().toString())
             script.currentBuild.result = 'FAILURE'
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
             script.echoCustom(exceptionMessage,'WARN')
+            fabricStats.put('faberrmsg', exceptionMessage)
+            fabricStats.put('faberrstack', e.getStackTrace().toString())
             script.currentBuild.result = 'FAILURE'
         } finally {
+            fabricStats.put('fabaname', fabricAppName)
+            fabricStats.put('fabaver', fabricAppVersion)
+            fabricStats.put('fabtask', fabricTask)
+            fabricStats.put('fabsrcurl', exportRepositoryUrl)
+            fabricStats.put('fabsrcbrch', exportRepositoryBranch)
+
+            if (publishJob?.number) {
+                fabricRunListStats.put(publishJob.fullProjectName, publishJob.number)
+                fabricStats.put("pipeline-run-jobs", fabricRunListStats)
+            }
+            // Publish fabric metrics keys to build Stats Action class.
+            script.statspublish fabricStats.inspect()
+
             setBuildDescription(buildDescriptionItems)
             NotificationsHelper.sendEmail(script, 'fabric', emailData)
         }
@@ -527,6 +553,8 @@ class Fabric implements Serializable {
                 String exportFolder = 'export'
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
+
+                fabricTask = "export"
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
@@ -616,6 +644,8 @@ class Fabric implements Serializable {
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
 
+                fabricTask = "import"
+
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
@@ -690,7 +720,9 @@ class Fabric implements Serializable {
                 buildDescriptionItems = [
                         'App Version'   : fabricAppVersion
                 ]
-                
+
+                fabricTask = "publish"
+
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
@@ -781,6 +813,8 @@ class Fabric implements Serializable {
                 String exportFolder = 'export'
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!", 'WARN')
+
+                fabricTask = "migrate"
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
@@ -917,12 +951,13 @@ class Fabric implements Serializable {
      * @param projectName
      */
     private void checkoutProjectFromRepo(String projectName) {
-        BuildHelper.checkoutProject script: script,
+        scmMeta = BuildHelper.checkoutProject script: script,
                 checkoutType: "scm",
                 projectRelativePath: projectName,
                 scmBranch: exportRepositoryBranch,
                 scmCredentialsId: exportRepositoryCredentialsId,
                 scmUrl: exportRepositoryUrl
+        fabricStats.put('fabsrccmtid', scmMeta['commitID'])
     }
     
     /**
@@ -1061,7 +1096,7 @@ class Fabric implements Serializable {
                     script.string(name: 'FABRIC_IDENTITY_URL', value: identityUrl)
         }
 
-        script.build job: "Publish", parameters: publishJobParameters
+        publishJob = script.build job: "Publish", parameters: publishJobParameters
     }
 
     /**
