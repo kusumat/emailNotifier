@@ -454,9 +454,7 @@ class DesktopWebTests extends RunTests implements Serializable {
 
                                 if (runCustomHook) {
                                     if (overAllTestsResultsStatus) {
-                                        Date postTestHookStart = new Date()
                                         def isSuccess = hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', "DESKTOP_WEB_STAGE")
-                                        channelTestsStats.put('posttesthookdur', BuildHelper.getDuration(postTestHookStart, new Date()))
                                         if (!isSuccess)
                                             throw new Exception("Something went wrong with the Custom hooks execution.")
                                     } else {

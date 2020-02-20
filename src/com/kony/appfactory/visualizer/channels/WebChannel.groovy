@@ -149,9 +149,7 @@ class WebChannel extends Channel {
                         artifactMeta.add("version": ["App Version": webAppVersion])
                         script.stage('Check PreBuild Hook Points') {
                             if (isCustomHookRunBuild) {
-                                Date preBuildHookStart = new Date()
                                 triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.prebuild.name')
-                                channelBuildStats.put('prehookdur', BuildHelper.getDuration(preBuildHookStart, new Date()))
                             } else {
                                 script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                             }
@@ -246,9 +244,7 @@ class WebChannel extends Channel {
                         script.stage('Check PostBuild Hook Points') {
                             if (script.currentBuild.currentResult == 'SUCCESS') {
                                 if (isCustomHookRunBuild) {
-                                    Date postBuildHookStart = new Date()
                                     triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.postbuild.name')
-                                    channelBuildStats.put('posthookdur', BuildHelper.getDuration(postBuildHookStart, new Date()))
                                 } else {
                                     script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }

@@ -552,9 +552,7 @@ class IosChannel extends Channel {
 
                         artifactMeta.add("version": ["App Version": script.env.APP_VERSION, "Build Version": iosBundleVersion])
                         /* Run PreBuild Hooks */
-                        Date preBuildHookStart = new Date()
                         runPreBuildHook()
-                        channelBuildStats.put('prehookdur', BuildHelper.getDuration(preBuildHookStart, new Date()))
 
                         script.stage('Update Bundle ID') {
                             updateIosBundleId()
@@ -613,9 +611,7 @@ class IosChannel extends Channel {
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 
                         /* Run PostBuild Hooks */
-                        Date postBuildHookStart = new Date()
                         runPostBuildHook()
-                        channelBuildStats.put('posthookdur', BuildHelper.getDuration(postBuildHookStart, new Date()))
                     }
                 }
             }

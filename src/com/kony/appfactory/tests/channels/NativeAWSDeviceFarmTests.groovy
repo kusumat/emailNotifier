@@ -741,10 +741,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                     script.currentBuild.result = nativeTestsResultStatus ? 'SUCCESS' : 'UNSTABLE'
 
                                     if (runCustomHook) {
-                                        Date postTestHookStart = new Date()
                                         nativeTestsResultStatus ? runCustomHooks() :
                                                 script.echoCustom('Tests got failed for Native Channel. Hence CustomHooks execution is skipped.', 'WARN')
-                                            channelTestsStats.put('posttesthookdur', BuildHelper.getDuration(postTestHookStart, new Date()))
                                     } else
                                         script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
                                 }

@@ -210,6 +210,13 @@ class CustomHookHelper implements Serializable {
                                           name  : 'PARENTJOB_PARAMS',
                                           value : "$defaultParams"]]
 
+                    /* Build Stats */
+                    def buildStats = [:]
+                    def runListStats = [:]
+                    runListStats.put(hookJob.fullProjectName, hookJob.number)
+                    buildStats.put("pipeline-run-jobs", runListStats)
+                    // Publish Facade metrics keys to build Stats Action class.
+                    script.statspublish buildStats.inspect()
 
                     if (hookJob.currentResult == 'SUCCESS') {
                         script.echoCustom("Hook execution for $hookName hook is SUCCESS, continuing with next build step..", 'INFO')

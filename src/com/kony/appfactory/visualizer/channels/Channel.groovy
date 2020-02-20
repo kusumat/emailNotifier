@@ -291,6 +291,7 @@ class Channel implements Serializable {
         script.env.visualizerVersion = visualizerVersion
         script.echoCustom("Current Project version: " + visualizerVersion)
         channelBuildStats.put('vizver', visualizerVersion)
+        channelBuildStats.put('buildver', visualizerVersion)
 
         /* For CloudBuild, validate if CloudBuild Supported for the given project version */
         if (script.env.IS_STARTER_PROJECT.equals("true")) {

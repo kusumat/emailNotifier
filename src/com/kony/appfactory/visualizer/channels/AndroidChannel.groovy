@@ -223,9 +223,7 @@ class AndroidChannel extends Channel {
 
                         artifactMeta.add("version": ["App Version": androidAppVersion, "Build Version": androidAppVersionCode])
                         /* Run PreBuild Hooks */
-                        Date preBuildHookStart = new Date()
                         runPreBuildHook()
-                        channelBuildStats.put('prehookdur', BuildHelper.getDuration(preBuildHookStart, new Date()))
 
                         script.stage('Build') {
                             /* Copy protected keys to project workspace if build mode is "release-protected" */
@@ -318,9 +316,7 @@ class AndroidChannel extends Channel {
                             script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 
                             /* Run PostBuild Hooks */
-                            Date postBuildHookStart = new Date()
                             runPostBuildHook()
-                            channelBuildStats.put('posthookdur', BuildHelper.getDuration(postBuildHookStart, new Date()))
                         }
                     }
                 }
