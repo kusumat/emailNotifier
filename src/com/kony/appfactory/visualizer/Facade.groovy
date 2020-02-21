@@ -89,6 +89,8 @@ class Facade implements Serializable {
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private final keystoreAlias = script.params.ANDROID_KEY_ALIAS
     private final androidAppBundle = script.params.ANDROID_APP_BUNDLE
+    private final support32BitDevices = script.params.SUPPORT_32BIT_DEVICES
+    private final supportX86Devices = script.params.SUPPORT_x86_DEVICES
 
     /* WEB build parameters */
     private
@@ -345,7 +347,10 @@ class Facade implements Serializable {
                         script.string(name: 'ANDROID_KEY_ALIAS', value: "${keystoreAlias}"),
                         script.string(name: 'ANDROID_UNIVERSAL_APP_ID', value: "${androidUniversalAppId}"),
                         script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}"),
-                        script.booleanParam(name: 'ANDROID_APP_BUNDLE', value: "${androidAppBundle}")
+                        script.booleanParam(name: 'ANDROID_APP_BUNDLE', value: "${androidAppBundle}"),
+                        script.booleanParam(name: 'SUPPORT_32BIT_DEVICES', value: "${support32BitDevices}"),
+                        script.booleanParam(name: 'SUPPORT_x86_DEVICES', value: "${supportX86Devices}")
+
                 ]
                 break
             case ~/^.*IOS.*$/:

@@ -27,6 +27,7 @@ class EmailBuilder {
         }
     }
 
+
     @NonCPS
     static void addSimpleArtifactTableRowSuccess(htmlBuilder, binding) {
         htmlBuilder.tr {
@@ -99,7 +100,9 @@ class EmailBuilder {
                     th(rowspan: countRows, binding.channelPath.replaceAll('/', ' '))
                 td(style: "text-align:left ,border-right: 1px dotted #e8e8e8; width: 65px;", binding.artifacts[rownum].extension)
                 td {
-                    if(binding.artifacts[rownum].url)
+                    if (binding.artifacts[rownum].authurl)
+                        a(href: binding.artifacts[rownum].authurl, target: '_blank', binding.artifacts[rownum].name)
+                    else if (binding.artifacts[rownum].url)
                         a(href: binding.artifacts[rownum].url, target: '_blank', binding.artifacts[rownum].name)
                     else
                         mkp.yield("Build failed")

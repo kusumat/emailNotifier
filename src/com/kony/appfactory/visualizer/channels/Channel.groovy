@@ -533,6 +533,7 @@ class Channel implements Serializable {
         }
     }
 
+
     /**
      * Set properties that vary based upon the Visualizer Version of users' app.
      *
@@ -723,10 +724,10 @@ class Channel implements Serializable {
             case ~/^.*apk.*$/:
                 switch (buildMode) {
                     case libraryProperties.'buildmode.release.protected.type':
-                        searchGlob = '**/' + projectAppId + '-' + 'release' + '*.' + artifactExtension
+                        searchGlob = '**/' + projectAppId + '-*' + 'release' + '*.' + artifactExtension
                         break
                     default:
-                        searchGlob = '**/' + projectAppId + '-' + buildMode + '*.' + artifactExtension
+                        searchGlob = '**/' + projectAppId + '-*' + buildMode + '*.' + artifactExtension
                         break
                 }
                 break
@@ -857,14 +858,26 @@ class Channel implements Serializable {
         def artifactArchitecture
 
         switch (artifactPath) {
+            case ~/^.*arm64-v8a.*$/:
+                artifactArchitecture = 'ARM-64bit_'
+                break
+            case ~/^.*armeabi-v7a.*$/:
+                artifactArchitecture = 'ARM-32bit_'
+                break
+            case ~/^.*x86_64.*$/:
+                artifactArchitecture = 'x86-64bit_'
+                break
+            case ~/^.*x86.*$/:
+                artifactArchitecture = 'x86-32bit_'
+                break
             case ~/^.*ARM.*$/:
                 artifactArchitecture = 'ARM_'
                 break
-            case ~/^.*x86.*$/:
-                artifactArchitecture = 'x86_'
-                break
             case ~/^.*x64.*$/:
                 artifactArchitecture = 'x64_'
+                break
+            case ~/^.*-universal.*$/:
+                artifactArchitecture = '_FAT_APK_'
                 break
             default:
                 artifactArchitecture = ''

@@ -16,6 +16,8 @@ class AndroidChannel extends Channel {
     private final keystorePasswordId = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private boolean doAndroidSigning = false
+    private boolean support32BitDevices = script.params.SUPPORT_32BIT_DEVICES
+    private boolean supportX86Devices = script.params.SUPPORT_x86_DEVICES
     /* At least one of application id parameters should be set */
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
     private final androidTabletAppId = script.params.ANDROID_TABLET_APP_ID
@@ -28,6 +30,7 @@ class AndroidChannel extends Channel {
     private resourceList
     /* nodeLabel store slave label */
     private nodeLabel
+    protected androidArtifacts = []
 
     /**
      * Class constructor.
@@ -75,7 +78,57 @@ class AndroidChannel extends Channel {
             }
         }
     }
-    
+
+    /**
+     * This method will set the support64bit and supportX86Devices json properties in projectProperties file
+     * this is to generate 32-bit and 64-bit apks with ARM and x86 architecture.
+     *
+     */
+    protected setAndroidBuildFlags()
+    {
+        script.dir(projectFullPath) {
+            def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
+            if (script.fileExists(propertyFileName)) {
+                def projectPropertiesJsonContent = script.readJSON file: propertyFileName
+                projectPropertiesJsonContent.support64bit = true
+                projectPropertiesJsonContent.supportX86Devices = supportX86Devices
+                script.writeJSON file: propertyFileName, json: projectPropertiesJsonContent
+            } else {
+                throw new AppFactoryException("Failed to find the $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+            }
+        }
+    }
+
+    /**
+     *This method is used to get the binary type of the artifacts.
+     *@param artifactName
+     */
+    protected getArtifactBinaryFormat(artifactName){
+        def artifactBinaryFormat
+
+        switch (artifactName) {
+            case ~/^.*ARM-64bit_.*$/:
+                artifactBinaryFormat = 'APK (ARM-64bit)'
+                break
+            case ~/^.*ARM-32bit_.*$/:
+                artifactBinaryFormat = 'APK (ARM-32bit)'
+                break
+            case ~/^.*x86-64bit_.*$/:
+                artifactBinaryFormat = 'APK (x86-64bit)'
+                break
+            case ~/^.*x86-32bit_.*$/:
+                artifactBinaryFormat = 'APK (x86-32bit)'
+                break
+            case ~/^.*.aab.*$/:
+                artifactBinaryFormat = 'AAB'
+                break
+            default:
+                artifactBinaryFormat = 'APK'
+                break
+        }
+
+        artifactBinaryFormat
+    }
     /**
      * Signs Android build artifacts.
      * More info could be found: https://developer.android.com/studio/publish/app-signing.html#signing-manually
@@ -92,7 +145,7 @@ class AndroidChannel extends Channel {
             script.catchErrorCustom(errorMessage) {
                 for (artifact in buildArtifacts) {
                     script.dir(artifact.path) {
-                        def finalArtifactName = androidAppbundle ? artifact.name.replace('.aab','_signed.aab') : artifact.name.replaceAll('unsigned', 'aligned')
+                        def finalArtifactName = androidAppBundle ? artifact.name.replace('.aab','_signed.aab') : artifact.name.replaceAll('unsigned', 'aligned')
 
                         script.shellCustom(
                                 [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
@@ -258,6 +311,9 @@ class AndroidChannel extends Channel {
                                 }
                             }
 
+                            /* Setting the "Support 64-bit" and "Support-x86 Devices" flag values to generate 32 and 64-bit apks of ARM and x86 Architecture */
+                                setAndroidBuildFlags()
+
                             build()
                             /* Search for build artifacts */
                             buildArtifacts = getArtifactLocations(artifactExtension)
@@ -307,11 +363,15 @@ class AndroidChannel extends Channel {
                                         sourceFileName: artifactName, sourceFilePath: artifactPath, script
 
                                 String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
-
-                                artifacts.add([
-                                        channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl
-                                ])
+                                String binaryFormat = getArtifactBinaryFormat(artifactName)
+                                if(!artifactName.contains('_FAT_APK_')) {
+                                    androidArtifacts.add([
+                                            name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, extension: binaryFormat
+                                    ])
+                                }
                             }
+                            
+                            artifacts.add([channelPath: channelPath, name: androidArtifacts[0].name, androidArtifacts: androidArtifacts])
 
                             script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 

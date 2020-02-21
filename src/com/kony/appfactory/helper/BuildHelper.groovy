@@ -190,7 +190,7 @@ class BuildHelper implements Serializable {
             if (!currentBuildBranch.equals(previousBuildBranch))
                 logsList.add("Unable to fetch diff, your previous build is on a different branch.")
             else if (script.currentBuild.changeSets.isEmpty())
-                logsList.add("No diff is availble")
+                logsList.add("No diff is available")
             else {
                 def changeLogSets = script.currentBuild.changeSets
                 for (entries in changeLogSets) {

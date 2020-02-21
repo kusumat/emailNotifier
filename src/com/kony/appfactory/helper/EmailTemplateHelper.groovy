@@ -175,7 +175,15 @@ class EmailTemplateHelper implements Serializable {
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
                 }
+                /* Android */
+                else if (artifact.channelPath.toUpperCase().contains('ANDROID')) {
+                    def map = [
+                            channelPath: artifact.channelPath,
+                            artifacts  : artifact.androidArtifacts
+                    ] + artifactsMeta
 
+                    EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
+                }
                 /* Web */
                 else if (artifact.webAppUrl) {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
@@ -198,8 +206,7 @@ class EmailTemplateHelper implements Serializable {
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
                 }
-
-                /* Android or channels - SPA/DesktopWeb/Web without publish enabled */
+                /* Channels - SPA/DesktopWeb/Web without publish enabled */
                 else {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
