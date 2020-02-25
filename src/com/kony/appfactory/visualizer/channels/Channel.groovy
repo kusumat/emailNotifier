@@ -243,7 +243,6 @@ class Channel implements Serializable {
             channelBuildStats.put('errmsg', exceptionMessage)
         } finally {
             channelBuildStats.put('buildagent', script.env.NODE_NAME)
-            channelBuildStats.put('buildtriggeredby', BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()))
             channelBuildStats.put('srcurl', scmUrl)
             channelBuildStats.put('srccmtid', scmMeta['commitID'])
             // Publish Platform metrics keys to build Stats Action class.
@@ -1010,7 +1009,7 @@ class Channel implements Serializable {
             if (channelFormFactor == "Universal")
                 featureBooleanParameters.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
         }
-        if ((channelOs.equalsIgnoreCase('iOS')) {
+        if (channelOs.equalsIgnoreCase('iOS')) {
             featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
             if (channelFormFactor == "Universal")
                 featureBooleanParameters.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])

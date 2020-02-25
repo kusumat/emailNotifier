@@ -869,6 +869,8 @@ class Facade implements Serializable {
                         }
                         buildStats.put("projname", projectName)
                         buildStats.put('buildplat', getBuildPlat(channelsToRun))
+                        buildStats.put('buildtriggeredby', BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()))
+
                         /* Run channel builds in parallel */
                         script.parallel(runList)
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
