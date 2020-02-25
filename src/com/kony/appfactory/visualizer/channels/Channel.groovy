@@ -1003,17 +1003,23 @@ class Channel implements Serializable {
     protected final getFeatureParamsToCheckCIBuildSupport() {
         def featureBooleanParameters = [:]
         def finalFeatureParamsToCheckCISupport = [:]
-        featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
+        
+        if (channelOs.equalsIgnoreCase('Android')) {
+            featureBooleanParameters.put('SUPPORT_x86_DEVICES', ['featureDisplayName': 'Android (32-Bit)'])
+            featureBooleanParameters.put('ANDROID_APP_BUNDLE', ['featureDisplayName': 'Android App Bundle'])
+            if (channelFormFactor == "Universal")
+                featureBooleanParameters.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
+        }
+        if ((channelOs.equalsIgnoreCase('iOS')) {
+            featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
+            if (channelFormFactor == "Universal")
+                featureBooleanParameters.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
+        }
         
         finalFeatureParamsToCheckCISupport = featureBooleanParameters.findAll{
             script.params.containsKey(it.key) && script.params[it.key] == true
         }
-        if ((channelFormFactor == "Universal") && (channelOs.equalsIgnoreCase('Android'))) {
-            finalFeatureParamsToCheckCISupport.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
-        }
-        if ((channelFormFactor == "Universal") && (channelOs.equalsIgnoreCase('iOS'))) {
-            finalFeatureParamsToCheckCISupport.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
-        }
+        
         finalFeatureParamsToCheckCISupport
     }
     
