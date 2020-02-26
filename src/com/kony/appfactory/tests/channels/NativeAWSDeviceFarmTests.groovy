@@ -750,7 +750,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         }
                     }
                     finally {
-                        script.env['SCM_COMMIT_ID'] = scmMeta['commitID']
+                        channelTestsStats.put('srccmtid', scmMeta['commitID'])
                         //push stats to statspublish
                         script.statspublish channelTestsStats.inspect()
 

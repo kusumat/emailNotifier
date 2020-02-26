@@ -302,7 +302,6 @@ class FacadeTests implements Serializable {
                 buildStats.put('runmode', runInCustomTestEnvironment ? 'custom' : 'standard' )
                 buildStats.put('testtriggeredby', BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()))
                 buildStats.put('srcurl', script.env.PROJECT_SOURCE_CODE_URL)
-                buildStats.put('srccmtid', testsJob.buildVariables.SCM_COMMIT_ID)
                 //push stats to statusAction
                 script.statspublish buildStats.inspect()
             }
