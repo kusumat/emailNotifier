@@ -175,8 +175,8 @@ class CustomHookHelper implements Serializable {
                     /* To store the parent job build number and expose this to custom hook */
                     def parentJobBuildNumber = BuildHelper.getUpstreamJobNumber(script)
 
-                    /* Append parent job build_number to defaultParams string. */
-                    defaultParams += " -DPROJECT_BUILDNUMBER=$parentJobBuildNumber"
+                    /* Append parent job build_number, Channel job build number and exact hook channel names environment variables to defaultParams string. */
+                    defaultParams += " -DPROJECT_BUILDNUMBER=${parentJobBuildNumber} -DBUILDNUMBER=${script.env.BUILD_NUMBER} -DHOOK_CHANNEL=${pipelineBuildStage}"
 
                     /* Applying ACLs, allow hookslave user permissions */
                     if(hookLabel.contains(libraryProperties.'ios.node.label')) {
