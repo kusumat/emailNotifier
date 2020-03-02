@@ -61,7 +61,7 @@ class CloudBuildHelper implements Serializable {
      * @return mapper json file based on cloud environment
      */
     protected static String getMapperJsonFileForQuantumAppBuid(String cloudEnv, String nonProdMapperJsonFile, String prodMapperJsonFile) {
-        if (cloudEnv.equalsIgnoreCase("kony.com")) {
+        if (cloudEnv.equalsIgnoreCase("kony.com") || cloudEnv.equalsIgnoreCase("stg-kony.com")) {
             return prodMapperJsonFile
         } else {
             return nonProdMapperJsonFile
