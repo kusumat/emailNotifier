@@ -1004,7 +1004,7 @@ class Channel implements Serializable {
         def finalFeatureParamsToCheckCISupport = [:]
         
         if (channelOs.equalsIgnoreCase('Android')) {
-            featureBooleanParameters.put('SUPPORT_x86_DEVICES', ['featureDisplayName': 'Android (32-Bit)'])
+            featureBooleanParameters.put('SUPPORT_32BIT_DEVICES', ['featureDisplayName': 'Android (32-Bit)'])
             featureBooleanParameters.put('ANDROID_APP_BUNDLE', ['featureDisplayName': 'Android App Bundle'])
             if (channelFormFactor == "Universal")
                 featureBooleanParameters.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
