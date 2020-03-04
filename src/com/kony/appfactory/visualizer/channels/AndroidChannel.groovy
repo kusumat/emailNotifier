@@ -90,8 +90,9 @@ class AndroidChannel extends Channel {
             def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
             if (script.fileExists(propertyFileName)) {
                 def projectPropertiesJsonContent = script.readJSON file: propertyFileName
-                projectPropertiesJsonContent.support64bit = true
-                projectPropertiesJsonContent.supportX86Devices = supportX86Devices
+                projectPropertiesJsonContent.support64bit = "true"
+                projectPropertiesJsonContent.support32bit = support32BitDevices.toString()
+                projectPropertiesJsonContent.supportX86Devices = supportX86Devices.toString()
                 script.writeJSON file: propertyFileName, json: projectPropertiesJsonContent
             } else {
                 throw new AppFactoryException("Failed to find the $propertyFileName file, please check your Visualizer project!!", 'ERROR')

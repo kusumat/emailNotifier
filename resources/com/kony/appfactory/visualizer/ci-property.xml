@@ -324,6 +324,7 @@
             <entry key="generateAppBundle" value="${androidAppBundle}"/>
             <entry key="splitapks" value="${splitApks}"/>
             <entry key="support32bit" value="${support32BitDevices}"/>
+            <entry key="support64bit" value="true"/>
         </propertyfile>
     </target>
 
