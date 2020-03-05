@@ -224,7 +224,7 @@ class FacadeTests implements Serializable {
                             propagate: false
 
                     /* collect job run id to build stats */
-                    runListStats.put(parametersForRunningTests["${it.value}"].jobName, testsJob.number)
+                    runListStats.put(testsJob.number, parametersForRunningTests["${it.value}"].jobName)
 
                     testsJobOutput += [("${it.value}".trim()): testsJob]
                     runResults.add(testsJob.currentResult)

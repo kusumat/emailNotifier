@@ -490,7 +490,7 @@ class Facade implements Serializable {
                     jobResultList.add(channelJob.currentResult)
 
                     /* collect job run id to build stats */
-                    runListStats.put(channelJob.fullProjectName, channelJob.number)
+                    runListStats.put(channelJob.number.toString(), channelJob.fullProjectName)
                     /* Collect job artifacts */
                     artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
                     artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
@@ -572,7 +572,7 @@ class Facade implements Serializable {
                 /* Collect job results */
                 jobResultList.add(channelJob.currentResult)
                 /* collect job run id to build stats */
-                runListStats.put(channelJob.fullProjectName, channelJob.number)
+                runListStats.put(channelJob.number, channelJob.fullProjectName)
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects("CloudBuild", channelJob.buildVariables.CHANNEL_ARTIFACTS))
                 artifactsMeta = getArtifactMetaObjects(channelJob.buildVariables?.CHANNEL_ARTIFACT_META)
@@ -619,7 +619,7 @@ class Facade implements Serializable {
                 jobResultList.add(channelJob.currentResult)
 
                 /* collect job run id to build stats */
-                runListStats.put(channelJob.fullProjectName, channelJob.number)
+                runListStats.put(channelJob.number, channelJob.fullProjectName)
 
                 /* Collect job artifacts */
                 artifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.CHANNEL_ARTIFACTS))
@@ -923,7 +923,7 @@ class Facade implements Serializable {
                                 def testAutomationJobResult = testAutomationJob.currentResult
 
                                 /* collect job run id to build stats */
-                                runListStats.put(testAutomationJob.fullProjectName, testAutomationJob.number)
+                                runListStats.put(testAutomationJob.number, testAutomationJob.fullProjectName)
                                 /* Collect job result */
                                 jobResultList.add(testAutomationJobResult)
 
