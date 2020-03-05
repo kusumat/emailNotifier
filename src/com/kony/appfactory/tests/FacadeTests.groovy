@@ -300,7 +300,6 @@ class FacadeTests implements Serializable {
                 buildStats.put('testfwk', BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG'))
                 buildStats.put('testfwkver', script.params.APPIUM_VERSION)
                 buildStats.put('runmode', runInCustomTestEnvironment ? 'custom' : 'standard' )
-                buildStats.put('testtriggeredby', BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()))
                 buildStats.put('srcurl', script.env.PROJECT_SOURCE_CODE_URL)
                 //push stats to statusAction
                 script.statspublish buildStats.inspect()

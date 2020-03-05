@@ -869,7 +869,6 @@ class Facade implements Serializable {
                         }
                         buildStats.put("projname", projectName)
                         buildStats.put('buildplat', getBuildPlat(channelsToRun))
-                        buildStats.put('buildtriggeredby', BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()))
 
                         /* Run channel builds in parallel */
                         script.parallel(runList)
@@ -1028,7 +1027,7 @@ class Facade implements Serializable {
     @NonCPS
     private String  getBuildPlat(channelsToRun)
     {
-        String ChannelsSelected = channelsToRun.stream().map{channel -> channel.substring(0, channel.indexOf("_"))}.collect{ it.capitalize() }.join(', ')
+        String ChannelsSelected = channelsToRun.stream().map{channel -> channel.substring(0, channel.indexOf("_"))}.collect{ it.capitalize() }.unique().join(', ')
         return ChannelsSelected
     }
 
