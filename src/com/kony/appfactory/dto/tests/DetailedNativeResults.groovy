@@ -15,7 +15,7 @@ public class DetailedNativeResults implements Serializable {
       private String binaryExt;
       private long testDuration;
       private String resultsLink;
-      private long deviceMinutes;
+      private double deviceMinutes;
 
       public DetailedNativeResults() {
           this.device = new Device();
@@ -95,12 +95,12 @@ public class DetailedNativeResults implements Serializable {
       }
 
     @NonCPS
-    public long getDeviceMinutes() {
+    public double getDeviceMinutes() {
         return deviceMinutes
     }
 
     @NonCPS
-    public void setDeviceMinutes(long deviceMinutes) {
+    public void setDeviceMinutes(double deviceMinutes) {
         this.deviceMinutes = deviceMinutes
     }
 
