@@ -423,7 +423,7 @@ class Facade implements Serializable {
     }
 
     private final getScmMetaObjects(scmMeta) {
-        (scmMeta) ? Eval.me(scmMeta) : [commitID: '', commitLogs: []]
+        (scmMeta) ? Eval.me(scmMeta) : [commitID: '', scmUrl: '', commitLogs: []]
     }
 
     /**
