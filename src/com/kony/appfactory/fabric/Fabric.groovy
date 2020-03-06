@@ -505,6 +505,7 @@ class Fabric implements Serializable {
             fabricStats.put('faberrstack', e.getStackTrace().toString())
             script.currentBuild.result = 'FAILURE'
         } finally {
+            fabricStats.put("projname", script.env.PROJECT_NAME)
             fabricStats.put('fabaname', fabricAppName)
             fabricStats.put('fabaver', fabricAppVersion)
             fabricStats.put('fabtask', fabricTask)
@@ -512,7 +513,7 @@ class Fabric implements Serializable {
             fabricStats.put('fabsrcbrch', exportRepositoryBranch)
 
             if (publishJob?.number) {
-                fabricRunListStats.put(publishJob.number, publishJob.fullProjectName)
+                fabricRunListStats.put(publishJob.number.toString(), publishJob.fullProjectName)
                 fabricStats.put("pipeline-run-jobs", fabricRunListStats)
             }
             // Publish fabric metrics keys to build Stats Action class.
