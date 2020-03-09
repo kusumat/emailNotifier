@@ -371,8 +371,8 @@ class AndroidChannel extends Channel {
                                     ])
                                 }
                             }
-                            
-                            artifacts.add([channelPath: channelPath, name: androidArtifacts[0].name, androidArtifacts: androidArtifacts])
+
+                            artifacts.add([channelPath: channelPath, name: androidArtifacts[0].name, url: androidArtifacts[0].url, authurl: androidArtifacts[0].authurl, androidArtifacts: androidArtifacts])
 
                             script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 
