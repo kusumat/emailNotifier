@@ -466,6 +466,9 @@ class DesktopWebTests extends RunTests implements Serializable {
                             }
                         }
                     } finally {
+                        channelTestsStats.put('atype', 'spa')
+                        channelTestsStats.put('plat', 'web')
+                        channelTestsStats.put('chnl', 'desktop')
                         channelTestsStats.put('browserver', browserVersionsMap[selectedBrowser])
                         channelTestsStats.put('srccmtid', scmMeta['commitID'])
                         script.statspublish channelTestsStats.inspect()
