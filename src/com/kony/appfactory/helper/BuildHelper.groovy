@@ -745,8 +745,11 @@ class BuildHelper implements Serializable {
         if (script.env['CLOUD_ENVIRONMENT_GUID'] && script.env['CLOUD_DOMAIN']) {
             String searchString = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME].join("/")
             //artifactUrl is already encoded but only for space and double quote character. Avoid double encoding for these two special characters.
+            def subStringIndex = 0
+            if (artifactUrl.indexOf(searchString) > 0)
+                subStringIndex = artifactUrl.indexOf(searchString)
             def encodedArtifactUrl = artifactUrl
-                    .substring(artifactUrl.indexOf(searchString))
+                    .substring(subStringIndex)
                     .replace('%20', ' ')
                     .replace('%22', '"')
                     .split("/")
