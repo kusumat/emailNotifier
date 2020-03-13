@@ -396,7 +396,7 @@ class Facade implements Serializable {
                 script.string(name: 'NATIVE_TESTS_URL', value: ''),
                 script.string(name: 'DESKTOPWEB_TESTS_URL', value: ''),
                 script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}"),
-                script.string(name: 'RUN_DESKTOPWEB_TESTS', value: "${runDesktopwebTests}"),
+                script.booleanParam(name: 'RUN_DESKTOPWEB_TESTS', value: "${runDesktopwebTests}"),
                 script.string(name: 'AVAILABLE_BROWSERS', value: "${availableBrowsers}"),
                 script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: "${desktopWebTestsArguments}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
