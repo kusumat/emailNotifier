@@ -854,7 +854,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     authUrl = BuildHelper.createAuthUrl(authUrl, script, true)
                 } else {
                     script.echoCustom("Jasmine Test report is not found for the ${deviceDisplayName} device. Please check the device logs for more information!!!", "ERROR", false)
-                    script.currentBuild.result = "FAILED"
+                    script.currentBuild.result = "UNSTABLE"
                 }
             } else {
                 script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/*  ${deviceFarmWorkingFolder}/${deviceName}/", true)
@@ -866,7 +866,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     authUrl = authUrl.replace("*/**", 'index.html')
                 } else {
                     script.echoCustom("TestNG report is not found for the ${deviceDisplayName} device. Please check the device logs for more information!!!", "ERROR", false)
-                    script.currentBuild.result = "FAILED"
+                    script.currentBuild.result = "UNSTABLE"
                 }
             }
             reportsUrl.put("url", authUrl)
