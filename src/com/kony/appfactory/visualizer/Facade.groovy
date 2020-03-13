@@ -388,7 +388,7 @@ class Facade implements Serializable {
      * @return Test Automation job build parameters.
      */
     private final getTestAutomationJobParameters() {
-        [
+        def automationParams = [
                 script.string(name: 'PROJECT_SOURCE_CODE_BRANCH',
                         value: "${projectSourceCodeBranch}"),
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
@@ -404,7 +404,11 @@ class Facade implements Serializable {
                 script.string(name: 'TEST_FRAMEWORK', value: "${testFramework}"),
                 script.string(name: 'WEB_TEST_PLAN', value: "${jasmineWebTestPlan}"),
                 script.string(name: 'NATIVE_TEST_PLAN', value: "${jasmineNativeTestPlan}")
-        ]
+            ]
+        if(script.params.containsKey("RUN_NATIVE_TESTS"))
+            automationParams.add(script.booleanParam(name: 'RUN_NATIVE_TESTS', value: script.params.RUN_NATIVE_TESTS))
+
+        automationParams
     }
 
     /**
