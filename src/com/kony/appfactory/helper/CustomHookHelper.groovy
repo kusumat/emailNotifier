@@ -213,7 +213,7 @@ class CustomHookHelper implements Serializable {
                     /* Build Stats */
                     def buildStats = [:]
                     def runListStats = [:]
-                    runListStats.put(hookJob.number.toString(), hookJob.fullProjectName)
+                    runListStats.put(hookJob.fullProjectName + "/" + hookJob.number, hookJob.fullProjectName)
                     buildStats.put("pipeline-run-jobs", runListStats)
                     // Publish Facade metrics keys to build Stats Action class.
                     script.statspublish buildStats.inspect()

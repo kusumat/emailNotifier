@@ -513,7 +513,7 @@ class Fabric implements Serializable {
             fabricStats.put('fabsrcbrch', exportRepositoryBranch)
 
             if (publishJob?.number) {
-                fabricRunListStats.put(publishJob.number.toString(), publishJob.fullProjectName)
+                fabricRunListStats.put(publishJob.fullProjectName + "/" + publishJob.number, publishJob.fullProjectName)
                 fabricStats.put("pipeline-run-jobs", fabricRunListStats)
             }
             // Publish fabric metrics keys to build Stats Action class.

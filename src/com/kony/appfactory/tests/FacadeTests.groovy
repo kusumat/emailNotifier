@@ -88,7 +88,6 @@ class FacadeTests implements Serializable {
     def buildStats = [:]
     def runListStats = [:]
     private runInCustomTestEnvironment = (script.params.containsKey("TEST_ENVIRONMENT")) ? ((script.params.TEST_ENVIRONMENT == 'Custom') ? true : false ) : script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
-
     /**
      * Class constructor.
      *
@@ -224,7 +223,7 @@ class FacadeTests implements Serializable {
                             propagate: false
 
                     /* collect job run id to build stats */
-                    runListStats.put(testsJob.number.toString(), parametersForRunningTests["${it.value}"].jobName)
+                    runListStats.put(testsJob.fullProjectName + "/" + testsJob.number, testsJob.fullProjectName)
 
                     testsJobOutput += [("${it.value}".trim()): testsJob]
                     runResults.add(testsJob.currentResult)
@@ -289,9 +288,11 @@ class FacadeTests implements Serializable {
                 }
             }
             catch (AppFactoryException e) {
+                String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
                 buildStats.put('errmsg', exceptionMessage)
                 buildStats.put('errstack', e.getStackTrace().toString())
             } catch (Exception e) {
+                String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
                 buildStats.put('errmsg', exceptionMessage)
                 buildStats.put('errstack', e.getStackTrace().toString())
             }
