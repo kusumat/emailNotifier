@@ -861,10 +861,10 @@ class EmailTemplateHelper implements Serializable {
                                 (resultsObject.getBinaryURL().trim().length() > 0) ? a(href: resultsObject.getBinaryURL(), target: '_blank', (resultsObject.getBinaryExt()).toUpperCase()) : 'NOT AVAILABLE'
                             }
                         )
-                    
-                        th(class: "testresults", resultsObject.getResultsCount().getTotal() ?: '')
-                            
-                                th(class: "testresults", resultsObject.getResultsCount().getPassed() ?: '')
+
+                        th(class: "testresults", resultsObject.getResultsCount().getTotal() ?: 0)
+
+                                th(class: "testresults", resultsObject.getResultsCount().getPassed() ?: 0)
                                 th(
                                         class: "testresults",
                                         resultsObject.getResultsCount().getFailed() ?: 0

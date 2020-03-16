@@ -491,7 +491,7 @@ class AwsDeviceFarmHelper implements Serializable {
                             case 'PASSED':
                                 script.echoCustom("Test Execution is completed on \'"+ deviceKey
                                         + "\' and over all test result is PASSED", 'INFO')
-                                createSummaryOfTestCases(listJobsArrayList, result, completedRunDevicesList, index)
+                                result = createSummaryOfTestCases(listJobsArrayList, completedRunDevicesList, index)
                                 break
                             case 'WARNED':
                                 script.echoCustom("Build is warned for unknown reason on the device \'" + deviceKey + "\'", 'WARN')
@@ -500,14 +500,13 @@ class AwsDeviceFarmHelper implements Serializable {
                                 script.echoCustom("Test Execution is skipped on the device \'" + deviceKey + "\'", 'INFO')
                                 break
                             case 'ERRORED':
-                                script.echoCustom("ERRORED!!\n" + listJobsArrayList, 'WARN')
                                 script.echoCustom("Looks like your tests failed with an ERRORED message, it usually happens due to some network issue on AWS device or issue with instance itself. Re-triggering the build might solve the issue.", 'WARN')
                             case 'STOPPED':
                             case 'FAILED':
                                 script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + deviceKey
                                         + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
                                 script.currentBuild.result = 'UNSTABLE'
-                                createSummaryOfTestCases(listJobsArrayList, result, completedRunDevicesList, index)
+                                result = createSummaryOfTestCases(listJobsArrayList, completedRunDevicesList, index)
                                 break
                             default:
                                 break
@@ -530,14 +529,23 @@ class AwsDeviceFarmHelper implements Serializable {
     /**
      * Collect the details that are to be printed in console output at the end of tests execution such as duration, summary specific to each device.
      * @param listJobsArrayList List that is returned when we run list-jobs aws command
-     * @param results object which contains the results of that specific device
      * @param completedRunDevicesList This holds the list of devices for which the tests execution is completed
      * @param index This is the index for the list completedRunDevicesList
      * */
     @NonCPS
-    protected void createSummaryOfTestCases(def listJobsArrayList, def results, def completedRunDevicesList, def index){
+    protected DetailedNativeResults createSummaryOfTestCases(def listJobsArrayList, def completedRunDevicesList, def index){
+        DetailedNativeResults results = new DetailedNativeResults()
         Long timeDifference = 0
-        String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
+        Date endTime = new Date()
+        def deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
+
+        if(testStartTimeMap.containsKey(deviceKey)) {
+            use(groovy.time.TimeCategory) {
+                timeDifference = endTime.time - testStartTimeMap[deviceKey]
+            }
+        }
+        results.setTestDuration(timeDifference)
+
         Device device = new Device(listJobsArrayList.name, listJobsArrayList.device.os, listJobsArrayList.device.formFactor, listJobsArrayList.device.platform)
         results.setDevice(device)
         results.setDeviceMinutes(listJobsArrayList.deviceMinutes.get('total'))
@@ -549,15 +557,9 @@ class AwsDeviceFarmHelper implements Serializable {
             listJobsArrayList.counters.get('stopped'),
             listJobsArrayList.counters.get('errored'))
         results.setResultsCount(counts)
-        Date endTime = new Date()
-        if(testStartTimeMap.containsKey(deviceKey)) {
-            use(groovy.time.TimeCategory) {
-                timeDifference = endTime.time - testStartTimeMap[deviceKey]
-            }
-        }
-        results.setTestDuration(timeDifference)
         completedRunDevicesList[index] = listJobsArrayList.arn
         index++
+        return results
     }
 
     /**

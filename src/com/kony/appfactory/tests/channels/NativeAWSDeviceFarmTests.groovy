@@ -307,15 +307,60 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                         for(reports in runArtifacts.reports) {
                             authUrl = reports.getValue()
                         }
+
                         result.setResultsLink(authUrl)
-                        result.getResultsCount().setTotal(runArtifacts.totalSuites ? (runArtifacts.totalSuites instanceof Integer ? runArtifacts.totalSuites : 0) : 0)
-                        result.getResultsCount().setPassed(runArtifacts.passedTests? (runArtifacts.passedTests instanceof Integer ? runArtifacts.passedTests : 0) : 0)
-                        result.getResultsCount().setFailed(runArtifacts.failedTests? (runArtifacts.failedTests instanceof Integer ? runArtifacts.failedTests : 0) : 0)
-                        result.getResultsCount().setSkipped(runArtifacts.skippedTests? (runArtifacts.skippedTests instanceof Integer ? runArtifacts.skippedTests  : 0) : 0)
-                        result.getResultsCount().setWarned(0)
-                        result.getResultsCount().setStopped(0)
-                        result.getResultsCount().setErrored(0)
+
+                        // setting DetailedNativeResults result object with custom_mode_test run stats
+                        if (runArtifacts.skippedTests && runArtifacts.skippedTests instanceof Integer)
+                            result.getResultsCount().setSkipped(runArtifacts.skippedTests)
+                        else if (runArtifacts.skippedTests && runArtifacts.skippedTests instanceof String)
+                            result.getResultsCount().setSkipped(runArtifacts.skippedTests.toInteger())
+                        else
+                            result.getResultsCount().setSkipped(0)
+
+                        if (runArtifacts.totalSuites && runArtifacts.totalSuites instanceof Integer)
+                            result.getResultsCount().setTotal(runArtifacts.totalSuites)
+                        else if (runArtifacts.totalSuites && runArtifacts.totalSuites instanceof String)
+                            result.getResultsCount().setTotal(runArtifacts.totalSuites.toInteger())
+                        else
+                            result.getResultsCount().setTotal(0)
+
+                        if (runArtifacts.passedTests && runArtifacts.passedTests instanceof Integer)
+                            result.getResultsCount().setPassed(runArtifacts.passedTests)
+                        else if (runArtifacts.passedTests && runArtifacts.passedTests instanceof String)
+                            result.getResultsCount().setPassed(runArtifacts.passedTests.toInteger())
+                        else
+                            result.getResultsCount().setPassed(0)
+
+                        if (runArtifacts.failedTests && runArtifacts.failedTests instanceof Integer)
+                            result.getResultsCount().setFailed(runArtifacts.failedTests)
+                        else if (runArtifacts.failedTests && runArtifacts.failedTests instanceof String)
+                            result.getResultsCount().setFailed(runArtifacts.failedTests.toInteger())
+                        else
+                            result.getResultsCount().setFailed(0)
+
+                        if (runArtifacts.erroredTests && runArtifacts.erroredTests instanceof Integer)
+                            result.getResultsCount().setErrored(runArtifacts.erroredTests)
+                        else if (runArtifacts.erroredTests && runArtifacts.erroredTests instanceof String)
+                            result.getResultsCount().setErrored(runArtifacts.erroredTests.toInteger())
+                        else
+                            result.getResultsCount().setErrored(0)
+
+                        if (runArtifacts.stoppedTests && runArtifacts.stoppedTests instanceof Integer)
+                            result.getResultsCount().setStopped(runArtifacts.stoppedTests)
+                        else if (runArtifacts.stoppedTests && runArtifacts.stoppedTests instanceof String)
+                            result.getResultsCount().setStopped(runArtifacts.stoppedTests.toInteger())
+                        else
+                            result.getResultsCount().setStopped(0)
+
+                        if (runArtifacts.warnedTests && runArtifacts.warnedTests instanceof Integer)
+                            result.getResultsCount().setWarned(runArtifacts.warnedTests)
+                        else if (runArtifacts.warnedTests && runArtifacts.warnedTests instanceof String)
+                            result.getResultsCount().setWarned(runArtifacts.warnedTests.toInteger())
+                        else
+                            result.getResultsCount().setWarned(0)
                     }
+
                     deviceStats.put('atype', channelType)
                     deviceStats.put('plat', result.getDevice().getPlatform())
                     deviceStats.put('chnl', result.getDevice().getFormFactor())
@@ -324,12 +369,13 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     deviceStats.put('allottedtime', result.getDeviceMinutes())
                     deviceStats.put('devicedevwaitdur', BuildHelper.getDuration(devicewaitstart, deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os)))
                     deviceStats.put('tsstarttestplat', deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os))
-                    deviceStats.put('testskip',result.getResultsCount().setSkipped(runArtifacts.skippedTests? (runArtifacts.skippedTests instanceof Integer ? runArtifacts.skippedTests  : 0) : 0))
-                    deviceStats.put('testpass',result.getResultsCount().setPassed(runArtifacts.passedTests? (runArtifacts.passedTests instanceof Integer ? runArtifacts.passedTests : 0) : 0))
-                    deviceStats.put('testfail',result.getResultsCount().setFailed(runArtifacts.failedTests? (runArtifacts.failedTests instanceof Integer ? runArtifacts.failedTests : 0) : 0))
-                    deviceStats.put('testwarn', 0)
-                    deviceStats.put('teststop', 0)
-                    deviceStats.put('testerror', 0)
+                    deviceStats.put('testdur', result.getTestDuration())
+                    deviceStats.put('testskip',result.getResultsCount().getSkipped())
+                    deviceStats.put('testpass',result.getResultsCount().getPassed())
+                    deviceStats.put('testfail',result.getResultsCount().getFailed())
+                    deviceStats.put('testwarn', result.getResultsCount().getWarned())
+                    deviceStats.put('teststop', result.getResultsCount().getStopped())
+                    deviceStats.put('testerror', result.getResultsCount().getErrored())
 
                     script.echoCustom("Pushing stats of single build run to StatsAction:: ${deviceStats}")
                     script.statspublish deviceStats.inspect()
@@ -884,7 +930,13 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     }
                 }
             } else {
-                testRunArtifacts.totalSuites = testRunArtifacts.failedTests = testRunArtifacts.passedTests = testRunArtifacts.skippedTests = 0
+                testRunArtifacts.totalSuites = 0
+                testRunArtifacts.failedTests = 0
+                testRunArtifacts.passedTests = 0
+                testRunArtifacts.skippedTests = 0
+                testRunArtifacts.erroredTests = 0
+                testRunArtifacts.stoppedTests = 0
+                testRunArtifacts.warnedTests = 0
             }
         }
         return testRunArtifacts
