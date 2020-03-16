@@ -806,7 +806,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      * @return testRunArtifacts the run result with updated count.
      */
     protected  final def fetchCustomTestResults(testRunArtifacts) {
-        def customerArtifactUrl, deviceName, deviceDisplayName, reportsUrl =[:]
+        def customerArtifactUrl, deviceDisplayName, reportsUrl =[:]
+        def deviceName = ""
         def artifactName = 'Customer Artifacts'
         for(suite in testRunArtifacts.suites) {
             for (test in suite.tests) {
@@ -819,8 +820,9 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         }
         if(customerArtifactUrl != null) {
             for(device in testRunArtifacts.device) {
+                if (device.getValue())
+                    deviceName += device.getValue().replaceAll("[^a-zA-Z0-9]", "");
                 if(device.getKey() == "name") {
-                    deviceName = device.getValue().replaceAll("[^a-zA-Z0-9]", "");
                     deviceDisplayName = device.getValue()
                 }
             }
