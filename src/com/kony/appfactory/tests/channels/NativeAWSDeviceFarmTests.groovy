@@ -29,7 +29,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     /* Build parameters */
     private devicePoolName = script.params.AVAILABLE_TEST_POOLS
     protected boolean runInCustomTestEnvironment
-    protected String appiumVersion
+    protected String appiumVersion = script.params.APPIUM_VERSION
     protected testngFiles = script.params.TESTNG_FILES
 
     /* Device Farm related variables */
@@ -102,7 +102,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         deviceFarm = new AwsDeviceFarmHelper(script)
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
         runInCustomTestEnvironment = (script.params.containsKey("TEST_ENVIRONMENT")) ? ((script.params.TEST_ENVIRONMENT == "Custom") ? true : false) : BuildHelper.getParamValueOrDefault(script, "RUN_IN_CUSTOM_TEST_ENVIRONMENT", false)
-        appiumVersion = BuildHelper.getParamValueOrDefault(script, "APPIUM_VERSION", null)
     }
 
     /**
@@ -519,6 +518,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      * @param buildParameters job parameters.
      */
     protected final void validateBuildParameters(buildParameters) {
+        def awsCustomEnvMandatoryParameters = []
         /* Filter all application binaries build parameters */
         def nativeAppBinaryUrlParameters = buildParameters.findAll {
             it.key.contains('NATIVE_BINARY_URL') && it.value
@@ -532,10 +532,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         def poolNameParameter = buildParameters.findAll { it.key.contains('AVAILABLE_TEST_POOLS') && it.value }
         /* Combine binaries build parameters */
         def nativeUrlParameters = nativeTestBinaryUrlParameter + nativeAppBinaryUrlParameters
-
-        if (runInCustomTestEnvironment && !isJasmineEnabled) {
-            /*Filter AWS Test Environment related parameters */
-            def awsCustomEnvMandatoryParameters = ['TESTNG_FILES']
+        if (runInCustomTestEnvironment) {
+            awsCustomEnvMandatoryParameters.add('APPIUM_VERSION')
+            if (!isJasmineEnabled){
+                /*Filter AWS Test Environment related parameters */
+                awsCustomEnvMandatoryParameters.add('TESTNG_FILES')
+            }
             /* Check all required parameters depending on user input */
             ValidationHelper.checkBuildConfiguration(script, awsCustomEnvMandatoryParameters)
         }
@@ -612,7 +614,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         String configFolderPath = 'com/kony/appfactory/configurations'
         /* If Test Spec File is not available inside the source, create one from template. */
         if (!testSpecUploadFilePath) {
-            appiumVersion ? script.echoCustom("Value of Appium Version is :" + appiumVersion) : script.echoCustom("No Appium Version entered, will run with default.")
+            script.echoCustom("Value of Appium Version is :" + appiumVersion)
             /* Load YAML Template */
             ymlTemplate = script.loadLibraryResource(configFolderPath + '/KonyYamlTestSpec.template')
             testngFiles = testngFiles.replaceAll("," , " ")

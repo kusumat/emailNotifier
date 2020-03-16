@@ -149,6 +149,8 @@ class Facade implements Serializable {
         this.script.env['URL_PATH_INFO'] = (this.script.kony.URL_PATH_INFO) ?: ''
         credentialsHelper = new CredentialsHelper()
         status = new BuildStatus(script, channelsToRun)
+        /* Set AWS Test Environment based on framework selection */
+        runInCustomTestEnvironment = isJasmineEnabled || runInCustomTestEnvironment
     }
 
     /**
@@ -813,7 +815,6 @@ class Facade implements Serializable {
                                 }
                                 checkParams.addAll(iosMandatoryParams)
                             }
-
                             /* Collect SPA channel parameters to check */
                             def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
 
@@ -825,6 +826,11 @@ class Facade implements Serializable {
                             /* Check the valid values for Test Framework */
                             def expectedValuesForTestFramework = ['TestNG', 'Jasmine']
                             ValidationHelper.checkValidValueForParam(script, 'TEST_FRAMEWORK', expectedValuesForTestFramework)
+
+                            /* Add Appium Version to Mandatory Params for Native Tests and Custom Test Environment only */
+                            if (availableTestPools && runInCustomTestEnvironment){
+                                checkParams.add('APPIUM_VERSION')
+                            }
 
                             /* 'test' BUILD_MODE type is only applicable for Jasmine TEST_FRAMEWORK in CI build. So let's validate this. */
                             if(isJasmineEnabled && script.params.BUILD_MODE != libraryProperties.'buildmode.test.type') {
@@ -896,7 +902,6 @@ class Facade implements Serializable {
                                 }
 
                                 def awsCustomEnvParameters = []
-
                                 if (runInCustomTestEnvironment) {
                                     /* Filter AWS Test Environment related parameters */
                                     awsCustomEnvParameters = [script.booleanParam(name: 'RUN_IN_CUSTOM_TEST_ENVIRONMENT', value: runInCustomTestEnvironment),
