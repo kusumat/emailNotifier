@@ -88,7 +88,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     /* Jasmine extra data package arns */
     private mobileExtraDataPkgArtifactArn, tabletExtraDataPkgArtifactArn
     private extraDataPkgArtifactArnsMap = [:]
-    private deviceStatsList = []
+    private deviceStatsList = [:]
     private deviceStats = [:]
     private Date pretestdurstart, devicewaitstart
     /**
@@ -362,13 +362,14 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     }
 
                     deviceStats.put('atype', channelType)
+                    deviceStats.put('testdur', result.getTestDuration())
                     deviceStats.put('plat', result.getDevice().getPlatform())
                     deviceStats.put('chnl', result.getDevice().getFormFactor())
                     deviceStats.put('dm', result.getDevice().getName())
                     deviceStats.put('deviceosver', result.getDevice().getOS())
                     deviceStats.put('allottedtime', result.getDeviceMinutes())
                     deviceStats.put('devicedevwaitdur', BuildHelper.getDuration(devicewaitstart, deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os)))
-                    deviceStats.put('tsstarttestplat', deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os))
+                    deviceStats.put('tsstarttestplat', deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os).time)
                     deviceStats.put('testdur', result.getTestDuration())
                     deviceStats.put('testskip',result.getResultsCount().getSkipped())
                     deviceStats.put('testpass',result.getResultsCount().getPassed())
@@ -377,11 +378,9 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     deviceStats.put('teststop', result.getResultsCount().getStopped())
                     deviceStats.put('testerror', result.getResultsCount().getErrored())
 
-                    script.echoCustom("Pushing stats of single build run to StatsAction:: ${deviceStats}")
-                    script.statspublish deviceStats.inspect()
-
-                    deviceStatsList.add(deviceStats)
+                    deviceStatsList.put("device-run-stats", deviceStats)
                     summary.put(result.getDevice().getName() + ' ' + result.getDevice().getOS(), result)
+                    script.statspublish deviceStatsList.inspect()
                 }
             }
         }

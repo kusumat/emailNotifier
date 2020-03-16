@@ -470,7 +470,11 @@ class DesktopWebTests extends RunTests implements Serializable {
                         channelTestsStats.put('plat', 'web')
                         channelTestsStats.put('chnl', 'desktop')
                         channelTestsStats.put('browserver', browserVersionsMap[selectedBrowser])
+                        channelTestsStats.put('testpass', desktopTestRunResults.passedTests)
+                        channelTestsStats.put('testfail', desktopTestRunResults.failedTests)
+                        channelTestsStats.put('testskip', desktopTestRunResults.skippedTests)
                         channelTestsStats.put('srccmtid', scmMeta['commitID'])
+
                         script.statspublish channelTestsStats.inspect()
                         /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
                         script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
