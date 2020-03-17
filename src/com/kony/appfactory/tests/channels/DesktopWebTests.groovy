@@ -470,10 +470,30 @@ class DesktopWebTests extends RunTests implements Serializable {
                         channelTestsStats.put('plat', 'web')
                         channelTestsStats.put('chnl', 'desktop')
                         channelTestsStats.put('browserver', browserVersionsMap[selectedBrowser])
-                        channelTestsStats.put('testpass', desktopTestRunResults.passedTests)
-                        channelTestsStats.put('testfail', desktopTestRunResults.failedTests)
-                        channelTestsStats.put('testskip', desktopTestRunResults.skippedTests)
                         channelTestsStats.put('srccmtid', scmMeta['commitID'])
+
+                        if (desktopTestRunResults.passedTests && desktopTestRunResults.passedTests instanceof Integer)
+                            channelTestsStats.put('testpass', desktopTestRunResults.passedTests)
+                        else if (desktopTestRunResults.passedTests && desktopTestRunResults.passedTests instanceof String)
+                            channelTestsStats.put('testpass', desktopTestRunResults.passedTests.toInteger())
+                        else
+                            channelTestsStats.put('testpass', 0)
+
+
+                        if (desktopTestRunResults.failedTests && desktopTestRunResults.failedTests instanceof Integer)
+                            channelTestsStats.put('testfail', desktopTestRunResults.failedTests)
+                        else if (desktopTestRunResults.failedTests && desktopTestRunResults.failedTests instanceof String)
+                            channelTestsStats.put('testfail', desktopTestRunResults.failedTests.toInteger())
+                        else
+                            channelTestsStats.put('testfail', 0)
+
+
+                        if (desktopTestRunResults.skippedTests && desktopTestRunResults.skippedTests instanceof Integer)
+                            channelTestsStats.put('testskip', desktopTestRunResults.skippedTests)
+                        else if (desktopTestRunResults.skippedTests && desktopTestRunResults.skippedTests instanceof String)
+                            channelTestsStats.put('testskip', desktopTestRunResults.skippedTests.toInteger())
+                        else
+                            channelTestsStats.put('testskip', 0)
 
                         script.statspublish channelTestsStats.inspect()
                         /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
