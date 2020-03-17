@@ -996,7 +996,8 @@ class Facade implements Serializable {
                     buildStats.put('errstack', e.getStackTrace().toString())
 
                 } finally {
-                    buildStats.put("pipeline-run-jobs", runListStats)
+                    if (!runListStats.isEmpty())
+                        buildStats.put("pipeline-run-jobs", runListStats)
                     // Publish Facade metrics keys to build Stats Action class.
                     script.statspublish buildStats.inspect()
 

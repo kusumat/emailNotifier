@@ -297,7 +297,8 @@ class FacadeTests implements Serializable {
                 buildStats.put('errstack', e.getStackTrace().toString())
             }
             finally {
-                buildStats.put("pipeline-run-jobs", runListStats)
+                if (!runListStats.isEmpty())
+                    buildStats.put("pipeline-run-jobs", runListStats)
                 buildStats.put('testfwk', BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG'))
                 buildStats.put('testfwkver', script.params.APPIUM_VERSION)
                 buildStats.put('runmode', runInCustomTestEnvironment ? 'custom' : 'standard' )
