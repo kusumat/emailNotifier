@@ -363,7 +363,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     deviceStats.put('atype', channelType)
                     deviceStats.put('testdur', result.getTestDuration())
                     deviceStats.put('plat', result.getDevice().getPlatform())
-                    deviceStats.put('chnl', result.getDevice().getFormFactor())
+                    deviceStats.put('chnl', result.getDevice().getFormFactor().equalsIgnoreCase('phone') ? 'mobile' : result.getDevice().getFormFactor())
                     deviceStats.put('dm', result.getDevice().getName())
                     deviceStats.put('deviceosver', result.getDevice().getOS())
                     deviceStats.put('allottedtime', result.getDeviceMinutes())

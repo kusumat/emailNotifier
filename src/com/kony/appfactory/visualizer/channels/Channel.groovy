@@ -229,7 +229,7 @@ class Channel implements Serializable {
         isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, runCustomHook, libraryProperties)
         channelBuildStats.put("atype", channelType)
         channelBuildStats.put("plat", channelOs)
-        channelBuildStats.put("chnl", channelFormFactor)
+        channelBuildStats.put("chnl", channelFormFactor.equalsIgnoreCase('phone') ? 'mobile' : channelFormFactor)
         try {
             closure()
         } catch (Exception e) {
