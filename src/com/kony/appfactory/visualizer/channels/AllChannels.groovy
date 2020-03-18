@@ -361,9 +361,15 @@ class AllChannels implements Serializable {
                                                     sourceFileName: android_channel.artifacts.name, sourceFilePath: android_channel.artifacts.path, script
 
                                             String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
-                                            channelArtifacts.add([
-                                                    channelPath: android_channel.channelPath, name: android_channel.artifacts.name, url: artifactUrl, authurl: authenticatedArtifactUrl
-                                            ])
+
+                                            String binaryFormat = android_channel.getArtifactBinaryFormat(android_channel.artifacts.name)
+                                            if(!android_channel.artifacts.name.contains('_FAT_APK_')) {
+                                                android_channel.androidArtifacts.add([
+                                                        name: android_channel.artifacts.name, url: artifactUrl, authurl: authenticatedArtifactUrl, extension: binaryFormat
+                                                ])
+                                            }
+
+                                            channelArtifacts.add([channelPath: android_channel.channelPath, name: android_channel.androidArtifacts[0].name, url: android_channel.androidArtifacts[0].url, authurl: android_channel.androidArtifacts[0].authurl, androidArtifacts: android_channel.androidArtifacts])
 
                                             String artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, android_channel.s3ArtifactPath, android_channel.artifacts.name].join('/')
                                             buildStatus.updateSuccessBuildStatusOnS3(ChannelType.valueOf(android_channel_id), artifactPath)
