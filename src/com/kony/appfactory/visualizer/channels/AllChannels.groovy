@@ -37,6 +37,7 @@ class AllChannels implements Serializable {
     /* Create a list with artifact objects for e-mail template */
     private channelArtifacts = []
     private channelObjects = [:]
+    private channelObjectsOrig = [:]
     protected channelObject
     private artifactsMeta = [:]
     private scmMeta = [:]
@@ -67,6 +68,8 @@ class AllChannels implements Serializable {
     /*This will contain the project root location */
     protected String projectPropertyFileName
 
+    /* CloudBuild Stats */
+    private cloudBuildStatsList = [:]
 
     /**
      * Class constructor.
@@ -125,6 +128,7 @@ class AllChannels implements Serializable {
                 default:
                     break
             }
+            channelObjectsOrig.putAll(channelObjects)
         }
 
         def androidChannels = channelsToRun?.findAll { it.matches('^ANDROID_.*_NATIVE$') }
@@ -470,6 +474,12 @@ class AllChannels implements Serializable {
                         if (!script.currentBuild.rawBuild.getActions(jenkins.model.InterruptedBuildAction.class).isEmpty()) {
                             abortMsg = "BUILD ABORTED!!"
                             script.echoCustom(abortMsg, 'ERROR', false)
+                        }
+
+                        // Publish Platform metrics keys to build Stats Action class for each of the Channel Object.
+                        channelObjectsOrig.each {
+                            cloudBuildStatsList.put("cloudbuild-run-stats", it.value.channelBuildStats)
+                            script.statspublish cloudBuildStatsList.inspect()
                         }
 
                         /* Collecting MustHaves.

@@ -141,7 +141,7 @@ class Channel implements Serializable {
     protected artifactMeta = []
 
     /* Build Stats */
-    def channelBuildStats = [:]
+    protected channelBuildStats = [:]
 
     /*scm meta info like commitID ,commitLogs */
     protected scmMeta = [:]
@@ -245,8 +245,9 @@ class Channel implements Serializable {
             channelBuildStats.put('buildagent', script.env.NODE_NAME)
             channelBuildStats.put('srcurl', scmUrl)
             channelBuildStats.put('srccmtid', scmMeta['commitID'])
-            // Publish Platform metrics keys to build Stats Action class.
-            script.statspublish channelBuildStats.inspect()
+            // Publish Platform metrics keys to build Stats Action class if it is single-tenant build.
+            if(!script.params.IS_SOURCE_VISUALIZER)
+                script.statspublish channelBuildStats.inspect()
 
             // safe deleting keychain file if it still exist for the current build, for uncaught exceptions in Fastlane, like jenkins abort and restart cases.
             if(channelOs.equalsIgnoreCase('iOS'))

@@ -101,7 +101,7 @@ class EmailBuilder {
 
     @NonCPS
     static void addMultiSpanArtifactTableRow(htmlBuilder, binding) {
-        int countRows = binding.artifacts.size()
+        int countRows = binding.artifacts?.size()
         for (int rownum = 0; rownum < countRows; rownum++) {
             htmlBuilder.tr {
                 if (rownum == 0)
