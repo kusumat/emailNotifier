@@ -496,11 +496,6 @@ class DesktopWebTests extends RunTests implements Serializable {
                             channelTestsStats.put('testskip', 0)
 
                         script.statspublish channelTestsStats.inspect()
-                        /* Add the test results to env variables so that those can be accessible from FacadeTests class and will be used during email template creation */
-                        script.env['DESKTOP_TEST_RUN_RESULTS'] = desktopTestRunResults?.inspect()
-                        script.env['DESKTOP_JASMINE_TEST_RESULTS'] = jasmineTestResults?.inspect()
-                        script.env['LOG_FILES_LIST'] = listofLogFiles?.inspect()
-                        script.env['SCREENSHOTS_LIST'] = listofScreenshots?.inspect()
 
                         if(isJasmineEnabled){
                             cleanupJasmineTests()
