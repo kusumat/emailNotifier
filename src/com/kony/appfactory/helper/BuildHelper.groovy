@@ -49,11 +49,14 @@ class BuildHelper implements Serializable {
             String scmUrl = args.scmUrl
             String scmBranch = args.scmBranch
             script.catchErrorCustom('Failed to checkout the project') {
-                 scmVars = script.checkout(
-                        changelog: true,
-                        poll: false,
-                        scm: getScmConfiguration(relativeTargetDir, scmCredentialsId, scmUrl, scmBranch)
-                )
+                // re-try 3 times in case code checkout fails due to various reasons.
+                 script.retry(3) {
+                     scmVars = script.checkout(
+                             changelog: true,
+                             poll: false,
+                             scm: getScmConfiguration(relativeTargetDir, scmCredentialsId, scmUrl, scmBranch)
+                     )
+                 }
             }
             scmMeta = getScmDetails(script, scmBranch, scmVars, scmUrl)
         } else if (checkoutType.equals("downloadzip")) {
