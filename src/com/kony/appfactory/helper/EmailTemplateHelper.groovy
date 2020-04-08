@@ -677,7 +677,6 @@ class EmailTemplateHelper implements Serializable {
                                     totalTestCases
                             )
                         }
-                        br()
                     }
                 }
             }
@@ -893,7 +892,6 @@ class EmailTemplateHelper implements Serializable {
                                     (resultsObject.getResultsLink()) ? th(class: "testresults", { a(href: resultsObject.getResultsLink(), target: '_blank', "Test Report")}) : th(class: "testresults", 'Not Found')
                 }
                 }
-                br()
             }
             if(deviceFarmTimeLimitExceeded)
                 tr {
