@@ -444,6 +444,13 @@ class Facade implements Serializable {
         def binaryParams = buildJobArtifacts.findResults { artifact ->
             /* Filter Android and iOS channels */
             String artifactName = (artifact.name && artifact.name.matches("^.*.?(plist|ipa|apk|war|zip)\$")) ? artifact.name : ''
+
+            /* In case of multiple Android artifacts passing only the ARM-64 binary url to the runTests Job */
+            if((supportX86Devices || support32BitDevices) && artifact.channelPath.toUpperCase().contains("ANDROID")) {
+                if(!artifactName.contains("ARM-64"))
+                    return null
+            }
+
             /*
                 Workaround to get ipa URL for iOS, just switching extension in URL to ipa,
                 because ipa file should be places nearby plist file on S3.

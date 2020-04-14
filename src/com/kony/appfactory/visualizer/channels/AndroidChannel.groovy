@@ -365,14 +365,14 @@ class AndroidChannel extends Channel {
 
                                 String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
                                 String binaryFormat = getArtifactBinaryFormat(artifactName)
+
+                                /*Excluding the android universal binary (i.e FAT_APK) to store in the artifacts list as it is not recommended to upload to Google Play store.*/
                                 if(!artifactName.contains('_FAT_APK_')) {
-                                    androidArtifacts.add([
-                                            name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, extension: binaryFormat
+                                    artifacts.add([
+                                            channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl, extension: binaryFormat
                                     ])
                                 }
                             }
-
-                            artifacts.add([channelPath: channelPath, name: androidArtifacts[0].name, url: androidArtifacts[0].url, authurl: androidArtifacts[0].authurl, androidArtifacts: androidArtifacts])
 
                             script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
 

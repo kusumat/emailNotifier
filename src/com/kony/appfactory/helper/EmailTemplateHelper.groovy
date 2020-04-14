@@ -136,7 +136,13 @@ class EmailTemplateHelper implements Serializable {
 
     @NonCPS
     static void prepareMailBody(htmlBuilder, artifacts, artifactsMeta) {
+        Map<String, ArrayList<List>> artifactsMap = new HashMap<String, ArrayList<List>>()
         for (artifact in artifacts) {
+            artifactsMap.putIfAbsent(artifact.channelPath, new ArrayList<List>())
+            artifactsMap.get(artifact.channelPath).add(artifact)
+        }
+        artifactsMap.keySet().each { channelPath ->
+            def artifact = artifactsMap[channelPath][0]
             if (artifact.name) {
                 /* iOS */
                 if (artifact.otaurl) {
@@ -178,8 +184,8 @@ class EmailTemplateHelper implements Serializable {
                 /* Android */
                 else if (artifact.channelPath.toUpperCase().contains('ANDROID')) {
                     def map = [
-                            channelPath: artifact.channelPath,
-                            artifacts  : artifact.androidArtifacts
+                            channelPath      : artifact.channelPath,
+                            artifacts        : artifactsMap[channelPath]
                     ] + artifactsMeta
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
