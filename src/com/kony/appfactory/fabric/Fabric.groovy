@@ -517,7 +517,8 @@ class Fabric implements Serializable {
                 fabricStats.put("pipeline-run-jobs", fabricRunListStats)
             }
             // Publish fabric metrics keys to build Stats Action class.
-            script.statspublish fabricStats.inspect()
+            // ToDo: Fix the exception reported in APPFACT-2139.
+//            script.statspublish fabricStats.inspect()
 
             setBuildDescription(buildDescriptionItems)
             NotificationsHelper.sendEmail(script, 'fabric', emailData)
