@@ -319,6 +319,14 @@ class AllChannels implements Serializable {
                                             def iosArtifactExtension = it.value.getArtifactExtension(it.key)
                                             it.value.karArtifact = it.value.getArtifactLocations(iosArtifactExtension).first() ?:
                                                     script.echoCustom('Build artifacts for iOS KAR were not found!', 'ERROR')
+
+                                            /* Publish iOS KAR artifact to S3 */
+                                            if(it.value.karArtifact) {
+                                                it.value.publishKar()
+                                                channelArtifacts.add([
+                                                        channelPath: it.value.channelPath, name: it.value.karArtifact.name, authurl: it.value.authenticatedKARArtifactUrl, extension: 'KAR'
+                                                ])
+                                            }
                                         }
                                     }
                                     catch (AppFactoryException ignored) {
@@ -423,8 +431,12 @@ class AllChannels implements Serializable {
                                             String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
                                             String plistArtifactOTAUrl = authenticatedArtifactUrl
 
+                                            if(ios_channel.ipaArtifact.name)
+                                                channelArtifacts.add([
+                                                        channelPath: ios_channel.channelPath, name: ios_channel.ipaArtifact.name, authurl: ios_channel.authenticatedIPAArtifactUrl, extension: 'IPA'
+                                                ])
                                             channelArtifacts.add([
-                                                    channelPath: ios_channel.channelPath, name: artifactName, url: artifactUrl, otaurl: plistArtifactOTAUrl, ipaName: ios_channel.ipaArtifact.name, ipaAuthUrl: ios_channel.authenticatedIPAArtifactUrl
+                                                    channelPath: ios_channel.channelPath, name: artifactName, url: artifactUrl, authurl: plistArtifactOTAUrl, extension: 'OTA'
                                             ])
 
                                             artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.s3ArtifactPath, ios_channel.ipaArtifact.name].join('/')
@@ -436,11 +448,8 @@ class AllChannels implements Serializable {
                                         script.echoCustom(exceptionMessage, 'ERROR', false)
                                         buildStatus.updateFailureBuildStatusOnS3(ChannelType.valueOf(ios_channel_id))
 
-                                        /* Place KAR file into channelArtifacts and StatusJson file */
+                                        /* Place KAR file into StatusJson file */
                                         ios_channel.pipelineWrapper {
-                                            channelArtifacts.add([
-                                                    channelPath: ios_channel.channelPath, name: ios_channel.karArtifact.name, karAuthUrl: ios_channel.authenticatedKARArtifactUrl
-                                            ])
                                             def artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.s3ArtifactPath, ios_channel.karArtifact.name].join('/')
                                             buildStatus.updateDownloadLink(ChannelType.valueOf(ios_channel_id), artifactPath)
                                         }

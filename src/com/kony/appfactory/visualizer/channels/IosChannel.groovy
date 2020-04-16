@@ -187,6 +187,17 @@ class IosChannel extends Channel {
     }
 
     /**
+     * Publish iOS KAR artifact to S3
+     */
+    private final void publishKar() {
+            script.echoCustom('Publishing KAR artifact to S3...')
+            karArtifact = renameArtifacts([karArtifact]).first()
+            karArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
+                    sourceFileName: karArtifact.name, sourceFilePath: karArtifact.path, script
+            authenticatedKARArtifactUrl = BuildHelper.createAuthUrl(karArtifactUrl, script, false)
+    }
+
+    /**
      * Signs build artifacts.
      */
     private final void createIPA() {
@@ -378,16 +389,7 @@ class IosChannel extends Channel {
         catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
             script.echoCustom(exceptionMessage, 'ERROR', false)
-
-            /* Publish iOS KAR artifact to S3 */
-            def karArtifacts = getArtifactLocations(artifactExtension)
-            karArtifact = karArtifacts.first()
-            karArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                    sourceFileName: karArtifact.name, sourceFilePath: karArtifact.path, script
-            authenticatedKARArtifactUrl = BuildHelper.createAuthUrl(karArtifactUrl, script, false)
-            artifacts.add([
-                    channelPath: channelPath, name: karArtifact.name, karAuthUrl: authenticatedKARArtifactUrl
-            ])
+            script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()
             channelBuildStats.put('errmsg', exceptionMessage)
             channelBuildStats.put('errstack', e.getStackTrace().toString())
 
@@ -569,6 +571,14 @@ class IosChannel extends Channel {
                             karArtifact = getArtifactLocations(artifactExtension).first() ?:
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
                             mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
+
+                            /* Publish iOS KAR artifact to S3 */
+                            if(karArtifact) {
+                                publishKar()
+                                artifacts.add([
+                                        channelPath: channelPath, name: karArtifact.name, authurl: authenticatedKARArtifactUrl, extension: 'KAR'
+                                ])
+                            }
                             channelBuildStats.put('binsize', getBinarySize(karArtifact.path,karArtifact.name))
                         }
 
@@ -603,8 +613,12 @@ class IosChannel extends Channel {
                             String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
                             String plistArtifactOTAUrl = authenticatedArtifactUrl
 
+                            if(ipaArtifact.name)
+                                artifacts.add([
+                                        channelPath: channelPath, name: ipaArtifact.name, authurl: authenticatedIPAArtifactUrl, extension: 'IPA'
+                                ])
                             artifacts.add([
-                                    channelPath: channelPath, name: artifactName, url: artifactUrl, otaurl: plistArtifactOTAUrl, ipaName: ipaArtifact.name, ipaAuthUrl: authenticatedIPAArtifactUrl
+                                    channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: plistArtifactOTAUrl, extension: 'OTA'
                             ])
                         }
 

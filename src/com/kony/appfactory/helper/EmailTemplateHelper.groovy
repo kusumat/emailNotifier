@@ -145,38 +145,11 @@ class EmailTemplateHelper implements Serializable {
             def artifact = artifactsMap[channelPath][0]
             if (artifact.name) {
                 /* iOS */
-                if (artifact.otaurl) {
+                if (artifact.channelPath.toUpperCase().contains('IOS')) {
+                    /* Representing the binaries in the specified order (1.OTA, 2.IPA and 3.KAR) in the mail */
                     def map = [
                             channelPath      : artifact.channelPath,
-                            artifacts        : [
-                                    [
-                                            name     : artifact.name,
-                                            url      : artifact.otaurl,
-                                            extension: 'OTA',
-                                    ],
-                                    [
-                                            name     : artifact.ipaName,
-                                            url      : artifact.ipaAuthUrl,
-                                            extension: 'IPA',
-                                    ]
-                            ]
-                    ] + artifactsMeta
-
-                    EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
-                } else if (artifact.karAuthUrl) {
-                    def map = [
-                            channelPath      : artifact.channelPath,
-                            artifacts        : [
-                                    [
-                                            //for karAuthUrl, there won't be any ipa.name and ipa.authUrl
-                                            extension: 'IPA'
-                                    ],
-                                    [
-                                            name     : artifact.name,
-                                            url      : artifact.karAuthUrl,
-                                            extension: 'KAR',
-                                    ]
-                            ]
+                            artifacts        : artifactsMap[channelPath].reverse()
                     ] + artifactsMeta
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
