@@ -472,8 +472,6 @@ class Fabric implements Serializable {
                         fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                         cloudAccountId = script.env.FABRIC_ACCOUNT_ID
                         fabricAppName = script.env.FABRIC_APP_NAME
-                        script.env['CONSOLE_URL'] = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
-                        script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
                         consoleUrl = script.env.CONSOLE_URL
                         identityUrl = script.env.IDENTITY_URL
                     }
@@ -832,15 +830,11 @@ class Fabric implements Serializable {
                             mandatoryParameters << 'EXPORT_FABRIC_APP_CONFIG' << 'IMPORT_FABRIC_APP_CONFIG'
                             BuildHelper.fabricConfigEnvWrapper(script, exportfabricAppConfig) {
                                 exportCloudAccountId = script.env.FABRIC_ACCOUNT_ID
-                                exportConsoleUrl = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
-                                exportIdentityUrl = script.env.MF_IDENTITY_URL ?: null
                                 fabricAppName = script.env.FABRIC_APP_NAME
                             }
                             BuildHelper.fabricConfigEnvWrapper(script, importfabricAppConfig) {
                                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                                 importCloudAccountId = script.env.FABRIC_ACCOUNT_ID
-                                importConsoleUrl = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
-                                importIdentityUrl = script.env.MF_IDENTITY_URL ?: null
                             }
                             break
                         case 'EXPORT_CLOUD_ACCOUNT_ID':

@@ -311,11 +311,24 @@ class BuildHelper implements Serializable {
                         fabricIdentityUrlVariable: 'MF_IDENTITY_URL',
                         applicationKeyVariable: 'APP_KEY',
                         applicationSecretVariable: 'APP_SECRET',
-                        serviceUrlVariable: 'SERVICE_URL'
+                        serviceUrlVariable: 'SERVICE_URL',
+                        hostType: 'HOST_TYPE'
                 )
         ]) {
             /* Block of code to run */
-            script.env.FABRIC_ACCOUNT_ID = (script.env.FABRIC_ACCOUNT_ID) ?: script.env.CLOUD_ACCOUNT_ID
+            if (script.env.HOST_TYPE.equals("KONYCLOUD")) {
+                script.env['FABRIC_ACCOUNT_ID'] = script.env.FABRIC_ACCOUNT_ID
+                //setting default values for console/identity as we expect only accountId from Fabric triplet incase of KonyCloud host type.
+                script.env['CONSOLE_URL'] = script.kony.FABRIC_CONSOLE_URL
+                script.env['IDENTITY_URL'] = null
+            }
+            else {
+                script.env['CONSOLE_URL'] = script.env.MF_CONSOLE_URL
+                script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL
+                //setting default value for accountId as we expect only console/identity urls from Fabric triplet incase of non KonyCloud host type.
+                script.env['FABRIC_ACCOUNT_ID'] = script.env.CLOUD_ACCOUNT_ID
+            }
+
             closure()
         }
     }
