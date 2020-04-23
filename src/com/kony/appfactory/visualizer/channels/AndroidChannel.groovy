@@ -64,19 +64,14 @@ class AndroidChannel extends Channel {
      * This method enable the capability to read/write external storage.
      * 
      */
-    protected updateAndroidCapabilitiesForJasmineTests()
-    {
-        script.dir(projectFullPath) {
-            def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
-            if (script.fileExists(propertyFileName)) {
-                def projectPropertiesJsonContent = script.readJSON file: propertyFileName
-                projectPropertiesJsonContent.permissions.android.WRITE_EXTERNAL_STORAGE = "true"
-                projectPropertiesJsonContent.tags.android.andmanifesttags = projectPropertiesJsonContent.tags.android.andmanifesttags + '<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\" />'
-                script.writeJSON file: propertyFileName, json: projectPropertiesJsonContent
-            } else {
-                throw new AppFactoryException("Failed to update android capabilities in $propertyFileName file, please check your Visualizer project!!", 'ERROR')
-            }
-        }
+    protected updateAndroidCapabilitiesForJasmineTests() {
+        String androidManifestTags = "tags.android.andmanifesttags"
+        def valueMap = getValueFromProjectPropertiesJson([androidManifestTags])
+        def updateKeyMap = [
+                "permissions.android.WRITE_EXTERNAL_STORAGE": "true",
+                androidManifestTags                         : valueMap[androidManifestTags] + '<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\" />'
+        ]
+        setValueToProjectPropertiesJson(updateKeyMap)
     }
 
     /**
@@ -84,20 +79,13 @@ class AndroidChannel extends Channel {
      * this is to generate 32-bit and 64-bit apks with ARM and x86 architecture.
      *
      */
-    protected setAndroidBuildFlags()
-    {
-        script.dir(projectFullPath) {
-            def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
-            if (script.fileExists(propertyFileName)) {
-                def projectPropertiesJsonContent = script.readJSON file: propertyFileName
-                projectPropertiesJsonContent.support64bit = "true"
-                projectPropertiesJsonContent.support32bit = support32BitDevices.toString()
-                projectPropertiesJsonContent.supportX86Devices = supportX86Devices.toString()
-                script.writeJSON file: propertyFileName, json: projectPropertiesJsonContent
-            } else {
-                throw new AppFactoryException("Failed to find the $propertyFileName file, please check your Visualizer project!!", 'ERROR')
-            }
-        }
+    protected setAndroidBuildFlags() {
+        def updateKeyMap = [
+                support64bit     : "true",
+                support32bit     : support32BitDevices.toString(),
+                supportX86Devices: supportX86Devices.toString()
+        ]
+        setValueToProjectPropertiesJson(updateKeyMap)
     }
 
     /**

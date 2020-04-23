@@ -929,6 +929,86 @@ class Channel implements Serializable {
     }
 
     /**
+     * Returns required key/value map by fetching from projectProperties file.
+     *
+     * @params
+     * objectTreeList - List of objectPaths
+     * where objectPath is the complete path to the property (Ex:[permissions.android.WRITE_EXTERNAL_STORAGE, support32bit])
+     *
+     * @return  required propertiesToValueMap.
+     */
+    protected final getValueFromProjectPropertiesJson(objectTreeList) {
+        script.dir(projectFullPath) {
+            def propertiesToValueMap = [:]
+            def propertyFileName = libraryProperties.'project.props.json.file.name'
+            if (script.fileExists(propertyFileName)) {
+                def projectPropertiesJsonContent = script.readJSON file: propertyFileName
+                objectTreeList.each { objectPath ->
+                    def objectTree = objectPath.split('\\.')
+                    def tempJson = projectPropertiesJsonContent
+                    objectTree.each { property ->
+                        tempJson = tempJson[property]
+                    }
+
+                    if (tempJson != null) {
+                        propertiesToValueMap.put(objectPath, tempJson)
+                    } else {
+                        throw new AppFactoryException("Failed to read the ${objectPath} in ${propertyFileName} file, please check your Visualizer project!!", 'ERROR')
+                    }
+                }
+            } else {
+                throw new AppFactoryException("Could not find $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+            }
+            propertiesToValueMap
+        }
+    }
+
+    /**
+     * This method will recursively traverse through the path and updates the property with the given value
+     *
+     * @params
+     * tempJson - holds the different subparts of projectProperties Json until it reaches the property
+     * objectTree - holds the complete path to the property
+     * value -  value which has to be modified
+     * currentDepth - indicates the current depth of the path
+     * maxDepth - indicates the total depth of the property
+     *
+     * @return  current part/subpart of the JSON
+     */
+    protected final setValue(tempJson, objectTree, value, currentDepth, maxDepth) {
+        if (currentDepth == maxDepth - 1) {
+            tempJson[objectTree[currentDepth]] = value
+            return tempJson
+        }
+        tempJson[objectTree[currentDepth]] = setValue(tempJson[objectTree[currentDepth]], objectTree, value, currentDepth + 1, maxDepth)
+        return tempJson
+    }
+
+    /**
+     * This method will update the json properties in projectProperties file
+     * @params propertiesPathToValueMap (Ex: [permissions.android.WRITE_EXTERNAL_STORAGE : true, support32bit: true])
+     * where
+     * key -  The complete path to the property which has to be modified
+     * value - The value which have has to be assigned
+     */
+    protected final void setValueToProjectPropertiesJson(propertiesPathToValueMap) {
+        script.dir(projectFullPath) {
+            def propertiesToValueMap = [:]
+            def propertyFileName = libraryProperties.'project.props.json.file.name'
+            if (script.fileExists(propertyFileName)) {
+                def projectPropertiesJsonContent = script.readJSON file: propertyFileName
+                propertiesPathToValueMap.each { path, value ->
+                    def objectTree = path.split('\\.')
+                    projectPropertiesJsonContent = setValue(projectPropertiesJsonContent, objectTree, value, 0, objectTree.size())
+                    script.writeJSON file: propertyFileName, json: projectPropertiesJsonContent
+                }
+            } else {
+                throw new AppFactoryException("Could not find $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+            }
+        }
+    }
+
+    /**
      * Sanitizes the sensitive information from the collected information
      */
     protected final void sanitizeFiles() {
@@ -1044,7 +1124,7 @@ class Channel implements Serializable {
     protected final String getProjectAppIdKey()
     {
         script.dir(projectFullPath) {
-            def propertyFileName = libraryProperties.'ios.project.props.json.file.name'
+            def propertyFileName = libraryProperties.'project.props.json.file.name'
             if (script.fileExists(propertyFileName)) {
                 def projectPropertiesJsonContent = script.readJSON file: propertyFileName
                 channelBuildStats.put('aid', projectPropertiesJsonContent['appidkey'])

@@ -141,7 +141,7 @@ class IosChannel extends Channel {
     private final void updateIosBundleId() {
 
         def projectPropertyXMLFile = libraryProperties.'ios.project.props.xml.file.name'
-        def projectPropertyJSonFile = libraryProperties.'ios.project.props.json.file.name'
+        def projectPropertyJSonFile = libraryProperties.'project.props.json.file.name'
 
         String successMessage = 'Bundle ID updated successfully.'
         String errorMessage = 'Failed to update Bundle ID!'

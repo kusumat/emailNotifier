@@ -90,7 +90,7 @@ class AllChannels implements Serializable {
 
         buildStatus = new BuildStatus(script, channelsToRun)
         credentialsHelper = new CredentialsHelper()
-        projectPropertyFileName = libraryProperties.'ios.project.props.json.file.name'
+        projectPropertyFileName = libraryProperties.'project.props.json.file.name'
     }
 
     /**
