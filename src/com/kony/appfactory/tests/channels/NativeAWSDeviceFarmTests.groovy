@@ -364,7 +364,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     deviceStats.put('testdur', result.getTestDuration())
                     deviceStats.put('plat', result.getDevice().getPlatform())
                     deviceStats.put('chnl', result.getDevice().getFormFactor().equalsIgnoreCase('phone') ? 'mobile' : result.getDevice().getFormFactor())
-                    deviceStats.put('dm', result.getDevice().getName())
+                    deviceStats.put('dm', java.net.URLEncoder.encode(result.getDevice().getName(), "UTF-8"))
                     deviceStats.put('deviceosver', result.getDevice().getOS())
                     deviceStats.put('allottedtime', result.getDeviceMinutes())
                     deviceStats.put('devicedevwaitdur', BuildHelper.getDuration(devicewaitstart, deviceFarm.testExecutionStartTimeMap.get(runArtifacts.device.name + ' ' + runArtifacts.device.os)))
