@@ -41,7 +41,7 @@ class Fabric implements Serializable {
     private final String fabricCredentialsID = script.params[fabricCredentialsParamName]
     private String fabricAppName = script.params.FABRIC_APP_NAME
     private final String recipientsList = script.params.RECIPIENTS_LIST
-    private final String fabricAppVersion
+    private String fabricAppVersion
 
     /* Import build parameters */
     private final String commitAuthor = script.params.COMMIT_AUTHOR?.trim() ?: 'Jenkins'
@@ -97,16 +97,6 @@ class Fabric implements Serializable {
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         nodeLabel = libraryProperties.'fabric.node.label'
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
-
-        /*
-            To maintain backward compatibility, checking if param exist, if it doesn't then
-            setting the value to default 1.0 which is fabric base version for any app
-            that you submit before SP2.
-        */
-        this.script.env['FABRIC_APP_VERSION'] = BuildHelper.getParamValueOrDefault(
-                this.script, 'FABRIC_APP_VERSION', '1.0')
-        fabricAppVersion = this.script.env['FABRIC_APP_VERSION']
-        
         overwriteExisting = BuildHelper.getParamValueOrDefault(this.script, 'OVERWRITE_EXISTING', true)
         
          /* To maintain Fabric triggers jobs backward compatibility */
@@ -474,6 +464,7 @@ class Fabric implements Serializable {
                         fabricAppName = script.env.FABRIC_APP_NAME
                         consoleUrl = script.env.CONSOLE_URL
                         identityUrl = script.env.IDENTITY_URL
+                        fabricAppVersion = BuildHelper.getParamValueOrDefault(script, 'FABRIC_APP_VERSION', script.env.FABRIC_APP_VERSION)
                     }
                     break
                 case 'CLOUD_ACCOUNT_ID':
@@ -484,9 +475,13 @@ class Fabric implements Serializable {
             
             emailData = [
                 fabricEnvironmentName : fabricEnvironmentName,
-                fabricAppName         : fabricAppName
+                fabricAppName         : fabricAppName,
+                fabricAppVersion      : fabricAppVersion
             ] + emailData
-            
+
+            buildDescriptionItems = [
+                    'App Version'   : fabricAppVersion
+            ]
             buildDescriptionItems = [ 'App Name': fabricAppName ] + buildDescriptionItems
                 
             closure()
@@ -536,17 +531,12 @@ class Fabric implements Serializable {
 
                 /* Data for e-mail notification */
                 emailData = [
-                        fabricAppVersion      : fabricAppVersion,
                         exportRepositoryUrl   : exportRepositoryUrl,
                         exportRepositoryBranch: exportRepositoryBranch,
                         authorEmail           : authorEmail,
                         commitAuthor          : commitAuthor,
                         commitMessage         : commitMessage,
                         commandName           : 'EXPORT'
-                ]
-
-                buildDescriptionItems = [
-                        'App Version'   : fabricAppVersion
                 ]
                 
                 /* Folder name for storing exported application */
@@ -559,7 +549,6 @@ class Fabric implements Serializable {
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
-                            'FABRIC_APP_VERSION',
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 
@@ -629,16 +618,11 @@ class Fabric implements Serializable {
 
                 /* Data for e-mail notification */
                 emailData = [
-                        fabricAppVersion      : fabricAppVersion,
                         exportRepositoryUrl   : exportRepositoryUrl,
                         exportRepositoryBranch: exportRepositoryBranch,
                         overwriteExisting     : overwriteExisting,
                         publishApp            : enablePublish,
                         commandName           : 'IMPORT',
-                ]
-
-                buildDescriptionItems = [
-                        'App Version'   : fabricAppVersion
                 ]
                 
                 String projectName = getGitProjectName(exportRepositoryUrl) ?:
@@ -649,7 +633,6 @@ class Fabric implements Serializable {
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
-                            'FABRIC_APP_VERSION',
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID')
@@ -713,20 +696,14 @@ class Fabric implements Serializable {
 
                 /* Data for e-mail notification */
                 emailData = [
-                        fabricAppVersion     : fabricAppVersion,
                         commandName          : 'PUBLISH'
-                ]
-
-                buildDescriptionItems = [
-                        'App Version'   : fabricAppVersion
                 ]
 
                 fabricTask = "publish"
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            fabricCredentialsParamName,
-                            'FABRIC_APP_VERSION'
+                            fabricCredentialsParamName
                     ]
                     mandatoryParameters = checkCompatibility(mandatoryParameters, 'publish')
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
@@ -795,7 +772,6 @@ class Fabric implements Serializable {
 
                 /* Data for e-mail notification to be specified*/
                 emailData = [
-                        fabricAppVersion      : fabricAppVersion,
                         exportRepositoryUrl   : exportRepositoryUrl,
                         exportRepositoryBranch: exportRepositoryBranch,
                         exportCloudAccountId  : exportCloudAccountId,
@@ -803,10 +779,6 @@ class Fabric implements Serializable {
                         overwriteExisting     : overwriteExistingScmBranch,
                         publishApp            : enablePublish,
                         commandName           : 'MIGRATE'
-                ]
-
-                buildDescriptionItems = [
-                        'App Version'   : fabricAppVersion
                 ]
                 
                 /* Folder name for storing exported application */
@@ -819,7 +791,6 @@ class Fabric implements Serializable {
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
                             exportFabricCredsParamName,
-                            'FABRIC_APP_VERSION',
                             importFabricCredsParamName,
                             'PROJECT_SOURCE_CODE_BRANCH',
                             'PROJECT_SOURCE_CODE_REPOSITORY_URL',
@@ -832,10 +803,12 @@ class Fabric implements Serializable {
                             BuildHelper.fabricConfigEnvWrapper(script, exportfabricAppConfig) {
                                 exportCloudAccountId = script.env.FABRIC_ACCOUNT_ID
                                 fabricAppName = script.env.FABRIC_APP_NAME
+                                fabricAppVersion = BuildHelper.getParamValueOrDefault(script, 'FABRIC_APP_VERSION', script.env.FABRIC_APP_VERSION)
                             }
                             BuildHelper.fabricConfigEnvWrapper(script, importfabricAppConfig) {
                                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                                 importCloudAccountId = script.env.FABRIC_ACCOUNT_ID
+                                fabricAppVersion = BuildHelper.getParamValueOrDefault(script, 'FABRIC_APP_VERSION', script.env.FABRIC_APP_VERSION)
                             }
                             break
                         case 'EXPORT_CLOUD_ACCOUNT_ID':

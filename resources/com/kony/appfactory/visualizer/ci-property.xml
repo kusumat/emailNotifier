@@ -195,6 +195,9 @@
         <condition property="fabricAppName" value="${env.FABRIC_APP_NAME}" else="">
             <isset property="env.FABRIC_APP_NAME"/>
         </condition>
+        <condition property="fabricAppVersion" value="${env.FABRIC_APP_VERSION}" else="1.0">
+            <isset property="env.FABRIC_APP_VERSION"/>
+        </condition>
         <!-- Set of Universal application build properties -->
         <condition property="universalAndroid" value="${env.ANDROID_UNIVERSAL_NATIVE}" else="false">
             <isset property="env.ANDROID_UNIVERSAL_NATIVE"/>
@@ -265,6 +268,7 @@
             <entry key="mobilefabric.url" value="${fabricUrl}"/>
             <entry key="environment.name" value="${fabricEnvironmentName}"/>
             <entry key="mf.appname" value="${fabricAppName}"/>
+            <entry key="mf.app.version" value="${fabricAppVersion}"/>
             <entry key="iphone" value="${iosMobileNative}"/>
             <entry key="android" value="${androidMobileNative}"/>
             <entry key="windowsphone8" value="${windowsMobileWindowsPhone8}"/>
@@ -329,16 +333,12 @@
     </target>
 
     <target name="cloudpropertyOverwriteOnExist" if="${env.IS_STARTER_PROJECT}" description="-> update properties coming from CloudBuild service">
-        <condition property="fabricAppVersion" value="${env.FABRIC_APP_VERSION}" else="">
-            <isset property="env.FABRIC_APP_VERSION"/>
-        </condition>
         <condition property="fabricToken" value="${env.MF_TOKEN}" else="">
             <isset property="env.MF_TOKEN"/>
         </condition>
 
         <propertyfile file="HeadlessBuild.properties">
             <entry key="fabric.token" value="${fabricToken}"/>
-            <entry key="mf.app.version" value="${fabricAppVersion}"/>
         </propertyfile>
     </target>
 

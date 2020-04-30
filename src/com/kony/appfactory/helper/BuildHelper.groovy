@@ -308,6 +308,7 @@ class BuildHelper implements Serializable {
                 script.fabricAppTriplet(
                         credentialsId: "$fabricAppConfigId",
                         applicationNameVariable: 'FABRIC_APP_NAME',
+                        applicationVersionVariable: 'FABRIC_APP_VERSION',
                         environmentNameVariable: 'FABRIC_ENV_NAME',
                         fabricAccountIdVariable: 'FABRIC_ACCOUNT_ID',
                         fabricConsoleUrlVariable: 'MF_CONSOLE_URL',
