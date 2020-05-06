@@ -735,6 +735,15 @@ class Facade implements Serializable {
     }
 
     /**
+     * This method will check if the channel builds are success and returns true if any channel build is successfull.
+     * @return boolean flag which decides whether to run the tests or not.
+     */
+    private final boolean shallWeRunTests() {
+        boolean testFlags = availableTestPools || (runDesktopwebTests && publishWebApp)
+        return testFlags && jobResultList.contains('SUCCESS')
+    }
+    
+    /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
      */
@@ -890,7 +899,7 @@ class Facade implements Serializable {
                         /* Run channel builds in parallel */
                         script.parallel(runList)
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
-                        if (availableTestPools || (runDesktopwebTests && publishWebApp)) {
+                        if (shallWeRunTests()) {
                             script.stage('TESTS') {
 
                                 def testAutomationJobParameters = getTestAutomationJobParameters() ?:
