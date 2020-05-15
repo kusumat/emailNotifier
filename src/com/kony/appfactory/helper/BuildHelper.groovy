@@ -7,7 +7,7 @@ import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
 import groovy.text.SimpleTemplateEngine
 import groovy.json.JsonSlurper
-
+import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
 import com.kony.appfactory.helper.ConfigFileHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.AppFactory.fabric.api.oauth1.KonyOauth1Client
@@ -916,6 +916,34 @@ class BuildHelper implements Serializable {
         def paramValue = script.params.containsKey(param) ? script.params[param] : defaultValue
         return paramValue
     }
+    
+    /* Get the status for any param existence from probable list of param*/
+    @NonCPS
+    private static doesAnyParamExistFromProbableParamList(script, paramList = []) {
+        boolean isParamFound = false
+        for (param in paramList) {
+            if(script.params.containsKey(param)) {
+                isParamFound = true
+                break
+            }
+        }
+        return isParamFound
+    }
+    
+    /* Get the param value if exists other wise send the default value that is being passed */
+    @NonCPS
+    private static getParamValueOrDefaultFromProbableParamList(script, paramList = [], defaultValue) {
+        def paramValue
+        boolean isParamFound = false
+        for (param in paramList) {
+            if(script.params.containsKey(param)) {
+                isParamFound = true
+                paramValue = script.params[param]
+                break
+            }
+        }
+        return isParamFound ?  paramValue : defaultValue
+    }
 
     /**
      * Created a zip with all MustHaves the artifacts, uploads to s3, creates Auth URL and sets the environment variable "MUSTHAVE_ARTIFACTS".
@@ -1144,7 +1172,7 @@ class BuildHelper implements Serializable {
     protected static String addQuotesIfRequired(path) {
         return path.trim().contains(" ") ? "\"" + path.trim() + "\"" : path.trim()
     }
-
+    
     /**
      * This method returns the difference between the given timestamps.
      * @param startDate
@@ -1158,6 +1186,108 @@ class BuildHelper implements Serializable {
             long duration = endDate.time - startDate.time
             return duration
         }
+    }
+
+    /**
+     * Get the AppFactory version information (appfactory plugin version, core plugins versions, Kony Libarary branch information )
+     */
+    protected static final String getMyAppFactoryVersions() {
+        def apver = new AppFactoryVersions()
+        def versionInfo = StringBuilder.newInstance()
+
+        versionInfo.append "PipeLine Version : " + apver.getPipelineVersion()
+        versionInfo.append "\nDSL Job Version : " + apver.getJobDslVersion()
+        versionInfo.append "\nAppFactory Plugin Version : " + apver.getAppFactoryPluginVersion()
+        versionInfo.append "\nAppFactory Custom View Plugin Version : " + apver.getCustomViewPluginVersion()
+        versionInfo.append "\nAppFactory Build Parameters Plugin Version : " + apver.getBuildParametersPluginVersion()
+        versionInfo.append "\nAppFactory Build Listener Plugin Version : " + apver.getBuildListenerPluginVersion()
+
+        def corePlugInVersionInfo = apver.getCorePluginVersions()
+
+        corePlugInVersionInfo.each { pluginName, pluginVersion ->
+            versionInfo.append "\n$pluginName : $pluginVersion"
+        }
+
+        versionInfo.toString()
+    }
+    
+    /**
+     * Prepare mustHave log for debugging
+     * @param script
+     * @param buildType
+     * @param facadeJobMustHavesFolderName
+     * @param facadeJobBuildLogFile
+     * @param mustHaveArtifacts
+     * @return s3MustHaveAuthUrl fabric authenticated auth url to download musthaves
+     */
+    protected static final String prepareMustHaves(script, buildType, facadeJobMustHavesFolderName, facadeJobBuildLogFile, mustHaveArtifacts) {
+        String s3MustHaveAuthUrl = ''
+        String separator = script.isUnix() ? '/' : '\\'
+        String mustHaveFolderPath = [script.env.WORKSPACE, facadeJobMustHavesFolderName].join(separator)
+        String mustHaveFile = [facadeJobMustHavesFolderName, script.env.BUILD_NUMBER].join("_") + ".zip"
+        String mustHaveFilePath = [script.env.WORKSPACE, mustHaveFile].join(separator)
+        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: "${facadeJobMustHavesFolderName}*", type: 'INCLUDE']]
+
+        script.dir(mustHaveFolderPath) {
+            script.writeFile file: facadeJobBuildLogFile, text: getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
+            script.writeFile file: "AppFactoryVersionInfo.txt", text: getMyAppFactoryVersions()
+            script.writeFile file: "environmentInfo.txt", text: getEnvironmentInfo(script)
+            script.writeFile file: "ParamInputs.txt", text: getInputParamsAsString(script)
+            if(buildType.toString().equals("Visualizer")) {
+                AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
+            } else {
+                mustHaveArtifacts?.each { mustHaveArtifact ->
+                    def artifactToBeAddedToMustHave = [mustHaveArtifact.path, mustHaveArtifact.name].join(separator)
+                    script.shellCustom("cp \"${artifactToBeAddedToMustHave}\" \"${mustHaveFolderPath}\"", true, [returnStdout:true])
+                }
+            }
+        }
+
+        script.dir(script.env.WORKSPACE) {
+            script.zip dir: facadeJobMustHavesFolderName, zipFile: mustHaveFile
+            script.catchErrorCustom("Failed to create the Zip file") {
+                if (script.fileExists(mustHaveFilePath)) {
+                    String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
+                    s3MustHaveAuthUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
+                            sourceFilePath: script.env.WORKSPACE, script
+                    s3MustHaveAuthUrl = createAuthUrl(s3MustHaveAuthUrl, script)
+                }
+            }
+        }
+        s3MustHaveAuthUrl
+    }
+    
+    /**
+     * Sets build description at the end of the build.
+     * @param script
+     * @param s3MustHaveAuthUrl
+     * @param buildArtifactName its optional param
+     */
+    protected static final void setBuildDescription(script, s3MustHaveAuthUrl, String buildArtifactName = null) {
+        String EnvironmentDescription = ""
+        String mustHavesDescription = ""
+        String buildArtifactDescription = ""
+        if (script.env.FABRIC_ENV_NAME && script.env.FABRIC_ENV_NAME != '_') {
+            EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
+        }
+        
+        if(buildArtifactName)
+            buildArtifactDescription = "<p>App Name: $buildArtifactName</p>"
+
+        if (s3MustHaveAuthUrl)
+            mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
+
+        script.currentBuild.description = """\
+            <div id="build-description">
+                ${EnvironmentDescription}
+                ${buildArtifactDescription}
+                <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
+                <img src="/static/b33030df/images/24x24/clock.png"
+                style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
+                class="icon-clock icon-md"></a></p>
+                ${mustHavesDescription}
+            </div>\
+            """.stripIndent()
     }
 }
 

@@ -19,7 +19,6 @@ class NotificationsHelper implements Serializable {
         /* Check required arguments */
         (script) ?: script.echoCustom("script argument can't be null",'ERROR')
         (templateType) ?: script.echoCustom("templateType argument can't be null",'ERROR')
-
         /* If storeBody is true , expecting the tests results from AWS and using them to set build result. */
         if (storeBody && templateData.isNativeAppTestRun) {
             if(!(templateData.deviceruns.isEmpty())) {
@@ -93,7 +92,6 @@ class NotificationsHelper implements Serializable {
         String templatesFolder = 'com/kony/appfactory/email/templates'
         /* Name of the base template */
         String baseTemplateName = 'KonyBase.template'
-
         /*
             Recipients list, by default will be used values from RECIPIENTS_LIST build parameter,
             if it's empty, than DEFAULT_RECIPIENTS value from global Jenkins configuration will be used.
@@ -115,7 +113,6 @@ class NotificationsHelper implements Serializable {
         /* Get template content depending on templateType(job name) */
         
         String templateContent = getTemplateContent(script, templateType, templateData)
-        
         def productName = templateType.equals('cloudBuild') ? 'Build Service' : 'App Factory'
         /* Populate binding values in the base template */
         String body = BuildHelper.populateTemplate(baseTemplate, [title: subject, contentTable: templateContent, productName: productName])
@@ -203,6 +200,7 @@ class NotificationsHelper implements Serializable {
         switch (templateType) {
             case 'cloudBuild':
             case 'buildVisualizerApp':
+            case 'fabricBuild':
                 filesToStore.add([name: 'buildResults' + buildResultForTestConsole + '.html', data: body])
                 break
             case 'runTests':
@@ -246,7 +244,6 @@ class NotificationsHelper implements Serializable {
      */
     private static String getTemplateContent(script, templateType, templateData = [:]) {
         String templateContent
-
         /* Common properties for content */
         String modifiedBuildTag = modifySubjectOfMail(script, templateType, templateData)
         Map commonBinding = [
@@ -262,10 +259,9 @@ class NotificationsHelper implements Serializable {
                         started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
                                 System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100),
-                        mode     : script.env.BUILD_MODE
+                        mode    : script.env.BUILD_MODE
                 ]
         ] + templateData
-
         switch (templateType) {
             case 'buildVisualizerApp':
             case 'cloudBuild':
@@ -276,6 +272,9 @@ class NotificationsHelper implements Serializable {
                 break
             case 'fabric':
                 templateContent = EmailTemplateHelper.fabricContent(commonBinding)
+                break
+            case 'fabricBuild':
+                templateContent = EmailTemplateHelper.fabricBuildContent(commonBinding, templateType)
                 break
             default:
                 templateContent = ''
@@ -314,6 +313,9 @@ class NotificationsHelper implements Serializable {
                 break
             case 'cloudBuild':
                 modifiedBuildTag = "${script.env.PROJECT_NAME}-Build Service"
+                break
+            case 'fabricBuild':
+                modifiedBuildTag = "${script.env.PROJECT_NAME}-Fabric Build"
                 break
             case 'fabric':
                 break

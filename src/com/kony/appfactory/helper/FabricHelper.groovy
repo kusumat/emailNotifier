@@ -1,7 +1,7 @@
 package com.kony.appfactory.helper
 
 class FabricHelper implements Serializable {
-
+    
     /**
      * Fetches specified version of Fabric CLI application.
      *
@@ -86,6 +86,183 @@ class FabricHelper implements Serializable {
         }
         commandOutput
     }
+    
+    /** 
+     * Get the repository project name
+     * @param url valid source control url of the project repository
+     * @return repo project name
+     */
+    private static final getGitProjectName(String url) {
+        url.tokenize('/')?.last()?.replaceAll('.git', '')
+    }
+    
+    /**
+     * Run maven build for pom.xml files in application's code.
+     * @param script a pipeline object.
+     * @param isUnixNode environment os info
+     */
+    private static runMavenBuild(script, boolean isUnixNode, mavenBuildCommand) {
+        String successMessage = 'Successfully built Maven project!'
+        String errorMessage = 'Failed to build Maven project!'
 
+        script.catchErrorCustom(errorMessage, successMessage) {
+            script.shellCustom(mavenBuildCommand, isUnixNode)
+        }
+    }
 
+    /**
+     * Get the fabric app version from fabric app source
+     * @param script pipeline object
+     * @param fabricAppBasePath Full path to fabric app dir where it contains the 'Apps' folder
+     * @param isUnixNode flag for os
+     * @return appVersionFromAppMeta version from meta.json
+     */
+    protected static final getFabricAppVersionFromAppMetaJson(script, fabricAppBasePath, isUnixNode) {
+        String appVersionFromAppMeta = null
+        def fabricAppsDirList = []
+        def appMetaJsonFile
+        def separator = getPathSeparatorBasedOnOs(isUnixNode)
+        //appNameDir/Apps/appName/meta.json file
+        def fabricAppsDirPath = [fabricAppBasePath, 'Apps'].join(separator)
+        script.catchErrorCustom("Failed to get fabric app version!") {
+            script.dir(fabricAppsDirPath) {
+                fabricAppsDirList = FabricHelper.getSubDirectories(script, isUnixNode, fabricAppsDirPath)
+                
+                //Find the directory which does not start with _ underscore( will be fabric app name dir)
+                fabricAppsDirList.each{ fabricAppNameDir ->
+                    if(fabricAppNameDir =~ /^(?!_.*$).*/) {
+                        appMetaJsonFile = [fabricAppsDirPath, fabricAppNameDir, 'Meta.json'].join(separator)
+                        if (script.fileExists(appMetaJsonFile)) {
+                            def metaJson = script.readJSON file: appMetaJsonFile
+                            appVersionFromAppMeta = metaJson.version
+                        } else {
+                            throw new AppFactoryException("Fabric app repository does not not exist ${appMetaJsonFile }!", "ERROR")
+                        }
+                    }
+                }
+            }
+            
+            if(!appVersionFromAppMeta){
+                throw new AppFactoryException("App Version can't be null", 'ERROR')
+            }
+        }
+        appVersionFromAppMeta
+    }
+    
+    /**
+     * Rename the fabric build artifacts for custom name
+     * @param script pipeline object
+     * @param buildArtifacts map of build artifacts
+     * @param isUnixNode flag for os
+     * @return renamedArtifacts: renamed artifacts
+     */
+    protected static final renameFabricAppZipArtifact(script, buildArtifacts, isUnixNode) {
+        String renamedArtifactName = script.env.PROJECT_NAME + ".zip"
+        String shellCommand = (isUnixNode) ? 'mv' : 'rename'
+        script.catchErrorCustom('Failed to rename artifacts') {
+            String artifactName = buildArtifacts.first().name
+            String command = [shellCommand, artifactName, renamedArtifactName].join(' ')
+            /* Rename artifact */
+            script.shellCustom(command, isUnixNode)
+        }
+        renamedArtifactName
+    }
+    
+    /**
+     * Import fabric app
+     * @param script
+     * @param fabricCliPath, mfcli.jar with absolute path
+     * @param fabricAppArtifact
+     * @param cloudCredentialsID
+     * @param cloudAccountId
+     * @param fabricAppName
+     * @param fabricAppVersion
+     * @param isUnixNode
+     */
+    protected static final void importFabricApp(
+        script,
+        fabricCliPath,
+        fabricAppArtifact,
+        cloudCredentialsID,
+        cloudAccountId,
+        fabricAppName,
+        fabricAppVersion,
+        isUnixNode) {
+
+        def importCommandOptions = [
+            '-t': "\"$cloudAccountId\"",
+            '-f': "\"${fabricAppArtifact}\"",
+            '-a': "\"$fabricAppName\"",
+            '-v': "\"$fabricAppVersion\""
+        ]
+        
+        fabricCli(script, 'import', cloudCredentialsID, isUnixNode, fabricCliPath, importCommandOptions)
+    }
+    
+    /**
+     * Publish fabric app
+     * @param script
+     * @param fabricCli, mfcli.jar with absolute path
+     * @param cloudCredentialsID
+     * @param cloudAccountId
+     * @param fabricAppName
+     * @param fabricAppVersion
+     * @param fabricEnvironmentName
+     * @param isUnixNode
+     */
+    protected static final void publishFabricApp(
+        script,
+        fabricCliPath,
+        cloudCredentialsID,
+        cloudAccountId,
+        fabricAppName,
+        fabricAppVersion,
+        fabricEnvironmentName,
+        isUnixNode) {
+        
+        def publishCommandOptions = [
+            '-t': "\"$cloudAccountId\"",
+            '-a': "\"$fabricAppName\"",
+            '-v': "\"$fabricAppVersion\"",
+            '-e': "\"$fabricEnvironmentName\""
+        ]
+        
+        fabricCli(script, 'publish', cloudCredentialsID, isUnixNode, fabricCliPath, publishCommandOptions)
+    }
+    
+    /**
+     * Get sub-directory list for given base dir path for linux
+     * @param script
+     * @param isUnixNode
+     * @param baseDirPath
+     */
+    protected static final getSubDirectories(script, isUnixNode, baseDirPath){
+        def subDirList = []
+        def errorMsg = "Failed to get sub-directory for base dir:[${baseDirPath}]!"
+        script.catchErrorCustom(errorMsg) {
+            script.dir(baseDirPath) {
+                if(isUnixNode) {
+                    def subDirsWithSeparator = script.shellCustom('ls -d */', isUnixNode, [returnStdout:true])
+                    def subDirs = subDirsWithSeparator.trim().split("/")
+                    subDirs.each { subDir ->
+                        subDirList << subDir.trim()
+                    }
+                } else {
+                    // TODO: Not in scope, will add later
+                    script.echoCustom("Not supported to get the sub-directories list for Windows!", 'ERROR')
+                }
+            }
+        }
+        subDirList
+    }
+    
+    /**
+     * Get path separator based on OS
+     * @param isUnixNode
+     * @return separator
+     */
+    protected static final getPathSeparatorBasedOnOs(boolean isUnixNode) {
+        def separator = isUnixNode ? '/' : '\\'
+        separator
+    }
 }

@@ -5,11 +5,11 @@ import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsHelper
-import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
 import com.kony.appfactory.helper.CredentialsHelper
 import com.kony.appfactory.helper.AppFactoryException
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException
 import hudson.AbortException
+import com.kony.appfactory.enums.BuildType
 
 
 /**
@@ -509,7 +509,7 @@ class Facade implements Serializable {
                     artifactsMeta.put(channelPath, getArtifactMetaObjects(channelJob.buildVariables.CHANNEL_ARTIFACT_META))
 
                     /* Collect source code details results */
-                    scmMeta.put(channelPath,getScmMetaObjects(channelJob.buildVariables.CHANNEL_SCM_META))
+                    scmMeta.put(channelPath, getScmMetaObjects(channelJob.buildVariables.CHANNEL_SCM_META))
 
                     /* Collect must have artifacts */
                     mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
@@ -651,87 +651,6 @@ class Facade implements Serializable {
                 }
             }
         }
-    }
-
-    /**
-     * Sets build description at the end of the build.
-     */
-    private final void setBuildDescription(s3MustHaveAuthUrl) {
-        String EnvironmentDescription = ""
-        String mustHavesDescription = ""
-        if (script.env.FABRIC_ENV_NAME && script.env.FABRIC_ENV_NAME != '_') {
-            EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
-        }
-
-        if (s3MustHaveAuthUrl)
-            mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
-
-        script.currentBuild.description = """\
-            <div id="build-description">
-                ${EnvironmentDescription}
-                <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
-                <img src="/static/b33030df/images/24x24/clock.png"
-                style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
-                class="icon-clock icon-md"></a></p>
-                ${mustHavesDescription}
-            </div>\
-            """.stripIndent()
-    }
-
-    /**
-     * Get the AppFactory version information (appfactory plugin version, core plugins versions, Kony Libarary branch information )
-     */
-    private final String getYourAppFactoryVersions() {
-        def apver = new AppFactoryVersions()
-        def versionInfo = StringBuilder.newInstance()
-
-        versionInfo.append "PipeLine Version : " + apver.getPipelineVersion()
-        versionInfo.append "\nDSL Job Version : " + apver.getJobDslVersion()
-        versionInfo.append "\nAppFactory Plugin Version : " + apver.getAppFactoryPluginVersion()
-        versionInfo.append "\nAppFactory Custom View Plugin Version : " + apver.getCustomViewPluginVersion()
-        versionInfo.append "\nAppFactory Build Parameters Plugin : " + apver.getBuildParametersPluginVersion()
-
-        def corePlugInVersionInfo = apver.getCorePluginVersions()
-
-        corePlugInVersionInfo.each { pluginName, pluginVersion ->
-            versionInfo.append "\n$pluginName : $pluginVersion"
-        }
-
-        versionInfo.toString()
-    }
-
-    /**
-     * Prepare must have for debugging
-     * @return s3MustHaveAuthUrl fabric authenticated auth url to download musthaves
-     */
-    private final String prepareMustHaves() {
-        String s3MustHaveAuthUrl = ''
-        String separator = script.isUnix() ? '/' : '\\'
-        String mustHaveFolderPath = [script.env.WORKSPACE, "vizMustHaves"].join(separator)
-        String mustHaveFile = ["vizMustHaves", script.env.BUILD_NUMBER].join("_") + ".zip"
-        String mustHaveFilePath = [script.env.WORKSPACE, mustHaveFile].join(separator)
-        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: 'vizMustHaves*', type: 'INCLUDE']]
-
-        script.dir(mustHaveFolderPath) {
-            script.writeFile file: "vizbuildlog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
-            script.writeFile file: "AppFactoryVersionInfo.txt", text: getYourAppFactoryVersions()
-            script.writeFile file: "environmentInfo.txt", text: BuildHelper.getEnvironmentInfo(script)
-            script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
-            AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
-        }
-
-        script.dir(script.env.WORKSPACE) {
-            script.zip dir: "vizMustHaves", zipFile: mustHaveFile
-            script.catchErrorCustom("Failed to create the Zip file") {
-                if (script.fileExists(mustHaveFilePath)) {
-                    String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
-                    s3MustHaveAuthUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
-                            sourceFilePath: script.env.WORKSPACE, script
-                    s3MustHaveAuthUrl = BuildHelper.createAuthUrl(s3MustHaveAuthUrl, script)
-                }
-            }
-        }
-        s3MustHaveAuthUrl
     }
 
     /**
@@ -1019,10 +938,10 @@ class Facade implements Serializable {
 
                     String s3MustHaveAuthUrl = ''
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                        s3MustHaveAuthUrl = prepareMustHaves()
+                        s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", mustHaveArtifacts)
                     }
 
-                    setBuildDescription(s3MustHaveAuthUrl)
+                    BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl)
 
 
                     if (script.params.IS_SOURCE_VISUALIZER) {

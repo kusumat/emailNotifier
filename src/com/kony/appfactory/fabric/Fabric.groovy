@@ -81,6 +81,11 @@ class Fabric implements Serializable {
     private fabricStats = [:]
     private fabricRunListStats = [:]
     private fabricTask = ""
+    
+    /* As part of V9SP1GA, We removed the redundant field SCM url like: "PROJECT_SOURCE_CODE_REPOSITORY_URL"
+     * parameter from fabric job level to 'Create AppFactory Project" seeder job. So the parameter existence 
+     * for backward compatibility for older project.*/
+    private boolean isScmUrlParamExistInCurrentProject
 
     /**
      * Class constructor.
@@ -100,12 +105,14 @@ class Fabric implements Serializable {
         overwriteExisting = BuildHelper.getParamValueOrDefault(this.script, 'OVERWRITE_EXISTING', true)
         
          /* To maintain Fabric triggers jobs backward compatibility */
-        exportRepositoryUrl = BuildHelper.getCurrentParamValue(
-                this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL')
+        def fabricScmUrlProbableParams = ['PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL']
+        exportRepositoryUrl = BuildHelper.getParamValueOrDefaultFromProbableParamList(
+                this.script, fabricScmUrlProbableParams, this.script.env.PROJECT_SOURCE_CODE_URL_FOR_FABRIC)
         exportRepositoryBranch = BuildHelper.getCurrentParamValue(
                 this.script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH')
         exportRepositoryCredentialsId = BuildHelper.getCurrentParamValue(
                 this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID')
+        isScmUrlParamExistInCurrentProject = BuildHelper.doesAnyParamExistFromProbableParamList(this.script, fabricScmUrlProbableParams)
     }
 
     /**
@@ -267,16 +274,6 @@ class Fabric implements Serializable {
         String prettyFileName = uglyFileName.substring(0, extIndex) + ".pretty.json"
 
         replaceLast(path, uglyFileName, prettyFileName)
-    }
-
-    /**
-     * Fetches application name from provide git URL.
-     *
-     * @param url application git URL.
-     * @return application name.
-     */
-    private final getGitProjectName(String url) {
-        url.tokenize('/')?.last()?.replaceAll('.git', '')
     }
 
     /**
@@ -541,7 +538,7 @@ class Fabric implements Serializable {
                 
                 /* Folder name for storing exported application */
                 String exportFolder = 'export'
-                String projectName = getGitProjectName(exportRepositoryUrl) ?:
+                String projectName = FabricHelper.getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
 
                 fabricTask = "export"
@@ -550,10 +547,12 @@ class Fabric implements Serializable {
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
-                            BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 
                             'AUTHOR_EMAIL'
                     ]
+                    if(isScmUrlParamExistInCurrentProject) {
+                        mandatoryParameters.add(BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'))
+                    }
                     mandatoryParameters = checkCompatibility(mandatoryParameters, 'export')
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
@@ -625,7 +624,7 @@ class Fabric implements Serializable {
                         commandName           : 'IMPORT',
                 ]
                 
-                String projectName = getGitProjectName(exportRepositoryUrl) ?:
+                String projectName = FabricHelper.getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!",'WARN')
 
                 fabricTask = "import"
@@ -634,9 +633,11 @@ class Fabric implements Serializable {
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
-                            BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'),
                             BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID')
                     ]
+                    if(isScmUrlParamExistInCurrentProject) {
+                        mandatoryParameters.add(BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'))
+                    }
                     mandatoryParameters = checkCompatibility(mandatoryParameters, 'import')
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
@@ -783,7 +784,7 @@ class Fabric implements Serializable {
                 
                 /* Folder name for storing exported application */
                 String exportFolder = 'export'
-                String projectName = getGitProjectName(exportRepositoryUrl) ?:
+                String projectName = FabricHelper.getGitProjectName(exportRepositoryUrl) ?:
                         script.echoCustom("projectName property can't be null!", 'WARN')
 
                 fabricTask = "migrate"
@@ -793,10 +794,12 @@ class Fabric implements Serializable {
                             exportFabricCredsParamName,
                             importFabricCredsParamName,
                             'PROJECT_SOURCE_CODE_BRANCH',
-                            'PROJECT_SOURCE_CODE_REPOSITORY_URL',
                             'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                             'AUTHOR_EMAIL'
                     ]
+                    if(isScmUrlParamExistInCurrentProject) {
+                        mandatoryParameters.add(BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'))
+                    }
                     switch (appConfigParameter) {
                         case 'EXPORT_FABRIC_APP_CONFIG':
                             mandatoryParameters << 'EXPORT_FABRIC_APP_CONFIG' << 'IMPORT_FABRIC_APP_CONFIG'

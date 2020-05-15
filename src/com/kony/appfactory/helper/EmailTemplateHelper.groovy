@@ -185,6 +185,7 @@ class EmailTemplateHelper implements Serializable {
 
                     EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
                 }
+                
                 /* Channels - SPA/DesktopWeb/Web without publish enabled */
                 else {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
@@ -989,6 +990,7 @@ class EmailTemplateHelper implements Serializable {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
                             }
                             EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
 
                             if (binding.gitURL) {
                                 EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Repository URL:', binding.gitURL, binding.exportRepositoryUrl)
@@ -1018,7 +1020,7 @@ class EmailTemplateHelper implements Serializable {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Exported From:', binding.exportCloudAccountId)
                             }
                             if (binding.exportCloudAccountId) {
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'mported To:', binding.importCloudAccountId)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Imported To:', binding.importCloudAccountId)
                             }
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
@@ -1038,6 +1040,109 @@ class EmailTemplateHelper implements Serializable {
                 }
 
                 if (binding.build.result.equalsIgnoreCase('FAILURE')) {
+                    tr {
+                        td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                            h4(style: "margin-bottom:0", 'Console Output')
+                            binding.build.log.each { line ->
+                                p(line)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    
+    /**
+     * Creates HTML content for Fabric build jobs.
+     *
+     * @param binding provides data for HTML.
+     * @return HTML content as a string.
+     */
+    @NonCPS
+    protected static String fabricBuildContent(Map binding , templateType) {
+        markupBuilderWrapper { MarkupBuilder htmlBuilder ->
+            htmlBuilder.table(style: "width:100%") {
+                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
+                tr {
+                    td(style: "text-align:left", class: "text-color") {
+                        h4(class: "subheading", "Build Details")
+                    }
+                }
+                tr {
+                    td {
+                        table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                            if (binding.triggeredBy) {
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
+                            }
+                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
+                            if(binding.appVersion)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric App Version:', binding.appVersion)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Clean Java Assets:', binding.isBuildWithCleanJavaAssets)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build Java Assets:', binding.isBuildWithJavaAssets)
+                            if(binding.publishApp)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Publish:', binding.publishApp)
+                            if (binding.fabricEnvironmentName)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Published to:', binding.fabricEnvironmentName)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
+                        }
+                    }
+                }
+                if (binding.build.result == 'SUCCESS' || binding.build.result == 'UNSTABLE') {
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            h4(class: "subheading", 'Build Information')
+                        }
+                    }
+                    tr {
+                        td {
+                            if(binding.fabricBuildArtifacts != null && !binding.fabricBuildArtifacts.isEmpty()) {
+                                table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%;text-align:left", class: "text-color table-border-channels") {
+                                    thead(class:"table-border-channels") {
+                                        tr {
+                                            th(style: "text-align:center", width: "30%", 'APP NAME')
+                                            th(style: "text-align:center", width: "55%", 'APP ARTIFACTS')
+                                        }
+                                    }
+                                    tbody(class:"table-border-channels") {
+                                        EmailBuilder.addFabricAppBuildTableRow(htmlBuilder, binding.fabricBuildArtifacts)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            htmlBuilder.br()
+            htmlBuilder.table(style: "width:100%") {
+                tr {
+                    td(style: "text-align:left", class: "text-color") {
+                        h4(class: "subheading", 'Source Code Details')
+                    }
+                }
+                tr {
+                    td {
+                        if (binding.fabricScmMeta != null && !binding.fabricScmMeta.isEmpty()) {
+                            table(role: "presentation", cellspacing: "0", cellpadding: "0", style: "width:100%;text-align:left", class: "text-color table-border-channels") {
+                                thead(class: "table-border-channels") {
+                                    tr {
+                                        th(style: "text-align:center", width: "20%", 'COMMIT ID')
+                                        th(style: "text-align:center", width: "55%", 'COMMIT LOGS')
+                                    }
+                                }
+                                tbody(class: "table-border-channels") {
+                                    EmailBuilder.addFabricAppBuildScmTableRow(htmlBuilder, binding.fabricScmMeta)
+                                }
+                            }
+                        } else {
+                            p(style: "font-size:14px;", "ERROR!! Failed at checkout or pre-checkout stage. Please refer to the log.")
+                        }
+                    }
+                }
+                if (binding.build.result == 'FAILURE') {
                     tr {
                         td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
