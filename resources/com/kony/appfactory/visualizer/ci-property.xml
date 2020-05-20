@@ -369,7 +369,7 @@
         <replaceregexp file="ivy.xml" match="&lt;url(.*)url&gt;" replace="" flags="gs"/>
         <replaceregexp file="ivy.xml" match=" unpack=&quot;(.*)&quot;" replace="" flags="gm"/>
         <!-- Remove unwanted plugin entries from ivy.xml -->
-        <replaceregexp file="ivy.xml" match="&lt;dependency(.*)name=&quot;(.*)(branding|viz\.api|viz\.chrome|viz\.nodejs|codegen|license|soapui|fpreview|architecture|studio\.cloud|viz\.ide)(.*)&quot;(.*)&gt;" replace="" flags="gm"/>
+        <replaceregexp file="ivy.xml" match="&lt;dependency(.*)name=&quot;(.*)(branding|viz\.api|viz\.chrome|viz\.nodejs|codegen|license|soapui|fpreview|studio\.cloud|viz\.ide)(.*)&quot;(.*)&gt;" replace="" flags="gm"/>
 
         <!-- Remove empty lines and format ivy.xml -->
         <replaceregexp file="ivy.xml" match="(\r?\n)\s*\r?\n" flags="g" replace="\1" />
