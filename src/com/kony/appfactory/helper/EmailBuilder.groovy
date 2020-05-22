@@ -12,21 +12,20 @@ class EmailBuilder {
     @NonCPS
     static void addBuildSummaryRow(htmlBuilder, key, value) {
         htmlBuilder.tr {
-            td(style: "width:22%;text-align:right;color: #858484;padding: 15px 10px;", key)
-            td(class: "table-value", value)
+            td(style: "width:280px;text-align:left;color: #858484;padding-bottom: 3px !important;", key)
+            td(class: "table-value", style:"padding-bottom: 3px !important;",value)
         }
     }
 
     @NonCPS
     static void addBuildSummaryAnchorRow(htmlBuilder, key, url, buildNo) {
         htmlBuilder.tr {
-            td(style: "width:22%;text-align:right;color: #858484;padding: 15px 10px;", key)
-            td {
+            td(style: "width:280px;text-align:left;color: #858484;padding-bottom: 3px !important;", key)
+            td(style:"padding-bottom: 3px !important;") {
                 a(href: url, buildNo)
             }
         }
     }
-
 
     @NonCPS
     static void addSimpleArtifactTableRowSuccess(htmlBuilder, binding) {

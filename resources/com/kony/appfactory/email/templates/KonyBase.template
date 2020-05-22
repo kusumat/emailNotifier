@@ -92,7 +92,7 @@
 
          .subheading {
             font-size: 14px;
-            font-weight: normal;
+            font-weight: bold;
         }
 
         .table-border td {
@@ -129,7 +129,7 @@
 
         h4 {
             margin:15px 0;
-            font-size: 16px;
+            font-size: 14px;
         }
 
         h2 {
@@ -140,7 +140,7 @@
         }
 
         .container {
-            width: 650px;
+            width: 950px;
             -moz-box-shadow: 0 0 5px #888;
             -webkit-box-shadow: 0 0 5px #888;
             box-shadow: 0 0 5px #888;
@@ -149,7 +149,7 @@
         }
 
         .table-width {
-            width: 650px;
+            width: 950px;
             margin: 0 auto;
         }
 
@@ -237,7 +237,7 @@
                          <td valign:"middle" style="width:150px">
                          <img style="width:80%;height:40px" height="40" alt="Temenos" src="http://ec2-18-212-31-146.compute-1.amazonaws.com/email-template-icon/temenos_logo_white.png">
                          </td>
-                         <td style="color:#fff;margin-left:0px;border-left: 0.5pt solid #fff;text-indent:20px;" align="center" valign="middle">$productName</td>
+                         <td style="color:#fff;margin-left:0px;border-left: 0.5pt solid #fff;" align="center" valign="middle">$productName</td>
                     </tr>
                 </table>
             </td>

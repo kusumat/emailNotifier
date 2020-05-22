@@ -66,10 +66,10 @@ class EmailTemplateHelper implements Serializable {
 
                 if (binding.build.result == 'FAILURE' && templateType.equals('buildVisualizerApp')) {
                     tr {
-                        td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
                             binding.build.log.each { line ->
-                                p(line)
+                                p(style:"width:950px;",line)
                             }
                         }
                     }
@@ -308,7 +308,7 @@ class EmailTemplateHelper implements Serializable {
 
                 if (!binding.deviceruns && !binding.desktopruns && !binding.jasmineruns) {
                     tr {
-                        td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
                             binding.build.log.each { line ->
                                 p(line)
@@ -903,13 +903,52 @@ class EmailTemplateHelper implements Serializable {
                         def binaryName = binding.binaryName.find {
                             it.key.toLowerCase() == projectArtifactKey
                         }.value
-                        tr {
-                            td {
-                                p(style: "margin:30px 0 10px;font-weight:bold", 'Device: ' + prop.value.name +
-                                        ', FormFactor: ' + prop.value.formFactor +
-                                        ', Platform: ' + prop.value.platform +
-                                        ', OS Version: ' + prop.value.os +
-                                        ', Binary Name: ' + binaryName)
+                        table(style: "width:100%;text-align:center", class: "text-color table-border") {
+                            tr {
+                                td(
+                                        class: "testresults",
+                                        'Device'
+                                )
+                                td(
+                                        class: "testresults",
+                                        'FormFactor'
+                                )
+                                td(
+                                        class: "testresults",
+                                        'Platform'
+                                )
+                                td(
+                                        class: "testresults",
+                                        'OS Version'
+                                )
+                                td(
+                                        class: "testresults",
+                                        colspan: "5",
+                                        'Binary Name'
+                                )
+
+                            }
+                            tr {
+
+                                th(class: "testresults", prop.value.name
+                                )
+
+                                th(class: "testresults", prop.value.formFactor
+
+                                )
+                                th(
+                                        class: "testresults", prop.value.platform
+
+                                )
+                                th(
+                                        class: "testresults", prop.value.os
+
+                                )
+                                th(
+                                        class: "testresults", binaryName
+
+                                )
+
                             }
                         }
                     }
@@ -978,7 +1017,7 @@ class EmailTemplateHelper implements Serializable {
             htmlBuilder.table(style: "width:100%") {
                 EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
                 tr {
-                    td(style: "text-align:left", class: "text-color") {
+                    td(style: "text-align:left;font-weight:bold", class: "text-color") {
                         h4(class: "subheading", "Build Details")
                     }
                 }
@@ -1029,9 +1068,9 @@ class EmailTemplateHelper implements Serializable {
                 }
 
                 tr {
-                    td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                    td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
                         h4(style: "margin-bottom:0", "${binding.commandName} Details")
-                        p {
+                        p(style:"margin:10px 15px;") {
                             mkp.yield "${binding.commandName} of Fabric app ${binding.fabricAppName}(${binding.fabricAppVersion}) is: "
                             strong binding.build.result
                             mkp.yield '.'
@@ -1041,10 +1080,10 @@ class EmailTemplateHelper implements Serializable {
 
                 if (binding.build.result.equalsIgnoreCase('FAILURE')) {
                     tr {
-                        td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
                             binding.build.log.each { line ->
-                                p(line)
+                                p(style:"width:950px;margin:10px 15px;",line)
                             }
                         }
                     }
@@ -1144,7 +1183,7 @@ class EmailTemplateHelper implements Serializable {
                 }
                 if (binding.build.result == 'FAILURE') {
                     tr {
-                        td(style: "text-align:left;padding:15px 20px 0", class: "text-color") {
+                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
                             binding.build.log.each { line ->
                                 p(line)
