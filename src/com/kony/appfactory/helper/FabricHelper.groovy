@@ -81,6 +81,10 @@ class FabricHelper implements Serializable {
                         options
                 ].join(' ')
                 
+                // if URL_PATH_INFO variable was set, Adding option to authenticate with external-auth
+                if(script.env.URL_PATH_INFO)
+                    shellString = [shellString, '--external-auth'].join(' ')
+
                commandOutput = script.shellCustom(shellString, isUnixNode, args)
             }
         }
