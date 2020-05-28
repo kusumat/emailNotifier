@@ -46,6 +46,9 @@ class Facade implements Serializable{
     protected fabricCliFileName
     protected fabricCliFilePath
     
+    //Flag to import as new app or version
+    protected boolean importAsNew = false
+    
     /**
      * Class constructor.
      *
@@ -293,7 +296,8 @@ class Facade implements Serializable{
                                                 fabricCloudAccountId,
                                                 fabricAppName,
                                                 fabricAppVersion,
-                                                isUnixNode)
+                                                isUnixNode,
+                                                importAsNew)
                                         
                                         if (isBuildWithPublish) {
                                             Date publishStart = new Date()
@@ -430,6 +434,7 @@ class Facade implements Serializable{
             fabricApplicationVersion = (script.env.FABRIC_APP_VERSION) ?: "1.0"
         } else {
             fabricApplicationVersion = fabricAppVersionInputParam
+            importAsNew = true
         }
         fabricApplicationVersion
     }

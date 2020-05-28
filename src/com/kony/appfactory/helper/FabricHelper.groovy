@@ -14,7 +14,7 @@ class FabricHelper implements Serializable {
         String fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         
         String fabricCliUrl = [
-                libraryProperties.'fabric.cli.fetch.url',
+                libraryProperties.'fabric.cli.fetch.url'.replaceAll("\\[CLOUD_DOMAIN\\]", script.env.CLOUD_DOMAIN),
                 fabricCliVersion.toString(),
                 fabricCliFileName
         ].join('/')
@@ -67,7 +67,7 @@ class FabricHelper implements Serializable {
                         fabricCommandOptions['--cloud-type'] = "\"${domainParam}\""
                     }
                 }
-
+                
                 /* Collect Fabric command options */
                 String options = fabricCommandOptions?.collect { option, value ->
                     [option, value].join(' ')
@@ -80,7 +80,7 @@ class FabricHelper implements Serializable {
                         '-p', (isUnixNode) ? '$fabricPassword' : '%fabricPassword%',
                         options
                 ].join(' ')
-
+                
                commandOutput = script.shellCustom(shellString, isUnixNode, args)
             }
         }
@@ -178,6 +178,7 @@ class FabricHelper implements Serializable {
      * @param fabricAppName
      * @param fabricAppVersion
      * @param isUnixNode
+     * @param importAsNew
      */
     protected static final void importFabricApp(
         script,
@@ -187,7 +188,8 @@ class FabricHelper implements Serializable {
         cloudAccountId,
         fabricAppName,
         fabricAppVersion,
-        isUnixNode) {
+        isUnixNode,
+        boolean importAsNew = false) {
 
         def importCommandOptions = [
             '-t': "\"$cloudAccountId\"",
@@ -195,6 +197,9 @@ class FabricHelper implements Serializable {
             '-a': "\"$fabricAppName\"",
             '-v': "\"$fabricAppVersion\""
         ]
+        
+        if(importAsNew)
+            importCommandOptions << ['-importAsNew': ""]
         
         fabricCli(script, 'import', cloudCredentialsID, isUnixNode, fabricCliPath, importCommandOptions)
     }
