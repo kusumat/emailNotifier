@@ -6,6 +6,7 @@ import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.FabricHelper
 import com.kony.appfactory.helper.AppFactoryException
+import com.kony.appfactory.enums.BuildType
 import groovy.json.JsonSlurper
 
 /**
@@ -46,7 +47,7 @@ class WebChannel extends Channel {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
-        this.hookHelper = new CustomHookHelper(script)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
         selectedSpaChannels = getSelectedSpaChannels(this.script.params)
         /* Expose SPA and DESKTOP_WEB build parameters to environment variables to use it in HeadlessBuild.properties */
         this.script.env['APP_VERSION'] = webAppVersion

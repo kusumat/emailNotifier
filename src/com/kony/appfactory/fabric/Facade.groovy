@@ -7,12 +7,17 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.enums.BuildType
 
 class Facade implements Serializable{
     
     //Common build parameters
     private script
+    /* CustomHookHelper object */
+    protected hookHelper
+    /* CustomHooks build Parameters*/
+    protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeBranch = (script.params.PROJECT_SOURCE_CODE_BRANCH)?.trim()
     private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
@@ -56,6 +61,7 @@ class Facade implements Serializable{
      */
     Facade(script) {
         this.script = script
+        this.hookHelper = new CustomHookHelper(script, BuildType.Fabric)
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
@@ -116,6 +122,7 @@ class Facade implements Serializable{
                 
                 script.env['FABRIC_PROJECT_WORKSPACE'] = projectWorkspacePath
                 projectFullPath = [workspace, checkoutRelativeTargetFolder].join(separator)
+                def isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(this.projectName, BuildType.Fabric, runCustomHook, libraryProperties)
                 if(!isUnixNode){
                     throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                 }
@@ -157,6 +164,8 @@ class Facade implements Serializable{
                                         scmCredentialsId: projectSourceCodeRepositoryCredentialsId,
                                         scmUrl: projectRepositoryUrl
                         }
+
+                        BuildHelper.runPreBuildHook(script, isCustomHookRunBuild, hookHelper, this.projectName, libraryProperties.'customhooks.prebuild.name', 'ALL')
                         
                         script.stage("Prepare build environment") {
                             FabricHelper.fetchFabricCli(script, libraryProperties, fabricCliVersion)
@@ -239,6 +248,9 @@ class Facade implements Serializable{
                                 script.echoCustom("Skipping building of java assets, since you have not selected 'BUILD_JAVA_ASSETS' build option!", 'INFO')
                             }
                         }
+
+                        BuildHelper.runPostBuildHook(script, isCustomHookRunBuild, hookHelper, this.projectName, libraryProperties.'customhooks.postbuild.name', 'ALL')
+
                         script.stage('Bundle fabric app') {
                             if(!isBuildWithAggregatorPom && isBuildWithJavaAssets) {
                                 script.dir(javaAssetBasePath) {
@@ -326,6 +338,9 @@ class Facade implements Serializable{
                                     script.currentBuild.result = "UNSTABLE"
                                 }
                             }
+                        }
+                        if(isBuildWithPublish) {
+                            BuildHelper.runPostDeployHook(script, isCustomHookRunBuild, hookHelper, this.projectName, libraryProperties.'customhooks.postdeploy.name', 'ALL')
                         }
 
                         script.stage('Archive build artifacts') {

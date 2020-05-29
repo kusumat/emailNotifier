@@ -2,6 +2,7 @@ package com.kony.appfactory.visualizer.customhooks
 
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.AppFactoryException
+import com.kony.appfactory.enums.BuildType
 import hudson.model.*
 
 class CustomHook implements Serializable {
@@ -21,10 +22,11 @@ class CustomHook implements Serializable {
     protected final hookSlave = script.params.HOOK_SLAVE
     protected final buildSlave = script.params.BUILD_SLAVE
     protected final upstreamJobWorkspace = script.params.UPSTREAM_JOB_WORKSPACE
+    protected final buildType = script.params.BUILD_TYPE
 
     /* customhooks hook definitions */
     protected hookDir
-    protected visWorkspace
+    protected buildWorkspace
 
     CustomHook(script) {
         this.script = script
@@ -39,8 +41,12 @@ class CustomHook implements Serializable {
         script.ansiColor('xterm') {
             upstreamJobWorkspace && buildSlave && hookSlave ?: script.echoCustom("CustomHooks aren't supposed to be triggered directly. CustomHooks will only be triggered as part of the Visualizer jobs.", 'ERROR')
         }
-        visWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
-
+        if(BuildType.Visualizer.toString().equalsIgnoreCase(buildType)) {
+            buildWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
+        } else {
+            buildWorkspace = [upstreamJobWorkspace, libraryProperties.'fabric.project.workspace.folder.name'].join('/')
+        }
+        
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
@@ -48,14 +54,14 @@ class CustomHook implements Serializable {
                 script.node(hookSlave) {
                     def hookLabel = script.env.NODE_LABELS
 
-                    if (hookLabel.contains(libraryProperties.'test.hooks.node.label')) {
-                        hookDir = visWorkspace + "/" + projectName + "/deviceFarm/" + "Hook"
+                    if (hookLabel.contains(libraryProperties.'test.hooks.node.label') && BuildType.Visualizer.toString().equalsIgnoreCase(buildType)) {
+                        hookDir = buildWorkspace + "/" + projectName + "/deviceFarm/" + "Hook"
                     }
                     else{
-                        hookDir = visWorkspace + "/" + projectName + "/Hook"
+                        hookDir = buildWorkspace + "/" + projectName + "/Hook"
                     }
 
-                    script.ws(visWorkspace) {
+                    script.ws(buildWorkspace) {
                         def javaHome = script.env.JDK_1_8_0_112_HOME
                         def antBinPath = script.env.ANT_1_8_2_HOME + '/bin'
                         def mavenBinPath = script.env.MAVEN_3_5_2_HOME + '/bin'
@@ -91,7 +97,7 @@ class CustomHook implements Serializable {
                                         throw new AppFactoryException("Hook build execution failed!!",'ERROR')
                                     } finally {
                                         script.stage('Prepare Environment for actual Build Run') {
-                                            def customHooksLogDir = [visWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')
+                                            def customHooksLogDir = [buildWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')
                                             script.dir(customHooksLogDir){
                                                 def buildLogName = script.env.JOB_NAME.replaceAll("/", "_") + ".log"
                                                 script.writeFile file: buildLogName, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
@@ -121,7 +127,7 @@ class CustomHook implements Serializable {
     /* applying ACLs - allow buildslave/jenkins user with read, write permissions on hookslave owned files.*/
     def macACLafterRun()
     {
-        script.dir(visWorkspace) {
+        script.dir(buildWorkspace) {
             def buildSlaveACLapply_fordirs = 'set +xe;find . -user hookslave -type d -print0 | xargs -0 chmod -R +a "buildslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit"'
             def buildSlaveACLapply_forfiles = 'set +xe;find . -user hookslave -type f -print0 | xargs -0 chmod -R +a "buildslave allow read,write,append,delete,readattr,writeattr,readextattr,writeextattr,readsecurity"'
             def buildSlaveACLapplygroup_forfiles = 'set +xe;find . -user hookslave -type d -print0 | xargs -0 chmod 775'
@@ -165,8 +171,8 @@ class CustomHook implements Serializable {
          * from Build Input Parameters
          **/
         defaultParams += " -DPROJECT_NAME=$script.env.PROJECT_NAME"
-        defaultParams += " -DPROJECT_WORKSPACE=$visWorkspace" + "/" + script.env.PROJECT_NAME
-        defaultParams += " -DPROJECT_VMWORKSPACE_PATH=$visWorkspace" + "/KonyiOSWorkspace/VMAppWithKonylib/"
+        defaultParams += " -DPROJECT_WORKSPACE=$buildWorkspace" + "/" + script.env.PROJECT_NAME
+        defaultParams += " -DPROJECT_VMWORKSPACE_PATH=$buildWorkspace" + "/KonyiOSWorkspace/VMAppWithKonylib/"
         defaultParams += " -DPROJECT_XCODEPROJECT=VMAppWithKonylib.xcodeproj/project.pbxproj"
 
         return defaultParams

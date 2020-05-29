@@ -874,8 +874,8 @@ class BuildHelper implements Serializable {
      * @param libraryProperties
      * @return runCustomHookForBuild
      */
-    protected final static isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties) {
-        def customhooksConfigFolder = projectName + libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
+    protected final static isThisBuildWithCustomHooksRun(projectName, buildType, runCustomHook, libraryProperties) {
+        def customhooksConfigFolder = [projectName, buildType.toString(), libraryProperties.'customhooks.folder.name'].join('/')
         return (runCustomHook && isActiveCustomHookAvailable(customhooksConfigFolder, projectName))
     }
 
@@ -1174,6 +1174,78 @@ class BuildHelper implements Serializable {
     }
     
     /**
+     *  Method to run pre build custom hooks
+     * @param script Current build script handle
+     * @param isCustomHookRunBuild flag that indicates whether to run the hooks or not
+     * @param hookHelper object with which we can initiates the hooks execution
+     * @param projectName Name of the current project
+     * @param hookBuildStage Name of the hook stage
+     * @param customHookStage Name of the hook channels.
+     */
+    protected static final void runPreBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, hookBuildStage, customHookStage) {
+        script.stage('Check PreBuild Hook Points') {
+            runHooks(isCustomHookRunBuild, {
+                hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
+            })
+        }
+    }
+
+    /**
+     * Method to run post build custom hooks
+     * @param script Current build script handle
+     * @param isCustomHookRunBuild flag that indicates whether to run the hooks or not
+     * @param hookHelper object with which we can initiates the hooks execution
+     * @param projectName Name of the current project
+     * @param hookBuildStage Name of the hook stage
+     * @param customHookStage Name of the hook channels.
+     */
+    protected static final void runPostBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, hookBuildStage, customHookStage) {
+        script.stage('Check PostBuild Hook Points') {
+            runHooks(isCustomHookRunBuild, {
+                if (script.currentBuild.currentResult == 'SUCCESS') {
+                    hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
+                } else {
+                    script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
+                }
+            })
+        }
+    }
+    
+    /**
+     *  Method to run post deploy custom hooks
+     * @param script Current build script handle
+     * @param isCustomHookRunBuild flag that indicates whether to run the hooks or not
+     * @param hookHelper object with which we can initiates the hooks execution
+     * @param projectName Name of the current project
+     * @param hookBuildStage Name of the hook stage
+     * @param customHookStage Name of the hook channels.
+     */
+    protected static final void runPostDeployHook(script, isCustomHookRunBuild, hookHelper, projectName, hookBuildStage, customHookStage) {
+        script.stage('Check PostDeploy Hook Points') {
+            runHooks(isCustomHookRunBuild, {
+                if (script.currentBuild.currentResult == 'SUCCESS') {
+                    hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
+                } else {
+                    script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
+                }
+            })
+        }
+    }
+
+    /**
+     *  Method to run custom hooks
+     * @param isCustomHookRunBuild flag that indicates whether to run the hooks or not
+     * @param closure piece of code that need to executed.
+     */
+    protected static final void runHooks(isCustomHookRunBuild, closure) {
+        if (isCustomHookRunBuild) {
+            closure()
+        } else {
+            script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
+        }
+    }
+            
+    /**
      * This method returns the difference between the given timestamps.
      * @param startDate
      * @param endDate
@@ -1290,4 +1362,3 @@ class BuildHelper implements Serializable {
             """.stripIndent()
     }
 }
-

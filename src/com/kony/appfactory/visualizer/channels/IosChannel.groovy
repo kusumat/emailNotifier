@@ -5,6 +5,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.enums.BuildType
 import com.kony.AppFactory.Jenkins.credentials.impl.AppleSigningCertUtils
 import com.kony.AppFactory.Jenkins.credentials.impl.ProfileInfo
 
@@ -81,7 +82,7 @@ class IosChannel extends Channel {
      */
     IosChannel(script, channelFormFactor) {
         super(script)
-        this.hookHelper = new CustomHookHelper(script)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
         channelOs = 'iOS'
         channelType = 'Native'
         fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'

@@ -7,8 +7,10 @@ import com.kony.appfactory.helper.CustomHookHelper
 
 import java.util.regex.Pattern
 import com.kony.appfactory.helper.AppFactoryException
+import com.kony.appfactory.enums.BuildType
 import hudson.FilePath
 import jenkins.model.Jenkins
+
 /**
  * Implements logic for building channels. Contains common methods that are used during the channel build.
  */
@@ -153,7 +155,7 @@ class Channel implements Serializable {
      */
     Channel(script) {
         this.script = script
-        this.hookHelper = new CustomHookHelper(script)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
@@ -224,7 +226,8 @@ class Channel implements Serializable {
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
-        isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, runCustomHook, libraryProperties)
+        isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, BuildType.Visualizer, runCustomHook, libraryProperties)
+
         channelBuildStats.put("atype", channelType)
         channelBuildStats.put("plat", channelOs)
         channelBuildStats.put("chnl", channelFormFactor.equalsIgnoreCase('phone') ? 'mobile' : channelFormFactor)
@@ -1140,32 +1143,14 @@ class Channel implements Serializable {
      *  Method to run pre build custom hooks
      */
     protected final void runPreBuildHook() {
-        script.stage('Check PreBuild Hook Points') {
-            if (isCustomHookRunBuild) {
-                /* Run Pre Build Android Hooks */
-                hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
-            } else {
-                script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
-            }
-        }
+        BuildHelper.runPreBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
     }
 
     /**
      *  Method to run post build custom hooks
      */
     protected final void runPostBuildHook() {
-        script.stage('Check PostBuild Hook Points') {
-            if (script.currentBuild.currentResult == 'SUCCESS') {
-                if (isCustomHookRunBuild) {
-                    /* Run Pre Build Android Hooks */
-                    hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
-                } else {
-                    script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
-                }
-            } else {
-                script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
-            }
-        }
+        BuildHelper.runPostBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
     }
 
     protected final long getBinarySize(String path, String name){

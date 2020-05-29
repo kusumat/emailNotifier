@@ -2,6 +2,7 @@ package com.kony.appfactory.helper
 
 import com.kony.appfactory.helper.ConfigFileHelper
 import jenkins.model.Jenkins
+import com.kony.appfactory.enums.BuildType
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 
 
@@ -12,23 +13,24 @@ class CustomHookHelper implements Serializable {
     /* Pipeline object */
     private script
 
-    String projectName
     /* Library configuration */
     protected libraryProperties
 
+    /* Build Type for running the custom hooks. */
+    protected BuildType buildType
+    
     /* customhooks hook definitions */
     protected hookDir
     protected final hookScriptFileName
-    protected customhooksFolderSubpath
     protected defaultParams = ""
 
-    protected CustomHookHelper(script) {
+    protected CustomHookHelper(script, buildType) {
         this.script = script
+        this.buildType = buildType
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
-        customhooksFolderSubpath = libraryProperties.'customhooks.folder.subpath' + libraryProperties.'customhooks.folder.name'
         hookScriptFileName = libraryProperties.'customhooks.hookzip.name'
     }
 
@@ -113,7 +115,7 @@ class CustomHookHelper implements Serializable {
     * @param pipelineBuildStage
     */
     protected triggerHooks(projectName, hookStage, pipelineBuildStage){
-        def customhooksConfigFolder = projectName + customhooksFolderSubpath
+        def customhooksConfigFolder = [projectName, buildType.toString(), libraryProperties.'customhooks.folder.name'].join('/')
         def content = ConfigFileHelper.getContent(customhooksConfigFolder, projectName)
         def hookReturnStatus = true
 
@@ -135,10 +137,10 @@ class CustomHookHelper implements Serializable {
                 String hookLabel = script.env.NODE_LABELS
 
                 script.stage('Clean Hook Environment') {
-                    if (hookLabel.contains(libraryProperties.'test.automation.node.label')) {
-                        hookDir = [script.env.WORKSPACE,libraryProperties.'project.workspace.folder.name',projectName,"deviceFarm","Hook"].join('/')
+                    if (hookLabel.contains(libraryProperties.'test.automation.node.label') && buildType.toString().equalsIgnoreCase('Visualizer')) {
+                        hookDir = [getWorkspaceLocation(),projectName,"deviceFarm","Hook"].join('/')
                     } else {
-                        hookDir = libraryProperties.'project.workspace.folder.name' + "/" + projectName + "/Hook"
+                        hookDir = getWorkspaceLocation() + "/" + projectName + "/Hook"
                     }
                     script.dir(hookDir) {
                         script.deleteDir()
@@ -205,6 +207,10 @@ class CustomHookHelper implements Serializable {
                                          [$class: 'WHideParameterValue',
                                           name  : 'BUILD_SLAVE',
                                           value : "$currentComputer"],
+                                      
+                                         [$class: 'WHideParameterValue',
+                                          name  : 'BUILD_TYPE',
+                                          value : "$buildType"],
 
                                          [$class: 'WHideParameterValue',
                                           name  : 'PARENTJOB_PARAMS',
@@ -241,7 +247,7 @@ class CustomHookHelper implements Serializable {
 
     /* return hook full path */
     protected final getHookJobName(projectName, hookName, hookType) {
-        def hookFullName = projectName + [customhooksFolderSubpath, hookType, hookName].join('/')
+        def hookFullName = [projectName, buildType.toString(), libraryProperties.'customhooks.folder.name', hookType, hookName].join('/')
         hookFullName
     }
 
@@ -250,7 +256,7 @@ class CustomHookHelper implements Serializable {
     protected runCustomHooks(String folderName, String hookBuildStage, String pipelineBuildStage) {
         script.echoCustom("Trying to fetch $hookBuildStage $pipelineBuildStage hooks. ")
         /* If CloudBuild, the folder name will be CloudBuildService (project in AppFactory CloudBuild Jenkins Console) */
-        folderName = script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : folderName
+        folderName = (buildType.toString().equalsIgnoreCase('Visualizer') && script.params.IS_SOURCE_VISUALIZER) ? libraryProperties.'cloudbuild.project.name' : folderName
 
         /* Execute available hooks */
         def executionStatus = triggerHooks(folderName, hookBuildStage, pipelineBuildStage)
@@ -276,11 +282,21 @@ class CustomHookHelper implements Serializable {
         }
         hookSlaveForCurrentComputer
     }
+    
+    protected final getWorkspaceLocation() {
+        def projWorkspace
+        if(BuildType.Visualizer.toString().equalsIgnoreCase(buildType.toString())) {
+            projWorkspace = [script.env.WORKSPACE, libraryProperties.'project.workspace.folder.name'].join('/')
+        } else {
+            projWorkspace = [script.env.WORKSPACE, libraryProperties.'fabric.project.workspace.folder.name'].join('/')
+        }
+        projWorkspace
+    }
 
     /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
     def macACLbeforeRun()
     {
-        def projworkspace = libraryProperties.'project.workspace.folder.name'
+        def projworkspace = getWorkspaceLocation()
 
         script.dir(projworkspace) {
             def hookSlaveACLapply_fordirs = 'set +xe; find . -user buildslave -type d -print0 | xargs -0 chmod +a "hookslave allow list,add_file,search,delete,add_subdirectory,delete_child,readattr,writeattr,readextattr,writeextattr,readsecurity,writesecurity,chown,limit_inherit,only_inherit"'
@@ -299,7 +315,7 @@ class CustomHookHelper implements Serializable {
     /* applying ACLs - allow hookslave user with read, write permissions on builduser owned files.*/
     def linuxACLbeforeRun()
     {
-        def projworkspace = [script.env.WORKSPACE,libraryProperties.'project.workspace.folder.name'].join('/')
+        def projworkspace = getWorkspaceLocation()
 
         script.dir(projworkspace) {
             def cleanTmpFiles = 'set +xe && find . -type d -name "*@tmp" -empty -delete'

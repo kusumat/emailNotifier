@@ -7,6 +7,7 @@ import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
+import com.kony.appfactory.enums.BuildType
 
 class RunTests implements Serializable {
     /* Pipeline object */
@@ -76,7 +77,7 @@ class RunTests implements Serializable {
         )
         this.channelType = channelType
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
-        this.hookHelper = new CustomHookHelper(script)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (script.kony.CLOUD_DOMAIN) ?: 'kony.com'
