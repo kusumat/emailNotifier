@@ -507,9 +507,7 @@ class Fabric implements Serializable {
                 fabricStats.put("pipeline-run-jobs", fabricRunListStats)
             }
             // Publish fabric metrics keys to build Stats Action class.
-            // ToDo: Fix the exception reported in APPFACT-2139.
-//            script.statspublish fabricStats.inspect()
-
+            script.statspublish fabricStats.inspect()
             setBuildDescription(buildDescriptionItems)
             NotificationsHelper.sendEmail(script, 'fabric', emailData)
         }
@@ -556,10 +554,9 @@ class Fabric implements Serializable {
                     mandatoryParameters = checkCompatibility(mandatoryParameters, 'export')
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
-
-                pipelineWrapper {
-                    /* Allocate a slave for the run */
-                    script.node(nodeLabel) {
+                /* Allocate a slave for the run */
+                script.node(nodeLabel) {
+                    pipelineWrapper {
                         isUnixNode = script.isUnix()
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
@@ -642,9 +639,9 @@ class Fabric implements Serializable {
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
-                pipelineWrapper {
-                    /* Allocate a slave for the run */
-                    script.node(nodeLabel) {
+                /* Allocate a slave for the run */
+                script.node(nodeLabel) {
+                    pipelineWrapper {
                         isUnixNode = script.isUnix()
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
@@ -710,9 +707,9 @@ class Fabric implements Serializable {
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
 
-                pipelineWrapper {
-                    /* Allocate a slave for the run */
-                    script.node(nodeLabel) {
+                /* Allocate a slave for the run */
+                script.node(nodeLabel) {
+                    pipelineWrapper {
                         isUnixNode = script.isUnix()
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
@@ -834,9 +831,9 @@ class Fabric implements Serializable {
                     
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
-                pipelineWrapper {
-                    /* Allocate a slave for the run */
-                    script.node(nodeLabel) {
+                /* Allocate a slave for the run */
+                script.node(nodeLabel) {
+                    pipelineWrapper {
                         isUnixNode = script.isUnix()
                         if(!isUnixNode) {
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
