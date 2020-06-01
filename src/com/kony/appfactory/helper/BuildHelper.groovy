@@ -1184,7 +1184,7 @@ class BuildHelper implements Serializable {
      */
     protected static final void runPreBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, hookBuildStage, customHookStage) {
         script.stage('Check PreBuild Hook Points') {
-            runHooks(isCustomHookRunBuild, {
+            runHooks(script, isCustomHookRunBuild, {
                 hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
             })
         }
@@ -1201,7 +1201,7 @@ class BuildHelper implements Serializable {
      */
     protected static final void runPostBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, hookBuildStage, customHookStage) {
         script.stage('Check PostBuild Hook Points') {
-            runHooks(isCustomHookRunBuild, {
+            runHooks(script, isCustomHookRunBuild, {
                 if (script.currentBuild.currentResult == 'SUCCESS') {
                     hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
                 } else {
@@ -1222,7 +1222,7 @@ class BuildHelper implements Serializable {
      */
     protected static final void runPostDeployHook(script, isCustomHookRunBuild, hookHelper, projectName, hookBuildStage, customHookStage) {
         script.stage('Check PostDeploy Hook Points') {
-            runHooks(isCustomHookRunBuild, {
+            runHooks(script, isCustomHookRunBuild, {
                 if (script.currentBuild.currentResult == 'SUCCESS') {
                     hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
                 } else {
@@ -1237,7 +1237,7 @@ class BuildHelper implements Serializable {
      * @param isCustomHookRunBuild flag that indicates whether to run the hooks or not
      * @param closure piece of code that need to executed.
      */
-    protected static final void runHooks(isCustomHookRunBuild, closure) {
+    protected static final void runHooks(script, isCustomHookRunBuild, closure) {
         if (isCustomHookRunBuild) {
             closure()
         } else {
