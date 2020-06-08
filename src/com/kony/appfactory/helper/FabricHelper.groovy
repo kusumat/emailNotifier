@@ -131,7 +131,8 @@ class FabricHelper implements Serializable {
         script.catchErrorCustom("Failed to get fabric app version!") {
             script.dir(fabricAppsDirPath) {
                 fabricAppsDirList = FabricHelper.getSubDirectories(script, isUnixNode, fabricAppsDirPath)
-                
+                if(fabricAppsDirList.isEmpty())
+                    throw new AppFactoryException("The path ${fabricAppsDirPath} does not appear to contain a valid Fabric app.", "ERROR")
                 //Find the directory which does not start with _ underscore( will be fabric app name dir)
                 fabricAppsDirList.each{ fabricAppNameDir ->
                     if(fabricAppNameDir =~ /^(?!_.*$).*/) {
@@ -273,5 +274,19 @@ class FabricHelper implements Serializable {
     protected static final getPathSeparatorBasedOnOs(boolean isUnixNode) {
         def separator = isUnixNode ? '/' : '\\'
         separator
+    }
+
+    /**
+     * To check directory exists or not
+     * @param script
+     * @param dirPath: complete path upto directory.
+     * @param isUnixNode
+     * @return boolean true or false
+     */
+    protected static boolean isDirExist(script, dirPath, isUnixNode ){
+        def isDirExist = script.shellCustom("set +x;test -d ${dirPath} && echo 'exist' || echo 'doesNotExist'", isUnixNode, [returnStdout: true])
+        if (isDirExist.trim() == 'doesNotExist')
+            return false
+        return true
     }
 }

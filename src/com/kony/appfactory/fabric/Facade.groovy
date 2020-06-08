@@ -150,7 +150,7 @@ class Facade implements Serializable{
                             
                             if(fabricAppVersionToPickFrom == 'Other') {
                                 if(!fabricAppVersionInputParam)
-                                    throw new AppFactoryException("FABRIC_APP_VERSION parameter can't be null, since you have selected 'Other' option in IMPORT_FABRIC_APP_VERSION!", 'ERROR')
+                                    throw new AppFactoryException("FABRIC_APP_VERSION parameter can't be null, since you have selected to type in the version in IMPORT_FABRIC_APP_VERSION parameter.", 'ERROR')
                             }
                             
                             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
@@ -177,7 +177,18 @@ class Facade implements Serializable{
                             // "fabricAppDir" is path upto fabric app's where it contains 'Apps' directory relative to repo root dir
                             fabricAppBasePath = [projectFullPath, fabricAppDir].join(separator)
                             fabricAppJarsPath = [fabricAppBasePath, 'Apps', '_JARs'].join(separator)
-                            
+
+                            // If the fabric App does not exist then failing the build
+                            def isFabricDirExist = FabricHelper.isDirExist(script, fabricAppBasePath, isUnixNode)
+                            if (!isFabricDirExist)
+                                throw new AppFactoryException("The path ${fabricAppBasePath} does not exist.", 'ERROR')
+                            def fabricAppsDirPath = [fabricAppBasePath, 'Apps'].join(separator)
+                            script.dir(fabricAppsDirPath) {
+                                def versionJsonFile = [fabricAppsDirPath, 'Version.json'].join(separator)
+                                if (!script.fileExists(versionJsonFile))
+                                    throw new AppFactoryException("The path ${fabricAppsDirPath} in repository ${projectRepositoryUrl} branch ${projectSourceCodeBranch} does not appear to contain a Fabric app.", 'ERROR')
+                            }
+                          
                             appBinariesReleasePath = [projectFullPath, defaultReleaseAppBundleDir].join(separator)
                             javaAssetsBinariesReleasePath = [projectFullPath, defaultReleaseAppBinariesDir].join(separator)
                             
@@ -186,8 +197,8 @@ class Facade implements Serializable{
                             
                             // If the given java asset path does not exist then failing the build
                             if(fabricJavaDir) {
-                                def isPathExistForJavaAssest = script.shellCustom("set +x;test -d ${javaAssetBasePath} && echo 'exist' || echo 'doesNotExist'", isUnixNode, [returnStdout:true])
-                                if(isPathExistForJavaAssest.trim() == 'doesNotExist')
+                                def isPathExistForJavaAssest = FabricHelper.isDirExist(script, javaAssetBasePath, isUnixNode)
+                                if(!isPathExistForJavaAssest)
                                     throw new AppFactoryException("Failed to find the given java asset path '${javaAssetBasePath }'! Please provide a valid path.", 'ERROR')
                             }
                             
