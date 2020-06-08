@@ -102,6 +102,7 @@ class Facade implements Serializable{
              [fabricAppPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
         */
         def fabricBuildArtifacts = []
+        def javaServiceBuildTargetFolderName = "target"
         
         //MustHave variables
         def mustHaveArtifacts = []
@@ -117,6 +118,8 @@ class Facade implements Serializable{
                 def workspace = script.env.WORKSPACE
                 isUnixNode = script.isUnix()
                 separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)
+                def defaultReleaseAppBundleDir = ['release', 'apps'].join(separator)
+                def defaultReleaseAppBinariesDir = ['release', 'binaries'].join(separator)
                 def checkoutRelativeTargetFolder = [projectWorkspaceFolderName, projectName].join(separator)
                 def projectWorkspacePath = [workspace, projectWorkspaceFolderName].join(separator)
                 
@@ -175,8 +178,8 @@ class Facade implements Serializable{
                             fabricAppBasePath = [projectFullPath, fabricAppDir].join(separator)
                             fabricAppJarsPath = [fabricAppBasePath, 'Apps', '_JARs'].join(separator)
                             
-                            appBinariesReleasePath = [projectFullPath, 'release', 'apps'].join(separator)
-                            javaAssetsBinariesReleasePath = [projectFullPath, 'release', 'binaries'].join(separator)
+                            appBinariesReleasePath = [projectFullPath, defaultReleaseAppBundleDir].join(separator)
+                            javaAssetsBinariesReleasePath = [projectFullPath, defaultReleaseAppBinariesDir].join(separator)
                             
                             // "fabricJavaDir" is path upto java asset dir relative to repo root
                             javaAssetBasePath = [projectFullPath, fabricJavaDir].join(separator)
@@ -237,6 +240,10 @@ class Facade implements Serializable{
                                                 if(script.fileExists(javaServiceDir + '/' + pomFileName)) {
                                                     script.dir(javaServiceDir) {
                                                         FabricHelper.runMavenBuild(script, isUnixNode, mavenBuildCommand)
+                                                        script.dir(javaServiceBuildTargetFolderName) {
+                                                            def buildArtifactsInfo = script.shellCustom('ls', isUnixNode, [returnStdout:true])
+                                                            script.echoCustom("Maven build artifacts generated for [${javaServiceDir}] at [${javaServiceDir}/${javaServiceBuildTargetFolderName}] are:\n${buildArtifactsInfo}", "INFO")
+                                                        }
                                                         javaServiceDirList << javaServiceDir
                                                     }
                                                 }
@@ -260,7 +267,6 @@ class Facade implements Serializable{
                                             def artifactId = pomFileContent.getArtifactId()
                                             def artifactVersion = pomFileContent.getVersion()
                                             def javaServiceArtifact = artifactId + '-' + artifactVersion + '.jar'
-                                            def javaServiceBuildTargetFolderName = "target"
                                             script.dir(javaServiceBuildTargetFolderName) {
                                                 if(script.fileExists(javaServiceArtifact)) {
                                                     // Clean if any jar containing artifactID as starting name.
@@ -286,7 +292,20 @@ class Facade implements Serializable{
                                         throw new AppFactoryException("Failed to find the Fabric app bundle artifact!", 'ERROR')
                                     }
                                 } else {
+                                    def fabricApplicationAppsDir = [fabricAppBasePath, 'Apps'].join(separator)
+                                    script.dir(fabricApplicationAppsDir) {
+                                        def appZipAssetsInfo = script.shellCustom('ls', isUnixNode, [returnStdout:true])
+                                        script.echoCustom("Fabric app's bundle zip should contain below assets:\n${appZipAssetsInfo}", "INFO")
+                                    }
+                                    script.dir(javaAssetsBinariesReleasePath) {
+                                        def appBinariesAssetsInfo = script.shellCustom('ls', isUnixNode, [returnStdout:true])
+                                        script.echoCustom("Copying Fabric app's binaries at path '${defaultReleaseAppBinariesDir}' and containing below assets:\n${appBinariesAssetsInfo}", "INFO")
+                                    }
                                     script.zip dir: fabricAppBasePath, zipFile: projectNameZip
+                                    script.dir(appBinariesReleasePath) {
+                                        def appZipDirAssetsInfo = script.shellCustom('ls', isUnixNode, [returnStdout:true])
+                                        script.echoCustom("Copying Fabric app's bundle zip <${projectNameZip}> to '${defaultReleaseAppBundleDir}' and containing below assets:\n${appZipDirAssetsInfo}", "INFO")
+                                    }
                                 }
                                 // Add MustHaves Artifacts
                                 fabricAppZipArtifacts = script.findFiles(glob: '*.zip')
