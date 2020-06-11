@@ -1221,15 +1221,13 @@ class BuildHelper implements Serializable {
      * @param customHookStage Name of the hook channels.
      */
     protected static final void runPostDeployHook(script, isCustomHookRunBuild, hookHelper, projectName, hookBuildStage, customHookStage) {
-        script.stage('Check PostDeploy Hook Points') {
-            runHooks(script, isCustomHookRunBuild, {
-                if (script.currentBuild.currentResult == 'SUCCESS') {
-                    hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
-                } else {
-                    script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
-                }
-            })
-        }
+        runHooks(script, isCustomHookRunBuild, {
+            if (script.currentBuild.currentResult == 'SUCCESS') {
+                hookHelper.runCustomHooks(projectName, hookBuildStage, customHookStage)
+            } else {
+                script.echoCustom('CustomHooks execution is skipped as current build result is NOT SUCCESS.', 'WARN')
+            }
+        })
     }
 
     /**
@@ -1346,18 +1344,16 @@ class BuildHelper implements Serializable {
         if(buildArtifactName)
             buildArtifactDescription = "<p>App Name: $buildArtifactName</p>"
 
-        if (s3MustHaveAuthUrl)
+        if(s3MustHaveAuthUrl)
             mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
 
         script.currentBuild.description = """\
             <div id="build-description">
                 ${EnvironmentDescription}
                 ${buildArtifactDescription}
-                <p>Rebuild: <a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
-                <img src="/static/b33030df/images/24x24/clock.png"
-                style="width: 24px; height: 24px; width: 24px; height: 24px; margin: 2px;"
-                class="icon-clock icon-md"></a></p>
-                ${mustHavesDescription}
+                <p>Rebuild:<a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
+                <img src="/static/b33030df/images/24x24/clock.png" style="width: 24px; height: 24px; margin: 2px;"
+                class="icon-clock icon-md"></a>${mustHavesDescription}</p>
             </div>\
             """.stripIndent()
     }

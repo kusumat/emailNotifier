@@ -28,8 +28,8 @@ class Facade implements Serializable{
     private final boolean isBuildWithImport = script.params.IMPORT
     private final boolean isBuildWithPublish = script.params.PUBLISH
     private final fabricAppDir = (script.params.FABRIC_DIR)?.trim()
-    private final fabricJavaDir = (script.params.JAVA_DIR)?.trim()
-    private final userMavenCommandOption = (script.params.MAVEN_CMD_OPTIONS)?.trim()
+    private final fabricJavaProjectsDir = (script.params.JAVA_PROJECTS_DIR)?.trim()
+    private final mvnBuildCmdInput = (script.params.MVN_GOALS_AND_OPTIONS)?.trim()
     private boolean isBuildWithJavaAssets = script.params.BUILD_JAVA_ASSETS
     private final boolean isBuildWithCleanJavaAssets = script.params.CLEAN_JAVA_ASSETS
     private final nodeLabel
@@ -145,12 +145,11 @@ class Facade implements Serializable{
                             }
                             
                             if(isBuildWithJavaAssets) {
-                                mandatoryParameters.add('JAVA_DIR')
+                                mandatoryParameters.add('JAVA_PROJECTS_DIR')
                             }
                             
                             if(fabricAppVersionToPickFrom == 'Other') {
-                                if(!fabricAppVersionInputParam)
-                                    throw new AppFactoryException("FABRIC_APP_VERSION parameter can't be null, since you have selected to type in the version in IMPORT_FABRIC_APP_VERSION parameter.", 'ERROR')
+                                mandatoryParameters.add('FABRIC_APP_VERSION')
                             }
                             
                             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
@@ -192,14 +191,14 @@ class Facade implements Serializable{
                             appBinariesReleasePath = [projectFullPath, defaultReleaseAppBundleDir].join(separator)
                             javaAssetsBinariesReleasePath = [projectFullPath, defaultReleaseAppBinariesDir].join(separator)
                             
-                            // "fabricJavaDir" is path upto java asset dir relative to repo root
-                            javaAssetBasePath = [projectFullPath, fabricJavaDir].join(separator)
+                            // "fabricJavaProjectsDir" is path upto parent of java projects relative to repo root path
+                            javaAssetBasePath = [projectFullPath, fabricJavaProjectsDir].join(separator)
                             
                             // If the given java asset path does not exist then failing the build
-                            if(fabricJavaDir) {
+                            if(fabricJavaProjectsDir) {
                                 def isPathExistForJavaAssest = FabricHelper.isDirExist(script, javaAssetBasePath, isUnixNode)
                                 if(!isPathExistForJavaAssest)
-                                    throw new AppFactoryException("Failed to find the given java asset path '${javaAssetBasePath }'! Please provide a valid path.", 'ERROR')
+                                    throw new AppFactoryException("The path [${fabricJavaProjectsDir}] does not contain any Java projects.", 'ERROR')
                             }
                             
                             // Creating the fabric app's '_JARs' dir under fabric app 'Apps' path( i.e Apps/_JARs) if it is missing by default.
@@ -233,8 +232,8 @@ class Facade implements Serializable{
                             
                             // Setting the custom folder for maven repo path
                             def mvnLocalRepoPath = [workspace, projectWorkspaceFolderName, ".m2"].join(separator)
-                            def defaultMavenCommand = "mvn -Dmaven.repo.local=${mvnLocalRepoPath} clean install"
-                            mavenBuildCommand = (userMavenCommandOption) ? ("mvn -Dmaven.repo.local=${mvnLocalRepoPath} " + userMavenCommandOption.trim()) : defaultMavenCommand
+                            def defaultMavenGoalsAndOptions = "mvn -Dmaven.repo.local=${mvnLocalRepoPath} clean package"
+                            mavenBuildCommand = (mvnBuildCmdInput) ? ("mvn -Dmaven.repo.local=${mvnLocalRepoPath} " + mvnBuildCmdInput.trim()) : defaultMavenGoalsAndOptions
                         }
                         
                         script.stage('Build java assets') {
@@ -277,7 +276,8 @@ class Facade implements Serializable{
                                             def pomFileContent = script.readMavenPom file: pomFileName
                                             def artifactId = pomFileContent.getArtifactId()
                                             def artifactVersion = pomFileContent.getVersion()
-                                            def javaServiceArtifact = artifactId + '-' + artifactVersion + '.jar'
+                                            // Check whether pom.xml has any entry with 'finalName' key for referring the same for build artifactId, if not use default mvn artifactId that it generates.
+                                            def javaServiceArtifact = (pomFileContent.build.finalName) ?: artifactId + '-' + artifactVersion + '.jar'
                                             script.dir(javaServiceBuildTargetFolderName) {
                                                 if(script.fileExists(javaServiceArtifact)) {
                                                     // Clean if any jar containing artifactID as starting name.
@@ -285,7 +285,8 @@ class Facade implements Serializable{
                                                     script.shellCustom("cp ${javaServiceArtifact} ${javaAssetsBinariesReleasePath}", isUnixNode, [returnStdout:true])
                                                     script.shellCustom("cp ${javaServiceArtifact} ${fabricAppJarsPath}", isUnixNode, [returnStdout:true])
                                                 } else {
-                                                    script.echoCustom("Maven build is successful, but did not find ${javaServiceArtifact} in ${javaServiceBuildTargetFolderName} folder!", 'WARN')
+                                                    throw new AppFactoryException("Maven build is successful, but did not find built asset with name ${javaServiceArtifact} in ${javaServiceBuildTargetFolderName} folder!" +
+                                                        "\nPlease cross-check, have you properly defined groupId, artifactId, version or 'finalName' property in the build pom.xml file?", 'ERROR')
                                                 }
                                             }
                                         }
@@ -365,14 +366,17 @@ class Facade implements Serializable{
                                     script.echoCustom(exceptionMessage, 'ERROR', false)
                                     fabricStats.put('faberrmsg', exceptionMessage)
                                     fabricStats.put('faberrstack', e.getStackTrace().toString())
-                                    script.currentBuild.result = "UNSTABLE"
+                                    script.currentBuild.result = "FAILURE"
                                 }
                             }
                         }
-                        if(isBuildWithPublish) {
-                            BuildHelper.runPostDeployHook(script, isCustomHookRunBuild, hookHelper, this.projectName, libraryProperties.'customhooks.postdeploy.name', 'ALL')
+                        
+                        script.stage('Check PostDeploy Hook Points') {
+                            if(isBuildWithPublish) {
+                                BuildHelper.runPostDeployHook(script, isCustomHookRunBuild, hookHelper, this.projectName, libraryProperties.'customhooks.postdeploy.name', 'ALL')
+                            }
                         }
-
+                        
                         script.stage('Archive build artifacts') {
                             def s3FabricArtifactPath = ['Builds', fabricEnvironmentName, 'Fabric', fabricAppName, script.env.BUILD_NUMBER].join('/')
                             
@@ -412,8 +416,7 @@ class Facade implements Serializable{
                     script.echoCustom(exceptionMessage, 'ERROR', false)
                     fabricStats.put('faberrmsg', exceptionMessage)
                     fabricStats.put('faberrstack', e.getStackTrace().toString())
-                    if (script.currentBuild.result != 'UNSTABLE')
-                        script.currentBuild.result = "FAILED"
+                    script.currentBuild.result = "FAILURE"
                     
                 } finally {
                     // Collecting metrics data
@@ -430,14 +433,18 @@ class Facade implements Serializable{
                     script.statspublish fabricStats.inspect()
                     
                     def abortMsg = ""
-                    if (!script.currentBuild.rawBuild.getActions(jenkins.model.InterruptedBuildAction.class).isEmpty()) {
+                    if(!script.currentBuild.rawBuild.getActions(jenkins.model.InterruptedBuildAction.class).isEmpty()) {
                         abortMsg = "BUILD ABORTED!!"
                         script.echoCustom(abortMsg, 'ERROR', false)
                     }
                     
+                    if(abortMsg?.trim()) {
+                        script.currentBuild.result = 'ABORTED'
+                    }
+                    
                     // Collecting MustHaves
                     try {
-                        if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
+                        if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             def fabricJobMustHavesFolderName = "fabricMustHaves"
                             def fabricJobBuildLogFile = "fabricBuildlog.log"
                             s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, mustHaveArtifacts)
@@ -447,10 +454,6 @@ class Facade implements Serializable{
                         String exceptionMessage = (Ex.getLocalizedMessage()) ?: 'Something went wrong...'
                         script.echoCustom(exceptionMessage, 'ERROR', false)
                         script.currentBuild.result = "UNSTABLE"
-                    }
-                    
-                    if (abortMsg?.trim()) {
-                        script.currentBuild.result = 'ABORTED'
                     }
                     
                     BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl, fabricAppName)
@@ -478,7 +481,7 @@ class Facade implements Serializable{
         } else if(fabricAppVersionToPickFrom == 'PICK_FROM_FABRIC_APP_CONFIG') {
             fabricApplicationVersion = (script.env.FABRIC_APP_VERSION) ?: "1.0"
         } else {
-            fabricApplicationVersion = fabricAppVersionInputParam
+            fabricApplicationVersion = (fabricAppVersionInputParam) ?: "1.0"
             importAsNew = true
         }
         fabricApplicationVersion

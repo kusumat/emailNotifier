@@ -140,6 +140,9 @@ class ValidationHelper implements Serializable {
                 case 'CLOUD_ACCOUNT_ID':
                     regex = /^\d{9}$/
                     break
+                case 'FABRIC_APP_VERSION':
+                    regex = /^[1-9]{1,3}\.[0-9]{1,2}$/
+                    break
                 default:
                     regex = /.*/
                     break
@@ -179,6 +182,9 @@ class ValidationHelper implements Serializable {
                     break
                 case 'CLOUD_ACCOUNT_ID':
                     parameter_message = it.key + ' : ' + 'You can find this value by logging in to Fabric Cloud. Expecting a nine digit <integer_value>' + '\n' + 'For Example : 100000011 '
+                    break
+                case 'FABRIC_APP_VERSION':
+                    parameter_message = it.key + ' : ' + 'Expecting App Version in the same format allowed on Fabric, format like <major>.<minor>' + '\n' + 'Please refer FABRIC_APP_VERSION parameter description for details of Fabric App versioning format.' + '\n' + 'For Example : 1.0'
                     break
                 default:
                     parameter_message = parameter_message = it.key + ' : ' + 'The parameter expects a string value.'
