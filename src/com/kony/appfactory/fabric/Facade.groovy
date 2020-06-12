@@ -277,7 +277,7 @@ class Facade implements Serializable{
                                             def artifactId = pomFileContent.getArtifactId()
                                             def artifactVersion = pomFileContent.getVersion()
                                             // Check whether pom.xml has any entry with 'finalName' key for referring the same for build artifactId, if not use default mvn artifactId that it generates.
-                                            def javaServiceArtifact = (pomFileContent.build.finalName) ?: artifactId + '-' + artifactVersion + '.jar'
+                                            def javaServiceArtifact = ((pomFileContent.build?.finalName) ? pomFileContent.build.finalName : artifactId + '-' + artifactVersion) + '.jar'
                                             script.dir(javaServiceBuildTargetFolderName) {
                                                 if(script.fileExists(javaServiceArtifact)) {
                                                     // Clean if any jar containing artifactID as starting name.
@@ -285,7 +285,7 @@ class Facade implements Serializable{
                                                     script.shellCustom("cp ${javaServiceArtifact} ${javaAssetsBinariesReleasePath}", isUnixNode, [returnStdout:true])
                                                     script.shellCustom("cp ${javaServiceArtifact} ${fabricAppJarsPath}", isUnixNode, [returnStdout:true])
                                                 } else {
-                                                    throw new AppFactoryException("Maven build is successful, but did not find built asset with name ${javaServiceArtifact} in ${javaServiceBuildTargetFolderName} folder!" +
+                                                    throw new AppFactoryException("Maven build is successful for [${javaServiceDir}], but did not find built asset with name [${javaServiceArtifact}] in [${javaServiceBuildTargetFolderName}] folder!" +
                                                         "\nPlease cross-check, have you properly defined groupId, artifactId, version or 'finalName' property in the build pom.xml file?", 'ERROR')
                                                 }
                                             }
