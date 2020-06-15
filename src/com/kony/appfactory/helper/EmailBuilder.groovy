@@ -36,7 +36,8 @@ class EmailBuilder {
                 a(href: binding.url, target: '_blank', binding.name)
             }
             td(style: "border-right: 1px solid #e8e8e8"){
-                binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
+                if (binding."${binding.channelPath}" && binding."${binding.channelPath}"[0] && binding."${binding.channelPath}"[0]['version'])
+                    binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
             }
         }
     }
@@ -52,7 +53,7 @@ class EmailBuilder {
             else
                 td(style: "border-right: 1px solid #e8e8e8; width: 65px; color:red", colspan: "2") { mkp.yield("Build failed") }
             td(style: "border-right: 1px solid #e8e8e8"){
-                if (binding."${binding.channelPath}")
+                if (binding."${binding.channelPath}" && binding."${binding.channelPath}"[0] && binding."${binding.channelPath}"[0]['version'])
                     binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
             }
         }
