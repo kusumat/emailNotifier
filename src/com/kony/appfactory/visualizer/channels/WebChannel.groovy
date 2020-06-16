@@ -113,7 +113,7 @@ class WebChannel extends Channel {
                  *  build on MAC Agent. Otherwise default node strategy will be followed (WIN || MAC)
                  */
                 resourceList = BuildHelper.getResourcesList()
-                isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
+                isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, BuildType.Visualizer, runCustomHook, libraryProperties)
                 nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild, channelOs)
 
                 script.node(nodeLabel) {

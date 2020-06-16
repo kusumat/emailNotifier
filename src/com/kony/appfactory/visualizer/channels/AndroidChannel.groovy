@@ -4,6 +4,7 @@ import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.AppFactoryException
+import com.kony.appfactory.enums.BuildType
 
 /**
  * Implements logic for Android channel builds.
@@ -231,7 +232,7 @@ class AndroidChannel extends Channel {
                     To restrict Headless Builds to run in parallel, this workaround implemented
                     */
                     resourceList = BuildHelper.getResourcesList()
-                    isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, runCustomHook, libraryProperties)
+                    isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, BuildType.Visualizer, runCustomHook, libraryProperties)
                     nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild, channelOs)
                 }
                 /* Allocate a slave for the run */
