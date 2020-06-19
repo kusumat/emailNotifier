@@ -19,12 +19,12 @@ class Facade implements Serializable{
     /* CustomHooks build Parameters*/
     protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     private final projectName = script.env.PROJECT_NAME
-    private final projectSourceCodeBranch = (script.params.PROJECT_SOURCE_CODE_BRANCH)?.trim()
-    private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+    private final projectSourceCodeBranch = (script.params.SCM_BRANCH)?.trim()
+    private final projectSourceCodeRepositoryCredentialsId = script.params.SCM_CREDENTIALS
     private final fabricAppVersionToPickFrom = script.params.IMPORT_FABRIC_APP_VERSION
     private final fabricAppVersionInputParam = (script.params.FABRIC_APP_VERSION)?.trim()
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
-    private final fabricCredentialsID = script.params.FABRIC_CREDENTIALS_ID
+    private final fabricCredentialsID = script.params.FABRIC_CREDENTIALS
     private final boolean isBuildWithImport = script.params.IMPORT
     private final boolean isBuildWithPublish = script.params.PUBLISH
     private final fabricAppDir = (script.params.FABRIC_DIR)?.trim()
@@ -136,13 +136,13 @@ class Facade implements Serializable{
                         script.stage('Validate build params') {
                             
                             def mandatoryParameters = [
-                                'PROJECT_SOURCE_CODE_BRANCH',
-                                'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
+                                'SCM_BRANCH',
+                                'SCM_CREDENTIALS',
                                 'FABRIC_APP_CONFIG'
                             ]
                             
                             if (isBuildWithImport)
-                                mandatoryParameters.add('FABRIC_CREDENTIALS_ID')
+                                mandatoryParameters.add('FABRIC_CREDENTIALS')
                             
                             if(isBuildWithJavaAssets)
                                 mandatoryParameters.add('JAVA_PROJECTS_DIR')

@@ -37,7 +37,9 @@ class Fabric implements Serializable {
     private final String exportRepositoryBranch
     private final String exportRepositoryCredentialsId
     private String cloudAccountId = script.params.CLOUD_ACCOUNT_ID
-    private final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
+    private final fabricCredentialsParamName = BuildHelper.getCurrentParamName(this.script, 'FABRIC_CREDENTIALS', BuildHelper.getCurrentParamName(
+            this.script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID'))
+
     private final String fabricCredentialsID = script.params[fabricCredentialsParamName]
     private String fabricAppName = script.params.FABRIC_APP_NAME
     private final String recipientsList = script.params.RECIPIENTS_LIST
@@ -108,10 +110,14 @@ class Fabric implements Serializable {
         def fabricScmUrlProbableParams = ['PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL']
         exportRepositoryUrl = BuildHelper.getParamValueOrDefaultFromProbableParamList(
                 this.script, fabricScmUrlProbableParams, this.script.env.PROJECT_SOURCE_CODE_URL_FOR_FABRIC)
-        exportRepositoryBranch = BuildHelper.getCurrentParamValue(
-                this.script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH')
-        exportRepositoryCredentialsId = BuildHelper.getCurrentParamValue(
-                this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID')
+
+        def sourceCodeRepoBranchParamName = BuildHelper.getCurrentParamName(this.script, 'SCM_BRANCH', BuildHelper.getCurrentParamName(
+                this.script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
+        exportRepositoryBranch = this.script.params[sourceCodeRepoBranchParamName]
+
+        def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(this.script, 'SCM_CREDENTIALS', BuildHelper.getCurrentParamName(
+                this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'))
+        exportRepositoryCredentialsId = this.script.params[sourceCodeRepoCredentialParamName]
         isScmUrlParamExistInCurrentProject = BuildHelper.doesAnyParamExistFromProbableParamList(this.script, fabricScmUrlProbableParams)
     }
 
@@ -542,10 +548,16 @@ class Fabric implements Serializable {
                 fabricTask = "export"
 
                 script.stage('Check provided parameters') {
+
+                    def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(script, 'SCM_CREDENTIALS', BuildHelper.getCurrentParamName(
+                            script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'))
+                    def sourceCodeRepoBranchParamName = BuildHelper.getCurrentParamName(script, 'SCM_BRANCH', BuildHelper.getCurrentParamName(
+                            script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
+
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
-                            BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
-                            BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 
+                            sourceCodeRepoBranchParamName,
+                            sourceCodeRepoCredentialParamName,
                             'AUTHOR_EMAIL'
                     ]
                     if(isScmUrlParamExistInCurrentProject) {
@@ -627,10 +639,15 @@ class Fabric implements Serializable {
                 fabricTask = "import"
 
                 script.stage('Check provided parameters') {
+                    def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(script, 'SCM_CREDENTIALS', BuildHelper.getCurrentParamName(
+                            script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'))
+                    def sourceCodeRepoBranchParamName = BuildHelper.getCurrentParamName(script, 'SCM_BRANCH', BuildHelper.getCurrentParamName(
+                            script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
+
                     def mandatoryParameters = [
                             fabricCredentialsParamName,
-                            BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'),
-                            BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID')
+                            sourceCodeRepoBranchParamName,
+                            sourceCodeRepoCredentialParamName
                     ]
                     if(isScmUrlParamExistInCurrentProject) {
                         mandatoryParameters.add(BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'))
@@ -790,8 +807,8 @@ class Fabric implements Serializable {
                     def mandatoryParameters = [
                             exportFabricCredsParamName,
                             importFabricCredsParamName,
-                            'PROJECT_SOURCE_CODE_BRANCH',
-                            'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
+                            BuildHelper.getCurrentParamName(script, 'SCM_BRANCH', 'PROJECT_SOURCE_CODE_BRANCH'),
+                            BuildHelper.getCurrentParamName(script, 'SCM_CREDENTIALS', 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID'),
                             'AUTHOR_EMAIL'
                     ]
                     if(isScmUrlParamExistInCurrentProject) {
