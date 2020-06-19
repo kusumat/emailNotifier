@@ -7,6 +7,9 @@ import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.CredentialsHelper
 import com.kony.appfactory.helper.AppFactoryException
+import com.kony.appfactory.project.settings.ProjectSettingsProperty
+import com.kony.appfactory.project.settings.ProjectSettingsDTO
+import com.kony.appfactory.project.settings.Scans
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException
 import hudson.AbortException
 import com.kony.appfactory.enums.BuildType
@@ -31,6 +34,9 @@ class Facade implements Serializable {
     private runList = [:]
     /* List of Pre Build Hooks */
     private preBuildHookList = [:]
+    /* List of scans to run in parallel */
+    private scansList = [:]
+    private scanResultsMap = [:]
 
     /* List of channels to build */
     private channelsToRun
@@ -263,6 +269,48 @@ class Facade implements Serializable {
     }
 
     /**
+     * This method returns if the respective scan is enabled or not from the Project Settings.
+     * @param scanType is the type of scan that is needed.
+     * @return true if the scan is enabled, false if the scan is not enabled
+     */
+    private final getScanDetails(scanType) {
+        boolean enable = false
+        boolean isBuildNeeded = true
+        ProjectSettingsDTO projectSettings = BuildHelper.getAppFactoryProjectSettings(projectName)
+        Scans scans = projectSettings?.getScans()
+        switch(scanType) {
+            case 'SonarQube':
+                enable = scans?.getSonar().getRunSonar()
+                isBuildNeeded = scans?.getSonar().getFailBuildOnQualityGateStatus()
+                break
+            default:
+                break
+        }
+        ["isScanEnabled" : enable, "isBuildNeeded" : isBuildNeeded]
+    }
+    
+    /**
+     * Return group of common build parameters.
+     *
+     * @return group of common build parameters.
+     */
+    private final getScanJobParameters(scanType) {
+        def scanJobParameters = []
+        switch(scanType) {
+            case 'SonarQube' : 
+                scanJobParameters = [
+                    script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${projectSourceCodeBranch}"),
+                    script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${projectSourceCodeRepositoryCredentialsId}")
+                ]
+                break
+            default :
+                break
+        }
+        
+        scanJobParameters
+    }
+    
+    /**
      * Return group of common build parameters.
      *
      * @return group of common build parameters.
@@ -475,6 +523,37 @@ class Facade implements Serializable {
     }
 
     /**
+     * Prepares the scans that need to be run for the given project
+     */
+    private final void prepareScans() {
+        /* List of Scans */
+        def totalScansList = ['SonarQube']
+        for (scan in totalScansList) {
+            def scanJobName = ["", projectName, 'Quality', scan].join('/')
+            def scanDtls = getScanDetails(scan)
+            if(! scanDtls.isScanEnabled) {
+                continue;
+            }
+            def scanJobParameters = getScanJobParameters(scan)
+            scansList[scan] = {
+                script.stage(scan) {
+                    /* Trigger channel job */
+                    def scanJob = script.build job: scanJobName, parameters: scanJobParameters,
+                            propagate: false
+
+                    if(scanDtls.isBuildNeeded) {
+                        scanResultsMap.put(scan, scanJob.currentResult)
+                    }
+
+                    if (scanJob.currentResult != 'SUCCESS') {
+                        script.echoCustom("Status of the ${scan} scan " +
+                                "is: ${scanJob.currentResult}", 'WARN')
+                    }
+                }
+            }
+        }
+    }
+    /**
      * Prepares run steps for triggering channel jobs in parallel.
      */
     private final void prepareRun() {
@@ -513,7 +592,7 @@ class Facade implements Serializable {
 
                     /* Collect must have artifacts */
                     mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
-
+                    
                     /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echoCustom("Status of the channel ${channelName} " +
@@ -793,6 +872,16 @@ class Facade implements Serializable {
 
                         }
 
+                        script.params.IS_SOURCE_VISUALIZER ?: prepareScans()
+                        if(!scansList.empty) {
+                            script.parallel(scansList)
+                            if(scanResultsMap.containsValue('FAILURE') || 
+                                scanResultsMap.containsValue('UNSTABLE') || 
+                                scanResultsMap.containsValue('ABORTED') ) {
+                                throw new AppFactoryException("One or more scans are failed, hence not proceeding to build the application!!", 'ERROR')
+                            }
+                        }
+                        
                         script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun() : prepareRun()
 
                         /* Expose Fabric configuration */
@@ -817,6 +906,7 @@ class Facade implements Serializable {
 
                         /* Run channel builds in parallel */
                         script.parallel(runList)
+                        
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
                         if (shallWeRunTests()) {
                             script.stage('TESTS') {

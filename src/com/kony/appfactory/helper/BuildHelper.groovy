@@ -3,6 +3,7 @@ package com.kony.appfactory.helper
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import org.jenkins.plugins.lockableresources.LockableResources
+import com.cloudbees.hudson.plugins.folder.AbstractFolder
 import hudson.plugins.timestamper.api.TimestamperAPI
 import jenkins.model.Jenkins
 import groovy.text.SimpleTemplateEngine
@@ -14,6 +15,8 @@ import com.kony.AppFactory.fabric.api.oauth1.KonyOauth1Client
 import com.kony.AppFactory.fabric.api.oauth1.dto.KonyExternalAuthN
 import com.kony.AppFactory.fabric.FabricException;
 import com.kony.AppFactory.fabric.FabricUnreachableException
+import com.kony.appfactory.project.settings.ProjectSettingsProperty
+import com.kony.appfactory.project.settings.ProjectSettingsDTO
 import java.util.stream.Collectors;
 
 /**
@@ -23,7 +26,8 @@ class BuildHelper implements Serializable {
 
     /**
      * Clones project source based on checkoutType. If checkoutType is scm, clone from the provided git repository, If
-     * checkoutType is downloadzip, clones project source from the non-protected zip file download URL
+     * checkoutType is downloadzip, clones project source from the non-protected zip file download URL. If the checkout Type
+     * is s3download, downloads the project source from the s3 bucket associated with the appfactory instance.
      *
      * @param args for checkoutType scm
      *   script pipeline object.
@@ -37,6 +41,11 @@ class BuildHelper implements Serializable {
      *   script pipeline object.
      *   downloadURL from which the source project should be downloaded
      *   relativeTargetDir path where project should be stored.
+     *   
+     * @param args for checkoutType s3download
+     *   script pipeline object.
+     *   projectFileName name of the file which is in the s3 path.
+     *   filePath path of the file that need to be downloaded from s3 bucket associated with this appfactory instance.
      */
     protected static void checkoutProject(Map args) {
         def script = args.script
@@ -71,6 +80,13 @@ class BuildHelper implements Serializable {
                     script.currentBuild.result = "FAILED"
                     throw new AppFactoryException("Failed to extract the downloaded zip", 'ERROR')
                 }
+            }
+        } else if (checkoutType.equals("s3download")) {
+            AwsHelper.s3Download(script, args.projectFileName, args.filePath)
+            def zipExtractStatus = script.shellCustom("unzip -q ${args.projectFileName}", true, [returnStatus: true])
+            if (zipExtractStatus) {
+                script.currentBuild.result = "FAILED"
+                throw new AppFactoryException("Failed to extract the downloaded zip", 'ERROR')
             }
         } else {
             throw new AppFactoryException("Unknown checkout source type found!!", "ERROR")
@@ -1259,6 +1275,17 @@ class BuildHelper implements Serializable {
             long duration = endDate.time - startDate.time
             return duration
         }
+    }
+    
+    /**
+     * Returns the project properties object which contains all the project settings
+     *
+     */
+    @NonCPS
+    private static final ProjectSettingsDTO getAppFactoryProjectSettings(projectName) {
+        AbstractFolder<?> folderObj = Jenkins.get().getItemByFullName(projectName, AbstractFolder.class);
+        ProjectSettingsProperty projectSettingsProperty = folderObj.getProperties().get(ProjectSettingsProperty.class);
+        return projectSettingsProperty.getProjectSettings();
     }
 
     /**
