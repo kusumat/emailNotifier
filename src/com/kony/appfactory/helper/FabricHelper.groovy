@@ -106,8 +106,8 @@ class FabricHelper implements Serializable {
      * @param isUnixNode environment os info
      */
     private static runMavenBuild(script, boolean isUnixNode, mavenBuildCommand) {
-        String successMessage = 'Successfully built Maven project!'
-        String errorMessage = 'Failed to build Maven project!'
+        String successMessage = 'Successfully built the maven java project!'
+        String errorMessage = 'Failed to build the maven java project!'
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.shellCustom(mavenBuildCommand, isUnixNode)
@@ -205,7 +205,6 @@ class FabricHelper implements Serializable {
         
         if(importAsNew)
             importCommandOptions << ['-importAsNew': ""]
-        
         fabricCli(script, 'import', cloudCredentialsID, isUnixNode, fabricCliPath, importCommandOptions)
     }
     
@@ -252,7 +251,7 @@ class FabricHelper implements Serializable {
         script.catchErrorCustom(errorMsg) {
             script.dir(baseDirPath) {
                 if(isUnixNode) {
-                    def subDirsWithSeparator = script.shellCustom('ls -d */', isUnixNode, [returnStdout:true])
+                    def subDirsWithSeparator = script.shellCustom('set +x; ls -d */', isUnixNode, [returnStdout:true])
                     def subDirs = subDirsWithSeparator.trim().split("/")
                     subDirs.each { subDir ->
                         subDirList << subDir.trim()

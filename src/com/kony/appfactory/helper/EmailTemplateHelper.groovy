@@ -1112,20 +1112,23 @@ class EmailTemplateHelper implements Serializable {
                 tr {
                     td {
                         table(style: "width:100%", class: "text-color table-border cell-spacing") {
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
                             if (binding.triggeredBy) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
                             }
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
                             EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
                             if(binding.appVersion)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric App Version:', binding.appVersion)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Clean Java Assets:', binding.isBuildWithCleanJavaAssets)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build Java Assets:', binding.isBuildWithJavaAssets)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Import:', binding.importApp)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Publish:', binding.publishApp)
                             if (binding.publishApp && binding.fabricEnvironmentName)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Published to:', binding.fabricEnvironmentName)
-                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
-                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric Publish Environment:', binding.fabricEnvironmentName)
                         }
                     }
                 }

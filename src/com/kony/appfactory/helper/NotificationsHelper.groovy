@@ -296,7 +296,7 @@ class NotificationsHelper implements Serializable {
                 break
             case 'runTests':
                 modifiedBuildTag = (modifiedBuildTag.minus("-Visualizer")).minus("-runTests")
-                /* To maintain backward compatibility, we are checking whether 'Channels' folder is present udner 'Tests' folder or not and then modifying the subject of mail accordingly */
+                /* To maintain backward compatibility, we are checking whether 'Channels' folder is present under 'Tests' folder or not and then modifying the subject of mail accordingly */
                 if (script.env.JOB_NAME.contains("Tests/Channels/")) {
                     modifiedBuildTag = modifiedBuildTag.minus("Tests-Channels-run")
                 } else {
@@ -315,7 +315,7 @@ class NotificationsHelper implements Serializable {
                 modifiedBuildTag = "${script.env.PROJECT_NAME}-Build Service"
                 break
             case 'fabricBuild':
-                modifiedBuildTag = "${script.env.PROJECT_NAME}-Fabric Build"
+                modifiedBuildTag = "${script.env.PROJECT_NAME}-Fabric Build-${script.env.BUILD_NUMBER}"
                 break
             case 'fabric':
                 break
