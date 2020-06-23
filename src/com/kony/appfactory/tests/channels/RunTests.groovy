@@ -7,6 +7,7 @@ import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
+import groovy.json.JsonSlurper
 import com.kony.appfactory.enums.BuildType
 
 class RunTests implements Serializable {
@@ -40,7 +41,8 @@ class RunTests implements Serializable {
     protected nodeLabel
     protected mustHaveArtifacts = []
     protected String channelType
-    protected formFactors = []
+    protected devicePoolConfigFileContent
+    protected boolean isPoolWithDeviceFarmFilters
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
@@ -161,6 +163,7 @@ class RunTests implements Serializable {
         String mavenPOM = resourceLocation + '/pom.xml'
         String testNGXML = resourceLocation + '/TestNG.xml'
         String customReporter = [projectFullPath, 'testresources', 'Jasmine', 'Common', 'customReporter.js'].join(separator)
+        def formFactors = []
 
         script.dir(projectFullPath) {
 
@@ -172,6 +175,19 @@ class RunTests implements Serializable {
             if (channelType.equalsIgnoreCase("DesktopWeb")) {
                 copyTestPlanFile('Desktop')
             } else {
+                def deviceFarm = new AwsDeviceFarmHelper(script)
+                def nativeDevices
+                if (isPoolWithDeviceFarmFilters)
+                    nativeDevices = deviceFarm.getDeviceFormFactors(devicePoolConfigFileContent)
+                else
+                    nativeDevices = deviceFarm.getDevicesInPool(devicePoolName)
+
+                if (nativeDevices.findResult { it.formFactor }.contains('PHONE') || nativeDevices.findResult { it.formFactor }.contains('MOBILE')) {
+                    formFactors.add('Mobile')
+                }
+                if (nativeDevices.findResult { it.formFactor }.contains('TABLET')) {
+                    formFactors.add('Tablet')
+                }
                 formFactors.each { formFactor -> copyTestPlanFile(formFactor) }
             }
 
@@ -223,7 +239,7 @@ class RunTests implements Serializable {
                 script.writeFile file: "InvokeJasmineTests.java", text: invokeJasmineTestsSrc
             }
 
-            // In case Native(DeviceFarm) we need to create the assembly xml to assemble the required jars, classes, resources, etc.            
+            // In case Native(DeviceFarm) we need to create the assembly xml to assemble the required jars, classes, resources, etc.
             if(channelType.equalsIgnoreCase("Native")) {
                 String mvnAssemblyPath = 'src/main/assembly'
                 script.dir(mvnAssemblyPath) {
@@ -275,13 +291,13 @@ class RunTests implements Serializable {
             script.shellCustom("set +x;mkdir ${targetFolder}/JasmineTests ", true)
             script.shellCustom("set +x;cp ${jasminePkgFolder}/${formFactor}/automationScripts.zip ${targetFolder}/JasmineTests/ ", true)
             script.shellCustom("set +x;zip -r AndroidJasmineScripts.zip JasmineTests", true)
-            
+
             // iOS Packaging
             script.shellCustom("set +x;mkdir ${targetFolder}/AutomationScripts ", true)
             script.unzip zipFile: "${jasminePkgFolder}/${formFactor}/automationScripts.zip", dir: "${targetFolder}/AutomationScripts/"
             script.shellCustom("set +x;zip -r iOSJasmineScripts.zip AutomationScripts", true)
         }
-        
+
     }
 
     /**
@@ -300,16 +316,7 @@ class RunTests implements Serializable {
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
         jasminePkgFolder = [projectFullPath, 'JasmineScriptsOutput'].join(separator)
-        if(!channelType.equalsIgnoreCase("DesktopWeb")) {
-            def deviceFarm = new AwsDeviceFarmHelper(script)
-            def nativeDevices = deviceFarm.getDevicesInPool(devicePoolName)
-            if (nativeDevices.findResult { it.formFactor }.contains('PHONE')) {
-                formFactors.add('Mobile')
-            }
-            if (nativeDevices.findResult { it.formFactor }.contains('TABLET')) {
-                formFactors.add('Tablet')
-            }
-        }
+        isPoolWithDeviceFarmFilters = checkDevicePoolConfigFileContent(devicePoolName)
         try {
             closure()
         } catch (AppFactoryException e) {
@@ -322,6 +329,31 @@ class RunTests implements Serializable {
             script.currentBuild.result = 'FAILURE'
             /* Set runTests flag to false so that tests will not get triggered on Device Farm when build is failed */
             runTests = false
+        }
+    }
+
+    /**
+     * Check the type of devicePool(Old/New) based on the content of devicePoolConfigFile, is pool created with statics devices or devicefarm filters.
+     *
+     * @param configId pool name string.
+     */
+    protected final boolean checkDevicePoolConfigFileContent(configId) {
+        script.configFileProvider([script.configFile(fileId: "$configId", variable: 'DEVICES')]) {
+            devicePoolConfigFileContent = script.shellCustom('cat $DEVICES', true, [returnStdout: true]).trim()
+            try {
+                def jsonSlurper = new JsonSlurper()
+                jsonSlurper.parseText((String) devicePoolConfigFileContent)
+                return true
+            } catch (Exception e) {
+                /*For the older device farm the config file is constructed with 5 properties (Formfactor * Platform * Vendor * Model * OSversion)
+                    * So if any of these properties is missing then throwing an AppFactory exception */
+                for (item in devicePoolConfigFileContent.tokenize(',')) {
+                    def deviceProperties = item.tokenize('*')
+                    if (deviceProperties.size() != 5)
+                        throw new AppFactoryException("Something went wrong with the device pool config file content", 'ERROR')
+                }
+                return false
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
 package com.kony.appfactory.helper
 
-import groovy.json.JsonOutput
+
 import java.net.URLDecoder
+import groovy.json.JsonOutput
+import groovy.json.JsonBuilder
 import java.text.SimpleDateFormat
 import groovy.time.TimeCategory
 import java.math.*;
@@ -248,8 +250,13 @@ class AwsDeviceFarmHelper implements Serializable {
             String generateSkeletonScriptResult = script.shellCustom(
                     generateSkeletonScript, true, [returnStdout: true]
             ).trim()
+
             /* Generate a template(Skeleton) for device pool creation request */
             def devicePool = script.readJSON text: generateSkeletonScriptResult
+
+            /* Removing the maxDevices key which is got appended by the cli */
+            if(devicePool.containsKey("maxDevices"))
+                devicePool.remove("maxDevices")
 
             for (item in deviceArns) {
                 /* If we have a list for devices for any of the form factors */
@@ -346,42 +353,71 @@ class AwsDeviceFarmHelper implements Serializable {
      * Schedule run with provided application and test binaries.
      *
      * @param projectArn project ARN.
-     * @param devicePoolArn device pool ARN.
+     * @param devicePoolArnOrSelectionConfig device pool ARN/SelectionConfig.
      * @param runType Device Farm run type.
      * @param uploadArtifactArn application binaries upload ARN.
      * @param testPackageArn test binaries upload ARN.
      * @param testSpecArn test spec upload ARN (if custom test environment).
+     * @param isPoolWithDeviceFarmFilters flag
      * @return scheduled run ARN.
      */
     protected final scheduleRun(
-            String projectArn, String devicePoolArn, String runType, String uploadArtifactArn, String testPackageArn, String artifactName, String testSpecArn = null, String extraDataPkgArn = null
+            String projectArn, String devicePoolArnOrSelectionConfig, String runType, String uploadArtifactArn, String testPackageArn, String artifactName, String testSpecArn = null, String extraDataPkgArn = null, boolean isPoolWithDeviceFarmFilters
     ) {
         def runArn
-        String getDevicePoolScript = "set +x;aws devicefarm get-device-pool --arn ${devicePoolArn}"
-        String getDevicePoolOutput = script.shellCustom(getDevicePoolScript, true, [returnStdout: true]).trim()
-        def getDevicePoolJSON = script.readJSON text: getDevicePoolOutput
-        def list = getDevicePoolJSON.devicePool.rules[0].value.tokenize(",")
-        def isAndroidDevicePresentInPool = false, isiOSDevicePresentInPool = false
-        for(def i=0; i <list.size(); i++){
-            def deviceArn = list[i].minus('[').minus(']')
-            String getDeviceScript = "set +x;aws devicefarm get-device --arn ${deviceArn}"
-            String getDeviceOutput = script.shellCustom(getDeviceScript, true, [returnStdout: true]).trim()
-            def getDeviceJSON = script.readJSON text: getDeviceOutput
+        String successMessage = "Test run is scheduled successfully on available device "
+        String errorMessage = "Failed to schedule run on any device"
 
-            // The below line is used to make isAndroidDevicePresentInPool to true if pool has android device and vice versa for iOS devices
-            (getDeviceJSON.device.platform.equalsIgnoreCase("Android")) ?(isAndroidDevicePresentInPool=true): (isiOSDevicePresentInPool = true)
+        if (!isPoolWithDeviceFarmFilters) {
+            String getDevicePoolScript = "set +x;aws devicefarm get-device-pool --arn ${devicePoolArnOrSelectionConfig}"
+            String getDevicePoolOutput = script.shellCustom(getDevicePoolScript, true, [returnStdout: true]).trim()
+            def getDevicePoolJSON = script.readJSON text: getDevicePoolOutput
+            def list = getDevicePoolJSON.devicePool.rules[0].value.tokenize(",")
+            def isAndroidDevicePresentInPool = false, isiOSDevicePresentInPool = false
+            for (def i = 0; i < list.size(); i++) {
+                def deviceArn = list[i].minus('[').minus(']')
+                String getDeviceScript = "set +x;aws devicefarm get-device --arn ${deviceArn}"
+                String getDeviceOutput = script.shellCustom(getDeviceScript, true, [returnStdout: true]).trim()
+                def getDeviceJSON = script.readJSON text: getDeviceOutput
 
-            def deviceKey = getDeviceJSON.device.name + ' ' + getDeviceJSON.device.os
-            def deviceDisplayName = getDeviceJSON.device.name + ' OS ' + getDeviceJSON.device.os
-            String successMessage = "Test run is scheduled successfully on \'" + deviceDisplayName + "\' device."
-            String errorMessage = "Failed to schedule run on \'" + deviceDisplayName + "\' device."
+                // The below line is used to make isAndroidDevicePresentInPool to true if pool has android device and vice versa for iOS devices
+                (getDeviceJSON.device.platform.equalsIgnoreCase("Android")) ? (isAndroidDevicePresentInPool = true) : (isiOSDevicePresentInPool = true)
 
+                def deviceKey = getDeviceJSON.device.name + ' ' + getDeviceJSON.device.os
+                def deviceDisplayName = getDeviceJSON.device.name + ' OS ' + getDeviceJSON.device.os
+                successMessage = "Test run is scheduled successfully on \'" + deviceDisplayName + "\' device."
+                errorMessage = "Failed to schedule run on \'" + deviceDisplayName + "\' device."
+
+                script.catchErrorCustom(errorMessage, successMessage) {
+                    String runScript = [
+                            'set +x;aws devicefarm schedule-run',
+                            "--project-arn ${projectArn}",
+                            "--app-arn ${uploadArtifactArn}",
+                            "--device-pool-arn ${devicePoolArnOrSelectionConfig}",
+                            "--test type=${runType},testPackageArn=${testPackageArn}" + (testSpecArn ? ",testSpecArn=${testSpecArn}" : ""),
+                            (extraDataPkgArn ? "--configuration extraDataPackageArn=${extraDataPkgArn}" : ""),
+                            "--query run.arn"
+                    ].join(' ')
+
+                    /* Schedule the run */
+                    runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim() ?: null
+                }
+            }
+            //Validate whether pool has android device if artifact is given for Android, else throw error and vice versa for iOS as well
+            if (artifactName.toLowerCase().contains('android') && !isAndroidDevicePresentInPool) {
+                throw new AppFactoryException("Artifacts provided for Android platform, but no android devices were found in the device pool", 'ERROR')
+            } else if (artifactName.toLowerCase().contains('ios') && !isiOSDevicePresentInPool) {
+                throw new AppFactoryException("Artifacts provided for iOS platform, but no iOS devices were found in the device pool", 'ERROR')
+            }
+        } else {
+            def devicePoolArnOrSelectionConfigJson = new groovy.json.JsonSlurperClassic().parseText(devicePoolArnOrSelectionConfig)
+            devicePoolArnOrSelectionConfig = new JsonBuilder(devicePoolArnOrSelectionConfigJson).toPrettyString()
             script.catchErrorCustom(errorMessage, successMessage) {
                 String runScript = [
                         'set +x;aws devicefarm schedule-run',
                         "--project-arn ${projectArn}",
                         "--app-arn ${uploadArtifactArn}",
-                        "--device-pool-arn ${devicePoolArn}",
+                        "--device-selection-configuration \'${devicePoolArnOrSelectionConfig}\'",
                         "--test type=${runType},testPackageArn=${testPackageArn}" + (testSpecArn ? ",testSpecArn=${testSpecArn}" : ""),
                         (extraDataPkgArn ? "--configuration extraDataPackageArn=${extraDataPkgArn}" : ""),
                         "--query run.arn"
@@ -391,12 +427,7 @@ class AwsDeviceFarmHelper implements Serializable {
                 runArn = script.shellCustom(runScript, true, [returnStdout: true]).trim() ?: null
             }
         }
-        //Validate whether pool has android device if artifact is given for Android, else throw error and vice versa for iOS as well    
-        if(artifactName.toLowerCase().contains('android') && !isAndroidDevicePresentInPool){
-            throw new AppFactoryException("Artifacts provided for Android platform, but no android devices were found in the device pool", 'ERROR')
-        }else if(artifactName.toLowerCase().contains('ios') && !isiOSDevicePresentInPool){
-            throw new AppFactoryException("Artifacts provided for iOS platform, but no iOS devices were found in the device pool", 'ERROR')
-        }
+
         runArn
     }
 
@@ -447,7 +478,7 @@ class AwsDeviceFarmHelper implements Serializable {
                         DetailedNativeResults result = new DetailedNativeResults()
                         listJobsArrayList = listJobsJSON.jobs[i]
                         String deviceKey = listJobsArrayList.name + " " + listJobsArrayList.device.os
-                        
+
                         //If the run is already completed on particular device with specific ARN, then continue.
                         if(completedRunDevicesList.contains(listJobsArrayList.arn))
                             continue
@@ -775,5 +806,26 @@ class AwsDeviceFarmHelper implements Serializable {
         if(timeDifference > defaultTestRunTimeLimit) {
             script.echoCustom("Sorry! Device Farm public fleet default time limit of " +(defaultTestRunTimeLimit/60000)+ " minutes exceeded. All remaining tests on device " + deviceKey + " will be skipped.", 'WARN')
         }
+    }
+
+    @NonCPS
+    protected final parseJsonStringToObject(jsonString) {
+        new groovy.json.JsonSlurperClassic().parseText(jsonString)
+    }
+
+    /**
+     * Will return the list of formFactors which are fetched from ConfigFileContentJson Keys
+     *
+     * @param devicePoolConfigFileContent
+     */
+    protected final getDeviceFormFactors(devicePoolConfigFileContent){
+        def formFactorsList = []
+        def devicePoolConfigFileContentJson = parseJsonStringToObject(devicePoolConfigFileContent)
+        devicePoolConfigFileContentJson.each { key, value ->
+            def formFactor = key.tokenize('_')[1]
+            formFactorsList.add(["formFactor":formFactor])
+        }
+
+        formFactorsList
     }
 }

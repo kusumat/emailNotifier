@@ -13,6 +13,8 @@ import com.kony.appfactory.dto.tests.DetailedNativeResults
 
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import groovy.json.JsonBuilder
+import groovy.json.JsonSlurperClassic
 import groovyx.net.http.*
 import groovy.util.slurpersupport.*
 import java.util.*
@@ -120,17 +122,24 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             deviceFarmUploadArns.add(uploadArn)
 
             /* Depending on artifact name we need to chose appropriate pool for the run */
-            def devicePoolArn = artifactName.toLowerCase().contains('mobile') ?
-                    (devicePoolArns.phones) ?: script.echoCustom("Artifacts provided " +
-                            "for phones, but no phones were found in the device pool", 'ERROR') :
-                    (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
-                            "tablets, but no tablets were found in the device pool", 'ERROR'))
+            def devicePoolArnOrSelectionConfig
+            if (isPoolWithDeviceFarmFilters) {
+                String formFactor = (artifactName.toLowerCase().contains('mobile')) ? "MOBILE" : "TABLET"
+                String channel = (artifactExt.toLowerCase().contains('ipa')) ? "IOS" : "ANDROID"
+                devicePoolArnOrSelectionConfig = getDevicePoolSelectionConfig(channel, formFactor)
+            } else {
+                devicePoolArnOrSelectionConfig = artifactName.toLowerCase().contains('mobile') ?
+                        (devicePoolArns.phones) ?: script.echoCustom("Artifacts provided " +
+                                "for phones, but no phones were found in the device pool", 'ERROR') :
+                        (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
+                                "tablets, but no tablets were found in the device pool", 'ERROR'))
+            }
 
             /* If we have application binaries and test binaries, schedule the custom run */
             if (uploadArn && deviceFarmTestUploadArtifactArn) {
                 devicewaitstart = new Date()
                 /* Once all parameters gotten, schedule the Device Farm run */
-                def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArn, 'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn, extraDataPkgArn)
+                def runArn = deviceFarm.scheduleRun(deviceFarmProjectArn, devicePoolArnOrSelectionConfig, 'APPIUM_JAVA_TESTNG', uploadArn, deviceFarmTestUploadArtifactArn, artifactName, deviceFarmTestSpecUploadArtifactArn, extraDataPkgArn, isPoolWithDeviceFarmFilters)
                 pretestdurstart = new Date()
                 deviceFarmTestRunArns["$artifactName"] = runArn
                 /* Otherwise, fail the stage, because run couldn't be scheduled without one of the binaries */
@@ -744,10 +753,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                     }
 
                                     script.stage('Create Device Pools') {
-                                        devicePoolArns = deviceFarm.createDevicePools(
-                                                deviceFarmProjectArn, devicePoolName)
-                                        if (!devicePoolArns) {
-                                            throw new AppFactoryException("Device pool ARN list is empty!", 'ERROR')
+                                        if(!isPoolWithDeviceFarmFilters) {
+                                            devicePoolArns = deviceFarm.createDevicePools(
+                                                    deviceFarmProjectArn, devicePoolName)
+                                            if (!devicePoolArns) {
+                                                throw new AppFactoryException("Device pool ARN list is empty!", 'ERROR')
+                                            }
                                         }
                                     }
 
@@ -1003,6 +1014,28 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 return projectArtifacts.iOS_Tablet
             case 'ANDROID_TABLET' :
                 return projectArtifacts.Android_Tablet
+        }
+    }
+
+
+    /*
+    * Fetches the required SelectionConfig form the devicePoolConfig Json for the given channel and platform
+    *
+    * @param Channel the channel either phone or tablet
+    * @param platform the platform either ios or android
+    *
+    */
+    protected final getDevicePoolSelectionConfig(channel, formFactor) {
+        String selectionConfigKey = channel + '_' + formFactor + '_' + 'NATIVE'
+        def devicePoolConfigFileContentJson = deviceFarm.parseJsonStringToObject(devicePoolConfigFileContent)
+        def selectionConfig = devicePoolConfigFileContentJson[selectionConfigKey]
+        if (selectionConfig) {
+            script.echoCustom("Selecting a set of devices with the following device filter from ${devicePoolName} pool - ${selectionConfig}")
+            return new JsonBuilder(selectionConfig).toPrettyString()
+        } else {
+            String currentFormFactor = (formFactor.equals("MOBILE")) ? "phones" : "tablets"
+            script.echoCustom("Artifacts provided for ${currentFormFactor}, but no ${currentFormFactor} were found in the device pool", 'ERROR', false)
+            return null
         }
     }
 }
