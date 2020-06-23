@@ -1031,10 +1031,10 @@ class EmailTemplateHelper implements Serializable {
                             EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
 
-                            if (binding.gitURL) {
+                            if (binding.exportRepositoryUrl) {
                                 EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Repository URL:', binding.gitURL, binding.exportRepositoryUrl)
                             }
-                            if (binding.gitBranch) {
+                            if (binding.exportRepositoryBranch) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Repository Branch:', binding.exportRepositoryBranch)
                             }
                             if (binding.commitAuthor) {
