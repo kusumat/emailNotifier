@@ -274,19 +274,21 @@ class Facade implements Serializable {
      * @return true if the scan is enabled, false if the scan is not enabled
      */
     private final getScanDetails(scanType) {
-        boolean enable = false
+        boolean isScanEnabled = false
         boolean isBuildNeeded = true
         ProjectSettingsDTO projectSettings = BuildHelper.getAppFactoryProjectSettings(projectName)
         Scans scans = projectSettings?.getScans()
-        switch(scanType) {
-            case 'SonarQube':
-                enable = scans?.getSonar().getRunSonar()
-                isBuildNeeded = scans?.getSonar().getFailBuildOnQualityGateStatus()
-                break
-            default:
-                break
+        if(scans) {
+            switch (scanType) {
+                case 'SonarQube':
+                    isScanEnabled = scans.getSonar() ? scans.getSonar().getRunSonar() : false
+                    isBuildNeeded = scans.getSonar() ? scans.getSonar().getFailBuildOnQualityGateStatus() : true
+                    break
+                default:
+                    break
+            }
         }
-        ["isScanEnabled" : enable, "isBuildNeeded" : isBuildNeeded]
+        ["isScanEnabled" : isScanEnabled, "isBuildNeeded" : isBuildNeeded]
     }
     
     /**

@@ -65,21 +65,24 @@ class CodeScanners implements Serializable {
     @NonCPS
     private final getSonarOptions() {
         ProjectSettingsDTO projectSettings = BuildHelper.getAppFactoryProjectSettings(projectName)
-        Sonar sonarSettings = projectSettings.getScans().getSonar()
-        String serverURL = (sonarSettings.getSonarServerURL()) ? "-Dsonar.host.url=" + sonarSettings.getSonarServerURL() : ""
-        String prjID = (sonarSettings.getSonarVizPrjID()) ? "-Dsonar.projectKey=" + sonarSettings.getSonarVizPrjID() : ""
-        String prjBaseDir = (sonarSettings.getSonarPrjBaseDir()) ? "-Dsonar.projectBaseDir=" + sonarSettings.getSonarPrjBaseDir() : ""
-        String prjSources = (sonarSettings.getSonarPrjSrc()) ? "-Dsonar.sources=" + sonarSettings.getSonarPrjSrc() : ""
-        String exclusions = (sonarSettings.getSonarExclusions()) ? "-Dsonar.exclusions=" + sonarSettings.getSonarExclusions() : ""
-        String otherProps = (sonarSettings.getScanProps()) ? sonarSettings.getScanProps() : ""
-        String debugFlag = (sonarSettings.getIsDebugEnabled()) ? "-X" : ""
-        
-        exclusions = exclusions.replaceAll(', ', ',')
-        exclusions = exclusions.replaceAll(' ,', ',')
-        
-        def commandLineOpts = [prjID, serverURL, exclusions, prjBaseDir, otherProps, debugFlag].join(" ")
-        
-        [version : sonarSettings.getSonarVersion(), cmdOptions : commandLineOpts, sonarAuth : sonarSettings.getSonarToken()]
+        if(projectSettings && projectSettings.getScans() && projectSettings.getScans().getSonar()) {
+            Sonar sonarSettings = projectSettings.getScans().getSonar()
+            String serverURL = (sonarSettings.getSonarServerURL()) ? "-Dsonar.host.url=" + sonarSettings.getSonarServerURL() : ""
+            String prjID = (sonarSettings.getSonarVizPrjID()) ? "-Dsonar.projectKey=" + sonarSettings.getSonarVizPrjID() : ""
+            String prjBaseDir = (sonarSettings.getSonarPrjBaseDir()) ? "-Dsonar.projectBaseDir=" + sonarSettings.getSonarPrjBaseDir() : ""
+            String prjSources = (sonarSettings.getSonarPrjSrc()) ? "-Dsonar.sources=" + sonarSettings.getSonarPrjSrc() : ""
+            String exclusions = (sonarSettings.getSonarExclusions()) ? "-Dsonar.exclusions=" + sonarSettings.getSonarExclusions() : ""
+            String otherProps = (sonarSettings.getScanProps()) ? sonarSettings.getScanProps() : ""
+            String debugFlag = (sonarSettings.getIsDebugEnabled()) ? "-X" : ""
+
+            exclusions = exclusions.replaceAll(', ', ',')
+            exclusions = exclusions.replaceAll(' ,', ',')
+
+            def commandLineOpts = [prjID, serverURL, exclusions, prjBaseDir, otherProps, debugFlag].join(" ")
+
+            return [version: sonarSettings.getSonarVersion(), cmdOptions: commandLineOpts, sonarAuth: sonarSettings.getSonarToken()]
+        }
+        return null
     }
 
     /**
@@ -137,41 +140,45 @@ class CodeScanners implements Serializable {
                             def nodeVersion = libraryProperties.'sonarqube.nodejs.version'
                             def sonarOpts = getSonarOptions()
                             def authToken = ""
-                            if(sonarOpts.sonarAuth != null) {
-                                script.withCredentials([
-                                    script.sonarTokenCredential(
-                                        credentialsId: "${sonarOpts.sonarAuth}",
-                                        sonarTokenVariable: 'SONARTOKEN'
-                                    )
-                                ]) {
-                                    sonarToken = script.env.SONARTOKEN
-                                    authToken = "-Dsonar.login=" + sonarToken
+                            if(sonarOpts) {
+                                if (sonarOpts.sonarAuth != null) {
+                                    script.withCredentials([
+                                            script.sonarTokenCredential(
+                                                    credentialsId: "${sonarOpts.sonarAuth}",
+                                                    sonarTokenVariable: 'SONARTOKEN'
+                                            )
+                                    ]) {
+                                        sonarToken = script.env.SONARTOKEN
+                                        authToken = "-Dsonar.login=" + sonarToken
+                                    }
+                                } else {
+                                    // We need this to fetch the status of the scan from the Sonar Qube server.
+                                    sonarToken = fetchTokenFromProperties(sonarOpts.cmdOptions)
                                 }
-                            } else {
-                                // We need this to fetch the status of the scan from the Sonar Qube server.
-                                sonarToken = fetchTokenFromProperties(sonarOpts.cmdOptions)
-                            }
-                            
-                            try {
-                                scannerHome = script.tool sonarOpts.version
-                            } catch (Exception e) {
-                                throw new AppFactoryException("Selected Sonar Scanner is not configured in AppFactory.", 'ERROR')
-                            }
-                            String sonarLog = "sonarScanner.log"
-                            script.dir(projectFullPath) {
-                                script.nodejs(nodeVersion) {
-                                    script.echoCustom("Initiating the Sonar scan...")
-                                    script.shellCustom("set +xe; ${scannerHome}/bin/sonar-scanner ${sonarOpts.cmdOptions} ${authToken} >> ${sonarLog}", true)
-                                    if(script.fileExists(sonarLog)) {
-                                        script.shellCustom("set +xe; cat ${sonarLog}", true)
+
+                                try {
+                                    scannerHome = script.tool sonarOpts.version
+                                } catch (Exception e) {
+                                    throw new AppFactoryException("Selected Sonar Scanner is not configured in AppFactory.", 'ERROR')
+                                }
+                                String sonarLog = "sonarScanner.log"
+                                script.dir(projectFullPath) {
+                                    script.nodejs(nodeVersion) {
+                                        script.echoCustom("Initiating the Sonar scan...")
+                                        script.shellCustom("set +xe; ${scannerHome}/bin/sonar-scanner ${sonarOpts.cmdOptions} ${authToken} >> ${sonarLog}", true)
+                                        if (script.fileExists(sonarLog)) {
+                                            script.shellCustom("set +xe; cat ${sonarLog}", true)
+                                        }
+                                    }
+                                    String status = getScanResultsStatus(sonarLog)
+                                    if (!status.equalsIgnoreCase("OK")) {
+                                        script.currentBuild.result = 'FAILURE'
                                     }
                                 }
-                                String status = getScanResultsStatus(sonarLog)
-                                if(! status.equalsIgnoreCase("OK")) {
-                                    script.currentBuild.result = 'FAILURE'
-                                }
                             }
-                            
+                            else
+                                throw new AppFactoryException("Sonar Scan is not configured in AppFactory project settings.", 'ERROR')
+
                         }
                     }
                 }

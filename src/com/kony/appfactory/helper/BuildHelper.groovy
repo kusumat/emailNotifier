@@ -1285,7 +1285,10 @@ class BuildHelper implements Serializable {
     private static final ProjectSettingsDTO getAppFactoryProjectSettings(projectName) {
         AbstractFolder<?> folderObj = Jenkins.get().getItemByFullName(projectName, AbstractFolder.class);
         ProjectSettingsProperty projectSettingsProperty = folderObj.getProperties().get(ProjectSettingsProperty.class);
-        return projectSettingsProperty.getProjectSettings();
+        if(projectSettingsProperty)
+            return projectSettingsProperty.getProjectSettings();
+        else
+            return null
     }
 
     /**
