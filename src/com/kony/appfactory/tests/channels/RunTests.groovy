@@ -6,7 +6,6 @@ import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
-import com.kony.appfactory.helper.AwsDeviceFarmHelper
 import groovy.json.JsonSlurper
 import com.kony.appfactory.enums.BuildType
 
@@ -41,8 +40,6 @@ class RunTests implements Serializable {
     protected nodeLabel
     protected mustHaveArtifacts = []
     protected String channelType
-    protected devicePoolConfigFileContent
-    protected boolean isPoolWithDeviceFarmFilters
     /*
         Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
@@ -59,7 +56,6 @@ class RunTests implements Serializable {
     /* CustomHookHelper object */
     protected hookHelper
     protected  String jasmineTestPlan
-    protected devicePoolName = script.params.AVAILABLE_TEST_POOLS
     protected runTestsStats = [:]
     protected channelTestsStats = [:]
 
@@ -175,7 +171,6 @@ class RunTests implements Serializable {
             if (channelType.equalsIgnoreCase("DesktopWeb")) {
                 copyTestPlanFile('Desktop')
             } else {
-                def deviceFarm = new AwsDeviceFarmHelper(script)
                 def nativeDevices
                 if (isPoolWithDeviceFarmFilters)
                     nativeDevices = deviceFarm.getDeviceFormFactors(devicePoolConfigFileContent)
@@ -316,7 +311,6 @@ class RunTests implements Serializable {
                 workspace, checkoutRelativeTargetFolder, projectRoot?.join(separator)
         ].findAll().join(separator)
         jasminePkgFolder = [projectFullPath, 'JasmineScriptsOutput'].join(separator)
-        isPoolWithDeviceFarmFilters = checkDevicePoolConfigFileContent(devicePoolName)
         try {
             closure()
         } catch (AppFactoryException e) {
@@ -329,31 +323,6 @@ class RunTests implements Serializable {
             script.currentBuild.result = 'FAILURE'
             /* Set runTests flag to false so that tests will not get triggered on Device Farm when build is failed */
             runTests = false
-        }
-    }
-
-    /**
-     * Check the type of devicePool(Old/New) based on the content of devicePoolConfigFile, is pool created with statics devices or devicefarm filters.
-     *
-     * @param configId pool name string.
-     */
-    protected final boolean checkDevicePoolConfigFileContent(configId) {
-        script.configFileProvider([script.configFile(fileId: "$configId", variable: 'DEVICES')]) {
-            devicePoolConfigFileContent = script.shellCustom('cat $DEVICES', true, [returnStdout: true]).trim()
-            try {
-                def jsonSlurper = new JsonSlurper()
-                jsonSlurper.parseText((String) devicePoolConfigFileContent)
-                return true
-            } catch (Exception e) {
-                /*For the older device farm the config file is constructed with 5 properties (Formfactor * Platform * Vendor * Model * OSversion)
-                    * So if any of these properties is missing then throwing an AppFactory exception */
-                for (item in devicePoolConfigFileContent.tokenize(',')) {
-                    def deviceProperties = item.tokenize('*')
-                    if (deviceProperties.size() != 5)
-                        throw new AppFactoryException("Something went wrong with the device pool config file content", 'ERROR')
-                }
-                return false
-            }
         }
     }
 }

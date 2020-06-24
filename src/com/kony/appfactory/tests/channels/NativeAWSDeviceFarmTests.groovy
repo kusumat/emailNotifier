@@ -37,7 +37,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     /* Device Farm related variables */
     private deviceFarm, deviceFarmProjectArn, devicePoolArns, deviceFarmTestUploadArtifactArn, deviceFarmTestSpecUploadArtifactArn
     protected deviceFarmUploadArns = [], deviceFarmTestRunArns = [:], deviceFarmTestRunResults = [], summary = [:]
-    
+    protected isPoolWithDeviceFarmFilters
+    protected devicePoolConfigFileContent
     /* Temp folder for Device Farm objects (test run results) */
     private deviceFarmWorkingFolder
 
@@ -673,6 +674,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                             and build environment completely new.
                             */
                             script.cleanWs deleteDirs: true
+                            isPoolWithDeviceFarmFilters = checkDevicePoolConfigFileContent(devicePoolName)
                             /* Set the device farm working directory */
                             deviceFarmWorkingFolder = [projectFullPath, libraryProperties.'test.automation.device.farm.working.folder.name'].join(separator)
                             /* Build test automation scripts if URL with test binaries was not provided */
@@ -1036,6 +1038,31 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             String currentFormFactor = (formFactor.equals("MOBILE")) ? "phones" : "tablets"
             script.echoCustom("Artifacts provided for ${currentFormFactor}, but no ${currentFormFactor} were found in the device pool", 'ERROR', false)
             return null
+        }
+    }
+
+    /**
+     * Check the type of devicePool(Old/New) based on the content of devicePoolConfigFile, is pool created with statics devices or devicefarm filters.
+     *
+     * @param configId pool name string.
+     */
+    protected final boolean checkDevicePoolConfigFileContent(configId) {
+        script.configFileProvider([script.configFile(fileId: "$configId", variable: 'DEVICES')]) {
+            devicePoolConfigFileContent = script.shellCustom('cat $DEVICES', true, [returnStdout: true]).trim()
+            try {
+                def jsonSlurper = new JsonSlurper()
+                jsonSlurper.parseText((String) devicePoolConfigFileContent)
+                return true
+            } catch (Exception e) {
+                /*For the older device farm the config file is constructed with 5 properties (Formfactor * Platform * Vendor * Model * OSversion)
+                    * So if any of these properties is missing then throwing an AppFactory exception */
+                for (item in devicePoolConfigFileContent.tokenize(',')) {
+                    def deviceProperties = item.tokenize('*')
+                    if (deviceProperties.size() != 5)
+                        throw new AppFactoryException("Something went wrong with the device pool config file content", 'ERROR')
+                }
+                return false
+            }
         }
     }
 }
