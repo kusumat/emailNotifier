@@ -204,7 +204,7 @@ class BuildHelper implements Serializable {
     }
 
     private static getScmDetails(script, currentBuildBranch, scmVars, scmUrl) {
-        def sourceCodeBranchParamName = getCurrentParamName(script, 'SCM_BRANCH', 'PROJECT_SOURCE_CODE_BRANCH')
+        def sourceCodeBranchParamName = getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
         List<String> logsList = new ArrayList<String>();
         if (script.currentBuild.getPreviousBuild() == null)
             logsList.add("Previous Build is unavailable, to fetch the diff.")

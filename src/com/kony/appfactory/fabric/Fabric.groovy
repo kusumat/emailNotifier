@@ -37,8 +37,8 @@ class Fabric implements Serializable {
     private final String exportRepositoryBranch
     private final String exportRepositoryCredentialsId
     private String cloudAccountId = script.params.CLOUD_ACCOUNT_ID
-    private final fabricCredentialsParamName = BuildHelper.getCurrentParamName(this.script, 'FABRIC_CREDENTIALS', BuildHelper.getCurrentParamName(
-            this.script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID'))
+    private final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'FABRIC_CREDENTIALS', BuildHelper.getCurrentParamName(
+            script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID'))
 
     private final String fabricCredentialsID = script.params[fabricCredentialsParamName]
     private String fabricAppName = script.params.FABRIC_APP_NAME
