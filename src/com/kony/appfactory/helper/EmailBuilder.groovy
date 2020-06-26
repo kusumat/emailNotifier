@@ -88,7 +88,7 @@ class EmailBuilder {
                             }
                         }
                     } else {
-                        td(colspan: "2") {
+                        td(style: "color:red", colspan: "2") {
                             mkp.yield("Checkout failed")
                         }
                     }
@@ -168,7 +168,7 @@ class EmailBuilder {
                         p(style: "font-size:12px;", logsList[pathIndex])
                 }
             } else {
-                td(colspan: "2") {
+                td(style: "color:red", colspan: "2") {
                     mkp.yield("Checkout failed")
                 }
             }
