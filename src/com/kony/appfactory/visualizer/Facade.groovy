@@ -875,7 +875,7 @@ class Facade implements Serializable {
                         }
 
                         script.params.IS_SOURCE_VISUALIZER ?: prepareScans()
-                        if(!scansList.empty) {
+                        if(!scansList.isEmpty()) {
                             script.parallel(scansList)
                             if(scanResultsMap.containsValue('FAILURE') || 
                                 scanResultsMap.containsValue('UNSTABLE') || 
