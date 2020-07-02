@@ -1030,7 +1030,7 @@ class Facade implements Serializable {
 
                     String s3MustHaveAuthUrl = ''
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                        s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", mustHaveArtifacts)
+                        s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
                     }
 
                     BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl)

@@ -922,16 +922,6 @@ class Channel implements Serializable {
     }
 
     /**
-     * Copies the custom hooks build logs into must haves folder
-     */
-    protected final void copyCustomHooksBuildLogs() {
-        def chLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
-        script.dir(chLogs) {
-            script.shellCustom("find \"${chLogs}\" -name \"*.log\" -exec cp -f {} \"${mustHavePath}\" \\;", isUnixNode)
-        }
-    }
-
-    /**
      * Returns required key/value map by fetching from projectProperties file.
      *
      * @params
@@ -1046,7 +1036,8 @@ class Channel implements Serializable {
              * the build on non-Windows node.
              */
             if (script.params.RUN_CUSTOM_HOOKS && isUnixNode) {
-                copyCustomHooksBuildLogs()
+                def chLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
+                BuildHelper.copyCustomHooksBuildLogs(script, chLogs, mustHavePath, isUnixNode)
             }
             if (mustHaveArtifacts.size() > 0) {
                 mustHaveArtifacts.each {

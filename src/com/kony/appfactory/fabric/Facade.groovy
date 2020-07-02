@@ -471,7 +471,7 @@ class Facade implements Serializable{
                         if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             def fabricJobMustHavesFolderName = "fabricMustHaves"
                             def fabricJobBuildLogFile = "fabricBuildlog.log"
-                            s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, mustHaveArtifacts)
+                            s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
                         }
                         
                     } catch (Exception Ex) {

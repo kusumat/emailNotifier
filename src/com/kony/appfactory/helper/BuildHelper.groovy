@@ -1321,10 +1321,11 @@ class BuildHelper implements Serializable {
      * @param buildType
      * @param facadeJobMustHavesFolderName
      * @param facadeJobBuildLogFile
+     * @param libraryProperties
      * @param mustHaveArtifacts
      * @return s3MustHaveAuthUrl fabric authenticated auth url to download musthaves
      */
-    protected static final String prepareMustHaves(script, buildType, facadeJobMustHavesFolderName, facadeJobBuildLogFile, mustHaveArtifacts) {
+    protected static final String prepareMustHaves(script, buildType, facadeJobMustHavesFolderName, facadeJobBuildLogFile, libraryProperties, mustHaveArtifacts) {
         String s3MustHaveAuthUrl = ''
         String separator = script.isUnix() ? '/' : '\\'
         String mustHaveFolderPath = [script.env.WORKSPACE, facadeJobMustHavesFolderName].join(separator)
@@ -1340,6 +1341,12 @@ class BuildHelper implements Serializable {
             if(buildType.toString().equals("Visualizer")) {
                 AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
             } else {
+                /* We copy the Custom Hooks logs for Fabric only, because for Viz, they would have 
+                 * been copied by the Channel builds and are part of Channel musthave logs. */
+                if (script.params.RUN_CUSTOM_HOOKS && script.isUnix()) {
+                    def chLogs = [script.env.WORKSPACE, libraryProperties.'fabric.project.workspace.folder.name', script.env.PROJECT_NAME, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
+                    copyCustomHooksBuildLogs(script, chLogs, mustHaveFolderPath, script.isUnix())
+                }
                 mustHaveArtifacts?.each { mustHaveArtifact ->
                     def artifactToBeAddedToMustHave = [mustHaveArtifact.path, mustHaveArtifact.name].join(separator)
                     script.shellCustom("cp \"${artifactToBeAddedToMustHave}\" \"${mustHaveFolderPath}\"", true, [returnStdout:true])
@@ -1359,6 +1366,15 @@ class BuildHelper implements Serializable {
             }
         }
         s3MustHaveAuthUrl
+    }
+    
+    /**
+     * Copies the custom hooks build logs into must haves folder
+     */
+    protected static final void copyCustomHooksBuildLogs(script, chLogs, mustHavePath, isUnixNode) {
+        script.dir(chLogs) {
+            script.shellCustom("set +xe;find \"${chLogs}\" -name \"*.log\" -exec cp -f {} \"${mustHavePath}\" \\;", isUnixNode)
+        }
     }
     
     /**
