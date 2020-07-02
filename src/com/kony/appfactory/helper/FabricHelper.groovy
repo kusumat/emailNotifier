@@ -288,4 +288,47 @@ class FabricHelper implements Serializable {
             return false
         return true
     }
+
+    /**
+     * Validating the maven goals and options command by allowing (;|&&) operands in -Darguments Or
+     * If these operands are followed with mvn command again
+     *
+     * @param cmd - maven goals and options command
+     */
+    protected static boolean validateMvnGoalsBuildCommand(cmd) {
+        def tokens = cmd.tokenize(' ')
+        int totalTokens = tokens.size()
+        boolean isValid = true
+        if (cmd.contains(';') || cmd.contains('&&')) {
+            tokens.eachWithIndex { subCommand, curToken ->
+                if (!isValid)
+                    return false
+                def character = [';', '&&'];
+                for (int i = 0; i < character.size(); i++) {
+                    if (subCommand.contains(character[i])) {
+
+                        if (!subCommand.contains('="') && !subCommand.contains("='")) {
+                            if (subCommand.contains(character[i - 1]) || subCommand.count(character[i]) > 1)
+                                isValid = false
+                            else if (subCommand.endsWith(character[i]))
+                                isValid = (curToken == totalTokens - 1) ? ((character[i] == ';') ? true : false) : tokens[curToken + 1].toLowerCase().startsWith('mvn')
+                            else
+                                isValid = subCommand.toLowerCase().endsWith('mvn')
+                        }
+                        else if (subCommand.endsWith(character[i]))
+                            isValid = (curToken == totalTokens - 1) ? ((character[i] == ';') ? true : false) : tokens[curToken + 1].toLowerCase().startsWith('mvn')
+                        else if (subCommand.startsWith(character[i]))
+                            isValid = subCommand.toLowerCase().endsWith('mvn')
+                        else
+                            isValid = subCommand.startsWith('-D')
+
+                        if (!isValid)
+                            break
+                    }
+                }
+            }
+        }
+        return isValid
+    }
+
 }

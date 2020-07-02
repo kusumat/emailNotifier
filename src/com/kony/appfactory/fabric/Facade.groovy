@@ -239,6 +239,9 @@ class Facade implements Serializable{
                             def mvnLocalRepoPath = [workspace, projectWorkspaceFolderName, ".m2"].join(separator)
                             def defaultMavenGoalsAndOptions = "mvn -Dmaven.repo.local=${mvnLocalRepoPath} clean package"
                             mavenBuildCommand = (mvnBuildCmdInput) ? ("mvn -Dmaven.repo.local=${mvnLocalRepoPath} " + mvnBuildCmdInput.trim()) : defaultMavenGoalsAndOptions
+                            def isValidCmd = FabricHelper.validateMvnGoalsBuildCommand(mavenBuildCommand)
+                            if(!isValidCmd)
+                                throw new AppFactoryException("Looks like multiple commands are passed in MVN_GOALS_AND_OPTIONS build option? We allow to run only mvn commands that has goals and options!!", 'ERROR')
                         }
                         
                         script.stage('Build java assets') {
