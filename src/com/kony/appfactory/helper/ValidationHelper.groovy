@@ -184,7 +184,7 @@ class ValidationHelper implements Serializable {
                     parameter_message = it.key + ' : ' + 'You can find this value by logging in to Fabric Cloud. Expecting a nine digit <integer_value>' + '\n' + 'For Example : 100000011 '
                     break
                 case 'FABRIC_APP_VERSION':
-                    parameter_message = it.key + ' : ' + 'Expecting App Version in the same format allowed on Fabric, format like <major>.<minor>' + '\n' + 'Please refer FABRIC_APP_VERSION parameter description for details of Fabric App versioning format.' + '\n' + 'For Example : 1.0'
+                    parameter_message = it.key + ' : ' + 'Expecting App Version in the format allowed on Fabric, like <major>.<minor>' + '\n' + 'where major and minor are numeric, and major is between 1 and 999, and  minor is between 0 and 99.' + '\n' + 'For Example.: 1.0 or 999.99'
                     break
                 default:
                     parameter_message = parameter_message = it.key + ' : ' + 'The parameter expects a string value.'
@@ -277,5 +277,30 @@ class ValidationHelper implements Serializable {
             }
         }
     }
-
+    
+    /**
+     * Check valid value passed for given param matching with regex
+     * @param script
+     * @param paramName
+     * @param customMessage
+     * @param errorMessage
+     * @return throw error message if invalid
+     */
+    protected static checkValidParamValue(script, paramName, errorMessage, customMessage) {
+        //check for null
+        def paramValue = script.params[paramName].trim()
+        if(!paramValue)
+            throw new AppFactoryException("${paramName} param value can't be null! " + "${customMessage}", 'ERROR')
+            
+        //check for invalid
+        def parameterWithValue = [:]
+        parameterWithValue.put(paramName, paramValue)
+        def notValidPram = checkIfValid(parameterWithValue)
+        if(notValidPram) {
+            String suggestionMessage = constructSuggestionMessage(notValidPram)
+            /* Forming final error message by adding suggestion message */
+            errorMessage = errorMessage + '\n' + suggestionMessage
+            throw new AppFactoryException(errorMessage, 'ERROR')
+        }
+    }
 }

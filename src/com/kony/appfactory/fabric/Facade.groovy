@@ -148,7 +148,8 @@ class Facade implements Serializable{
                                 mandatoryParameters.add('JAVA_PROJECTS_DIR')
                             
                             if(fabricAppVersionToPickFrom == 'Other')
-                                mandatoryParameters.add('FABRIC_APP_VERSION')
+                                ValidationHelper.checkValidParamValue(script, 'FABRIC_APP_VERSION', "Invalid value for FABRIC_APP_VERSION. The version must be in the format <major>.<minor>.",
+                                    "Since you have chosen to type it in manually Fabric app version.")
                             
                             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                         }
@@ -168,8 +169,9 @@ class Facade implements Serializable{
                         BuildHelper.runPreBuildHook(script, isCustomHookRunBuild, hookHelper, this.projectName, libraryProperties.'customhooks.prebuild.name', 'ALL')
                         
                         script.stage("Prepare build environment") {
-                            FabricHelper.fetchFabricCli(script, libraryProperties, fabricCliVersion)
-                            fabricCliFilePath = [workspace, fabricCliFileName].join(separator)
+                            if(isBuildWithImport)
+                                FabricHelper.fetchFabricCli(script, libraryProperties, fabricCliVersion)
+                                fabricCliFilePath = [workspace, fabricCliFileName].join(separator)
 
                             // "fabricAppDir" is path upto fabric app's where it contains 'Apps' directory relative to repo root dir
                             fabricAppBasePath = [projectFullPath, fabricAppDir].join(separator)
@@ -186,23 +188,20 @@ class Facade implements Serializable{
                             // If the fabric App does not exist then failing the build
                             def isFabricDirExist = FabricHelper.isDirExist(script, fabricAppBasePath, isUnixNode)
                             if (!isFabricDirExist)
-                                throw new AppFactoryException("Doesn't seem to be a valid App project? '${fabricAppsDirPath}' path is not exist on the repository codebase. " +
-                                        "Please cross verify FABRIC_DIR build parameter you have entered is proper. Else, check the selected branch '${projectSourceCodeBranch}', " +
-                                        "it might not have the app or app is in a different path.", 'ERROR')
+                                throw new AppFactoryException("The path [${fabricAppsDirPath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
+                                    "does not exist.", 'ERROR')
 
                             def versionJsonFile = [projectFullPath, fabricAppsDirPath, 'Version.json'].join(separator)
                             if (!script.fileExists(versionJsonFile))
-                                throw new AppFactoryException("Doesn't seem to be a valid App project? Couldn't find Version.json in the '${fabricAppsDirPath}' path. " +
-                                        "Please cross verify FABRIC_DIR build parameter you have entered is proper. Else, check the selected branch '${projectSourceCodeBranch}', " +
-                                        "it might not have the app or app is in a different path.", 'ERROR')
+                                throw new AppFactoryException("The path [${fabricAppsDirPath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
+                                    "does not appear to contain a Fabric app or service.", 'ERROR')
 
                             // If the given java asset path does not exist then failing the build
                             if(isBuildWithJavaAssets && fabricJavaProjectsDir) {
                                 def isPathExistForJavaAssest = FabricHelper.isDirExist(script, javaAssetBasePath, isUnixNode)
                                 if(!isPathExistForJavaAssest)
-                                    throw new AppFactoryException("Doesn't seem to be a valid App project? '${fabricJavaProjectsDir}' path does not exist on the " +
-                                            "repository codebase. Please cross verify JAVA_PROJECTS_DIR build parameter you have entered is proper. Else, check the selected " +
-                                            "branch '${projectSourceCodeBranch}', it might not have the Java projects or they might be in a different path?", 'ERROR')
+                                    throw new AppFactoryException("The path [${fabricJavaProjectsDir}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
+                                        "does not appear to contain any Java projects.", 'ERROR')
                             }
                             
                             // Creating the fabric app's '_JARs' dir under fabric app 'Apps' path( i.e Apps/_JARs) if it is missing by default.
