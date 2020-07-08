@@ -30,8 +30,8 @@ class CodeScanners implements Serializable {
      */
     private boolean isUnixNode
 
-    private final scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
-    private final scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
+    private final scmCredentialsId = script.params.SCM_CREDENTIALS
+    private final scmBranch = script.params.SCM_BRANCH
     
     private final workspaceURL = script.params.WORKSPACE_URL
     private final String nodeLabel
