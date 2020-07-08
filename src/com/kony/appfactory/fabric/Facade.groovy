@@ -350,7 +350,7 @@ class Facade implements Serializable{
                             }
                             // Create the app zip for fabric app and place the zip at path "/release/apps" with file name projectName.zip
                             script.dir(appBinariesReleasePath) {
-                                script.zip dir: fabricAppBasePath, zipFile: projectNameZip
+                                script.shellCustom("set +ex;zip --recurse-paths --display-bytes ${projectNameZip} ${fabricAppBasePath} --exclude *.DS_Store *thumbs.db *.desktop.ini.", isUnixNode)
                                 script.echoCustom("Successfully generated the Fabric App Bundle ${projectNameZip} at '${defaultReleaseAppBundleDir}' path!!", "INFO")
                                 mustHaveArtifacts.add([name: projectNameZip, path: appBinariesReleasePath])
                             }
