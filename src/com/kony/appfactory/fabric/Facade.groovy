@@ -328,6 +328,10 @@ class Facade implements Serializable{
                                             // Check whether pom.xml has any entry with 'finalName' key for referring the same for build artifactId, if not use default mvn artifactId that it generates.
                                             def javaServiceArtifact = ((pomFileContent.build?.finalName) ? pomFileContent.build.finalName : artifactId + '-' + artifactVersion) + '.jar'
                                             script.dir(javaServiceBuildTargetFolderName) {
+                                                // Listing the contents of the target directory before copying the generated JAR's
+                                                script.echoCustom("The list of contents in ${fabricJavaProjectsDir}/${javaServiceDir}/target directory", "INFO")
+                                                script.shellCustom("set +ex;ls -lAh", isUnixNode)
+
                                                 if(script.fileExists(javaServiceArtifact)) {
                                                     // Clean if any jar containing artifactID as starting name.
                                                     script.shellCustom("set +x;rm -f ${fabricAppJarsAbsolutePath}/${javaServiceArtifact}", isUnixNode)
