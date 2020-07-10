@@ -415,7 +415,7 @@ class Fabric implements Serializable {
             String pushCommand = "git push \"$pushUrl\" || error=true"
 
             if(ignoreJarsForExport)
-                checkoutCommand = [checkoutCommand, "git reset HEAD \"$exportFolder/Apps/_JARs/*\"", "git checkout \"$exportFolder/Apps/_JARs/*\""].join(' && ')
+                checkoutCommand = [checkoutCommand, "git add \"$exportFolder/Apps/_JARs/*\"", "git reset HEAD \"$exportFolder/Apps/_JARs/*\""].join(' && ')
 
             script.shellCustom(
                     [hideShellOutput + checkoutCommand].join(' && '),
