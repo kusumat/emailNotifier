@@ -490,6 +490,7 @@ class Fabric implements Serializable {
                 case 'CLOUD_ACCOUNT_ID':
                     script.env['CONSOLE_URL'] = consoleUrl
                     script.env['IDENTITY_URL'] = identityUrl
+                    fabricAppVersion = script.params.FABRIC_APP_VERSION
                     break
             }
             
@@ -865,6 +866,7 @@ class Fabric implements Serializable {
                             }
                             if (script.params.containsKey('FABRIC_EXPORT_CONSOLE_URL') && script.params.FABRIC_EXPORT_CONSOLE_URL) mandatoryParameters << ['FABRIC_EXPORT_IDENTITY_URL']
                             if (script.params.containsKey('FABRIC_IMPORT_CONSOLE_URL') && script.params.FABRIC_IMPORT_CONSOLE_URL) mandatoryParameters << ['FABRIC_IMPORT_IDENTITY_URL']
+                            fabricAppVersion = script.params.FABRIC_APP_VERSION
                             break
                     }
                     
