@@ -206,10 +206,13 @@ class WebChannel extends Channel {
                                 /* Fabric option for cliCommands */
                                 def fabricCommandOptions = ['-t': "\"${script.env.FABRIC_ACCOUNT_ID}\"",
                                                             '-a': "\"${script.env.FABRIC_APP_NAME}\"",
+                                                            '-v': "\"${script.env.FABRIC_APP_VERSION}\"",
+                                                            '--webAppVersion': "\"${script.env.APP_VERSION}\"",
                                                             '-e': "\"${script.env.FABRIC_ENV_NAME}\"",]
                                 /* Prepare string with shell script to run */
                                 FabricHelper.fabricCli(script, 'publish', fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions)
                                 script.echoCustom("Published to Fabric Successfully, Fetching AppInfo")
+                                fabricCommandOptions.remove('--webAppVersion')
                                 webAppUrl = fetchWebAppUrl("appinfo", fabricCommandOptions)
                                 script.echoCustom("Your published app is accessible at : " + webAppUrl)
                             } else {
@@ -306,7 +309,9 @@ class WebChannel extends Channel {
         webAppUrlText = webAppUrlText.substring(webAppUrlText.indexOf("{"), webAppUrlText.lastIndexOf("}") + 1)
         webAppUrlText.trim()
         def webAppUrlJson = jsonSlurper.parseText(webAppUrlText)
-        def webAppUrl = webAppUrlJson.Webapp.url
+        def webAppUrl = (webAppUrlJson.Webapp?.url) ? webAppUrlJson.Webapp.url : ''
+        if(webAppUrl.isEmpty())
+            throw new AppFactoryException('Web app url is not found! It seems Fabric app is not published with uploaded web application.', 'ERROR')
         webAppUrl.toString()
     }
 

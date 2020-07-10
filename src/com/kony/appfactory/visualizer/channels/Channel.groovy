@@ -194,6 +194,7 @@ class Channel implements Serializable {
                 value as ''(empty). */
                 script.env.FABRIC_APP_NAME = (script.env.FABRIC_APP_NAME) ?: ''
                 script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?: ''
+                script.env.FABRIC_APP_VERSION = (script.env.FABRIC_APP_VERSION) ?: '1.0'
                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
             }
         }
