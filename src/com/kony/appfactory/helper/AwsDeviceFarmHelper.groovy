@@ -167,7 +167,8 @@ class AwsDeviceFarmHelper implements Serializable {
      *         Each of them contains device ARNs.
      */
     protected final getDeviceArns(selectedDevices) {
-        def deviceArns = [:]
+        def androidDeviceArns = [:]
+        def iOSDeviceArns = [:]
         String errorMessage = 'Failed to find device ARNs'
 
         script.catchErrorCustom(errorMessage) {
@@ -176,8 +177,10 @@ class AwsDeviceFarmHelper implements Serializable {
                     getDeviceArnsScript, true, [returnStdout: true]
             ).trim()
             def existingDevices = script.readJSON(text: getDeviceArnsScriptOutput).devices
-            def phonesList = []
-            def tabletsList = []
+            def androidPhonesList = []
+            def androidTabletsList = []
+            def iOSPhonesList = []
+            def iOSTabletsList = []
             def missingDevicesList = []
 
             for (selectedDevice in selectedDevices) {
@@ -193,11 +196,20 @@ class AwsDeviceFarmHelper implements Serializable {
                     if (truncatedExistingDevice == selectedDevice) {
                         /* Set flag to mark device as existing */
                         deviceExists = true
-                        /* Filter devices by form factor */
-                        if (existingDevice.formFactor == 'PHONE') {
-                            phonesList.add(existingDevice.arn)
+                        if (existingDevice.platform == 'ANDROID') {
+                            /* Filter devices by form factor */
+                            if (existingDevice.formFactor == 'PHONE') {
+                                androidPhonesList.add(existingDevice.arn)
+                            } else {
+                                androidTabletsList.add(existingDevice.arn)
+                            }
                         } else {
-                            tabletsList.add(existingDevice.arn)
+                            /* Filter devices by form factor */
+                            if (existingDevice.formFactor == 'PHONE') {
+                                iOSPhonesList.add(existingDevice.arn)
+                            } else {
+                                iOSTabletsList.add(existingDevice.arn)
+                            }
                         }
                     }
                 }
@@ -209,8 +221,10 @@ class AwsDeviceFarmHelper implements Serializable {
             }
 
             /* Assigning collected devices to map properties */
-            deviceArns.phones = phonesList
-            deviceArns.tablets = tabletsList
+            androidDeviceArns.mobile = androidPhonesList
+            androidDeviceArns.tablet = androidTabletsList
+            iOSDeviceArns.mobile = iOSPhonesList
+            iOSDeviceArns.tablet = iOSTabletsList
 
             /*
                 Exposing missing devices as env variable, to display them in e-mail notification,
@@ -220,7 +234,7 @@ class AwsDeviceFarmHelper implements Serializable {
             script.env['MISSING_DEVICES'] = missingDevicesList.join(', ')
         }
 
-        deviceArns
+        [android : androidDeviceArns, ios : iOSDeviceArns]
     }
 
     /**
@@ -258,27 +272,30 @@ class AwsDeviceFarmHelper implements Serializable {
             if(devicePool.containsKey("maxDevices"))
                 devicePool.remove("maxDevices")
 
-            for (item in deviceArns) {
-                /* If we have a list for devices for any of the form factors */
-                if (item.value) {
-                    /* Create a device pool object for creation request of the device pool */
-                    devicePool.projectArn = projectArn
-                    /*
+            for (platform in deviceArns) {
+                platform.value.each { formFactor, listOfDevices -> 
+                    /* If we have a list for devices for any of the form factors */
+                    if (listOfDevices) {
+                        /* Create a device pool object for creation request of the device pool */
+                        devicePool.projectArn = projectArn
+                            /*
                         Device pool name on Device Farm has following format:
                         <user_provided_pool_name>-[<job_build_number>-]<form_factor>
-                     */
-                    devicePool.name = [
-                            "${devicePoolName?.replaceAll('\\s', '-')}",
-                            (script.env.BUILD_NUMBER ?: ''),
-                            ((item.key == 'phones') ? 'Phones-Device-Pool' : 'Tablets-Device-Pool')
-                    ].findAll().join('-')
-                    devicePool.rules[0].attribute = 'ARN'
-                    /* Currently only this operator is working */
-                    devicePool.rules[0].operator = 'IN'
-                    /* Format list of the devices */
-                    devicePool.rules[0].value = '[' + item.value.collect { '"' + it + '"' }.join(',') + ']'
-                    /* Add device pool object to map (key=<name of the form factor, value=json string with devices) */
-                    devicePoolJsons.put(item.key, JsonOutput.toJson(devicePool))
+                             */
+                        devicePool.name = [
+                                           "${devicePoolName?.replaceAll('\\s', '-')}",
+                                           platform,
+                                           (script.env.BUILD_NUMBER ?: ''),
+                                           ((formFactor == 'mobile') ? 'Phones-Device-Pool' : 'Tablets-Device-Pool')
+                                           ].findAll().join('-')
+                        devicePool.rules[0].attribute = 'ARN'
+                        /* Currently only this operator is working */
+                        devicePool.rules[0].operator = 'IN'
+                        /* Format list of the devices */
+                        devicePool.rules[0].value = '[' + listOfDevices.collect { '"' + it + '"' }.join(',') + ']'
+                        /* Add device pool object to map (key=<name of the form factor, value=json string with devices) */
+                        devicePoolJsons.put(platform.key + '_' + formFactor, JsonOutput.toJson(devicePool))
+                    }
                 }
             }
 

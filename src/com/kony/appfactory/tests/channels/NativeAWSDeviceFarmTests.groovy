@@ -121,19 +121,16 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     uploadType, artifactName + '.' + artifactExt)
             /* Add upload ARN to list for cleanup at the end of the build */
             deviceFarmUploadArns.add(uploadArn)
+            String formFactor = (artifactName.toLowerCase().contains('mobile')) ? "MOBILE" : "TABLET"
+            String channel = (artifactExt.toLowerCase().contains('ipa')) ? "IOS" : "ANDROID"
 
             /* Depending on artifact name we need to chose appropriate pool for the run */
             def devicePoolArnOrSelectionConfig
             if (isPoolWithDeviceFarmFilters) {
-                String formFactor = (artifactName.toLowerCase().contains('mobile')) ? "MOBILE" : "TABLET"
-                String channel = (artifactExt.toLowerCase().contains('ipa')) ? "IOS" : "ANDROID"
                 devicePoolArnOrSelectionConfig = getDevicePoolSelectionConfig(channel, formFactor)
             } else {
-                devicePoolArnOrSelectionConfig = artifactName.toLowerCase().contains('mobile') ?
-                        (devicePoolArns.phones) ?: script.echoCustom("Artifacts provided " +
-                                "for phones, but no phones were found in the device pool", 'ERROR') :
-                        (devicePoolArns.tablets ?: script.echoCustom("Artifacts provided for " +
-                                "tablets, but no tablets were found in the device pool", 'ERROR'))
+                devicePoolArnOrSelectionConfig = (devicePoolArns."${channel.toLowerCase()}_${formFactor.toLowerCase()}") ?: script.echoCustom("Artifacts provided " +
+                                "for ${formFactor}, but no ${formFactor} were found in the device pool", 'ERROR')
             }
 
             /* If we have application binaries and test binaries, schedule the custom run */
@@ -153,12 +150,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
         /* Setting the Universal binary url to respective platform input run test job paramaters*/
         if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL) {
-            projectArtifacts.'Android_Mobile'.'url' = devicePoolArns.phones ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
-            projectArtifacts.'Android_Tablet'.'url' = devicePoolArns.tablets ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
+            projectArtifacts.'Android_Mobile'.'url' = devicePoolArns.'android_mobile' ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
+            projectArtifacts.'Android_Tablet'.'url' = devicePoolArns.'android_tablet' ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
         }
         if (script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL) {
-            projectArtifacts.'iOS_Mobile'.'url' = devicePoolArns.phones ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
-            projectArtifacts.'iOS_Tablet'.'url' = devicePoolArns.tablets ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
+            projectArtifacts.'iOS_Mobile'.'url' = devicePoolArns.'ios_mobile' ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
+            projectArtifacts.'iOS_Tablet'.'url' = devicePoolArns.'ios_tablet' ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
         }
         /* Prepare parallel steps */
         def stepsToRun = prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)
