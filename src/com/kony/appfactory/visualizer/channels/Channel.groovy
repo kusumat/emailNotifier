@@ -1142,7 +1142,7 @@ class Channel implements Serializable {
      *  Method to run post build custom hooks
      */
     protected final void runPostBuildHook() {
-        BuildHelper.runPostBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, libraryProperties.'customhooks.prebuild.name', customHookStage)
+        BuildHelper.runPostBuildHook(script, isCustomHookRunBuild, hookHelper, projectName, libraryProperties.'customhooks.postbuild.name', customHookStage)
     }
 
     protected final long getBinarySize(String path, String name){
