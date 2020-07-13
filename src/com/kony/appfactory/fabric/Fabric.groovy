@@ -54,7 +54,7 @@ class Fabric implements Serializable {
 
     /* Force Fabric CLI to overwrite existing application on import */
     private boolean overwriteExisting
-    private boolean overwriteExistingScmBranch
+    private boolean overwriteExistingScmBranchOrValidateVersion
     private boolean overwriteExistingAppVersion
     /* Migrate specific build parameters for backward compatibility */
     private importfabricAppConfig = script.params.IMPORT_FABRIC_APP_CONFIG?:null
@@ -546,7 +546,13 @@ class Fabric implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                overwriteExisting = BuildHelper.getParamValueOrDefault(script, 'OVERWRITE_EXISTING_SCM_BRANCH', overwriteExisting)
+                def overwriteExistingScmBranchOrValidateVersionParamName = BuildHelper.getCurrentParamName(script, 'VALIDATE_VERSION', 'OVERWRITE_EXISTING_SCM_BRANCH')
+                overwriteExisting = BuildHelper.getParamValueOrDefault(script, overwriteExistingScmBranchOrValidateVersionParamName, overwriteExisting)
+
+                /* After renaming the overwriteExistingScmBranch to ValidateVersion which are inverse to each other, So added a backward compatability check*/
+                def isNewExportJob = (overwriteExistingScmBranchOrValidateVersionParamName.equals("VALIDATE_VERSION"))
+                if(isNewExportJob)
+                    overwriteExisting = !overwriteExisting
 
                 /* Data for e-mail notification */
                 emailData = [
@@ -558,7 +564,7 @@ class Fabric implements Serializable {
                         commitMessage         : commitMessage,
                         commandName           : 'EXPORT'
                 ]
-                
+
                 /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR param not exist in Export Job.
                  * If Fabric_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
                  */
@@ -611,14 +617,17 @@ class Fabric implements Serializable {
                         }
 
                         script.stage("Validate the Local Fabric App") {
-                            
+
                             def invalidVersionError = "Repository contains a different version of the fabric app." +
                                     " Selected version '${fabricAppVersion}' and version in ${exportFolder}/Apps/${fabricAppName}/Meta.json file is mis matching." +
-                                    " Please select an appropriate branch to export the app. OR \n Select OVERWRITE_EXISTING parameter to force push the exported" +
-                                    " app to SCM irrespective of what branch is containing.."
+                                    " Please select an appropriate branch to export the app."
                             def invalidFabricAppError = "Repository doesn't contain valid fabric app." +
                                     " ${exportFolder}/Apps/${fabricAppName} is not existing on the branch you have selected."
-                                    "\n Select OVERWRITE_EXISTING parameter to force push the exported app to SCM."
+                            if (!isNewExportJob) {
+                                invalidVersionError = invalidVersionError + " OR \n Select OVERWRITE_EXISTING parameter to force push the exported " +
+                                        "app to SCM irrespective of what branch is containing.."
+                                invalidFabricAppError = invalidFabricAppError + "\n Select OVERWRITE_EXISTING parameter to force push the exported app to SCM."
+                            }
                             if (!overwriteExisting) {
                                 validateLocalFabricApp(projectName, invalidVersionError, invalidFabricAppError, exportFolder)
                             }
@@ -790,7 +799,7 @@ class Fabric implements Serializable {
             }
         }
     }
-    
+
     /**
      * Migrate method is called from the job and contains whole job's pipeline logic.
      * This will migrate Fabric application from one environment to other.
@@ -823,7 +832,7 @@ class Fabric implements Serializable {
                         publishApp            : enablePublish,
                         commandName           : 'MIGRATE'
                 ]
-                
+
                 /* Folder name for storing exported application */
                 String exportFolder = 'export'
                 String projectName = FabricHelper.getGitProjectName(exportRepositoryUrl) ?:
@@ -869,12 +878,12 @@ class Fabric implements Serializable {
                             fabricAppVersion = script.params.FABRIC_APP_VERSION
                             break
                     }
-                    
+
                     emailData = [
-                        importCloudAccountId : importCloudAccountId,
-                        exportCloudAccountId : exportCloudAccountId
+                            importCloudAccountId : importCloudAccountId,
+                            exportCloudAccountId : exportCloudAccountId
                     ] + emailData
-                    
+
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
                 /* Allocate a slave for the run */
@@ -884,23 +893,23 @@ class Fabric implements Serializable {
                         if(!isUnixNode) {
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
-                        
+
                         /* Steps for exporting fabric app configuration for migrate task */
                         script.stage('Prepare environment for Migrate task') {
                             prepareBuildEnvironment()
                         }
-                        
+
                         script.stage('Export project from Fabric') {
                             script.echoCustom("Exporting the ${fabricAppName} app from Fabric..", 'INFO')
                             exportProjectFromFabric(exportCloudAccountId, exportFabricCredentialsID, projectName, exportConsoleUrl, exportIdentityUrl)
                             script.echoCustom("Exported the ${fabricAppName} app from Fabric successfully.", 'INFO')
                         }
-                        
+
                         script.stage('Fetch project from remote git repository') {
                             script.echoCustom("Source code checkout from GIT repository for validating the changes..", 'INFO')
                             checkoutProjectFromRepo(projectName)
                         }
-                        
+
                         script.stage("Validate the Local Fabric App") {
                             def invalidVersionError = "Repository contains a different version of fabric app." +
                                     " Please select an appropriate branch OR \n Select OVERWRITE_EXISTING parameter to use force push to SCM."
@@ -910,12 +919,12 @@ class Fabric implements Serializable {
                                 validateLocalFabricApp(projectName, invalidVersionError, invalidFabricAppError)
                             }
                         }
-                        
+
                         script.stage('Find App Changes') {
                             script.echoCustom("Finding the exported app changes with GIT repository code content..", 'INFO')
                             findAppChanges(overwriteExistingScmBranch, projectName, exportFolder)
                         }
-                        
+
                         script.stage('Push changes to remote git repository') {
                             if (appChanged) {
                                 pushAppChangesToRepo(projectName, exportFolder)
@@ -923,25 +932,25 @@ class Fabric implements Serializable {
                                 script.echoCustom("No changes found, Skipping to push changes to SCM.")
                             }
                         }
-                        
+
                         /* Steps for importing fabric app configuration for migrate task */
                         overwriteExistingAppVersion = script.params.OVERWRITE_EXISTING_APP_VERSION
-                        
+
                         script.stage("Validate the Local Fabric App for Import") {
                             def invalidVersionError = "This repository contains a different version of Fabric app." +
                                     " Please select the appropriate branch."
                             def invalidFabricAppError = "Repository doesn't contain valid fabric app."
                             validateLocalFabricApp(projectName, invalidVersionError, invalidFabricAppError)
                         }
-                        
+
                         script.stage("Create zip archive of the project") {
                             zipProject(projectName, fabricAppName)
                         }
-                        
+
                         script.stage('Import project to Fabric') {
                             importProjectToFabric(importCloudAccountId, importFabricCredentialsID, overwriteExistingAppVersion, importConsoleUrl,importIdentityUrl)
                         }
-                        
+
                         script.stage('Trigger Publish job') {
                             if (enablePublish) {
                                 fabricAppConfig = importfabricAppConfig
@@ -1030,7 +1039,7 @@ class Fabric implements Serializable {
         def metaFileLocation = projectName + "/" + exportFolder + "/Apps/$fabricAppName/Meta.json"
         def fileExist = script.fileExists file: metaFileLocation
         if (fileExist) {
-            if(!validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation)){
+            if (!validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation)) {
                 throw new AppFactoryException("$invalidVersionError", "ERROR")
             }
         } else {
