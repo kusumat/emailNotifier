@@ -54,7 +54,7 @@ class Fabric implements Serializable {
 
     /* Force Fabric CLI to overwrite existing application on import */
     private boolean overwriteExisting
-    private boolean overwriteExistingScmBranchOrValidateVersion
+    private boolean overwriteExistingScmBranch
     private boolean overwriteExistingAppVersion
     /* Migrate specific build parameters for backward compatibility */
     private importfabricAppConfig = script.params.IMPORT_FABRIC_APP_CONFIG?:null

@@ -1047,10 +1047,7 @@ class EmailTemplateHelper implements Serializable {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Commit Message:', binding.commitMessage)
                             }
                             if (binding.overwriteExisting) {
-                                if(binding.isNewMigrateJob)
-                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Validate Version:', binding.overwriteExisting)
-                                else
-                                    EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Overwrite Existing:', binding.overwriteExisting)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Overwrite Existing:', binding.overwriteExisting)
                             }
                             if (binding.publishApp) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Enable Publish:', binding.publishApp)
