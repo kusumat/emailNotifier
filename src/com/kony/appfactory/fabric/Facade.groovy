@@ -237,7 +237,7 @@ class Facade implements Serializable{
                             // Setting the maven command to run and with local .m2 folder set to current build workspace.
                             def mvnLocalRepoPath = [workspace, projectWorkspaceFolderName, ".m2"].join(separator)
                             def defaultMavenGoalsAndOptions = "mvn -Dmaven.repo.local=${mvnLocalRepoPath} --batch-mode clean package"
-                            mavenBuildCommand = (mvnBuildCmdInput) ? ("mvn -Dmaven.repo.local=${mvnLocalRepoPath} " + mvnBuildCmdInput.trim()) : defaultMavenGoalsAndOptions
+                            mavenBuildCommand = (mvnBuildCmdInput) ? ("mvn -Dmaven.repo.local=${mvnLocalRepoPath} --batch-mode " + mvnBuildCmdInput.trim()) : defaultMavenGoalsAndOptions
                             def isValidCmd = FabricHelper.validateMvnGoalsBuildCommand(mavenBuildCommand)
                             if(!isValidCmd)
                                 throw new AppFactoryException("Looks like multiple commands are passed in MVN_GOALS_AND_OPTIONS build option? We allow to run only mvn commands that has goals and options!!", 'ERROR')
