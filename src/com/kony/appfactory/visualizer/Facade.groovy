@@ -301,8 +301,8 @@ class Facade implements Serializable {
         switch(scanType) {
             case 'SonarQube' : 
                 scanJobParameters = [
-                    script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: "${projectSourceCodeBranch}"),
-                    script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${projectSourceCodeRepositoryCredentialsId}")
+                    script.string(name: 'SCM_BRANCH', value: "${projectSourceCodeBranch}"),
+                    script.credentials(name: 'SCM_CREDENTIALS', value: "${projectSourceCodeRepositoryCredentialsId}")
                 ]
                 break
             default :
