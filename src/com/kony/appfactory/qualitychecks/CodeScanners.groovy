@@ -117,7 +117,7 @@ class CodeScanners implements Serializable {
             script.ansiColor('xterm') {
 
                 script.stage('Check provided parameters') {
-                    def mandatoryParameters = ['PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID']
+                    def mandatoryParameters = ['SCM_BRANCH', 'SCM_CREDENTIALS']
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
                 
