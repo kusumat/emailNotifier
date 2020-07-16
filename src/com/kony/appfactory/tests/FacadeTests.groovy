@@ -289,10 +289,14 @@ class FacadeTests implements Serializable {
             }
             catch (AppFactoryException e) {
                 String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                script.echoCustom(exceptionMessage, 'ERROR', false)
+                script.currentBuild.result = 'FAILURE'
                 buildStats.put('errmsg', exceptionMessage)
                 buildStats.put('errstack', e.getStackTrace().toString())
             } catch (Exception e) {
                 String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
+                script.echoCustom(exceptionMessage, 'ERROR', false)
+                script.currentBuild.result = 'FAILURE'
                 buildStats.put('errmsg', exceptionMessage)
                 buildStats.put('errstack', e.getStackTrace().toString())
             }
