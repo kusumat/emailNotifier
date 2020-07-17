@@ -484,7 +484,7 @@ class Fabric implements Serializable {
                         fabricAppName = script.env.FABRIC_APP_NAME
                         consoleUrl = script.env.CONSOLE_URL
                         identityUrl = script.env.IDENTITY_URL
-                        fabricAppVersion = BuildHelper.getParamValueOrDefault(script, 'FABRIC_APP_VERSION', script.env.FABRIC_APP_VERSION)
+                        fabricAppVersion = (script.params.FABRIC_APP_VERSION && (script.params.FABRIC_APP_VERSION)?.trim() != '') ? script.params.FABRIC_APP_VERSION : script.env.FABRIC_APP_VERSION
                     }
                     break
                 case 'CLOUD_ACCOUNT_ID':
@@ -820,7 +820,7 @@ class Fabric implements Serializable {
                 def exportIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
                 def importConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_CONSOLE_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
                 def importIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
-                def appConfigParameter = BuildHelper.getCurrentParamName(script, 'EXPORT_FABRIC_APP_CONFIG', 'EXPORT_CLOUD_ACCOUNT_ID')
+                appConfigParameter = BuildHelper.getCurrentParamName(script, 'EXPORT_FABRIC_APP_CONFIG', 'EXPORT_CLOUD_ACCOUNT_ID')
 
                 /* Data for e-mail notification to be specified*/
                 emailData = [
