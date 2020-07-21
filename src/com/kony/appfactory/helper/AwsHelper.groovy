@@ -95,20 +95,26 @@ class AwsHelper implements Serializable {
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
-                script.step([$class                              : 'S3BucketPublisher',
-                             consoleLogLevel                     : 'WARNING',
-                             dontWaitForConcurrentBuildCompletion: false,
-                             entries                             : [
-                                     [bucket           : S3BucketPath,
-                                      flatten          : flatten,
-                                      keepForever      : true,
-                                      managedArtifacts : false,
-                                      noUploadOnFailure: false,
-                                      selectedRegion   : s3BucketRegion,
-                                      sourceFile       : fileName]
-                             ],
-                             pluginFailureResultConstraint       : 'FAILURE'])
-
+                /* While uploading of KAR file to S3 the content-type is being set as audio/midi so the same format is being downloaded. So setting the content-type from audio/midi to binary/octet-stream.*/
+                if (fileName.contains('.KAR')) {
+                    script.withAWS(region: s3BucketRegion, role: script.env.S3_CONFIG_BUCKET_IAM_ROLE) {
+                        script.s3Upload(bucket: bucketName, path: finalBucketPath, includePathPattern: '*.KAR', contentType: 'binary/octet-stream')
+                    }
+                } else {
+                    script.step([$class                              : 'S3BucketPublisher',
+                                 consoleLogLevel                     : 'WARNING',
+                                 dontWaitForConcurrentBuildCompletion: false,
+                                 entries                             : [
+                                         [bucket               : S3BucketPath,
+                                          flatten              : flatten,
+                                          keepForever          : true,
+                                          managedArtifacts     : false,
+                                          noUploadOnFailure    : false,
+                                          selectedRegion       : s3BucketRegion,
+                                          sourceFile           : fileName]
+                                 ],
+                                 pluginFailureResultConstraint       : 'FAILURE'])
+                }
             }
         }
         String artifactUrl = getS3ArtifactUrl(script, [finalBucketPath, fileName].join('/'))
