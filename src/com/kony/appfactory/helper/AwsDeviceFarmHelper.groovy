@@ -284,7 +284,7 @@ class AwsDeviceFarmHelper implements Serializable {
                              */
                         devicePool.name = [
                                            "${devicePoolName?.replaceAll('\\s', '-')}",
-                                           platform,
+                                           platform.key,
                                            (script.env.BUILD_NUMBER ?: ''),
                                            ((formFactor == 'mobile') ? 'Phones-Device-Pool' : 'Tablets-Device-Pool')
                                            ].findAll().join('-')
