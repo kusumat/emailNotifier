@@ -296,14 +296,15 @@ class Fabric implements Serializable {
     private final void overwriteFilesInGit(args) {
         String projectPath = args.projectPath
         String exportFolder = args.exportFolder
-        String errorMessage = 'Failed overwrite exported files'
+        String errorMessage = 'Failed to overwrite exported files!'
 
         script.catchErrorCustom(errorMessage) {
             script.dir("${projectPath}/${exportFolder}") {
                 script.deleteDir()
             }
-
-            script.shellCustom("set +x;mv -f ./${exportFolder} ./${projectPath}/${exportFolder}", isUnixNode)
+            
+            script.shellCustom("set +x;mkdir -p ${script.env.WORKSPACE}/${projectPath}/${exportFolder}", isUnixNode)
+            script.shellCustom("set +x;mv -f ./${exportFolder}/* ./${projectPath}/${exportFolder}", isUnixNode)
         }
     }
 
