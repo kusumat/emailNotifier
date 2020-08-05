@@ -240,14 +240,6 @@ class BuildStatus implements Serializable {
     }
 
     /**
-     * This function sets the global build status
-     * @param status{SUCCESS, FAILED, UNSTABLE, CANCELED} are the possible values
-     */
-    public void updateGlobalStatus(Status status) {
-        buildJson.setStatus(status)
-    }
-
-    /**
      * This function is used to update channel (Platform) env status to SUCCESS, update the json with status and channel artifact link on S3.
      * @param channelType contains the channel for which the status has to be updated
      * @param artefactURL contains the artifacts url that has been uploaded to s3
@@ -281,13 +273,12 @@ class BuildStatus implements Serializable {
     }
 
     /**
-     * This function sets all the selected platforms to CANCELLED and updates the global status to CANCELLED as well
+     * This function sets all the selected platforms to CANCELLED
      */
     void updateCancelBuildStatusOnS3() {
         for (channel in channelsToRun) {
             updatePlatformStatus(ChannelType.valueOf(channel), Status.CANCELLED)
         }
-        updateGlobalStatus(Status.CANCELLED)
         updateBuildStatusOnS3()
     }
 
@@ -304,37 +295,6 @@ class BuildStatus implements Serializable {
         script.echoCustom("The status url path is ${statusUrl} and ${resultJson}")
         AwsHelper.publishToS3 sourceFileName: BUILD_STATUS_FILE_NAME,
                 sourceFilePath: "./", statusUrl, script
-    }
-
-    /**
-     * This function is called at the end of the build, it figures out the status of the build based on individual platforms result
-     * @param channelsToRun
-     */
-    private void deriveGlobalBuildStatus(channelsToRun) {
-
-        boolean successFlag = true
-        boolean failureFlag = true
-
-        if (!channelsToRun) {
-            updateGlobalStatus(Status.FAILED)
-            updateBuildStatusOnS3()
-            return
-        }
-
-        for (channel in channelsToRun) {
-            String buildValue = script.env[buildService.concat(channel)]
-            if (!buildValue.equals("true")) {
-                successFlag = false
-                updatePlatformStatus(ChannelType.valueOf(channel), Status.FAILED)
-            } else {
-                failureFlag = false
-            }
-        }
-
-        successFlag ? updateGlobalStatus(Status.SUCCESS) : failureFlag ? updateGlobalStatus(Status.FAILED) : updateGlobalStatus(Status.UNSTABLE)
-        if (failureFlag)
-            script.currentBuild.result = 'FAILURE'
-        updateBuildStatusOnS3()
     }
 
     /**
@@ -381,12 +341,7 @@ class BuildStatus implements Serializable {
                 sourceFilePath: "./", s3ArtifactPath, script
 
         updateLogsLink(s3ArtifactPath + "/" + CLOUD_BUILD_LOG_FILENAME)
-
-        //finally update the global status of the build and update the status file on S3 for non aborted builds.
-        if (!buildJson.getStatus().equals(Status.CANCELLED))
-            deriveGlobalBuildStatus(channelsToRun)
-        else
-            updateBuildStatusOnS3()
+        updateBuildStatusOnS3()
 
         return BuildHelper.createAuthUrl(s3Url, script, true)
     }
