@@ -59,13 +59,9 @@ class FabricHelper implements Serializable {
                     fabricCommandOptions.remove('-t')
                     fabricCommandOptions << ['-cu': "\"${script.env.CONSOLE_URL}\"",
                                              '-au': "\"${script.env.IDENTITY_URL}\"",]
-                }
-                else {
-                    // Adding the cloud type only for cloud domains other than kony.com
-                    if (script.env.CLOUD_DOMAIN && script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0){
-                        def domainParam = script.env.CLOUD_DOMAIN.substring(0, script.env.CLOUD_DOMAIN.indexOf("-kony.com")+1)
-                        fabricCommandOptions['--cloud-type'] = "\"${domainParam}\""
-                    }
+                } else {
+                    def cloudUrl = "https://manage.${script.env.CLOUD_DOMAIN}"
+                    fabricCommandOptions['--cloud-url'] = "\"${cloudUrl}\""
                 }
                 
                 /* Collect Fabric command options */
@@ -84,8 +80,8 @@ class FabricHelper implements Serializable {
                 // if URL_PATH_INFO variable was set, Adding option to authenticate with external-auth
                 if(script.env.URL_PATH_INFO)
                     shellString = [shellString, '--external-auth'].join(' ')
-
-               commandOutput = script.shellCustom(shellString, isUnixNode, args)
+                                    
+                commandOutput = script.shellCustom(shellString, isUnixNode, args)
             }
         }
         commandOutput
