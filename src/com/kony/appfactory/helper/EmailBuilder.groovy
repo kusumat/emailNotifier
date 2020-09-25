@@ -174,4 +174,18 @@ class EmailBuilder {
             }
         }
     }
+
+    @NonCPS
+    static void addFlywayDataRows(htmlBuilder, resultsMap) {
+        resultsMap.each { key, val ->
+            htmlBuilder.tr {
+                td {
+                    p(style: "font-size:12px;", key)
+                }
+                td {
+                    p(style: "font-size:12px;", val)
+                }
+            }
+        }
+    }
 }

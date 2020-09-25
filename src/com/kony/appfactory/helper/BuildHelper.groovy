@@ -1319,22 +1319,22 @@ class BuildHelper implements Serializable {
      * Prepare mustHave log for debugging
      * @param script
      * @param buildType
-     * @param facadeJobMustHavesFolderName
-     * @param facadeJobBuildLogFile
+     * @param jobMustHavesFolderName
+     * @param jobBuildLogFile
      * @param libraryProperties
      * @param mustHaveArtifacts
      * @return s3MustHaveAuthUrl fabric authenticated auth url to download musthaves
      */
-    protected static final String prepareMustHaves(script, buildType, facadeJobMustHavesFolderName, facadeJobBuildLogFile, libraryProperties, mustHaveArtifacts) {
+    protected static final String prepareMustHaves(script, buildType, jobMustHavesFolderName, jobBuildLogFile, libraryProperties, mustHaveArtifacts) {
         String s3MustHaveAuthUrl = ''
         String separator = script.isUnix() ? '/' : '\\'
-        String mustHaveFolderPath = [script.env.WORKSPACE, facadeJobMustHavesFolderName].join(separator)
-        String mustHaveFile = [facadeJobMustHavesFolderName, script.env.BUILD_NUMBER].join("_") + ".zip"
+        String mustHaveFolderPath = [script.env.WORKSPACE, jobMustHavesFolderName].join(separator)
+        String mustHaveFile = [jobMustHavesFolderName, script.env.BUILD_NUMBER].join("_") + ".zip"
         String mustHaveFilePath = [script.env.WORKSPACE, mustHaveFile].join(separator)
-        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: "${facadeJobMustHavesFolderName}*", type: 'INCLUDE']]
+        script.cleanWs deleteDirs: true, notFailBuild: true, patterns: [[pattern: "${jobMustHavesFolderName}*", type: 'INCLUDE']]
 
         script.dir(mustHaveFolderPath) {
-            script.writeFile file: facadeJobBuildLogFile, text: getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
+            script.writeFile file: jobBuildLogFile, text: getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getMyAppFactoryVersions()
             script.writeFile file: "environmentInfo.txt", text: getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: getInputParamsAsString(script)
@@ -1343,7 +1343,7 @@ class BuildHelper implements Serializable {
             } else {
                 /* We copy the Custom Hooks logs for Fabric only, because for Viz, they would have 
                  * been copied by the Channel builds and are part of Channel musthave logs. */
-                if (script.params.RUN_CUSTOM_HOOKS && script.isUnix()) {
+                if (!buildType.toString().equalsIgnoreCase("flyway") && script.params.RUN_CUSTOM_HOOKS && script.isUnix() ) {
                     def chLogs = [script.env.WORKSPACE, libraryProperties.'fabric.project.workspace.folder.name', script.env.PROJECT_NAME, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
                     copyCustomHooksBuildLogs(script, chLogs, mustHaveFolderPath, script.isUnix())
                 }
@@ -1355,7 +1355,7 @@ class BuildHelper implements Serializable {
         }
 
         script.dir(script.env.WORKSPACE) {
-            script.zip dir: facadeJobMustHavesFolderName, zipFile: mustHaveFile
+            script.zip dir: jobMustHavesFolderName, zipFile: mustHaveFile
             script.catchErrorCustom("Failed to create the Zip file") {
                 if (script.fileExists(mustHaveFilePath)) {
                     String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')

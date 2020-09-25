@@ -276,6 +276,9 @@ class NotificationsHelper implements Serializable {
             case 'fabricBuild':
                 templateContent = EmailTemplateHelper.fabricBuildContent(commonBinding, templateType)
                 break
+            case 'flyway':
+                templateContent = EmailTemplateHelper.createFlywayContent(commonBinding)
+                break
             default:
                 templateContent = ''
                 break
@@ -318,6 +321,9 @@ class NotificationsHelper implements Serializable {
                 modifiedBuildTag = "${script.env.PROJECT_NAME}-Fabric Build-${script.env.BUILD_NUMBER}"
                 break
             case 'fabric':
+                break
+            case 'flyway':
+                modifiedBuildTag = "${script.env.PROJECT_NAME}-Flyway Build-${script.env.BUILD_NUMBER}"
                 break
             default:
                 modifiedBuildTag = ''
