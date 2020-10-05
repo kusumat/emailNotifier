@@ -164,7 +164,7 @@ class Flyway implements Serializable {
                         }
                         if (!resultsMap.containsValue("SUCCESS"))
                             script.currentBuild.result = 'FAILURE'
-                        if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
+                        if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, "flyway", "FlywayMustHaves", "FlywayBuild.log", libraryProperties, mustHaveArtifacts)
                         }
                         BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl)
