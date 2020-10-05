@@ -180,7 +180,7 @@ class EmailBuilder {
         resultsMap.each { key, val ->
             htmlBuilder.tr {
                 td {
-                    p(style: "font-size:12px;", key)
+                    p(style: "font-size:12px;", key.toUpperCase())
                 }
                 td {
                     p(style: "font-size:12px;", val)

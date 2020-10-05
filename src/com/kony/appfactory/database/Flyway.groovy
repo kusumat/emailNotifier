@@ -71,6 +71,7 @@ class Flyway implements Serializable {
 
     private void prepareCommandsList(flywayCommands) {
         commands = flywayCommands.split("\\s*,\\s*")
+        commands = commands.collect { it.toLowerCase() }
     }
 
     private void flywayCredentialWrapper(dbCredentialId, closure) {
