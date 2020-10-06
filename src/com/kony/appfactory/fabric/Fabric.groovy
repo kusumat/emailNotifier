@@ -70,8 +70,8 @@ class Fabric implements Serializable {
     private String fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
     private final boolean setDefaultVersion = script.params.SET_DEFAULT_VERSION
     /* OnPrem Fabric parameters */
-    private String consoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_CONSOLE_URL', "https://manage.${script.kony.CLOUD_DOMAIN}")
-    private String identityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IDENTITY_URL', "https://manage.${script.kony.CLOUD_DOMAIN}")
+    private String consoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_CONSOLE_URL', script.kony.FABRIC_CONSOLE_URL)
+    private String identityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IDENTITY_URL', script.kony.FABRIC_CONSOLE_URL)
     private fabricAppConfig = script.params.FABRIC_APP_CONFIG?:null
     def appConfigParameter = BuildHelper.getCurrentParamName(script, 'FABRIC_APP_CONFIG', 'CLOUD_ACCOUNT_ID')
 
@@ -817,10 +817,10 @@ class Fabric implements Serializable {
                 importCloudAccountId = script.params.IMPORT_CLOUD_ACCOUNT_ID
                 def importFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'IMPORT_CLOUD_CREDENTIALS_ID', 'IMPORT_FABRIC_CREDENTIALS_ID')
                 importFabricCredentialsID = script.params[importFabricCredsParamName]
-                def exportConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_CONSOLE_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
-                def exportIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
-                def importConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_CONSOLE_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
-                def importIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_IDENTITY_URL', "https://manage.${script.env.CLOUD_DOMAIN}")
+                def exportConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_CONSOLE_URL', script.kony.FABRIC_CONSOLE_URL)
+                def exportIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_IDENTITY_URL', script.kony.FABRIC_CONSOLE_URL)
+                def importConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_CONSOLE_URL', script.kony.FABRIC_CONSOLE_URL)
+                def importIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_IDENTITY_URL', script.kony.FABRIC_CONSOLE_URL)
                 appConfigParameter = BuildHelper.getCurrentParamName(script, 'EXPORT_FABRIC_APP_CONFIG', 'EXPORT_CLOUD_ACCOUNT_ID')
 
                 /* Data for e-mail notification to be specified*/

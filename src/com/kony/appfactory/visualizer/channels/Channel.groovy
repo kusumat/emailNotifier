@@ -173,6 +173,11 @@ class Channel implements Serializable {
         if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-kony.com") > 0) {
             this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-kony.com"))
         }
+        
+        if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-temenos-cloud.com") > 0) {
+            this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-temenos-cloud.com"))
+        }
+        
         /* Re-setting for global access of build mode */
         this.script.env['BUILD_MODE'] = buildMode
         this.script.env.TEST_FRAMEWORK = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')

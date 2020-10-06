@@ -54,13 +54,13 @@ class FabricHelper implements Serializable {
                      usernameVariable: 'fabricUsername']
             ]) {
                 // Switch command options(removing account id) if Console Url represents OnPrem Fabric.(Visit https://docs.kony.com/konylibrary/konyfabric/kony_fabric_user_guide/Content/CI_MobileFabric.htm for details).
-                if(!script.env.CONSOLE_URL.matches("https://manage.${script.env.CLOUD_DOMAIN}"))
+                if(!script.env.CONSOLE_URL.matches(script.kony.FABRIC_CONSOLE_URL))
                 {
                     fabricCommandOptions.remove('-t')
                     fabricCommandOptions << ['-cu': "\"${script.env.CONSOLE_URL}\"",
                                              '-au': "\"${script.env.IDENTITY_URL}\"",]
                 } else {
-                    def cloudUrl = "https://manage.${script.env.CLOUD_DOMAIN}"
+                    def cloudUrl = script.kony.FABRIC_CONSOLE_URL
                     fabricCommandOptions['--cloud-url'] = "\"${cloudUrl}\""
                 }
                 
