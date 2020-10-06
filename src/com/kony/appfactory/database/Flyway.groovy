@@ -37,7 +37,7 @@ class Flyway implements Serializable {
     private flywayInstallationName
     private databaseUrl
     private String flywayRunnerCredentialIdString = "flywayRunnerCredentials"
-    private resultsMap = [:]
+    private flywayResults = []
     private checkoutDirectory = projectName
     private String projectFullPath
     /*
@@ -137,9 +137,9 @@ class Flyway implements Serializable {
                                 }
                                 finally {
                                     if (script.currentBuild.currentResult != "SUCCESS")
-                                        resultsMap.put(command, "FAILURE")
+                                        flywayResults.add([name: command, status: "FAILURE"])
                                     else
-                                        resultsMap.put(command, script.currentBuild.currentResult)
+                                        flywayResults.add([name: command, status: script.currentBuild.currentResult])
                                 }
                             }
                         }
@@ -155,15 +155,27 @@ class Flyway implements Serializable {
                     }
                     finally {
                         credentialsHelper.deleteUserCredentials([flywayRunnerCredentialsId])
+                        // Set the status for skipped commands only.
+                        int iterator = 0
                         for (command in commands) {
-                            if (!resultsMap.containsKey(command)) {
+                            iterator++
+                            if (!(flywayResults.any { it.name == command })) {
                                 if (script.currentBuild.result == 'UNSTABLE')
-                                    resultsMap.put(command, "SKIPPED")
+                                    flywayResults.add([name: command, status: "SKIPPED"])
                                 else
-                                    resultsMap.put(command, script.currentBuild.result)
+                                    flywayResults.add([name: command, status: script.currentBuild.result])
+                            } else {
+                                def duplicateCommands = commands.findAll { it == command }
+                                if (duplicateCommands?.size() > 1 && flywayResults.size() < commands.size() && iterator > flywayResults.size()) {
+                                    if (script.currentBuild.result == 'UNSTABLE')
+                                        flywayResults.add([name: command, status: "SKIPPED"])
+                                    else
+                                        flywayResults.add([name: command, status: script.currentBuild.result])
+                                }
                             }
                         }
-                        if (!resultsMap.containsValue("SUCCESS"))
+                        def successfulCommands = flywayResults.findAll { it.status == "SUCCESS" }
+                        if (!successfulCommands)
                             script.currentBuild.result = 'FAILURE'
                         if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, "flyway", "FlywayMustHaves", "FlywayBuild.log", libraryProperties, mustHaveArtifacts)
@@ -172,7 +184,7 @@ class Flyway implements Serializable {
                         NotificationsHelper.sendEmail(script, 'flyway',
                                 [
                                         commands               : commands,
-                                        resultsMap             : resultsMap,
+                                        flywayResults          : flywayResults,
                                         options                : commandLineArgs.replaceFirst("-", ""),
                                         projectSourceCodeBranch: projectSourceCodeBranch
                                 ],

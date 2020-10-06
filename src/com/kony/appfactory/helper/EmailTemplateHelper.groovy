@@ -1248,7 +1248,7 @@ class EmailTemplateHelper implements Serializable {
                     }
                     tr {
                         td {
-                            if(binding.resultsMap != null && !binding.resultsMap.isEmpty()) {
+                            if(binding.flywayResults != null && !binding.flywayResults.isEmpty()) {
                                 table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%;text-align:left", class: "text-color table-border-channels") {
                                     thead(class:"table-border-channels") {
                                         tr {
@@ -1257,7 +1257,7 @@ class EmailTemplateHelper implements Serializable {
                                         }
                                     }
                                     tbody(class:"table-border-channels") {
-                                        EmailBuilder.addFlywayDataRows(htmlBuilder, binding.resultsMap)
+                                        EmailBuilder.addFlywayDataRows(htmlBuilder, binding.flywayResults)
                                     }
                                 }
                             }
