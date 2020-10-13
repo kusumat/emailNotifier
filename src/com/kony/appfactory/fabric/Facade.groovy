@@ -20,14 +20,14 @@ class Facade implements Serializable{
     protected final runCustomHook = script.params.RUN_CUSTOM_HOOKS
     private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeBranch = (script.params.SCM_BRANCH)?.trim()
-    private final projectSourceCodeRepositoryCredentialsId = script.params.SCM_CREDENTIALS
+    private final projectSourceCodeRepositoryCredentialsId
+    private final fabricAppDir
     private final fabricAppVersionToPickFrom = script.params.IMPORT_FABRIC_APP_VERSION
     private final fabricAppVersionInputParam = (script.params.FABRIC_APP_VERSION)?.trim()
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final fabricCredentialsID = script.params.FABRIC_CREDENTIALS
     private final boolean isBuildWithImport = script.params.IMPORT
     private final boolean isBuildWithPublish = script.params.PUBLISH
-    private final fabricAppDir = (script.params.FABRIC_DIR)?.trim()
     private final fabricJavaProjectsDir = (script.params.JAVA_PROJECTS_DIR)?.trim()
     private final mvnBuildCmdInput = (script.params.MVN_GOALS_AND_OPTIONS)?.trim()
     private boolean isBuildWithJavaAssets = script.params.BUILD_JAVA_ASSETS
@@ -50,7 +50,7 @@ class Facade implements Serializable{
     protected fabricCliVersion
     protected fabricCliFileName
     protected fabricCliFilePath
-    
+
     //Flag to import as new app or version
     protected boolean importAsNew = false
     
@@ -71,7 +71,11 @@ class Facade implements Serializable{
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         projectWorkspaceFolderName = libraryProperties.'fabric.project.workspace.folder.name'
         projectNameZip = projectName + ".zip"
-        
+        /* Set the fabric project settings values to the corresponding fabric environmental variables */
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Fabric')
+
+        fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR)?.trim() : (script.env.FABRIC_APP_ROOT_FOLDER)?.trim()
+        projectSourceCodeRepositoryCredentialsId = script.env.SCM_CREDENTIALS
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
@@ -134,13 +138,13 @@ class Facade implements Serializable{
                 try {
                     script.timestamps {
                         script.stage('Validate build params') {
-                            
+
                             def mandatoryParameters = [
                                 'SCM_BRANCH',
                                 'SCM_CREDENTIALS',
                                 'FABRIC_APP_CONFIG'
                             ]
-                            
+
                             if (isBuildWithImport)
                                 mandatoryParameters.add('FABRIC_CREDENTIALS')
                             

@@ -102,8 +102,12 @@ class Channel implements Serializable {
     final projectWorkspaceFolderName
     /* Base path for build resources (plist file template, ivysettings.xml, property.xml, Fastfile, etc.) */
     final resourceBasePath
+
+    /* Common Project Settings Parameters*/
+    protected final scmCredentialsId
+    protected final scmUrl
+
     /* Common build parameters */
-    protected final scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     protected final scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
     protected final fabricCredentialsID = script.params[fabricCredentialsParamName]
@@ -118,7 +122,6 @@ class Channel implements Serializable {
 
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
-    protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
     protected final jobBuildNumber = script.env.BUILD_NUMBER
     protected final protectedKeys = script.params.PROTECTED_KEYS
 
@@ -163,7 +166,11 @@ class Channel implements Serializable {
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         resourceBasePath = libraryProperties.'project.resources.base.path'
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
-        
+        /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+        scmCredentialsId = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+        scmUrl = script.env.PROJECT_SOURCE_CODE_URL
+
         /* Expose Kony global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
@@ -266,7 +273,7 @@ class Channel implements Serializable {
             if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED' && !script.params.IS_SOURCE_VISUALIZER) {
                 upstreamJob = BuildHelper.getUpstreamJobName(script)
                 isRebuild = BuildHelper.isRebuildTriggered(script)
-                    PrepareMustHaves()
+                PrepareMustHaves()
             }
             setBuildDescription()
             /* Been agreed to send notification from channel job only if result equals 'FAILURE' and if it's not CloudBuild */

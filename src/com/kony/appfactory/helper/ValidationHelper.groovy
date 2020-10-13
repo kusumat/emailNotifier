@@ -26,6 +26,10 @@ class ValidationHelper implements Serializable {
                     fabricCredentialsParamName, 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER'
             ]
         }
+
+        /* Validate project settings parameters */
+        checkProjectSettingsConfiguration(script)
+
         /*
             We are checking for the explicit null string check, since in the case of previous (< 8.3) appfactory projects,
             buildviz job is going to send the newly added param value with the null string.
@@ -301,6 +305,39 @@ class ValidationHelper implements Serializable {
             /* Forming final error message by adding suggestion message */
             errorMessage = errorMessage + '\n' + suggestionMessage
             throw new AppFactoryException(errorMessage, 'ERROR')
+        }
+    }
+
+    /**
+     * Validate project settings parameters.
+     *
+     * @param script pipeline object.
+     * @param projectType to validate the corresponding project settings parameters.
+     */
+
+    protected static void checkProjectSettingsConfiguration(script) {
+        if (BuildHelper.getProjectVersion(script.env.PROJECT_NAME)) {
+            def projectSettingsParamsMap = ["PROJECT_SOURCE_CODE_URL": 'Repository URL', 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID': "SCM Credentials"]
+            def emptyProjSettingsParams = []
+            /* Collect(filter) build parameters and environment variables to check */
+            def buildConfiguration = collectEnvironmentVariables(script.env, projectSettingsParamsMap.keySet())
+            /* Check if there are empty parameters among required parameters */
+            def emptyParams = checkForNull(buildConfiguration)
+            emptyParams.keySet().each { param ->
+                emptyProjSettingsParams.add(projectSettingsParamsMap[param])
+            }
+
+            /* If there are empty parameters */
+            if (emptyParams) {
+                String message = 'Project Settings parameter' + ((emptyParams.size() > 1) ? "'s" : '')
+                String requiredParamsErrorMessage = [emptyProjSettingsParams.join(', '), message, "can't be null!"].join(' ')
+
+                /* Redirect to project settings page to fill the required params */
+                String projectSettingsUrl = script.env.JENKINS_URL + "job/" + script.env.PROJECT_NAME + "/" + "projsettings"
+                String errorMessage = requiredParamsErrorMessage + ("\nPlease go to Project Settings to fill the mandatory parameters: ${projectSettingsUrl}")
+                /* Break the build and print all empty parameters */
+                throw new AppFactoryException(errorMessage, 'ERROR')
+            }
         }
     }
 }

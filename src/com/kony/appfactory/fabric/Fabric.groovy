@@ -42,7 +42,7 @@ class Fabric implements Serializable {
 
     private final String fabricCredentialsID = script.params[fabricCredentialsParamName]
     private String fabricAppName = script.params.FABRIC_APP_NAME
-    private final String recipientsList = script.params.RECIPIENTS_LIST
+    private final String recipientsList
     private String fabricAppVersion
 
     /* Import build parameters */
@@ -105,7 +105,10 @@ class Fabric implements Serializable {
         nodeLabel = libraryProperties.'fabric.node.label'
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
         overwriteExisting = BuildHelper.getParamValueOrDefault(this.script, 'OVERWRITE_EXISTING', true)
-        
+        /* Set the fabric project settings values to the corresponding fabric environmental variables */
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Fabric')
+
+        recipientsList = script.env.RECIPIENTS_LIST
          /* To maintain Fabric triggers jobs backward compatibility */
         def fabricScmUrlProbableParams = ['PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL']
         exportRepositoryUrl = BuildHelper.getParamValueOrDefaultFromProbableParamList(
@@ -115,9 +118,9 @@ class Fabric implements Serializable {
                 this.script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
         exportRepositoryBranch = this.script.params[sourceCodeRepoBranchParamName]
 
-        def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(this.script, 'SCM_CREDENTIALS', BuildHelper.getCurrentParamName(
-                this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'))
-        exportRepositoryCredentialsId = this.script.params[sourceCodeRepoCredentialParamName]
+        def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(this.script, BuildHelper.getCurrentParamName(
+                this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 'SCM_CREDENTIALS')
+        exportRepositoryCredentialsId = this.script.env[sourceCodeRepoCredentialParamName]
         isScmUrlParamExistInCurrentProject = BuildHelper.doesAnyParamExistFromProbableParamList(this.script, fabricScmUrlProbableParams)
     }
 
@@ -580,8 +583,8 @@ class Fabric implements Serializable {
 
                 script.stage('Check provided parameters') {
 
-                    def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(script, 'SCM_CREDENTIALS', BuildHelper.getCurrentParamName(
-                            script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'))
+                    def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(script, BuildHelper.getCurrentParamName(
+                            script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 'SCM_CREDENTIALS')
                     def sourceCodeRepoBranchParamName = BuildHelper.getCurrentParamName(script, 'SCM_BRANCH', BuildHelper.getCurrentParamName(
                             script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
 
@@ -677,8 +680,8 @@ class Fabric implements Serializable {
                 fabricTask = "import"
 
                 script.stage('Check provided parameters') {
-                    def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(script, 'SCM_CREDENTIALS', BuildHelper.getCurrentParamName(
-                            script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'))
+                    def sourceCodeRepoCredentialParamName = BuildHelper.getCurrentParamName(script, BuildHelper.getCurrentParamName(
+                            script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 'SCM_CREDENTIALS')
                     def sourceCodeRepoBranchParamName = BuildHelper.getCurrentParamName(script, 'SCM_BRANCH', BuildHelper.getCurrentParamName(
                             script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
 

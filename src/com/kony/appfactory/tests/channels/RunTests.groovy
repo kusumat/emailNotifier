@@ -27,10 +27,10 @@ class RunTests implements Serializable {
     protected projectWorkspacePath
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
-    protected projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
+    protected projectRoot
     protected scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    protected scmCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
-    protected scmUrl = script.env.PROJECT_SOURCE_CODE_URL
+    protected scmCredentialsId
+    protected scmUrl
     protected runCustomHook = script.params.RUN_CUSTOM_HOOKS
     protected isJasmineEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
     protected testFramework = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()
@@ -45,6 +45,7 @@ class RunTests implements Serializable {
         can not be used.
      */
     final projectWorkspaceFolderName
+
     /*
         Platform dependent default name-separator character as String.
         For windows, it's '\' and for unix it's '/'.
@@ -75,6 +76,12 @@ class RunTests implements Serializable {
         )
         this.channelType = channelType
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
+        /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+        scmCredentialsId = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+        scmUrl = script.env.PROJECT_SOURCE_CODE_URL
+        projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
+
         this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''

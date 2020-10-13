@@ -93,7 +93,7 @@ class FabricHelper implements Serializable {
      * @return repo project name
      */
     private static final getGitProjectName(String url) {
-        url.tokenize('/')?.last()?.replaceAll('.git', '')
+        url?.tokenize('/')?.last()?.replaceAll('.git', '')
     }
     
     /**

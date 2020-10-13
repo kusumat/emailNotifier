@@ -10,9 +10,8 @@ import net.sf.json.JSONSerializer;
 
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
-import com.kony.appfactory.project.settings.ProjectSettingsProperty
-import com.kony.appfactory.project.settings.ProjectSettingsDTO
-import com.kony.appfactory.project.settings.Sonar
+import com.kony.appfactory.project.settings.dto.ProjectSettingsDTO
+import com.kony.appfactory.project.settings.dto.visualizer.quality.Sonar
 import com.kony.appfactory.helper.AppFactoryException
 
 import jenkins.model.Jenkins
@@ -30,7 +29,7 @@ class CodeScanners implements Serializable {
      */
     private boolean isUnixNode
 
-    private final scmCredentialsId = script.params.SCM_CREDENTIALS
+    private final scmCredentialsId
     private final scmBranch = script.params.SCM_BRANCH
     
     private final workspaceURL = script.params.WORKSPACE_URL
@@ -42,8 +41,9 @@ class CodeScanners implements Serializable {
     
     /* Common environment variables */
     protected final projectName = script.env.PROJECT_NAME
-    protected final scmUrl = script.env.PROJECT_SOURCE_CODE_URL
-    protected final projectRootFolder = script.env.PROJECT_ROOT_FOLDER_NAME
+    protected final scmUrl
+    protected final projectRootFolder
+    protected final scmVendor
     
     /**
      * Class constructor.
@@ -57,7 +57,25 @@ class CodeScanners implements Serializable {
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         nodeLabel = libraryProperties.'sonarqube.node.label'
+
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+
+        scmVendor = script.env.PROJECT_SOURCE_CODE_SERVER_TYPE
+        scmCredentialsId = script.env.SCM_CREDENTIALS
+        scmUrl = script.env.PROJECT_SOURCE_CODE_URL
+        projectRootFolder = script.env.PROJECT_ROOT_FOLDER_NAME
     }
+
+
+    /*
+     * Used to identify the Quality projects with Source Control Project Settings
+     */
+    @NonCPS
+    private final boolean isVizScmSettingsAvailable() {
+        ProjectSettingsDTO projectSettings = BuildHelper.getAppFactoryProjectSettings(projectName)
+        (projectSettings?.getVisualizerSettings()?.getSourceControl())? true : false
+    }
+
 
     /*
      * Gets the complete list of Sonar properties as command line options so that it can be used directly.
@@ -65,14 +83,14 @@ class CodeScanners implements Serializable {
     @NonCPS
     private final getSonarOptions() {
         ProjectSettingsDTO projectSettings = BuildHelper.getAppFactoryProjectSettings(projectName)
-        if(projectSettings && projectSettings.getScans() && projectSettings.getScans().getSonar()) {
-            Sonar sonarSettings = projectSettings.getScans().getSonar()
+        if(projectSettings?.getVisualizerSettings()?.getScans()?.getSonar()) {
+            Sonar sonarSettings = projectSettings.getVisualizerSettings().getScans().getSonar()
             String serverURL = (sonarSettings.getSonarServerURL()) ? "-Dsonar.host.url=" + sonarSettings.getSonarServerURL() : ""
             String prjID = (sonarSettings.getSonarVizPrjID()) ? "-Dsonar.projectKey=" + sonarSettings.getSonarVizPrjID() : ""
             String prjBaseDir = (sonarSettings.getSonarPrjBaseDir()) ? "-Dsonar.projectBaseDir=" + sonarSettings.getSonarPrjBaseDir() : ""
             String prjSources = (sonarSettings.getSonarPrjSrc()) ? "-Dsonar.sources=" + sonarSettings.getSonarPrjSrc() : ""
             String exclusions = (sonarSettings.getSonarExclusions()) ? "-Dsonar.exclusions=" + sonarSettings.getSonarExclusions() : ""
-            String otherProps = (sonarSettings.getScanProps()) ? sonarSettings.getScanProps() : ""
+            String otherProps = (sonarSettings.getSonarScanProps()) ? sonarSettings.getSonarScanProps() : ""
             String debugFlag = (sonarSettings.getIsDebugEnabled()) ? "-X" : ""
 
             exclusions = exclusions.replaceAll(', ', ',')
@@ -105,6 +123,7 @@ class CodeScanners implements Serializable {
             script.currentBuild.result = 'FAILURE'
         }
     }
+
 
     /**
      * Runs the sonar scan on the given project source code.

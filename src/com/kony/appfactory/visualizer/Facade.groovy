@@ -7,9 +7,8 @@ import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AwsHelper
 import com.kony.appfactory.helper.CredentialsHelper
 import com.kony.appfactory.helper.AppFactoryException
-import com.kony.appfactory.project.settings.ProjectSettingsProperty
-import com.kony.appfactory.project.settings.ProjectSettingsDTO
-import com.kony.appfactory.project.settings.Scans
+import com.kony.appfactory.project.settings.dto.ProjectSettingsDTO
+import com.kony.appfactory.project.settings.dto.visualizer.quality.Scans
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException
 import hudson.AbortException
 import com.kony.appfactory.enums.BuildType
@@ -51,9 +50,13 @@ class Facade implements Serializable {
     /* List of job statuses (job results), used for setting up final result of the buildVisualizer job */
     private jobResultList = []
 
+    /* Common Project Settings Parameters*/
+    private final projectSourceCodeRepositoryCredentialsId
+    private final recipientsList
+    private final defaultLocale
+
     /* Common build parameters */
     private final projectName = script.env.PROJECT_NAME
-    private final projectSourceCodeRepositoryCredentialsId = script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
     protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
     private fabricCredentialsID = script.params[fabricCredentialsParamName]
@@ -61,8 +64,6 @@ class Facade implements Serializable {
     private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final publishToFabricParamName = BuildHelper.getCurrentParamName(script, 'PUBLISH_FABRIC_APP', 'PUBLISH_WEB_APP')
     private final publishWebApp = script.params[publishToFabricParamName]
-    private final recipientsList = script.params.RECIPIENTS_LIST
-    private final defaultLocale = script.params.DEFAULT_LOCALE
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     private fabricEnvironmentName
@@ -147,6 +148,13 @@ class Facade implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+
+        projectSourceCodeRepositoryCredentialsId = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
+        recipientsList = script.env.RECIPIENTS_LIST
+        defaultLocale = script.env.DEFAULT_LOCALE
+
         /* Checking if at least one channel been selected. */
         channelsToRun = (BuildHelper.getSelectedChannels(this.script.params)) ?: []
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
@@ -277,20 +285,22 @@ class Facade implements Serializable {
         boolean isScanEnabled = false
         boolean isBuildNeeded = true
         ProjectSettingsDTO projectSettings = BuildHelper.getAppFactoryProjectSettings(projectName)
-        Scans scans = projectSettings?.getScans()
-        if(scans) {
-            switch (scanType) {
-                case 'SonarQube':
-                    isScanEnabled = scans.getSonar() ? scans.getSonar().getRunSonar() : false
-                    isBuildNeeded = scans.getSonar() ? scans.getSonar().getFailBuildOnQualityGateStatus() : true
-                    break
-                default:
-                    break
+        if(projectSettings) {
+            Scans scans = projectSettings.getVisualizerSettings()?.getScans()
+            if (scans) {
+                switch (scanType) {
+                    case 'SonarQube':
+                        isScanEnabled = scans.getSonar() ? scans.getSonar().getRunSonar() : false
+                        isBuildNeeded = scans.getSonar() ? scans.getSonar().getFailBuildOnQualityGateStatus() : true
+                        break
+                    default:
+                        break
+                }
             }
         }
         ["isScanEnabled" : isScanEnabled, "isBuildNeeded" : isBuildNeeded]
     }
-    
+
     /**
      * Return group of common build parameters.
      *
@@ -299,7 +309,7 @@ class Facade implements Serializable {
     private final getScanJobParameters(scanType) {
         def scanJobParameters = []
         switch(scanType) {
-            case 'SonarQube' : 
+            case 'SonarQube' :
                 scanJobParameters = [
                     script.string(name: 'SCM_BRANCH', value: "${projectSourceCodeBranch}"),
                     script.credentials(name: 'SCM_CREDENTIALS', value: "${projectSourceCodeRepositoryCredentialsId}")
@@ -308,10 +318,10 @@ class Facade implements Serializable {
             default :
                 break
         }
-        
+
         scanJobParameters
     }
-    
+
     /**
      * Return group of common build parameters.
      *
@@ -363,10 +373,10 @@ class Facade implements Serializable {
         def commonWebParameters = getCommonJobBuildParameters() +
         [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
         [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
-        
+
         if (spaChannelsToBuildJobParameters && desktopWebChannel) {
             commonWebParameters +
-                [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] + 
+                [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] +
                 spaChannelsToBuildJobParameters
         } else if (spaChannelsToBuildJobParameters) {
             commonWebParameters +  spaChannelsToBuildJobParameters
@@ -520,7 +530,7 @@ class Facade implements Serializable {
             } else
                 return null
         }
-        
+
         binaryParams.flatten()
     }
 
@@ -594,7 +604,7 @@ class Facade implements Serializable {
 
                     /* Collect must have artifacts */
                     mustHaveArtifacts.addAll(getArtifactObjects(channelPath, channelJob.buildVariables.MUSTHAVE_ARTIFACTS))
-                    
+
                     /* Notify user that one of the channels failed */
                     if (channelJob.currentResult != 'SUCCESS') {
                         script.echoCustom("Status of the channel ${channelName} " +
@@ -742,7 +752,7 @@ class Facade implements Serializable {
         boolean testFlags = availableTestPools || (runDesktopwebTests && publishWebApp)
         return testFlags && jobResultList.contains('SUCCESS')
     }
-    
+
     /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
@@ -768,12 +778,12 @@ class Facade implements Serializable {
                             if (universalAndroid || universalIos) {
                                 ValidationHelper.checkBuildConfigurationForUniversalApp(script)
                             }
-                            
+
                             /* Check the required param for run DesktopWeb test */
                             if(runDesktopwebTests) {
                                 ValidationHelper.checkBuildConfigurationForDesktopWebTest(script, libraryProperties)
                             }
-                            
+
                             /* List of required parameters */
                             def checkParams = [], eitherOrParameters = []
                             def tempBuildMode = (buildMode == 'release-protected [native-only]') ? 'release-protected' : script.params.BUILD_MODE
@@ -838,7 +848,7 @@ class Facade implements Serializable {
                                 def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
                                 checkParams.addAll(webMandatoryParams)
                             }
-                            
+
                             /* Check the valid values for Test Framework */
                             def expectedValuesForTestFramework = ['TestNG', 'Jasmine']
                             ValidationHelper.checkValidValueForParam(script, 'TEST_FRAMEWORK', expectedValuesForTestFramework)
@@ -877,13 +887,13 @@ class Facade implements Serializable {
                         script.params.IS_SOURCE_VISUALIZER ?: prepareScans()
                         if(!scansList.isEmpty()) {
                             script.parallel(scansList)
-                            if(scanResultsMap.containsValue('FAILURE') || 
-                                scanResultsMap.containsValue('UNSTABLE') || 
+                            if(scanResultsMap.containsValue('FAILURE') ||
+                                scanResultsMap.containsValue('UNSTABLE') ||
                                 scanResultsMap.containsValue('ABORTED') ) {
                                 throw new AppFactoryException("One or more scans are failed, hence not proceeding to build the application!!", 'ERROR')
                             }
                         }
-                        
+
                         script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun() : prepareRun()
 
                         /* Expose Fabric configuration */
@@ -908,7 +918,7 @@ class Facade implements Serializable {
 
                         /* Run channel builds in parallel */
                         script.parallel(runList)
-                        
+
                         /* If test pool been provided, prepare build parameters and trigger runTests job */
                         if (shallWeRunTests()) {
                             script.stage('TESTS') {
@@ -921,7 +931,7 @@ class Facade implements Serializable {
                                     /* Finding the desktopweb artifact(war/zip) auth url from the list of channel artifacts */
                                     def artifactUrl = artifacts.findResults { artifact ->
                                         String artifactUrl = artifact.authurl ? artifact.authurl : ''
-                                        
+
                                         /* Filtering by extension */
                                         !artifact.name ? '' : (artifact.name.matches("^.*.?(war|zip)\$")) ? artifactUrl : ''
                                     }
@@ -936,7 +946,7 @@ class Facade implements Serializable {
                                     ]
                                 }
 
-                                // passing the TEST_ENVIRONMENT variable to test job 
+                                // passing the TEST_ENVIRONMENT variable to test job
                                 if(script.params.containsKey("TEST_ENVIRONMENT"))
                                 {
                                     awsCustomEnvParameters.add(script.string(name: 'TEST_ENVIRONMENT', value: script.params.TEST_ENVIRONMENT))
@@ -946,7 +956,7 @@ class Facade implements Serializable {
                                 if (isJasmineEnabled || runInCustomTestEnvironment) {
                                     awsCustomEnvParameters.add(script.string(name: 'APPIUM_VERSION', value: "${appiumVersion}"))
                                 }
-                                
+
                                 String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
                                         "${script.env.JOB_BASE_NAME}" -
                                         'Builds/'

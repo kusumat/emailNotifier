@@ -57,7 +57,7 @@ class FacadeTests implements Serializable {
 
     /* Environment variable */
     private projectName = script.env.PROJECT_NAME
-    private projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
+    private projectRoot
     private runCustomHook = script.params.RUN_CUSTOM_HOOKS
 
     /* Parameters used to differentiate Native and DesktopWeb apps */
@@ -98,7 +98,11 @@ class FacadeTests implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+
         workspace = script.env.WORKSPACE
+        projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
         this.script.env['CLOUD_ACCOUNT_ID'] = (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'

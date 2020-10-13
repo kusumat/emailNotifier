@@ -16,7 +16,9 @@ import com.kony.AppFactory.fabric.api.oauth1.dto.KonyExternalAuthN
 import com.kony.AppFactory.fabric.FabricException;
 import com.kony.AppFactory.fabric.FabricUnreachableException
 import com.kony.appfactory.project.settings.ProjectSettingsProperty
-import com.kony.appfactory.project.settings.ProjectSettingsDTO
+import com.kony.appfactory.project.settings.dto.FabricSettingsDTO
+import com.kony.appfactory.project.settings.dto.ProjectSettingsDTO
+import com.kony.appfactory.project.settings.dto.VisualizerSettingsDTO
 import java.util.stream.Collectors;
 
 /**
@@ -1407,4 +1409,43 @@ class BuildHelper implements Serializable {
             </div>\
             """.stripIndent()
     }
+
+    /**
+     * Will fetch the  project settings field values and Inject them to the environmental variables
+     * @param script
+     * @param projectType used to fetch the corresponding project settings field values
+     */
+    @NonCPS
+    protected static void setProjSettingsFieldsToEnvVars(script, projectType) {
+        if (getProjectVersion(script.env.PROJECT_NAME)) {
+            ProjectSettingsDTO projectSettings = getAppFactoryProjectSettings(script.env.PROJECT_NAME)
+            if (projectSettings) {
+                VisualizerSettingsDTO vizSettings = projectSettings.getVisualizerSettings()
+                FabricSettingsDTO fabSettings = projectSettings.getFabricSettings()
+                def settingsMap = (projectType == "Visualizer") ? ((vizSettings)?.toMap()) : (fabSettings?.toMap())
+                /* Set each value to the environmental variables */
+                settingsMap?.values().each { childSectionMap ->
+                    if(childSectionMap.getClass().equals(HashMap.class)) {
+                        childSectionMap.each { key, value ->
+                            script.env[key] = value
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Check new Project settings available (>v9.1) for a given project.
+     * @param script
+     * @param projectType
+     */
+    @NonCPS
+    protected static boolean getProjectVersion(projectName) {
+        /* ProjectSettings might have exist in V9.1 where there is no DSL version tag attached to the settings object
+           So, returning 'null' incase for 9.1 and 9.1 below versions.
+         */
+         return (getAppFactoryProjectSettings(projectName)?.getProjectDSLVersion())
+    }
+
 }
