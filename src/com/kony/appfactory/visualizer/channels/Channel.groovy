@@ -307,8 +307,10 @@ class Channel implements Serializable {
         channelBuildStats.put('vizver', visualizerVersion)
         channelBuildStats.put('buildver', visualizerVersion)
 
-        /* For CloudBuild, validate if CloudBuild Supported for the given project version */
-        if (script.env.IS_STARTER_PROJECT.equals("true")) {
+        /* For CloudBuild only, provided the CloudBuild service is supported for the given project visualizer version, always build with the latest version present on production.
+         * For Non-CloudBuild, build with same project visualizer version.
+         */
+        if (script.env.IS_SOURCE_VISUALIZER.equals("true")) {
             def finalFeatureParamsToCheckCISupport = [:]
             finalFeatureParamsToCheckCISupport.put('CloudBuild', ['featureDisplayName': 'Cloud Build Feature'])
             ValidationHelper.checkFeatureSupportExist(script, libraryProperties, finalFeatureParamsToCheckCISupport, VisualizerBuildType.ci)
