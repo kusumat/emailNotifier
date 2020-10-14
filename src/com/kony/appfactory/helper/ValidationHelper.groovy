@@ -6,12 +6,28 @@ package com.kony.appfactory.helper
  */
 class ValidationHelper implements Serializable {
     /**
-     * Validate build parameters and environment variables.
+     * Validate project settings, job build parameters and environment variables.
      *
      * @param script pipeline object.
      * @param [parametersToCheck] parameters that need to be validated.
+     * @param [eitherOrParameters] List of parameters where either one among the parameters needs to exist
      */
     protected static void checkBuildConfiguration(script, parametersToCheck = [], eitherOrParameters = []) {
+        /* Validate project settings parameters */
+        checkProjectSettingsConfiguration(script)
+        /*Validate job build parameters and environment variables.*/
+        checkParamsConfiguration(script, parametersToCheck, eitherOrParameters)
+    }
+
+    /**
+     * Validate job build parameters and environment variables.
+     *
+     * @param script pipeline object.
+     * @param [parametersToCheck] parameters that need to be validated.
+     * @param [eitherOrParameters] List of parameters where either one among the parameters needs to exist
+     */
+    private static void checkParamsConfiguration(script, parametersToCheck = [], eitherOrParameters = []) {
+
         def fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
         /* List of the parameters that every channel job requires */
         def commonRequiredParams
@@ -26,9 +42,6 @@ class ValidationHelper implements Serializable {
                     fabricCredentialsParamName, 'PROJECT_NAME', 'PROJECT_SOURCE_CODE_URL', 'BUILD_NUMBER'
             ]
         }
-
-        /* Validate project settings parameters */
-        checkProjectSettingsConfiguration(script)
 
         /*
             We are checking for the explicit null string check, since in the case of previous (< 8.3) appfactory projects,
@@ -53,7 +66,7 @@ class ValidationHelper implements Serializable {
         def buildConfiguration = collectEnvironmentVariables(script.env, requiredParams)
         /* Check if there are empty parameters among required parameters */
         def emptyParams = checkForNull(buildConfiguration)
-        
+
         /* If there are empty parameters */
         if (emptyParams) {
             String message = 'parameter' + ((emptyParams.size() > 1) ? 's' : '')
@@ -312,11 +325,9 @@ class ValidationHelper implements Serializable {
      * Validate project settings parameters.
      *
      * @param script pipeline object.
-     * @param projectType to validate the corresponding project settings parameters.
      */
-
-    protected static void checkProjectSettingsConfiguration(script) {
-        if (BuildHelper.getProjectVersion(script.env.PROJECT_NAME)) {
+    private static void checkProjectSettingsConfiguration(script) {
+        if (!script.env.JOB_BASE_NAME.equalsIgnoreCase("Flyway") && BuildHelper.getProjectVersion(script.env.PROJECT_NAME)) {
             def projectSettingsParamsMap = ["PROJECT_SOURCE_CODE_URL": 'Repository URL', 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID': "SCM Credentials"]
             def emptyProjSettingsParams = []
             /* Collect(filter) build parameters and environment variables to check */
