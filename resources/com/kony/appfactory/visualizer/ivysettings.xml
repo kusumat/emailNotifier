@@ -7,19 +7,19 @@
                 <artifact pattern="${ivy.settings.dir}/lib/[artifact]-[revision].[ext]"/>
             </filesystem>
             <url name="V9Prod">
-                <artifact pattern="http://download.kony.com/visualizer_enterprise/90/plugins/[artifact]_[revision].[ext]"></artifact>
+                <artifact pattern="https://download.kony.com/visualizer_enterprise/90/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>
             <url name="V9">
-                <artifact pattern="http://download.[CLOUD_DOMAIN]/visualizer_enterprise/90/plugins/[artifact]_[revision].[ext]"></artifact>
+                <artifact pattern="https://download.[CLOUD_DOMAIN]/visualizer_enterprise/90/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>
             <url name="V8Prod">
-                <artifact pattern="http://download.kony.com/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
+                <artifact pattern="https://download.kony.com/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>
             <url name="V8">
-                <artifact pattern="http://download.[CLOUD_DOMAIN]/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
+                <artifact pattern="https://download.[CLOUD_DOMAIN]/visualizer_enterprise/80/plugins/[artifact]_[revision].[ext]"></artifact>
             </url>
             <url name="V7">
-                <artifact pattern="http://download.[CLOUD_DOMAIN]/studio/70/plugins/[artifact]_[revision].[ext]" />
+                <artifact pattern="https://download.[CLOUD_DOMAIN]/studio/70/plugins/[artifact]_[revision].[ext]" />
             </url>
         </chain>
     </resolvers>
