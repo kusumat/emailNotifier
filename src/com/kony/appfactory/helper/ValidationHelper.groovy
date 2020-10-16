@@ -26,7 +26,7 @@ class ValidationHelper implements Serializable {
      * @param [parametersToCheck] parameters that need to be validated.
      * @param [eitherOrParameters] List of parameters where either one among the parameters needs to exist
      */
-    private static void checkParamsConfiguration(script, parametersToCheck = [], eitherOrParameters = []) {
+    protected static void checkParamsConfiguration(script, parametersToCheck = [], eitherOrParameters = []) {
 
         def fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
         /* List of the parameters that every channel job requires */
@@ -327,7 +327,7 @@ class ValidationHelper implements Serializable {
      * @param script pipeline object.
      */
     private static void checkProjectSettingsConfiguration(script) {
-        if (!script.env.JOB_BASE_NAME.equalsIgnoreCase("Flyway") && BuildHelper.getProjectVersion(script.env.PROJECT_NAME)) {
+        if (BuildHelper.getProjectVersion(script.env.PROJECT_NAME)) {
             def projectSettingsParamsMap = ["PROJECT_SOURCE_CODE_URL": 'Repository URL', 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID': "SCM Credentials"]
             def emptyProjSettingsParams = []
             /* Collect(filter) build parameters and environment variables to check */

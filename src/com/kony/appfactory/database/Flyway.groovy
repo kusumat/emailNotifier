@@ -98,7 +98,7 @@ class Flyway implements Serializable {
             script.ansiColor('xterm') {
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = ['SCM_URL', 'SCM_BRANCH', 'SCM_CREDENTIALS', 'FLYWAY_COMMAND', 'DB_CREDENTIALS']
-                    ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
+                    ValidationHelper.checkParamsConfiguration(script, mandatoryParameters)
                 }
                 script.node(nodeLabel) {
                     try {
