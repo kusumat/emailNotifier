@@ -1447,5 +1447,4 @@ class BuildHelper implements Serializable {
          */
          return (getAppFactoryProjectSettings(projectName)?.getProjectDSLVersion())
     }
-
 }

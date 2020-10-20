@@ -608,10 +608,8 @@ class Fabric implements Serializable {
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
                         script.stage('Prepare build-node environment') {
-                            script.cleanWs deleteDirs: true
                             prepareBuildEnvironment()
                         }
-
                         script.stage('Export project from Fabric') {
                             exportProjectFromFabric(cloudAccountId, fabricCredentialsID, projectName)
                         }
@@ -707,7 +705,6 @@ class Fabric implements Serializable {
                         script.stage('Prepare build-node environment') {
                             prepareBuildEnvironment()
                         }
-                        
                         script.stage('Fetch project from remote git repository') {
                             checkoutProjectFromRepo(projectName)
                         }
@@ -724,6 +721,7 @@ class Fabric implements Serializable {
                         }
                         
                         script.stage('Import project to Fabric') {
+                            FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                             importProjectToFabric(cloudAccountId, fabricCredentialsID, overwriteExisting)
                         }
                         
@@ -775,8 +773,8 @@ class Fabric implements Serializable {
                         script.stage('Prepare environment for Publish task') {
                             prepareBuildEnvironment()
                         }
-
                         script.stage('Publish project on Fabric') {
+                            FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                             
                             def fabricCliOptions = [
                                     '-t': "\"$cloudAccountId\"",
@@ -897,12 +895,10 @@ class Fabric implements Serializable {
                         if(!isUnixNode) {
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
-
                         /* Steps for exporting fabric app configuration for migrate task */
                         script.stage('Prepare environment for Migrate task') {
                             prepareBuildEnvironment()
                         }
-
                         script.stage('Export project from Fabric') {
                             script.echoCustom("Exporting the ${fabricAppName} app from Fabric..", 'INFO')
                             exportProjectFromFabric(exportCloudAccountId, exportFabricCredentialsID, projectName, exportConsoleUrl, exportIdentityUrl)
@@ -950,8 +946,9 @@ class Fabric implements Serializable {
                         script.stage("Create zip archive of the project") {
                             zipProject(projectName, fabricAppName)
                         }
-
+                        
                         script.stage('Import project to Fabric') {
+                            FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, importFabricCredentialsID, importCloudAccountId, fabricEnvironmentName, isUnixNode)
                             importProjectToFabric(importCloudAccountId, importFabricCredentialsID, overwriteExistingAppVersion, importConsoleUrl,importIdentityUrl)
                         }
 

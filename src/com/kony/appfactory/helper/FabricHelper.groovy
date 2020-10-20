@@ -326,5 +326,65 @@ class FabricHelper implements Serializable {
         }
         return isValid
     }
+    
+    /**
+     * Run healthcheck for Fabric environment
+     * @param script
+     * @param fabricCliPath, mfcli.jar with absolute path
+     * @param cloudCredentialsID
+     * @param cloudAccountId
+     * @param fabricEnvironmentName
+     * @param isUnixNode
+     * @return console output screen of healthcheck
+     */
+    private static final String runFabricHealthCheck(
+        script,
+        fabricCliPath,
+        cloudCredentialsID,
+        cloudAccountId,
+        fabricEnvironmentName,
+        isUnixNode) {
+
+        def healthCheckCommandOptions = [
+            '-t': "\"$cloudAccountId\"",
+            '-e': "\"$fabricEnvironmentName\""
+        ]
+        
+        fabricCli(script, 'healthcheck', cloudCredentialsID, isUnixNode, fabricCliPath, healthCheckCommandOptions, [returnStdout: true])
+    }
+    
+    /**
+     * Get the Fabric Server version through mfcli healthcheck command.
+     * @param script
+     * @param fabricCliPath
+     * @param fabricCredentialsID
+     * @param cloudAccountId
+     * @param fabricEnvironmentName
+     * @param isUnixNode
+     */
+    protected static void fetchFabricServerVersion(script, fabricCliPath, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode) {
+        def fabricServerVersion
+        def fabServerVersionFromHealthCheck = ""
+        def fabrichealthCheck = runFabricHealthCheck(script, fabricCliPath, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
+        Map<String,String> fabricHealthCheckMap = new LinkedHashMap<String,String>();
+        fabrichealthCheck.split("\n").each { outputLine ->
+            if(outputLine.contains(":")) {
+                fabricHealthCheckMap.put(outputLine.split(":").first().trim(), outputLine.split(":").last().trim());
+            }
+        }
+        if(!fabricHealthCheckMap.containsKey("Version"))
+            throw new AppFactoryException('Failed to get the Fabric Server version! It seems something wrong with health check of Fabric environment.', 'ERROR')
+        
+        fabServerVersionFromHealthCheck = fabricHealthCheckMap.get("Version")
+        /* The DEV build convention of the version is slightly different. So in few of lower Fabric environments, 
+         * Fabric Server Version value can be as: '9.2.0.71_DEV' but in actual we have to take value as : '9.2.0.71' */
+        if(fabServerVersionFromHealthCheck.contains("_")) {
+            fabricServerVersion = fabServerVersionFromHealthCheck.split("_").first()
+        } else {
+            fabricServerVersion = fabServerVersionFromHealthCheck
+        }
+        script.env['fabricServerVersion'] = fabricServerVersion
+        script.echoCustom("From the given Fabric App Config, found the Fabric Server version: ${fabServerVersionFromHealthCheck}", 'INFO')
+    }
 
 }
