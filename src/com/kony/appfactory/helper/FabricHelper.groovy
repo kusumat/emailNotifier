@@ -80,8 +80,40 @@ class FabricHelper implements Serializable {
                 // if URL_PATH_INFO variable was set, Adding option to authenticate with external-auth
                 if(script.env.URL_PATH_INFO)
                     shellString = [shellString, '--external-auth'].join(' ')
-                                    
+                
+                if(fabricCommand.equalsIgnoreCase('publish')){
+                    String envName = fabricCommandOptions?."-e"
+                    commandOutput = sequencePublish(script, envName, shellString, isUnixNode, args)
+                } else {
+                    commandOutput = script.shellCustom(shellString, isUnixNode, args)
+                }
+            }
+        }
+        commandOutput
+    }
+    
+    /**
+     * Publishes the application to the fabric environment in the sequential way
+     * 
+     * @param script Build script object.
+     * @param envName Environment name on which the app need to be published.
+     * @param shellString complete fabric command.
+     * @param isUnixNode UNIX node flag.
+     * @param args to shellCustom to return status and command output.
+     * 
+     * @return mfcli commandOutput
+     */
+    private static final sequencePublish(script, envName, shellString, isUnixNode, args) {
+        def commandOutput
+        args.returnStdout = true
+        script.lock(envName) {
+            int iteration = 0
+            commandOutput = script.shellCustom(shellString, isUnixNode, args)
+            while(commandOutput.contains('ERROR: Server is busy ') && iteration < 100) {
+                script.echoCustom('Server Environment seems busy with another app publish!! We will try to publish after 15 Seconds.', 'INFO')
+                script.sleep 15
                 commandOutput = script.shellCustom(shellString, isUnixNode, args)
+                iteration++
             }
         }
         commandOutput
