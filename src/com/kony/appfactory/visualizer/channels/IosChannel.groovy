@@ -330,6 +330,8 @@ class IosChannel extends Channel {
                     "ENABLE_FILE_SHARING=${isFileShareEnabled}",
                     "FORM_FACTOR=${channelFormFactor}"
                 ]) {
+                    def fastlaneBashEnvironment="export {LANG,LANGUAGE,LC_ALL}=en_US.UTF-8"
+                    def fastlaneCmd = "${fastlaneBashEnvironment};$FASTLANE_DIR/fastlane " + fastlaneName
 
                     if (appleID){
                         script.withCredentials([
@@ -344,7 +346,7 @@ class IosChannel extends Channel {
                                     "MANUAL_CERTS=false"
                             ]) {
                                 script.sshagent(credentials: [libraryProperties.'fastlane.certificates.repo.credentials.id']) {
-                                    script.shellCustom('$FASTLANE_DIR/fastlane ' + fastlaneName, true)
+                                    script.shellCustom(fastlaneCmd, true)
                                 }
                             }
                         }
@@ -373,7 +375,7 @@ class IosChannel extends Channel {
                                             "PROVISION_CERT_PASSWORD=${script.env.PROVISION_PASSWORD}",
                                             "MANUAL_CERTS=true"
                                             ] + profilesEnv) {
-                                script.shellCustom('$FASTLANE_DIR/fastlane ' + fastlaneName, true)
+                                script.shellCustom(fastlaneCmd, true)
                             }
                         }
                     }
