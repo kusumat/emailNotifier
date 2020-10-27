@@ -383,6 +383,28 @@ class Facade implements Serializable{
                                                 importAsNew)
                                         
                                         if (isBuildWithPublish) {
+                                            /* Import service config profile, if "configuration" dir contain environment name json file*/
+                                            def fabricAppConfigurationDirPath = [projectFullPath, "configuration"].join(separator)
+                                            def serviceConfigFileName = fabricEnvironmentName + ".json"
+                                            def reconfigurationJsonFilePath = [fabricAppConfigurationDirPath, serviceConfigFileName].join(separator)
+                                            if(script.fileExists(reconfigurationJsonFilePath)) {
+                                                script.echoCustom("Service profile file found for Fabric environment '${reconfigurationJsonFilePath}', will be importing to Fabric app!", "INFO")
+                                                /* Run import fabric app service config*/
+                                                FabricHelper.importFabricAppServiceConfig(
+                                                    script,
+                                                    fabricCliFilePath,
+                                                    fabricCredentialsID,
+                                                    fabricCloudAccountId,
+                                                    reconfigurationJsonFilePath,
+                                                    fabricAppName,
+                                                    fabricAppVersion,
+                                                    fabricEnvironmentName,
+                                                    isUnixNode)
+                                                
+                                            } else {
+                                                script.echoCustom("No profile found to import/publish for Fabric environment at path '${fabricAppConfigurationDirPath}', so skipping to update app service config!", "INFO")
+                                            }
+                                            
                                             Date publishStart = new Date()
                                             FabricHelper.publishFabricApp(
                                                 script,

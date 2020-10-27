@@ -386,6 +386,40 @@ class FabricHelper implements Serializable {
     }
     
     /**
+     * Import fabric app service config
+     * @param script
+     * @param fabricCliPath, mfcli.jar with absolute path
+     * @param fabricAppConfigJsonFile
+     * @param cloudCredentialsID
+     * @param cloudAccountId
+     * @param fabricAppName
+     * @param fabricAppVersion
+     * @param environmentName
+     * @param isUnixNode
+     */
+    protected static final void importFabricAppServiceConfig(
+        script,
+        fabricCliPath,
+        cloudCredentialsID,
+        cloudAccountId,
+        fabricAppConfigJsonFile,
+        fabricAppName,
+        fabricAppVersion,
+        environmentName,
+        isUnixNode) {
+
+        def importAppConfigCmdOptions = [
+            '-t': "\"$cloudAccountId\"",
+            '-f': "\"${fabricAppConfigJsonFile}\"",
+            '-a': "\"$fabricAppName\"",
+            '-v': "\"$fabricAppVersion\"",
+            '-e': "\"$environmentName\""
+        ]
+        
+        fabricCli(script, 'import-config', cloudCredentialsID, isUnixNode, fabricCliPath, importAppConfigCmdOptions)
+    }
+    
+    /**
      * Get the Fabric Server version through mfcli healthcheck command.
      * @param script
      * @param fabricCliPath
