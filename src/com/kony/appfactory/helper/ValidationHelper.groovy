@@ -340,7 +340,7 @@ class ValidationHelper implements Serializable {
 
             /* If there are empty parameters */
             if (emptyParams) {
-                String message = 'Project Settings parameter' + ((emptyParams.size() > 1) ? "'s" : '')
+                String message = 'Project Settings parameter' + ((emptyParams.size() > 1) ? "s" : '')
                 String requiredParamsErrorMessage = [emptyProjSettingsParams.join(', '), message, "can't be null!"].join(' ')
 
                 /* Redirect to project settings page to fill the required params */
