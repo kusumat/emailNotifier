@@ -613,7 +613,6 @@ class Fabric implements Serializable {
                         script.stage('Export project from Fabric') {
                             exportProjectFromFabric(cloudAccountId, fabricCredentialsID, projectName)
                         }
-
                         script.stage('Fetch project from remote git repository') {
                             checkoutProjectFromRepo(projectName)
                         }
