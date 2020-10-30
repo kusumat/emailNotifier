@@ -479,7 +479,7 @@ class FabricHelper implements Serializable {
             }
         }
         if(!fabricHealthCheckMap.containsKey("Version"))
-            throw new AppFactoryException('Failed to get the Fabric Server version! It seems something wrong with health check of Fabric environment.', 'ERROR')
+            throw new AppFactoryException('Failed to get the Fabric Runtime version! It seems something wrong with health check of Fabric environment.', 'ERROR')
         
         fabServerVersionFromHealthCheck = fabricHealthCheckMap.get("Version")
         /* The DEV build convention of the version is slightly different. So in few of lower Fabric environments, 
@@ -490,7 +490,7 @@ class FabricHelper implements Serializable {
             fabricServerVersion = fabServerVersionFromHealthCheck
         }
         script.env['FABRIC_SERVER_VERSION'] = fabricServerVersion
-        script.echoCustom("From the given Fabric App Config, found the Fabric Server version: ${fabServerVersionFromHealthCheck}", 'INFO')
+        script.echoCustom("From the given Fabric App Config, found the Fabric Runtime version: ${fabServerVersionFromHealthCheck}", 'INFO')
     }
     
     /**
@@ -504,7 +504,7 @@ class FabricHelper implements Serializable {
             def featureKeyInLowers = featureKey.toLowerCase()
             def featureSupportedVersion = libraryProperties."fabric.${featureKeyInLowers}.support.base.version"
             if (ValidationHelper.compareVersions(script.env["FABRIC_SERVER_VERSION"], featureSupportedVersion) == -1) {
-                script.echoCustom("The minimum supported version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
+                script.echoCustom("The minimum supported Fabric Runtime version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
                     "Please upgrade your Fabric environment to latest version to make use of this feature.", 'WARN')
             }
         }
