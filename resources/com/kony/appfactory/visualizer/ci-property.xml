@@ -144,7 +144,10 @@
         <condition property="buildMode" value="release" else="${env.BUILD_MODE}">
             <and>
                 <isset property="env.BUILD_MODE" />
-                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                <or>
+                    <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                    <equals arg1="${env.BUILD_MODE}" arg2="release-protected [native-only]" />
+                </or>
             </and>
         </condition>
         <condition property="appVersion" value="${env.APP_VERSION}" else="">
@@ -208,6 +211,16 @@
         <condition property="binaryextensionWEB" value="war" else="zip">
             <equals arg1="${env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE}" arg2="true"/>
         </condition>
+        <condition property="webProtectionPreset" value="${env.PROTECTION_LEVEL}" else="">
+            <isset property="env.PROTECTION_LEVEL"/>
+        </condition>
+        <condition property="webProtectionExcludeListFile" value="${env.EXCLUDE_LIST_PATH}" else="">
+            <isset property="env.EXCLUDE_LIST_PATH"/>
+        </condition>
+        <condition property="webProtectionBlueprintFile" value="${env.CUSTOM_PROTECTION_PATH}" else="">
+            <isset property="env.CUSTOM_PROTECTION_PATH"/>
+        </condition>
+
         <!-- set of protected build properties -->
         <condition property="protectedIosBuild" value="true" else="false">
             <and>
@@ -228,6 +241,21 @@
                     <equals arg1="${universalAndroid}" arg2="true" />
                 </or>
             </and>
+        </condition>
+
+        <condition property="protectedWebBuild" value="true" else="false">
+            <and>
+                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
+                <equals arg1="${desktopWeb}" arg2="true" />
+            </and>
+        </condition>
+
+        <condition property="webProtectedModePropertiesPath" value ="${env.WEB_PROTECTEDMODE_PROPERTIES_PATH}" else="">
+                <isset property="env.WEB_PROTECTEDMODE_PROPERTIES_PATH"/>
+        </condition>
+
+        <condition property="webEncryptionDirsPath" value ="${env.WEB_ENCRYPTION_DIRS}" else="">
+            <isset property="env.WEB_ENCRYPTION_DIRS"/>
         </condition>
         <!-- Following flag is used to execute 'update-androidbuild-properties-file' target if any of the android channel is selected -->
         <condition property="is-androidChannel-selected" value="true" else="false">
@@ -309,6 +337,13 @@
             <!-- Protected build mode options -->
             <entry key="protectedmodeenabled.ios" value="${protectedIosBuild}"/>
             <entry key="protectedmodeenabled.android" value="${protectedAndroidBuild}"/>
+            <entry key="protectedmodeenabled.web" value="${protectedWebBuild}"/>
+            <entry key="web.protection.preset" value="${webProtectionPreset}"/>
+            <entry key="web.protection.excludelist" value="${webProtectionExcludeListFile}"/>
+            <entry key="web.protection.custom.blueprint" value="${webProtectionBlueprintFile}"/>
+            <entry key="web.protectedmode.properties" value="${webProtectedModePropertiesPath}"/>
+            <entry key="web.encryption.dirs" value="${webEncryptionDirsPath}"/>
+            <!-- Web Channel options -->
             <entry key="web.binary.extension" value="${binaryextensionWEB}"/>
         	<!-- Jasmine Test options -->
         	<entry key="test.automation.server.url" value="${jasmineTestsUrl}"/>

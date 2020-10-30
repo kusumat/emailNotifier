@@ -22,12 +22,18 @@ class WebChannel extends Channel {
     /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
     def appVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     protected final webAppVersion = script.params[appVersionParameterName]
+    protected final webProtectionPreset = script.params.PROTECTION_LEVEL
+    protected final webProtectionExcludeListFile = (script.params.EXCLUDE_LIST_PATH)?.trim()
+    protected final webProtectionBlueprintFile = (script.params.CUSTOM_PROTECTION_PATH)?.trim()
+    protected final webProtectionID = script.params.OBFUSCATION_PROPERTIES
     protected webAppUrl
     protected final selectedSpaChannels
 
     /* Build agent resources */
     def resourceList
     def nodeLabel
+    /* Web Protection Obfuscation Keys File */
+    def secureJsFileName
 
     /**
      * Class constructor.
@@ -52,6 +58,7 @@ class WebChannel extends Channel {
         /* Expose SPA and DESKTOP_WEB build parameters to environment variables to use it in HeadlessBuild.properties */
         this.script.env['APP_VERSION'] = webAppVersion
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
+        secureJsFileName = libraryProperties.'web_protected.obfuscation.file.name'
         /* Changing Channel Variable name if only SPA channels are selected */
         if (webChannelType.equalsIgnoreCase("WEB")) {
             if(!desktopWebChannel) {
@@ -82,6 +89,45 @@ class WebChannel extends Channel {
     }
 
     /**
+     * Adds env property for securejs properties file.
+     */
+    protected void setProtectedModePropertiesPath(){
+        String prefix = ""
+        String delimiter = "\n"
+        String secureJsPropsContent = ""
+        def secureJsProps = new Properties()
+
+        script.withCredentials([
+                script.webProtectionKeys(
+                        credentialsId: "${webProtectionID}",
+                        clientIdVariable: 'CLIENT_ID',
+                        clientSecretVariable: 'CLIENT_SECRET',
+                        encryptionKeyVariable: 'ENCRYPTION_KEY'
+                )
+        ]) {
+            secureJsProps.setProperty('ci', script.env.CLIENT_ID)
+            secureJsProps.setProperty('cs', script.env.CLIENT_SECRET)
+            secureJsProps.setProperty('id', script.env.ENCRYPTION_KEY)
+            script.dir(projectFullPath) {
+                secureJsProps.each { key, value ->
+                    secureJsPropsContent += prefix + "$key=$value"
+                    prefix = delimiter
+                }
+                script.writeFile file: secureJsFileName, text: secureJsPropsContent, encoding: 'UTF-8'
+                if (script.fileExists(secureJsFileName)) {
+                    script.echoCustom("Securejs properties file created successfully! Injecting environment property for it's location.")
+                    script.env['WEB_PROTECTEDMODE_PROPERTIES_PATH'] = [projectFullPath, secureJsFileName].join(separator)
+                }
+                else {
+                    throw new AppFactoryException("Failed to inject env property for securejs properties file path, unable to find the file!", 'ERROR')
+                }
+
+            }
+
+        }
+    }
+
+    /**
      * Creates job pipeline.
      * This method is called from the job and contains whole job's pipeline logic.
      */
@@ -104,6 +150,12 @@ class WebChannel extends Channel {
                     }
                     ValidationHelper.checkBuildConfiguration(script)
                     ValidationHelper.checkBuildConfiguration(script, [appVersionParameterName, 'FABRIC_APP_CONFIG'])
+                    if(buildMode == libraryProperties.'buildmode.release.protected.type') {
+                        def webProtectionMandatoryParams = ['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL']
+                        if(webProtectionPreset == 'CUSTOM')
+                            webProtectionMandatoryParams.add('CUSTOM_PROTECTION_PATH')
+                        ValidationHelper.checkBuildConfiguration(script, webProtectionMandatoryParams)
+                    }
                 }
 
                 /*
@@ -157,10 +209,26 @@ class WebChannel extends Channel {
                         }
 
                         script.stage('Build') {
-                            /* Showing warning if triggered the build mode in release-protected for DesktopWeb and SPA channels  */
                             if(buildMode == libraryProperties.'buildmode.release.protected.type') {
-                                script.echoCustom("Release-protected mode is not applicable for DesktopWeb and SPA channels build." +
-                                    " It will build as Release mode only.", 'WARN')
+                                script.echoCustom("For Visualizer 9.2.0 and below projects release-protected mode is not applicable for DesktopWeb and SPA channels build." +
+                                            " It will build as Release mode only.", 'WARN')
+                                if(webProtectionID) {
+                                    setProtectedModePropertiesPath()
+                                    if (webProtectionExcludeListFile) {
+                                        def excludeListFile = [projectWorkspacePath, webProtectionExcludeListFile].join(separator)
+                                        if (!script.fileExists(excludeListFile)) {
+                                            throw new AppFactoryException('Failed to find exclude list file at the location \n' + excludeListFile, 'ERROR')
+                                        }
+                                    }
+                                    if (webProtectionPreset == 'CUSTOM') {
+                                        def blueprintFile = [projectWorkspacePath, webProtectionBlueprintFile].join(separator)
+                                        if (!script.fileExists(blueprintFile)) {
+                                            throw new AppFactoryException('Failed to find blueprint file at the location  \n' + blueprintFile, 'ERROR')
+                                        }
+                                    }
+                                    script.echoCustom("Placing encryptions keys for protected mode build.")
+                                    copyProtectedKeysToProjectWorkspace()
+                                }
                             }
                             build()
                             /*

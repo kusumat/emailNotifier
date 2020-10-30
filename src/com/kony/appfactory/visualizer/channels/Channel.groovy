@@ -724,6 +724,8 @@ class Channel implements Serializable {
                 }
             }
         }
+        if (channelVariableName.contains('WEB'))
+            script.env['WEB_ENCRYPTION_DIRS'] = targetProtectedKeysPath
     }
     
     /**
@@ -1101,6 +1103,9 @@ class Channel implements Serializable {
             featureBooleanParameters.put('APPLE_WATCH_EXTENSION', ['featureDisplayName': 'Watch Extension'])
             if (channelFormFactor == "Universal")
                 featureBooleanParameters.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
+        }
+        if (channelOs.equalsIgnoreCase('DESKTOPWEB') && buildMode == 'release-protected') {
+            featureBooleanParameters.put('OBFUSCATION_PROPERTIES', ['featureDisplayName': 'Protected Build for Web Platform'])
         }
         
         finalFeatureParamsToCheckCISupport = featureBooleanParameters.findAll{

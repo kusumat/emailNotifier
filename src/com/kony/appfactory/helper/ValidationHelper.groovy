@@ -123,7 +123,7 @@ class ValidationHelper implements Serializable {
             throw new AppFactoryException(errorMessage, 'ERROR')
         }
     }
-    
+
     /**
      * Checks if any of the parameters is empty.
      *
@@ -143,7 +143,6 @@ class ValidationHelper implements Serializable {
     private static checkIfValid(items) {
         items?.findAll { item ->
             String regex
-
             switch(item.key) {
                 case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID', 'ANDROID_UNIVERSAL_APP_ID', 'IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID', 'IOS_UNIVERSAL_APP_ID']:
                     regex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+[0-9a-zA-Z_]?$/
@@ -160,11 +159,16 @@ class ValidationHelper implements Serializable {
                 case 'FABRIC_APP_VERSION':
                     regex = /^[1-9]{1,3}\.[0-9]{1,2}$/
                     break
+                case 'EXCLUDE_LIST_PATH':
+                    regex = /.*(\.txt)$/
+                    break
+                case 'CUSTOM_PROTECTION_PATH' :
+                    regex = /.*(\.json)$/
+                    break
                 default:
                     regex = /.*/
                     break
             }
-
             !(item.value ==~ regex)
         }
     }
@@ -202,6 +206,12 @@ class ValidationHelper implements Serializable {
                     break
                 case 'FABRIC_APP_VERSION':
                     parameter_message = it.key + ' : ' + 'Expecting App Version in the format allowed on Fabric, like <major>.<minor>' + '\n' + 'where major and minor are numeric, and major is between 1 and 999, and  minor is between 0 and 99.' + '\n' + 'For Example.: 1.0 or 999.99'
+                    break
+                case 'CUSTOM_PROTECTION_PATH':
+                    parameter_message = it.key + ' : ' + 'Please enter valid JSON file path as specified in parameter description. Expecting CUSTOM_PROTECTION_PATH in the .json extension format. The path must be relative to the root of the repository.' + '\n' + 'For Example.: blue_print_config.json'
+                    break
+                case 'EXCLUDE_LIST_PATH':
+                    parameter_message = it.key + ' : ' + 'Please enter valid exclude list file path as specified in parameter description. Expecting EXCLUDE_LIST_PATH in the .txt extension format.The path must be relative to the root of the repository.' + '\n' + 'For Example.: exclude_files_for_protection.txt)'
                     break
                 default:
                     parameter_message = parameter_message = it.key + ' : ' + 'The parameter expects a string value.'

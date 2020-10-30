@@ -106,6 +106,11 @@ class Facade implements Serializable {
     final webVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
     private final desktopWebChannel = script.params.DESKTOP_WEB
     private final compatibilityMode = script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE
+    private final webProtectionPreset = script.params.PROTECTION_LEVEL
+    private final webProtectionExcludeListFile = script.params.EXCLUDE_LIST_PATH
+    private final webProtectionBlueprintFile = script.params.CUSTOM_PROTECTION_PATH
+    private final webProtectionID = script.params.OBFUSCATION_PROPERTIES
+
 
     /* TestAutomation build parameters */
     private final testFramework = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')
@@ -372,7 +377,11 @@ class Facade implements Serializable {
     private final getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters = null) {
         def commonWebParameters = getCommonJobBuildParameters() +
         [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
-        [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+        [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)] +
+                [script.string(name: "PROTECTION_LEVEL", value: "${webProtectionPreset}")] +
+                [script.string(name: "EXCLUDE_LIST_PATH", value: "${webProtectionExcludeListFile}")] +
+                [script.string(name: "CUSTOM_PROTECTION_PATH", value: "${webProtectionBlueprintFile}")] +
+                [script.credentials(name: 'OBFUSCATION_PROPERTIES', value: "${webProtectionID}")]
 
         if (spaChannelsToBuildJobParameters && desktopWebChannel) {
             commonWebParameters +
@@ -846,6 +855,14 @@ class Facade implements Serializable {
 
                             if (spaChannels || desktopWebChannel) {
                                 def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
+                                if (tempBuildMode == libraryProperties.'buildmode.release.protected.type') {
+                                    webMandatoryParams.add('PROTECTED_KEYS')
+                                    if (script.params.containsKey('OBFUSCATION_PROPERTIES')) {
+                                        webMandatoryParams.addAll(['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL'])
+                                        if (webProtectionPreset == 'CUSTOM')
+                                            webMandatoryParams.add('CUSTOM_PROTECTION_PATH')
+                                    }
+                                }
                                 checkParams.addAll(webMandatoryParams)
                             }
 
