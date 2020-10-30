@@ -420,6 +420,46 @@ class FabricHelper implements Serializable {
     }
     
     /**
+     * Export fabric app service config
+     * @param script
+     * @param fabricCliPath, mfcli.jar with absolute path
+     * @param fabricAppConfigJsonFile
+     * @param cloudCredentialsID
+     * @param cloudAccountId
+     * @param fabricAppName
+     * @param fabricAppVersion
+     * @param environmentName
+     * @param profileFileVersion
+     * @param reconfigurationFileLevel
+     * @param isUnixNode
+     */
+    protected static final void exportFabricAppServiceConfig(
+        script,
+        fabricCliPath,
+        cloudCredentialsID,
+        cloudAccountId,
+        fabricAppConfigJsonFile,
+        fabricAppName,
+        fabricAppVersion,
+        environmentName,
+        isUnixNode,
+        String profileFileVersion = "2.0",
+        String reconfigurationFileLevel = "complete") {
+ 
+        def exportAppConfigCmdOptions = [
+            '-t' : "\"$cloudAccountId\"",
+            '-f' : "\"${fabricAppConfigJsonFile}\"",
+            '-a' : "\"$fabricAppName\"",
+            '-v' : "\"$fabricAppVersion\"",
+            '-e' : "\"$environmentName\"",
+            '-fv': "\"$profileFileVersion\"",
+            '-r' : "\"$reconfigurationFileLevel\""
+        ]
+ 
+        fabricCli(script, 'export-config', cloudCredentialsID, isUnixNode, fabricCliPath, exportAppConfigCmdOptions)
+    }
+    
+    /**
      * Get the Fabric Server version through mfcli healthcheck command.
      * @param script
      * @param fabricCliPath
@@ -449,8 +489,24 @@ class FabricHelper implements Serializable {
         } else {
             fabricServerVersion = fabServerVersionFromHealthCheck
         }
-        script.env['fabricServerVersion'] = fabricServerVersion
+        script.env['FABRIC_SERVER_VERSION'] = fabricServerVersion
         script.echoCustom("From the given Fabric App Config, found the Fabric Server version: ${fabServerVersionFromHealthCheck}", 'INFO')
     }
-
+    
+    /**
+     * Validates support exists for given feature in Fabric build.
+     * @param script
+     * @param libraryProperties
+     * @param featuresSupportToCheckInFabric
+     */
+    protected static void checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric) {
+        featuresSupportToCheckInFabric.each { featureKey, featureProperties ->
+            def featureKeyInLowers = featureKey.toLowerCase()
+            def featureSupportedVersion = libraryProperties."fabric.${featureKeyInLowers}.support.base.version"
+            if (ValidationHelper.compareVersions(script.env["FABRIC_SERVER_VERSION"], featureSupportedVersion) == -1) {
+                script.echoCustom("The minimum supported version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
+                    "Please upgrade your Fabric environment to latest version to make use of this feature.", 'WARN')
+            }
+        }
+    }
 }

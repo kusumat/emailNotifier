@@ -44,7 +44,7 @@ class Fabric implements Serializable {
     private String fabricAppName = script.params.FABRIC_APP_NAME
     private final String recipientsList
     private String fabricAppVersion
-
+    private final serviceConfigPath = (script.params.SERVICE_CONFIG_PATH)?.trim()
     /* Import build parameters */
     private final String commitAuthor = script.params.COMMIT_AUTHOR?.trim() ?: 'Jenkins'
     private final String authorEmail = script.params.AUTHOR_EMAIL
@@ -604,6 +604,7 @@ class Fabric implements Serializable {
                 script.node(nodeLabel) {
                     pipelineWrapper {
                         isUnixNode = script.isUnix()
+                        def separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
@@ -613,8 +614,49 @@ class Fabric implements Serializable {
                         script.stage('Export project from Fabric') {
                             exportProjectFromFabric(cloudAccountId, fabricCredentialsID, projectName)
                         }
+                        
                         script.stage('Fetch project from remote git repository') {
                             checkoutProjectFromRepo(projectName)
+                        }
+                        
+                        /* If 'SERVICE_CONFIG_PATH' param exist and value is not empty, Refer the path provided to export service config if its valid */
+                        if(script.params.containsKey("SERVICE_CONFIG_PATH")) {
+                            /* If 'SERVICE_CONFIG_PATH' param is not empty, Refer the path given to export the app service config and commit */
+                            if(!serviceConfigPath.isEmpty()) {
+                                def appServiceConfigFilePath = [script.env.WORKSPACE, projectName, serviceConfigPath].join(separator)
+                                def appServiceConfigDirPath = appServiceConfigFilePath.substring(0, appServiceConfigFilePath.lastIndexOf("/"))
+                                def serviceConfigFileName = appServiceConfigFilePath.substring(appServiceConfigFilePath.lastIndexOf("/") + 1)
+                                
+                                /* Check the service config file type and name */
+                                if(!serviceConfigFileName.endsWith(".json") || serviceConfigFileName.contains(" ")) {
+                                    throw new AppFactoryException("Invalid file name or type given for service config file! Service config export is supported with '.json' file and should not contains spaces in file name.", "ERROR")
+                                }
+                                
+                                /* Health check call to get the Fabric Server version for environment*/
+                                FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
+                                
+                                /* Create the Fabric App's service configuration dir if not available at given repo's root path */
+                                script.shellCustom("set +x;mkdir -p ${appServiceConfigDirPath}", isUnixNode)
+                                script.shellCustom("set +x;rm -f ${appServiceConfigFilePath}", isUnixNode)
+                                script.echoCustom("Fabric app service config will be exported at Fabric App's repo path '${serviceConfigPath}'", "INFO")
+                                
+                                /* Check the Fabric Server Version supported for Export of App Service config */
+                                def featuresSupportToCheckInFabric = [:]
+                                featuresSupportToCheckInFabric.put('app_service_config', ['featureDisplayName': 'App Service Config'])
+                                FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)
+                                FabricHelper.exportFabricAppServiceConfig(
+                                    script,
+                                    fabricCliFileName,
+                                    fabricCredentialsID,
+                                    cloudAccountId,
+                                    appServiceConfigFilePath,
+                                    fabricAppName,
+                                    fabricAppVersion,
+                                    fabricEnvironmentName,
+                                    isUnixNode)
+                            } else {
+                                script.echoCustom("Skipping to export Fabric app service config, since you have not provided value for 'SERVICE_CONFIG_PATH' param!", "INFO")
+                            }
                         }
 
                         script.stage("Validate the Local Fabric App") {

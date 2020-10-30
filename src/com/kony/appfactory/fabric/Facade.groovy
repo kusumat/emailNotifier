@@ -32,7 +32,7 @@ class Facade implements Serializable{
     private final mvnBuildCmdInput = (script.params.MVN_GOALS_AND_OPTIONS)?.trim()
     private boolean isBuildWithJavaAssets = script.params.BUILD_JAVA_ASSETS
     private final boolean isBuildWithCleanJavaAssets = script.params.CLEAN_JAVA_ASSETS
-    private final serviceConfigPath
+    private final serviceConfigPath = (script.params.SERVICE_CONFIG_PATH)?.trim()
     private final nodeLabel
     protected isUnixNode
     protected separator
@@ -44,7 +44,6 @@ class Facade implements Serializable{
     //Fabric config variable
     protected fabricAppName
     protected fabricAppVersion
-    protected fabricServiceConfigSupportBaseVersion
     protected fabricEnvironmentName
     protected fabricCloudAccountId
 
@@ -70,7 +69,6 @@ class Facade implements Serializable{
         )
         nodeLabel = libraryProperties.'fabric.node.label'
         fabricCliVersion = libraryProperties.'fabric.cli.version'
-        fabricServiceConfigSupportBaseVersion = libraryProperties.'fabric_app_service_config.support.base.version'
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         projectWorkspaceFolderName = libraryProperties.'fabric.project.workspace.folder.name'
         projectNameZip = projectName + ".zip"
@@ -79,7 +77,6 @@ class Facade implements Serializable{
 
         fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR)?.trim() : (script.env.FABRIC_APP_ROOT_FOLDER)?.trim()
         projectSourceCodeRepositoryCredentialsId = script.env.SCM_CREDENTIALS
-        serviceConfigPath = BuildHelper.getParamValueOrDefault(this.script, 'SERVICE_CONFIG_PATH', '')
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
@@ -387,18 +384,16 @@ class Facade implements Serializable{
                                                 importAsNew)
                                         
                                         if (isBuildWithPublish) {
-                                            
-                                            String errorMessage = "Sorry, the import/publish of Fabric app service config is not supported for your Fabric server version." +
-                                                "The minimum supported version is ${fabricServiceConfigSupportBaseVersion}. Please upgrade your Fabric environment to " +
-                                                "latest version and build the app."
-                                                
-                                            /* If 'SERVICE_CONFIG_PATH' param value is not empty, Refer the path provided to import service config if its valid */
-                                            if(!serviceConfigPath.isEmpty()) {
-                                                def appServiceConfigFilePath = [projectFullPath, serviceConfigPath].join(separator)
-                                                if (script.fileExists(appServiceConfigFilePath)) {
-                                                    def comparedFabricSerVersion = ValidationHelper.compareVersions(script.env.fabricServerVersion, fabricServiceConfigSupportBaseVersion)
-                                                    if(comparedFabricSerVersion >= 0) {
-                                                        script.echoCustom("Service profile file found for Fabric environment '${appServiceConfigFilePath}', will be importing to Fabric app!", "INFO")
+                                            /* Check to import fabric app service config*/
+                                            if(script.params.containsKey("SERVICE_CONFIG_PATH")) {
+                                                def featuresSupportToCheckInFabric = [:]
+                                                featuresSupportToCheckInFabric.put('app_service_config', ['featureDisplayName': 'App Service Config'])
+                                                /* If 'SERVICE_CONFIG_PATH' param value is not empty, Refer the path provided to import service config if its valid */
+                                                if(!serviceConfigPath.isEmpty()) {
+                                                    def appServiceConfigFilePath = [projectFullPath, serviceConfigPath].join(separator)
+                                                    if (script.fileExists(appServiceConfigFilePath)) {
+                                                        script.echoCustom("Service profile file found for Fabric environment '${serviceConfigPath}', will be importing to Fabric app!", "INFO")
+                                                        FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)
                                                         FabricHelper.importFabricAppServiceConfig(
                                                             script,
                                                             fabricCliFilePath,
@@ -410,41 +405,14 @@ class Facade implements Serializable{
                                                             fabricEnvironmentName,
                                                             isUnixNode)
                                                     } else {
-                                                        throw new AppFactoryException(errorMessage, 'ERROR')
+                                                        throw new AppFactoryException("The path [${serviceConfigPath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
+                                                            "does not exist.", 'ERROR')
                                                     }
                                                 } else {
-                                                    throw new AppFactoryException("The path [${appServiceConfigFilePath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
-                                                        "does not exist.", 'ERROR')
-                                                }
-                                            } else {
-                                                /* If 'SERVICE_CONFIG_PATH' param value is empty, check at default path of Fabric app source and import if service config 
-                                                 * json file exist with environment name json file in "configuration" dir.
-                                                 */
-                                                def fabricAppConfigurationDirPath = [projectFullPath, "configuration"].join(separator)
-                                                def serviceConfigFileName = fabricEnvironmentName + ".json"
-                                                def reconfigurationJsonFilePath = [fabricAppConfigurationDirPath, serviceConfigFileName].join(separator)
-                                                if(script.fileExists(reconfigurationJsonFilePath)) {
-                                                    def comparedFabricSerVersion = ValidationHelper.compareVersions(script.env.fabricServerVersion, fabricServiceConfigSupportBaseVersion)
-                                                    if(comparedFabricSerVersion >= 0) {
-                                                        script.echoCustom("Service profile file found for Fabric environment '${reconfigurationJsonFilePath}', will be importing to Fabric app!", "INFO")
-                                                        FabricHelper.importFabricAppServiceConfig(
-                                                            script,
-                                                            fabricCliFilePath,
-                                                            fabricCredentialsID,
-                                                            fabricCloudAccountId,
-                                                            reconfigurationJsonFilePath,
-                                                            fabricAppName,
-                                                            fabricAppVersion,
-                                                            fabricEnvironmentName,
-                                                            isUnixNode)
-                                                    } else {
-                                                        throw new AppFactoryException(errorMessage, 'ERROR')
-                                                    }
-                                                } else {
-                                                    script.echoCustom("No profile found to import/publish for Fabric environment at path '${fabricAppConfigurationDirPath}', so skipping to update app service config!", "INFO")
+                                                    script.echoCustom("Skipping to update Fabric app service config, since you have not provided value for 'SERVICE_CONFIG_PATH' param!", "INFO")
                                                 }
                                             }
-                                                
+                                            
                                             Date publishStart = new Date()
                                             FabricHelper.publishFabricApp(
                                                 script,
