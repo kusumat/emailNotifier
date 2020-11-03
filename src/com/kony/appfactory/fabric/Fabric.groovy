@@ -635,25 +635,27 @@ class Fabric implements Serializable {
                                 /* Health check call to get the Fabric Server version for environment*/
                                 FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                                 
-                                /* Create the Fabric App's service configuration dir if not available at given repo's root path */
-                                script.shellCustom("set +x;mkdir -p ${appServiceConfigDirPath}", isUnixNode)
-                                script.shellCustom("set +x;rm -f ${appServiceConfigFilePath}", isUnixNode)
-                                script.echoCustom("Fabric app service config will be exported at Fabric App's repo path '${serviceConfigPath}'", "INFO")
-                                
                                 /* Check the Fabric Server Version supported for Export of App Service config */
                                 def featuresSupportToCheckInFabric = [:]
                                 featuresSupportToCheckInFabric.put('app_service_config', ['featureDisplayName': 'App Service Config'])
-                                FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)
-                                FabricHelper.exportFabricAppServiceConfig(
-                                    script,
-                                    fabricCliFileName,
-                                    fabricCredentialsID,
-                                    cloudAccountId,
-                                    appServiceConfigFilePath,
-                                    fabricAppName,
-                                    fabricAppVersion,
-                                    fabricEnvironmentName,
-                                    isUnixNode)
+                                if(FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)) {
+                                    
+                                    /* Create the Fabric App's service configuration dir if not available at given repo's root path */
+                                    script.shellCustom("set +x;mkdir -p ${appServiceConfigDirPath}", isUnixNode)
+                                    script.shellCustom("set +x;rm -f ${appServiceConfigFilePath}", isUnixNode)
+                                    
+                                    script.echoCustom("Fabric app service config will be exported at Fabric App's repo path '${serviceConfigPath}'", "INFO")
+                                    FabricHelper.exportFabricAppServiceConfig(
+                                        script,
+                                        fabricCliFileName,
+                                        fabricCredentialsID,
+                                        cloudAccountId,
+                                        appServiceConfigFilePath,
+                                        fabricAppName,
+                                        fabricAppVersion,
+                                        fabricEnvironmentName,
+                                        isUnixNode)
+                                }
                             } else {
                                 script.echoCustom("Skipping to export Fabric app service config, since you have not provided value for 'SERVICE_CONFIG_PATH' param!", "INFO")
                             }

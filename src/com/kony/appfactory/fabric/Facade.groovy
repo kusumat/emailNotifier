@@ -391,19 +391,26 @@ class Facade implements Serializable{
                                                 /* If 'SERVICE_CONFIG_PATH' param value is not empty, Refer the path provided to import service config if its valid */
                                                 if(!serviceConfigPath.isEmpty()) {
                                                     def appServiceConfigFilePath = [projectFullPath, serviceConfigPath].join(separator)
+                                                    def serviceConfigFileName = appServiceConfigFilePath.substring(appServiceConfigFilePath.lastIndexOf("/") + 1)
+                                                    
+                                                    /* Check the service config file type and name */
+                                                    if(!serviceConfigFileName.endsWith(".json") || serviceConfigFileName.contains(" ")) {
+                                                        throw new AppFactoryException("Invalid file name or type given for service config file! Service config import is supported with '.json' file and should not contains spaces in file name.", "ERROR")
+                                                    }
                                                     if (script.fileExists(appServiceConfigFilePath)) {
-                                                        script.echoCustom("Service profile file found for Fabric environment '${serviceConfigPath}', will be importing to Fabric app!", "INFO")
-                                                        FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)
-                                                        FabricHelper.importFabricAppServiceConfig(
-                                                            script,
-                                                            fabricCliFilePath,
-                                                            fabricCredentialsID,
-                                                            fabricCloudAccountId,
-                                                            appServiceConfigFilePath,
-                                                            fabricAppName,
-                                                            fabricAppVersion,
-                                                            fabricEnvironmentName,
-                                                            isUnixNode)
+                                                        script.echoCustom("Service config file found for Fabric environment is '${serviceConfigPath}', will be importing to Fabric app!", "INFO")
+                                                        if(FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)) {
+                                                            FabricHelper.importFabricAppServiceConfig(
+                                                                script,
+                                                                fabricCliFilePath,
+                                                                fabricCredentialsID,
+                                                                fabricCloudAccountId,
+                                                                appServiceConfigFilePath,
+                                                                fabricAppName,
+                                                                fabricAppVersion,
+                                                                fabricEnvironmentName,
+                                                                isUnixNode)
+                                                        }
                                                     } else {
                                                         throw new AppFactoryException("The path [${serviceConfigPath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
                                                             "does not exist.", 'ERROR')

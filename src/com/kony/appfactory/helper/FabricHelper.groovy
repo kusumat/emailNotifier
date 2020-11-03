@@ -497,16 +497,19 @@ class FabricHelper implements Serializable {
      * Validates support exists for given feature in Fabric build.
      * @param script
      * @param libraryProperties
-     * @param featuresSupportToCheckInFabric
+     * @param featureSupportToCheckInFabric
      */
-    protected static void checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric) {
-        featuresSupportToCheckInFabric.each { featureKey, featureProperties ->
+    protected static boolean checkFabricFeatureSupportExist(script, libraryProperties, featureSupportToCheckInFabric) {
+        boolean isFeatureSupportExist = true
+        featureSupportToCheckInFabric.each { featureKey, featureProperties ->
             def featureKeyInLowers = featureKey.toLowerCase()
             def featureSupportedVersion = libraryProperties."fabric.${featureKeyInLowers}.support.base.version"
             if (ValidationHelper.compareVersions(script.env["FABRIC_SERVER_VERSION"], featureSupportedVersion) == -1) {
+                isFeatureSupportExist = false
                 script.echoCustom("The minimum supported Fabric Runtime version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
                     "Please upgrade your Fabric environment to latest version to make use of this feature.", 'WARN')
             }
         }
+        return isFeatureSupportExist
     }
 }
