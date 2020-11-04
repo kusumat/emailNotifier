@@ -74,8 +74,7 @@ class Facade implements Serializable{
         projectNameZip = projectName + ".zip"
         /* Set the fabric project settings values to the corresponding fabric environmental variables */
         BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Fabric')
-
-        fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR)?.trim() : (script.env.FABRIC_APP_ROOT_FOLDER)?.trim()
+        fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR).trim() : ((script.env.FABRIC_APP_ROOT_FOLDER) ? script.env.FABRIC_APP_ROOT_FOLDER.trim() : "")
         projectSourceCodeRepositoryCredentialsId = script.env.SCM_CREDENTIALS
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
