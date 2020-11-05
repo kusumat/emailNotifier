@@ -40,6 +40,7 @@ class Flyway implements Serializable {
     private flywayResults = []
     private checkoutDirectory = projectName
     private String projectFullPath
+    private String colorOption = "-color=always"
     /*
     List of artifacts to be captured for the must haves to debug
    */
@@ -128,7 +129,7 @@ class Flyway implements Serializable {
                             for (command in commands) {
                                 script.echoCustom("Running " + command + " command.")
                                 try {
-                                    script.flywayrunner installationName: "${flywayInstallationName}", flywayCommand: "${command}", credentialsId: "${flywayRunnerCredentialsId}", url: "${databaseUrl}", locations: "${locationTypeString}${[projectFullPath, location].join(separator)}", commandLineArgs: "${commandLineArgs}"
+                                    script.flywayrunner installationName: "${flywayInstallationName}", flywayCommand: "${command}", credentialsId: "${flywayRunnerCredentialsId}", url: "${databaseUrl}", locations: "${locationTypeString}${[projectFullPath, location].join(separator)}", commandLineArgs: "${[commandLineArgs, colorOption].join(" ")}"
                                 } catch (Exception ex) {
                                     script.echoCustom("Found exception while running "+ command +" command.", 'WARN')
                                     script.echoCustom(ex.getLocalizedMessage() + "\n" + ex.getStackTrace().toString(), 'ERROR', false)
