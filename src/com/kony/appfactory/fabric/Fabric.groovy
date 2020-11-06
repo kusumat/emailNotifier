@@ -88,6 +88,7 @@ class Fabric implements Serializable {
      * parameter from fabric job level to 'Create AppFactory Project" seeder job. So the parameter existence 
      * for backward compatibility for older project.*/
     private boolean isScmUrlParamExistInCurrentProject
+    private final appUnzipTempDir = "appUnzipTempDir"
 
     /**
      * Class constructor.
@@ -158,7 +159,6 @@ class Fabric implements Serializable {
         String previousArchivePath = args.previousPath
         String currentArchivePath = args.currentPath
         boolean ignoreJarsForExport = args.ignoreJarsForExport
-        String exportFolder = args.exportFolder
         String errorMessage = 'Failed to check if exported project has been changed!'
 
         script.catchErrorCustom(errorMessage) {
@@ -298,16 +298,17 @@ class Fabric implements Serializable {
      */
     private final void overwriteFilesInGit(args) {
         String projectPath = args.projectPath
-        String exportFolder = args.exportFolder
+        String localAppsDirPath = args.exportFolder
+        String appUnzipDir = args.appUnzipTempDir
         String errorMessage = 'Failed to overwrite exported files!'
 
         script.catchErrorCustom(errorMessage) {
-            script.dir("${projectPath}/${exportFolder}") {
-                script.deleteDir()
+            script.dir("${projectPath}/${localAppsDirPath}") {
+                script.shellCustom("rm -rf Apps", isUnixNode)
             }
             
-            script.shellCustom("set +x;mkdir -p ${script.env.WORKSPACE}/${projectPath}/${exportFolder}", isUnixNode)
-            script.shellCustom("set +x;mv -f ./${exportFolder}/* ./${projectPath}/${exportFolder}", isUnixNode)
+            script.shellCustom("set +x;mkdir -p ${script.env.WORKSPACE}/${projectPath}/${localAppsDirPath}", isUnixNode)
+            script.shellCustom("set +x;mv -f ./${appUnzipDir}/* ./${projectPath}/${localAppsDirPath}", isUnixNode)
         }
     }
 
@@ -318,15 +319,14 @@ class Fabric implements Serializable {
      * @param exportFolder is the folder where app is exported.
      * @param fabricApplicationName name of the application on Fabric.
      */
-    private final void zipProjectForExport(projectName, exportFolder) {
+    private final void zipProjectForExport(projectName, fabricAppDir) {
         String errorMessage = "Failed to create zip file for project ${projectName}"
-
-        def exportAppDir = projectName + "/" + exportFolder
-        def exportZipName = "${script.env.WORKSPACE}/${projectName}_PREV.zip"
+        def localCheckedOutAppDir = (fabricAppDir.isEmpty()) ? projectName : [projectName, fabricAppDir].join("/")
+        def localExportZipName = "${script.env.WORKSPACE}/${projectName}_PREV.zip"
 
         script.catchErrorCustom(errorMessage) {
-            script.dir(exportAppDir) {
-                script.shellCustom("zip -r $exportZipName Apps -x *.pretty.json", isUnixNode)
+            script.dir(localCheckedOutAppDir) {
+                script.shellCustom("zip -r $localExportZipName Apps -x *.pretty.json", isUnixNode)
             }
 
         }
@@ -572,13 +572,10 @@ class Fabric implements Serializable {
                 /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR param not exist in Export Job.
                  * If Fabric_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
                  */
-                String exportFolder = BuildHelper.getParamValueOrDefault(script, 'FABRIC_DIR', "export")
-                exportFolder = exportFolder.isEmpty() ? "./" : exportFolder
+                String fabricAppDir = BuildHelper.getParamValueOrDefault(script, 'FABRIC_DIR', "export")
                 boolean ignoreJarsForExport = BuildHelper.getParamValueOrDefault(script, 'IGNORE_JARS', false)
-
-                String projectName = FabricHelper.getGitProjectName(exportRepositoryUrl) ?:
-                        script.echoCustom("projectName property can't be null!",'WARN')
-
+                
+                String projectName = script.env.PROJECT_NAME
                 fabricTask = "export"
 
                 script.stage('Check provided parameters') {
@@ -604,10 +601,17 @@ class Fabric implements Serializable {
                 script.node(nodeLabel) {
                     pipelineWrapper {
                         isUnixNode = script.isUnix()
-                        def separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
+                        def separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)
+                        
+                        def workspace = script.env.WORKSPACE
+                        def checkoutRelativeTargetFolder = projectName
+                        def projectFullPath = [workspace, checkoutRelativeTargetFolder].join(separator)
+                        def fabricAppsDirRelativePath = (fabricAppDir.isEmpty()) ? 'Apps' : [fabricAppDir, 'Apps'].join(separator)
+                        def fabricAppBasePath = (fabricAppDir.isEmpty()) ? projectFullPath: [projectFullPath, fabricAppDir].join(separator)
+                        
                         script.stage('Prepare build-node environment') {
                             prepareBuildEnvironment()
                         }
@@ -616,14 +620,14 @@ class Fabric implements Serializable {
                         }
                         
                         script.stage('Fetch project from remote git repository') {
-                            checkoutProjectFromRepo(projectName)
+                            checkoutProjectFromRepo(checkoutRelativeTargetFolder)
                         }
                         
                         /* If 'SERVICE_CONFIG_PATH' param exist and value is not empty, Refer the path provided to export service config if its valid */
                         if(script.params.containsKey("SERVICE_CONFIG_PATH")) {
                             /* If 'SERVICE_CONFIG_PATH' param is not empty, Refer the path given to export the app service config and commit */
                             if(!serviceConfigPath.isEmpty()) {
-                                def appServiceConfigFilePath = [script.env.WORKSPACE, projectName, serviceConfigPath].join(separator)
+                                def appServiceConfigFilePath = [workspace, projectName, serviceConfigPath].join(separator)
                                 def appServiceConfigDirPath = appServiceConfigFilePath.substring(0, appServiceConfigFilePath.lastIndexOf("/"))
                                 def serviceConfigFileName = appServiceConfigFilePath.substring(appServiceConfigFilePath.lastIndexOf("/") + 1)
                                 
@@ -664,27 +668,37 @@ class Fabric implements Serializable {
                         script.stage("Validate the Local Fabric App") {
 
                             def invalidVersionError = "Repository contains a different version of the fabric app." +
-                                    " Selected version '${fabricAppVersion}' and version in ${exportFolder}/Apps/${fabricAppName}/Meta.json file is mis matching." +
+                                    " Selected version '${fabricAppVersion}' and version in ${fabricAppsDirRelativePath}/${fabricAppName}/Meta.json file is mis matching." +
                                     " Please select an appropriate branch to export the app."
                             def invalidFabricAppError = "Repository doesn't contain valid fabric app." +
-                                    " ${exportFolder}/Apps/${fabricAppName} is not existing on the branch you have selected."
+                                    " ${fabricAppsDirRelativePath}/${fabricAppName} is not existing on the branch you have selected."
                             if (!isNewExportJob) {
                                 invalidVersionError = invalidVersionError + " OR \n Select OVERWRITE_EXISTING parameter to force push the exported " +
                                         "app to SCM irrespective of what branch is containing.."
                                 invalidFabricAppError = invalidFabricAppError + "\n Select OVERWRITE_EXISTING parameter to force push the exported app to SCM."
                             }
                             if (!overwriteExisting) {
-                                validateLocalFabricApp(projectName, invalidVersionError, invalidFabricAppError, exportFolder)
+                                validateLocalFabricApp(projectName, invalidVersionError, invalidFabricAppError, fabricAppDir)
                             }
                         }
                         
                         script.stage('Find App Changes') {
-                            findAppChanges(overwriteExisting, projectName, exportFolder, ignoreJarsForExport)
+                            findAppChanges(overwriteExisting, projectName, fabricAppDir, ignoreJarsForExport)
+                            
+                            /* If user selects Ignore Jars flag as true but if '_JARs' dir doesn't exist in fabric app set the flag as false */
+                            if(ignoreJarsForExport) {
+                                def appJarsDirAbsolutePath = [workspace, appUnzipTempDir, 'Apps', '_JARs'].join(separator)
+                                boolean isPathExistForAppJars = FabricHelper.isDirExist(script, appJarsDirAbsolutePath, isUnixNode)
+                                if(!isPathExistForAppJars) {
+                                    script.echoCustom("${fabricAppName}(${fabricAppVersion}) does not contain '_JARs' dir, so by default export jars will be skipped.")
+                                    ignoreJarsForExport = false
+                                }
+                            }
                         }
                         
                         script.stage('Push changes to remote git repository') {
                             if (appChanged) {
-                                pushAppChangesToRepo(projectName, exportFolder, ignoreJarsForExport)
+                                pushAppChangesToRepo(projectName, fabricAppDir, ignoreJarsForExport)
                             } else {
                                 script.echoCustom("No changes found, Skipping to push changes to SCM.")
                             }
@@ -745,6 +759,7 @@ class Fabric implements Serializable {
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
+                        
                         script.stage('Prepare build-node environment') {
                             prepareBuildEnvironment()
                         }
@@ -1020,12 +1035,12 @@ class Fabric implements Serializable {
     
     /**
      * To checkout source code from SCM repo
-     * @param projectName
+     * @param checkoutRelativeTargetFolder
      */
-    private void checkoutProjectFromRepo(String projectName) {
+    private void checkoutProjectFromRepo(String checkoutRelativeTargetFolder) {
         scmMeta = BuildHelper.checkoutProject script: script,
                 checkoutType: "scm",
-                projectRelativePath: projectName,
+                projectRelativePath: checkoutRelativeTargetFolder,
                 scmBranch: exportRepositoryBranch,
                 scmCredentialsId: exportRepositoryCredentialsId,
                 scmUrl: exportRepositoryUrl
@@ -1080,7 +1095,7 @@ class Fabric implements Serializable {
      * @param invalidFabricAppError
      */
     private void validateLocalFabricApp(String projectName, String invalidVersionError, String invalidFabricAppError, String exportFolder="/export/") {
-        def metaFileLocation = projectName + "/" + exportFolder + "/Apps/$fabricAppName/Meta.json"
+        def metaFileLocation = (exportFolder.isEmpty()) ? [projectName, "Apps/$fabricAppName/Meta.json"].join(separator) : [projectName, exportFolder, "Apps/$fabricAppName/Meta.json"].join("/")
         def fileExist = script.fileExists file: metaFileLocation
         if (fileExist) {
             if (!validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation)) {
@@ -1097,22 +1112,23 @@ class Fabric implements Serializable {
      * @param projectName
      * @param exportFolder
      */
-    private void findAppChanges(boolean overwriteExisting, String projectName, String exportFolder, boolean ignoreJarsForExport = false) {
+    private void findAppChanges(boolean overwriteExisting, String projectName, String fabricAppDir, boolean ignoreJarsForExport = false) {
         if (overwriteExisting) {
-            script.echoCustom("Force Push ${fabricAppName}(${fabricAppVersion}) is selected, exporting updates to ${exportFolder} path in ${exportRepositoryBranch} branch.")
-
-            /* If Override Existing is selected, delete all the files from previous version and check in the code. */
-            script.dir(exportFolder) {
+            def fabricAppsDirRelativePath = (fabricAppDir.isEmpty()) ? 'Apps' : [fabricAppDir, 'Apps'].join("/")
+            script.echoCustom("Force Push ${fabricAppName}(${fabricAppVersion}) is selected, exporting updates to '${fabricAppsDirRelativePath}' path in '${exportRepositoryBranch}' branch.")
+            
+            /* If Override Existing is selected, setting flag appChanged as true, in this case will delete all the files from previous version and check in the code. */
+            script.dir(appUnzipTempDir) {
                 script.deleteDir()
             }
-            script.unzip zipFile: "${projectName}.zip", dir: exportFolder
+            script.unzip zipFile: "${projectName}.zip", dir: appUnzipTempDir
             appChanged = true
         } else {
-            zipProjectForExport(projectName, exportFolder)
-            appChanged = fabricAppChanged(previousPath: "${projectName}_PREV.zip", currentPath: "${script.env.WORKSPACE}/${projectName}.zip", ignoreJarsForExport: ignoreJarsForExport, exportFolder: exportFolder)
+            zipProjectForExport(projectName, fabricAppDir)
+            appChanged = fabricAppChanged(previousPath: "${script.env.WORKSPACE}/${projectName}_PREV.zip", currentPath: "${script.env.WORKSPACE}/${projectName}.zip", ignoreJarsForExport: ignoreJarsForExport)
             if (appChanged) {
                 script.echoCustom("Found updates on Fabric for ${fabricAppName}(${fabricAppVersion}), exporting updates to ${exportRepositoryBranch} branch.")
-                script.unzip zipFile: "${projectName}.zip", dir: exportFolder
+                script.unzip zipFile: "${projectName}.zip", dir: appUnzipTempDir
             } else {
                 script.echoCustom("${fabricAppName}(${fabricAppVersion}) has no updates in Fabric.")
             }
@@ -1125,10 +1141,10 @@ class Fabric implements Serializable {
      * @param exportFolder
      */
     private void pushAppChangesToRepo(String projectName, String exportFolder, boolean ignoreJarsForExport=false) {
-        def JSonFilesList = findJsonFiles folderToSearchIn: exportFolder
+        def JSonFilesList = findJsonFiles folderToSearchIn: appUnzipTempDir
         if (JSonFilesList) {
-            prettifyJsonFiles rootFolder: exportFolder, files: JSonFilesList
-            overwriteFilesInGit exportFolder: exportFolder, projectPath: projectName
+            prettifyJsonFiles rootFolder: appUnzipTempDir, files: JSonFilesList
+            overwriteFilesInGit exportFolder: exportFolder, projectPath: projectName, appUnzipTempDir: appUnzipTempDir
         } else {
             throw new AppFactoryException('JSON files were not found', 'ERROR')
         }
