@@ -151,7 +151,7 @@ class WebChannel extends Channel {
                     ValidationHelper.checkBuildConfiguration(script)
                     ValidationHelper.checkBuildConfiguration(script, [appVersionParameterName, 'FABRIC_APP_CONFIG'])
                     if(buildMode == libraryProperties.'buildmode.release.protected.type') {
-                        def webProtectionMandatoryParams = ['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL']
+                        def webProtectionMandatoryParams = ['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL', 'PROTECTED_KEYS']
                         if(webProtectionPreset == 'CUSTOM')
                             webProtectionMandatoryParams.add('CUSTOM_PROTECTION_PATH')
                         ValidationHelper.checkBuildConfiguration(script, webProtectionMandatoryParams)

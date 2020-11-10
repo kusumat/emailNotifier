@@ -381,7 +381,8 @@ class Facade implements Serializable {
                 [script.string(name: "PROTECTION_LEVEL", value: "${webProtectionPreset}")] +
                 [script.string(name: "EXCLUDE_LIST_PATH", value: "${webProtectionExcludeListFile}")] +
                 [script.string(name: "CUSTOM_PROTECTION_PATH", value: "${webProtectionBlueprintFile}")] +
-                [script.credentials(name: 'OBFUSCATION_PROPERTIES', value: "${webProtectionID}")]
+                [script.credentials(name: 'OBFUSCATION_PROPERTIES', value: "${webProtectionID}")] +
+                [script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}")]
 
         if (spaChannelsToBuildJobParameters && desktopWebChannel) {
             commonWebParameters +
