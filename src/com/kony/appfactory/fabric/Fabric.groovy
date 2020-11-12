@@ -637,7 +637,7 @@ class Fabric implements Serializable {
                                 }
                                 
                                 /* Health check call to get the Fabric Server version for environment*/
-                                FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
+                                FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                                 
                                 /* Check the Fabric Server Version supported for Export of App Service config */
                                 def featuresSupportToCheckInFabric = [:]
@@ -779,7 +779,7 @@ class Fabric implements Serializable {
                         }
                         
                         script.stage('Import project to Fabric') {
-                            FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
+                            FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                             importProjectToFabric(cloudAccountId, fabricCredentialsID, overwriteExisting)
                         }
                         
@@ -832,7 +832,7 @@ class Fabric implements Serializable {
                             prepareBuildEnvironment()
                         }
                         script.stage('Publish project on Fabric') {
-                            FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
+                            FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                             
                             def fabricCliOptions = [
                                     '-t': "\"$cloudAccountId\"",
@@ -1006,7 +1006,7 @@ class Fabric implements Serializable {
                         }
                         
                         script.stage('Import project to Fabric') {
-                            FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, importFabricCredentialsID, importCloudAccountId, fabricEnvironmentName, isUnixNode)
+                            FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, importFabricCredentialsID, importCloudAccountId, fabricEnvironmentName, isUnixNode)
                             importProjectToFabric(importCloudAccountId, importFabricCredentialsID, overwriteExistingAppVersion, importConsoleUrl,importIdentityUrl)
                         }
 

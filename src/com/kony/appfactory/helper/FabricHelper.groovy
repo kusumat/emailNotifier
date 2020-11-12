@@ -460,7 +460,7 @@ class FabricHelper implements Serializable {
     }
     
     /**
-     * Get the Fabric Server version through mfcli healthcheck command.
+     * Get the Fabric Console version through mfcli healthcheck command.
      * @param script
      * @param fabricCliPath
      * @param fabricCredentialsID
@@ -468,9 +468,9 @@ class FabricHelper implements Serializable {
      * @param fabricEnvironmentName
      * @param isUnixNode
      */
-    protected static void fetchFabricServerVersion(script, fabricCliPath, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode) {
-        def fabricServerVersion
-        def fabServerVersionFromHealthCheck = ""
+    protected static void fetchFabricConsoleVersion(script, fabricCliPath, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode) {
+        def fabricConsoleVersion
+        def fabConsoleVersionFromHealthCheck = ""
         def fabrichealthCheck = runFabricHealthCheck(script, fabricCliPath, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
         Map<String,String> fabricHealthCheckMap = new LinkedHashMap<String,String>();
         fabrichealthCheck.split("\n").each { outputLine ->
@@ -479,18 +479,18 @@ class FabricHelper implements Serializable {
             }
         }
         if(!fabricHealthCheckMap.containsKey("Version"))
-            throw new AppFactoryException('Failed to get the Fabric Runtime version! It seems something wrong with health check of Fabric environment.', 'ERROR')
+            throw new AppFactoryException('Failed to get the Fabric Console version! It seems something wrong with health check of Fabric environment.', 'ERROR')
         
-        fabServerVersionFromHealthCheck = fabricHealthCheckMap.get("Version")
+        fabConsoleVersionFromHealthCheck = fabricHealthCheckMap.get("Version")
         /* The DEV build convention of the version is slightly different. So in few of lower Fabric environments, 
-         * Fabric Server Version value can be as: '9.2.0.71_DEV' but in actual we have to take value as : '9.2.0.71' */
-        if(fabServerVersionFromHealthCheck.contains("_")) {
-            fabricServerVersion = fabServerVersionFromHealthCheck.split("_").first()
+         * Fabric Console Version value can be as: '9.2.0.71_DEV' but in actual we have to take value as : '9.2.0.71' */
+        if(fabConsoleVersionFromHealthCheck.contains("_")) {
+            fabricConsoleVersion = fabConsoleVersionFromHealthCheck.split("_").first()
         } else {
-            fabricServerVersion = fabServerVersionFromHealthCheck
+            fabricConsoleVersion = fabConsoleVersionFromHealthCheck
         }
-        script.env['FABRIC_SERVER_VERSION'] = fabricServerVersion
-        script.echoCustom("From the given Fabric App Config, found the Fabric Runtime version: ${fabServerVersionFromHealthCheck}", 'INFO')
+        script.env['FABRIC_CONSOLE_VERSION'] = fabricConsoleVersion
+        script.echoCustom("From the given Fabric App Config, found the Fabric Console version: ${fabConsoleVersionFromHealthCheck}", 'INFO')
     }
     
     /**
@@ -504,9 +504,9 @@ class FabricHelper implements Serializable {
         featureSupportToCheckInFabric.each { featureKey, featureProperties ->
             def featureKeyInLowers = featureKey.toLowerCase()
             def featureSupportedVersion = libraryProperties."fabric.${featureKeyInLowers}.support.base.version"
-            if (ValidationHelper.compareVersions(script.env["FABRIC_SERVER_VERSION"], featureSupportedVersion) == -1) {
+            if (ValidationHelper.compareVersions(script.env["FABRIC_CONSOLE_VERSION"], featureSupportedVersion) == -1) {
                 isFeatureSupportExist = false
-                script.echoCustom("The minimum supported Fabric Runtime version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
+                script.echoCustom("The minimum supported Fabric Console version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
                     "Please upgrade your Fabric environment to latest version to make use of this feature.", 'WARN')
             }
         }

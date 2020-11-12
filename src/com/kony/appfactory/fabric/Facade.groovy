@@ -370,7 +370,7 @@ class Facade implements Serializable{
                                 try {
                                     script.dir(appBinariesReleasePath) {
                                         
-                                        FabricHelper.fetchFabricServerVersion(script, fabricCliFilePath, fabricCredentialsID, fabricCloudAccountId, fabricEnvironmentName, isUnixNode)
+                                        FabricHelper.fetchFabricConsoleVersion(script, fabricCliFilePath, fabricCredentialsID, fabricCloudAccountId, fabricEnvironmentName, isUnixNode)
                                         FabricHelper.importFabricApp(
                                                 script,
                                                 fabricCliFilePath,

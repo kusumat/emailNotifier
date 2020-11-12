@@ -271,7 +271,7 @@ class WebChannel extends Channel {
                                     script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Fabric environment you've chosen.")
                                 }
                                 FabricHelper.fetchFabricCli(script, libraryProperties, libraryProperties.'fabric.cli.version')
-                                FabricHelper.fetchFabricServerVersion(script, fabricCliFileName, fabricCredentialsID, script.env.FABRIC_ACCOUNT_ID, script.env.FABRIC_ENV_NAME, isUnixNode)
+                                FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, script.env.FABRIC_ACCOUNT_ID, script.env.FABRIC_ENV_NAME, isUnixNode)
                                 
                                 /* Fabric option for cliCommands */
                                 def fabricCommandOptions = ['-t': "\"${script.env.FABRIC_ACCOUNT_ID}\"",
