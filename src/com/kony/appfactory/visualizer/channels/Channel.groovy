@@ -718,8 +718,9 @@ class Channel implements Serializable {
                         }
                     }
 
-                    if (script.fileExists('PublicKey.zip')) {
-                        script.unzip zipFile: "PublicKey.zip"
+                    if (script.fileExists('PublicKey.zip') || script.fileExists('public_key.zip')) {
+                        def publicKeyZipName =  script.fileExists('PublicKey.zip') ? "PublicKey" : "public_key"
+                        script.unzip zipFile: publicKeyZipName + ".zip"
                     }
                 }
             }

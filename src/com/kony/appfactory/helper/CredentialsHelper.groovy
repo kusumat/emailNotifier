@@ -23,7 +23,7 @@ import org.apache.commons.io.IOUtils
  */
 class CredentialsHelper implements Serializable{
 
-    private final String protectedModePublicKeyFileName = "publicKey.dat"
+    private final String protectedModePublicKeyFileName = "public_key.dat"
     private final String protectedModePrivateKeyFileName = "privateKey.pem"
     private final String protectedModeFinKeysFileName = "finKeys.zip"
 
