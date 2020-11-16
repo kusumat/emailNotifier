@@ -135,20 +135,30 @@ class AndroidChannel extends Channel {
             script.catchErrorCustom(errorMessage) {
                 for (artifact in buildArtifacts) {
                     script.dir(artifact.path) {
-                        def finalArtifactName = androidAppBundle ? artifact.name.replace('.aab','_signed.aab') : artifact.name.replaceAll('unsigned', 'aligned')
-
-                        script.shellCustom(
-                                [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
-                                 '-keystore', "${script.env.KSFILE}",
-                                 '-storepass', "${script.env.KSPASS}",
-                                 '-keypass', "${script.env.KEYPASS}", artifact.name, script.env.KEY_ALIAS].join(' '),
-                                isUnixNode
+                        def finalArtifactName = androidAppBundle ? artifact.name.replace('.aab', '_signed.aab') : artifact.name.replaceAll('unsigned', 'aligned')
+                        if (finalArtifactName.contains("release") && !finalArtifactName.contains("signed")) {
+                            finalArtifactName = finalArtifactName.replaceAll("release", "release_signed")
+                        }
+                        def verifyOutput = script.shellCustom(
+                                [signer, '-verbose -verify -certs', artifact.name, script.env.KEY_ALIAS].join(' '),
+                                isUnixNode, [returnStdout: true]
                         )
+                        if (verifyOutput.contains('CN=')) {
+                            script.echoCustom("Binary already signed, Skipping signing from AppFactory.")
+                        } else {
+                            script.shellCustom(
+                                    [signer, '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg', 'SHA1',
+                                     '-keystore', "${script.env.KSFILE}",
+                                     '-storepass', "${script.env.KSPASS}",
+                                     '-keypass', "${script.env.KEYPASS}", artifact.name, script.env.KEY_ALIAS].join(' '),
+                                    isUnixNode
+                            )
 
-                        script.shellCustom(
-                                [signer, '-verify -certs', artifact.name, script.env.KEY_ALIAS].join(' '),
-                                isUnixNode
-                        )
+                            script.shellCustom(
+                                    [signer, '-verify -certs', artifact.name, script.env.KEY_ALIAS].join(' '),
+                                    isUnixNode
+                            )
+                        }
 
                         script.shellCustom(
                                 ['zipalign', '-v 4', artifact.name, finalArtifactName].join(' '),
