@@ -215,13 +215,13 @@ class WebChannel extends Channel {
                                 if(webProtectionID) {
                                     setProtectedModePropertiesPath()
                                     if (webProtectionExcludeListFile) {
-                                        def excludeListFile = [projectWorkspacePath, webProtectionExcludeListFile].join(separator)
+                                        def excludeListFile = [projectWorkspacePath, projectName, webProtectionExcludeListFile].join(separator)
                                         if (!script.fileExists(excludeListFile)) {
                                             throw new AppFactoryException('Failed to find exclude list file at the location \n' + excludeListFile, 'ERROR')
                                         }
                                     }
                                     if (webProtectionPreset == 'CUSTOM') {
-                                        def blueprintFile = [projectWorkspacePath, webProtectionBlueprintFile].join(separator)
+                                        def blueprintFile = [projectWorkspacePath, projectName, webProtectionBlueprintFile].join(separator)
                                         if (!script.fileExists(blueprintFile)) {
                                             throw new AppFactoryException('Failed to find blueprint file at the location  \n' + blueprintFile, 'ERROR')
                                         }
