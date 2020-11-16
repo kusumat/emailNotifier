@@ -159,9 +159,6 @@ class ValidationHelper implements Serializable {
                 case 'FABRIC_APP_VERSION':
                     regex = /^[1-9]{1,3}\.[0-9]{1,2}$/
                     break
-                case 'EXCLUDE_LIST_PATH':
-                    regex = /.*(\.txt)$/
-                    break
                 case 'CUSTOM_PROTECTION_PATH' :
                     regex = /.*(\.json)$/
                     break

@@ -215,15 +215,20 @@ class WebChannel extends Channel {
                                 if(webProtectionID) {
                                     setProtectedModePropertiesPath()
                                     if (webProtectionExcludeListFile) {
-                                        def excludeListFile = [projectWorkspacePath, webProtectionExcludeListFile].join(separator)
-                                        if (!script.fileExists(excludeListFile)) {
-                                            throw new AppFactoryException('Failed to find exclude list file at the location \n' + excludeListFile, 'ERROR')
+                                        def excludeListFilePath = [projectFullPath, webProtectionExcludeListFile].join(separator)
+                                        def excludeListFileName = excludeListFilePath.substring(excludeListFilePath.lastIndexOf("/") + 1)
+                                        if (!script.fileExists(excludeListFilePath)) {
+                                            throw new AppFactoryException('Failed to find exclude list file at the location \n' + excludeListFilePath, 'ERROR')
+                                        }
+                                        /* Check the exclude list file type and name */
+                                        if(!excludeListFileName.endsWith(".txt") || excludeListFileName.contains(" ")) {
+                                            throw new AppFactoryException("Invalid file name or type given for Exclude list file! Expecting Exclude list in '.txt' file format and should not contains spaces in file name.", "ERROR")
                                         }
                                     }
                                     if (webProtectionPreset == 'CUSTOM') {
-                                        def blueprintFile = [projectWorkspacePath, webProtectionBlueprintFile].join(separator)
-                                        if (!script.fileExists(blueprintFile)) {
-                                            throw new AppFactoryException('Failed to find blueprint file at the location  \n' + blueprintFile, 'ERROR')
+                                        def blueprintFilePath = [projectFullPath, webProtectionBlueprintFile].join(separator)
+                                        if (!script.fileExists(blueprintFilePath)) {
+                                            throw new AppFactoryException('Failed to find blueprint file at the location  \n' + blueprintFilePath, 'ERROR')
                                         }
                                     }
                                     script.echoCustom("Placing encryptions keys for protected mode build.")
