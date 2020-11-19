@@ -244,10 +244,7 @@
         </condition>
 
         <condition property="protectedWebBuild" value="true" else="false">
-            <and>
-                <equals arg1="${env.BUILD_MODE}" arg2="release-protected" />
-                <equals arg1="${desktopWeb}" arg2="true" />
-            </and>
+            <equals arg1="${env.WEB_PROTECTION}" arg2="true" />
         </condition>
 
         <condition property="webProtectedModePropertiesPath" value ="${env.WEB_PROTECTEDMODE_PROPERTIES_PATH}" else="">

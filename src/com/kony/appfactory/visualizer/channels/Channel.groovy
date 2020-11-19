@@ -423,7 +423,7 @@ class Channel implements Serializable {
                          *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
                          */
                         ValidationHelper.checkFeatureSupportExist(script, libraryProperties, getFeatureParamsToCheckCIBuildSupport(), VisualizerBuildType.ci)
-                        
+
                         /* Retrieve Visualizer plugins for the project */
                         script.shellCustom('ant -buildfile ci-property.xml retrieve', isUnixNode)
                         channelBuildStats.put('plugindldur', BuildHelper.getDuration(plugindlStart, new Date()))
@@ -566,7 +566,12 @@ class Channel implements Serializable {
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
             if (["SPA", "DESKTOPWEB", "WEB"].contains(channelVariableName)) {
                 def compareVizZipExtensionVersions = ValidationHelper.compareVersions(visualizerVersion, zipExtensionSupportBaseVersion)
-              
+                def webObfuscationSupportBaseVersion = libraryProperties.'obfuscation_properties.ci.support.base.version'
+                if (buildMode == 'release-protected' && script.params.containsKey("OBFUSCATION_PROPERTIES")) {
+                    if (ValidationHelper.compareVersions(visualizerVersion, webObfuscationSupportBaseVersion) >= 0) {
+                        script.env['WEB_PROTECTION'] = "true"
+                    }
+                }
                 if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
                     if (compareVizZipExtensionVersions == -1) {
                         (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
@@ -1105,10 +1110,7 @@ class Channel implements Serializable {
             if (channelFormFactor == "Universal")
                 featureBooleanParameters.put('IOS_UNIVERSAL_NATIVE', ['featureDisplayName': 'iOS Universal Application'])
         }
-        if (channelOs.equalsIgnoreCase('DESKTOPWEB') && buildMode == 'release-protected') {
-            featureBooleanParameters.put('OBFUSCATION_PROPERTIES', ['featureDisplayName': 'Protected Build for Web Platform'])
-        }
-        
+
         finalFeatureParamsToCheckCISupport = featureBooleanParameters.findAll{
             script.params.containsKey(it.key) && script.params[it.key] == true
         }
