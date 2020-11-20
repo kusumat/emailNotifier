@@ -997,13 +997,12 @@ class BuildHelper implements Serializable {
     /**
      * Set the external (third party) authentication login path as URL_PATH_INFO env variable, if enabled for the provided MF Account.
      * @param script
-     * @param cloudDomain: The domain of the Kony cloud in which the account is hosted -e.g. kony.com, sit2-kony.com, etc.
      * @param mfApiVersion: The version of the Kony API to be used for authentication.
      * @param environmentGuid: The GUID of the Kony environment (MF_ENVIRONMENT_GUID).
      */
-    protected final static void getExternalAuthInfoForCloudBuild(script, cloudDomain, mfApiVersion, environmentGuid) {
+    protected final static void getExternalAuthInfoForCloudBuild(script, mfApiVersion, environmentGuid) {
         try{
-            KonyExternalAuthN externalAuth = KonyOauth1Client.getExternalAuthNConfig(cloudDomain, mfApiVersion, environmentGuid)
+            KonyExternalAuthN externalAuth = KonyOauth1Client.getExternalAuthNConfig(mfApiVersion, environmentGuid)
             //If external authentication is enabled.
             if (externalAuth != null && externalAuth.urlPath != null && !externalAuth.urlPath.trim().isEmpty()) {
                 script.echoCustom("Third party authentication is enabled with url path: ${externalAuth.urlPath}")
