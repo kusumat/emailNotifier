@@ -418,8 +418,10 @@ class Fabric implements Serializable {
             String commitCommand = "git commit -m \"$commitMessage\" || error=true"
             String pushCommand = "git push \"$pushUrl\" || error=true"
 
-            if(ignoreJarsForExport)
-                checkoutCommand = [checkoutCommand, "git add \"$exportFolder/Apps/_JARs/*\"", "git reset HEAD \"$exportFolder/Apps/_JARs/*\""].join(' && ')
+            if(ignoreJarsForExport) {
+                String jarsDirPath = (exportFolder?.isEmpty()) ? "Apps/_JARs/*" : "${exportFolder}/Apps/_JARs/*"
+                checkoutCommand = [checkoutCommand, "git add \"$jarsDirPath\"", "git reset HEAD \"$jarsDirPath\""].join(' && ')
+            }
 
             script.shellCustom(
                     [hideShellOutput + checkoutCommand].join(' && '),
