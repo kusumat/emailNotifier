@@ -338,7 +338,7 @@
             <entry key="web.protection.preset" value="${webProtectionPreset}"/>
             <entry key="web.protection.excludelist" value="${webProtectionExcludeListFile}"/>
             <entry key="web.protection.custom.blueprint" value="${webProtectionBlueprintFile}"/>
-            <entry key="web.protectedmode.properties" value="${webProtectedModePropertiesPath}"/>
+            <entry key="web.protection.properties" value="${webProtectedModePropertiesPath}"/>
             <entry key="web.encryption.dirs" value="${webEncryptionDirsPath}"/>
             <!-- Web Channel options -->
             <entry key="web.binary.extension" value="${binaryextensionWEB}"/>
