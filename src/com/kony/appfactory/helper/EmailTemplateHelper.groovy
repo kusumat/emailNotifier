@@ -54,6 +54,9 @@ class EmailTemplateHelper implements Serializable {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build Mode:', binding.build.mode)
                             }
+                            if (binding.build.protectionlevel)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Protection Level:', binding.build.protectionlevel)
+
 
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)

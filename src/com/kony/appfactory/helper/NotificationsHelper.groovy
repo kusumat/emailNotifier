@@ -262,6 +262,12 @@ class NotificationsHelper implements Serializable {
                         mode    : script.env.BUILD_MODE
                 ]
         ] + templateData
+
+        // Adding specifc DesktopWeb Channel binding keys
+        if (script.params.containsKey("PROTECTION_LEVEL")) {
+            commonBinding.build += [protectionlevel : script.env.PROTECTION_LEVEL]
+        }
+
         switch (templateType) {
             case 'buildVisualizerApp':
             case 'cloudBuild':
