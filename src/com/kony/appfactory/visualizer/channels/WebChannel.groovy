@@ -217,6 +217,8 @@ class WebChannel extends Channel {
                                     setProtectedModePropertiesPath()
                                     if (webProtectionExcludeListFile) {
                                         def excludeListFilePath = [projectFullPath, webProtectionExcludeListFile].join(separator)
+                                        // storing with absolute path in EXCLUDE_LIST_PATH variable.
+                                        script.env.EXCLUDE_LIST_PATH = excludeListFilePath
                                         def excludeListFileName = excludeListFilePath.substring(excludeListFilePath.lastIndexOf("/") + 1)
                                         if (!script.fileExists(excludeListFilePath)) {
                                             throw new AppFactoryException('Failed to find exclude list file at the location \n' + excludeListFilePath, 'ERROR')
@@ -228,6 +230,8 @@ class WebChannel extends Channel {
                                     }
                                     if (webProtectionPreset == 'CUSTOM') {
                                         def blueprintFilePath = [projectFullPath, webProtectionBlueprintFile].join(separator)
+                                        // storing with absolute path in CUSTOM_PROTECTION_PATH variable.
+                                        script.env.CUSTOM_PROTECTION_PATH = blueprintFilePath
                                         if (!script.fileExists(blueprintFilePath)) {
                                             throw new AppFactoryException('Failed to find blueprint file at the location  \n' + blueprintFilePath, 'ERROR')
                                         }
