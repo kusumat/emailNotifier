@@ -211,7 +211,7 @@ class WebChannel extends Channel {
 
                         script.stage('Build') {
                             if(buildMode == libraryProperties.'buildmode.release.protected.type') {
-                                script.echoCustom("For Visualizer 9.2.0 and below projects release-protected mode is not applicable for DesktopWeb and SPA channels build." +
+                                script.echoCustom("For Visualizer 9.2.0 below projects release-protected mode is not applicable for DesktopWeb channel build." +
                                             " It will build as Release mode only.", 'WARN')
                                 if(webProtectionID) {
                                     setProtectedModePropertiesPath()
