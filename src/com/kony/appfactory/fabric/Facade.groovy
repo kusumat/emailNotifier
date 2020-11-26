@@ -498,6 +498,8 @@ class Facade implements Serializable{
                     fabricStats.put('fabsrcurl', projectRepositoryUrl)
                     fabricStats.put('fabsrcbrch', projectSourceCodeBranch)
                     fabricStats.put('fabsrccmtid', fabricScmMeta?.commitID)
+                    fabricStats.put('buildemlrecipients', script.env.RECIPIENTS_LIST)
+                    fabricStats.put('buildtype', "Fabric")
                     
                     // Pushing stats data
                     script.statspublish fabricStats.inspect()

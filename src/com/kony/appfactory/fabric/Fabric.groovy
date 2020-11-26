@@ -531,6 +531,8 @@ class Fabric implements Serializable {
             fabricStats.put('fabtask', fabricTask)
             fabricStats.put('fabsrcurl', exportRepositoryUrl)
             fabricStats.put('fabsrcbrch', exportRepositoryBranch)
+            fabricStats.put('buildemlrecipients', script.env.RECIPIENTS_LIST)
+            fabricStats.put('buildtype', "Fabric")
 
             if (publishJob?.number) {
                 fabricRunListStats.put(publishJob.fullProjectName + "/" + publishJob.number, publishJob.fullProjectName)

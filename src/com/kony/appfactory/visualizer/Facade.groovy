@@ -930,7 +930,6 @@ class Facade implements Serializable {
                                 script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
                             }
                         }
-                        buildStats.put("projname", projectName)
                         buildStats.put('buildplat', getBuildPlat(channelsToRun))
 
                         /* Run channel builds in parallel */
@@ -1052,6 +1051,9 @@ class Facade implements Serializable {
                 } finally {
                     if (!runListStats.isEmpty())
                         buildStats.put("pipeline-run-jobs", runListStats)
+                    buildStats.put("projname", projectName)
+                    buildStats.put('buildemlrecipients', script.env["RECIPIENTS_LIST"])
+                    buildStats.put('buildtype', "Visualizer")
                     // Publish Facade metrics keys to build Stats Action class.
                     script.statspublish buildStats.inspect()
 
