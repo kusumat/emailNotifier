@@ -118,8 +118,8 @@ class FacadeTests implements Serializable {
         [
                 script.string(name: 'PROJECT_SOURCE_CODE_BRANCH', value: script.params.PROJECT_SOURCE_CODE_BRANCH),
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
-                        value: script.params.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID),
-                script.string(name: 'RECIPIENTS_LIST', value: script.params.RECIPIENTS_LIST),
+                        value: script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID),
+                script.string(name: 'RECIPIENTS_LIST', value: script.env.RECIPIENTS_LIST),
                 script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: script.params.RUN_CUSTOM_HOOKS),
                 script.string(name: 'TEST_FRAMEWORK', value: BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG'))
         ]
