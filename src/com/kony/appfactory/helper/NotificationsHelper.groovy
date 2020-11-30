@@ -264,7 +264,7 @@ class NotificationsHelper implements Serializable {
         ] + templateData
 
         // Adding specifc DesktopWeb Channel binding keys
-        if (script.params.containsKey("PROTECTION_LEVEL")) {
+        if (script.params.BUILD_MODE == 'release-protected' && script.params.containsKey("PROTECTION_LEVEL")) {
             commonBinding.build += [protectionlevel : script.env.PROTECTION_LEVEL]
         }
 
