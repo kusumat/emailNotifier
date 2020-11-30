@@ -628,7 +628,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             def customWDA = ''
             // We need to use the WDA V1 if user has selected appium 1.8.1 or higher version.
             if (ValidationHelper.compareVersions(appiumVersion, APPIUM_1_8_1_VERSION) > -1) {
-                customWDA = '--default-capabilities "{\\"usePrebuiltWDA\\": true, \\"derivedDataPath\\":\\"$DEVICEFARM_WDA_DERIVED_DATA_PATH_V1\\"}"'
+                customWDA = '--default-capabilities "{\\"usePrebuiltWDA\\": true, \\"derivedDataPath\\":\\"$DEVICEFARM_WDA_DERIVED_DATA_PATH\\"}"'
             }
             def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles, customWDA: customWDA])
             /* Create YAML file from template */

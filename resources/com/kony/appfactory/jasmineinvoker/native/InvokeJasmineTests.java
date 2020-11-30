@@ -23,6 +23,8 @@ import io.appium.java_client.InteractsWithFiles;
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.appmanagement.ApplicationState;
 import io.appium.java_client.ios.IOSDriver;
+import io.appium.java_client.remote.AndroidMobileCapabilityType;
+import io.appium.java_client.remote.IOSMobileCapabilityType;
 
 /**
  * Appium test for invoking jasmine native test run.
@@ -115,11 +117,14 @@ public class InvokeJasmineTests {
             System.out.println("Running tests in the Custom Test Mode");
             if ("Android".equalsIgnoreCase(System.getenv("DEVICEFARM_DEVICE_PLATFORM_NAME"))) {
                 System.out.println("Initializing the Android Driver!!!!!!!!!!!!");
+                capabilities.setCapability("automationName", "UiAutomator2");
+                capabilities.setCapability(AndroidMobileCapabilityType.AUTO_GRANT_PERMISSIONS, true);   
                 androiddriver = new AndroidDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
                 driver = androiddriver;
                 bundleID = (String) androiddriver.getSessionDetail("appPackage");
             } else {
                 capabilities.setCapability("automationName", "XCUITest");
+                capabilities.setCapability(IOSMobileCapabilityType.AUTO_ACCEPT_ALERTS, true);
                 System.out.println("Initializing the iOS Driver!!!!!!!!!!!!");
                 iosdriver = new IOSDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
                 driver = iosdriver;

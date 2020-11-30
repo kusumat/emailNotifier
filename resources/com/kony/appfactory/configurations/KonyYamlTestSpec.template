@@ -28,6 +28,29 @@ phases:
       - export "CLASSPATH"="\$CLASSPATH":"\$DEVICEFARM_TESTNG_JAR"
       - export "CLASSPATH"="\$CLASSPATH":"\$DEVICEFARM_TEST_PACKAGE_PATH"/*
       - export "CLASSPATH"="\$CLASSPATH":"\$DEVICEFARM_TEST_PACKAGE_PATH"/dependency-jars/*
+
+      # For users of Appium versions 1.15.0 and higher, your Appium version requires that your UDID of the device does not contain any "-" characters
+      # So, we will create a new environment variable of your UDID specifically for Appium based on your Appium version
+      - export 'TEST_APPIUM_VERSION'=`echo \$APPIUM_VERSION | cut -d "." -f2`
+      - export 'DEVICE_UDID_TEST'=`echo \$DEVICEFARM_DEVICE_UDID | tr -d "-"`
+      - >-
+        if [ "\$TEST_APPIUM_VERSION" -ge 15 ];
+        then
+          # Nodejs need to be upgarded to the latest version for all appium versions which are greater then 1.15.
+          export NODE_VERSION=`node -v`
+          echo "Current node Version is : \${NODE_VERSION}"
+          echo "Upgrading the node since the new appium version needs the new node."
+          npm update
+          npm install -g --unsafe-perm=true --allow-root node
+          export NODE_VERSION=`node -v`
+          echo "NodeJS has been upgraded to : \${NODE_VERSION},"
+          DEVICEFARM_DEVICE_UDID_FOR_APPIUM=\$DEVICE_UDID_TEST;
+          DEVICEFARM_WDA_DERIVED_DATA_PATH=\$DEVICEFARM_WDA_DERIVED_DATA_PATH_V2;
+        else
+          DEVICEFARM_DEVICE_UDID_FOR_APPIUM=\$DEVICEFARM_DEVICE_UDID;
+          DEVICEFARM_WDA_DERIVED_DATA_PATH=\$DEVICEFARM_WDA_DERIVED_DATA_PATH_V1;
+        fi;
+
       # We recommend starting appium server process in the background using the command below.
       # Appium server log will go to "\$DEVICEFARM_LOG_DIR" directory.
       # The environment variables below will be auto-populated during run time.
@@ -35,7 +58,7 @@ phases:
       - >-
         appium --log-timestamp --device-name "\$DEVICEFARM_DEVICE_NAME"
         --platform-name "\$DEVICEFARM_DEVICE_PLATFORM_NAME" --app "\$DEVICEFARM_APP_PATH"
-        --udid "\$DEVICEFARM_DEVICE_UDID" ${customWDA} --chromedriver-executable "\$DEVICEFARM_CHROMEDRIVER_EXECUTABLE"  >> "\$DEVICEFARM_LOG_DIR"/appiumlog.txt 2>&1 &
+        --udid "\$DEVICEFARM_DEVICE_UDID_FOR_APPIUM" ${customWDA} --chromedriver-executable "\$DEVICEFARM_CHROMEDRIVER_EXECUTABLE"  >> "\$DEVICEFARM_LOG_DIR"/appiumlog.txt 2>&1 &
 
       - >-
         start_appium_timeout=0;
