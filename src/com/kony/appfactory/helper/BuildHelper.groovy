@@ -967,6 +967,17 @@ class BuildHelper implements Serializable {
         return isParamFound ?  paramValue : defaultValue
     }
 
+    /* Get the existing param name from the probable param list if exists, other wise send the default param name that is being passed */
+    @NonCPS
+    private static getParamNameOrDefaultFromProbableParamList(script, paramList = [], defaultParam) {
+        for (param in paramList) {
+            if (script.params.containsKey(param)) {
+                return param
+            }
+        }
+        return defaultParam
+    }
+
     /**
      * Created a zip with all MustHaves the artifacts, uploads to s3, creates Auth URL and sets the environment variable "MUSTHAVE_ARTIFACTS".
      * @param script current build instance
