@@ -103,6 +103,8 @@ class Fabric implements Serializable {
         fabricCliVersion = libraryProperties.'fabric.cli.version'
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         nodeLabel = libraryProperties.'fabric.node.label'
+        /* The PROJECT_NAME environment variable is not available for fabric jobs for AppFactory projects below 9.0 Version .So retrieving the project name from the JOB_NAME environment variable */
+        this.script.env.PROJECT_NAME = (this.script.env.PROJECT_NAME) ?: (this.script.env.JOB_NAME.substring(0, this.script.env.JOB_NAME.indexOf('/')))
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
         overwriteExisting = BuildHelper.getParamValueOrDefault(this.script, 'OVERWRITE_EXISTING', true)
         /* Set the fabric project settings values to the corresponding fabric environmental variables */
