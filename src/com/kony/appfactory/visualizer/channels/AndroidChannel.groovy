@@ -17,7 +17,6 @@ class AndroidChannel extends Channel {
     private final keystorePasswordId = script.params.ANDROID_KEYSTORE_PASSWORD
     private final privateKeyPassword = script.params.ANDROID_KEY_PASSWORD
     private boolean doAndroidSigning = false
-    private boolean support32BitDevices = script.params.SUPPORT_32BIT_DEVICES
     private boolean supportX86Devices = script.params.SUPPORT_x86_DEVICES
     /* At least one of application id parameters should be set */
     private final androidMobileAppId = script.params.ANDROID_MOBILE_APP_ID
@@ -83,7 +82,6 @@ class AndroidChannel extends Channel {
     protected setAndroidBuildFlags() {
         def updateKeyMap = [
                 support64bit     : "true",
-                support32bit     : support32BitDevices.toString(),
                 supportX86Devices: supportX86Devices.toString()
         ]
         setValueToProjectPropertiesJson(updateKeyMap)
@@ -100,14 +98,8 @@ class AndroidChannel extends Channel {
             case ~/^.*ARM-64bit_.*$/:
                 artifactBinaryFormat = 'APK (ARM-64bit)'
                 break
-            case ~/^.*ARM-32bit_.*$/:
-                artifactBinaryFormat = 'APK (ARM-32bit)'
-                break
             case ~/^.*x86-64bit_.*$/:
                 artifactBinaryFormat = 'APK (x86-64bit)'
-                break
-            case ~/^.*x86-32bit_.*$/:
-                artifactBinaryFormat = 'APK (x86-32bit)'
                 break
             case ~/^.*.aab.*$/:
                 artifactBinaryFormat = 'AAB'
@@ -279,6 +271,8 @@ class AndroidChannel extends Channel {
                         runPreBuildHook()
 
                         script.stage('Build') {
+                            if(script.params.containsKey("SUPPORT_32BIT_DEVICES") && script.params.SUPPORT_32BIT_DEVICES )
+                                script.echoCustom('Android 32-bit binary support has been removed from Appfactory!','WARN')
                             /* Copy protected keys to project workspace if build mode is "release-protected" */
                             if (buildMode == libraryProperties.'buildmode.release.protected.type') {
                                 script.echoCustom("Placing encryptions keys for protected mode build.")
@@ -311,7 +305,7 @@ class AndroidChannel extends Channel {
                                 }
                             }
 
-                            /* Setting the "Support 64-bit" and "Support-x86 Devices" flag values to generate 32 and 64-bit apks of ARM and x86 Architecture */
+                            /* Setting the "Support 64-bit" and "Support-x86 Devices" flag values to generate 64-bit apks of ARM and x86 Architecture */
                                 setAndroidBuildFlags()
 
                             build()

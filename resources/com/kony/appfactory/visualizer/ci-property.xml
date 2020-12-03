@@ -46,18 +46,11 @@
         <condition property="androidAppBundle" value="${env.ANDROID_APP_BUNDLE}" else="false">
             <isset property="env.ANDROID_APP_BUNDLE"/>
         </condition>
-        <!-- APPFACT-2060: Following flags are used to set the support32bit and splitapks flag values in androidbuild.properties file. -->
-        <condition property="support32BitDevices" value="${env.SUPPORT_32BIT_DEVICES}" else="false">
-            <isset property="env.SUPPORT_32BIT_DEVICES"/>
-        </condition>
         <condition property="supportAndroidX86Arch" value="${env.SUPPORT_x86_DEVICES}" else="false">
             <isset property="env.SUPPORT_x86_DEVICES"/>
         </condition>
         <condition property="splitApks" value="true" else="false">
-            <or>
-                <equals arg1="${support32BitDevices}" arg2="true"/>
                 <equals arg1="${supportAndroidX86Arch}" arg2="true"/>
-            </or>
         </condition>
         <condition property="iosWatchNative" value="${env.APPLE_WATCH_EXTENSION}" else="false">
             <isset property="env.APPLE_WATCH_EXTENSION"/>
@@ -354,12 +347,11 @@
 
     <!--APPFACT-2049: workaround for manually setting the generateAppBundle flag with the appfactory ANDROID_APP_BUNDLE value, this should be removed once the ci supports AAB generation  -->
     <!-- and -->
-    <!--APPFACT-2060: setting the splitapks and support32bit flags with the appfactory SUPPORT_32BIT_DEVICES value and,this will decide the generating the combination of '32bit and 64bit apks' with 'ARM and x86 architecture' -->
+    <!--APPFACT-2060: setting the splitapks flag value and,this will decide the generating of '64bit apks' with 'ARM and x86 architecture' -->
     <target name="update-androidbuild-properties-file" if="${is-androidChannel-selected}">
         <propertyfile file="androidbuild.properties">
             <entry key="generateAppBundle" value="${androidAppBundle}"/>
             <entry key="splitapks" value="${splitApks}"/>
-            <entry key="support32bit" value="${support32BitDevices}"/>
             <entry key="support64bit" value="true"/>
         </propertyfile>
     </target>

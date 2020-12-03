@@ -885,14 +885,8 @@ class Channel implements Serializable {
             case ~/^.*arm64-v8a.*$/:
                 artifactArchitecture = 'ARM-64bit_'
                 break
-            case ~/^.*armeabi-v7a.*$/:
-                artifactArchitecture = 'ARM-32bit_'
-                break
             case ~/^.*x86_64.*$/:
                 artifactArchitecture = 'x86-64bit_'
-                break
-            case ~/^.*x86.*$/:
-                artifactArchitecture = 'x86-32bit_'
                 break
             case ~/^.*ARM.*$/:
                 artifactArchitecture = 'ARM_'
@@ -1100,7 +1094,6 @@ class Channel implements Serializable {
         def finalFeatureParamsToCheckCISupport = [:]
         
         if (channelOs.equalsIgnoreCase('Android')) {
-            featureBooleanParameters.put('SUPPORT_32BIT_DEVICES', ['featureDisplayName': 'Android (32-Bit)'])
             featureBooleanParameters.put('ANDROID_APP_BUNDLE', ['featureDisplayName': 'Android App Bundle'])
             if (channelFormFactor == "Universal")
                 featureBooleanParameters.put('ANDROID_UNIVERSAL_NATIVE', ['featureDisplayName': 'Android Universal Application'])
