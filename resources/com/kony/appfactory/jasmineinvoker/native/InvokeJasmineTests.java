@@ -3,6 +3,7 @@ package com.kony.appfactory.jasmine;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -81,6 +82,8 @@ public class InvokeJasmineTests {
         totalPassed = 0;
         totalFailed = 0;
         
+        Map<String, String> resultsMap = new HashMap<String, String>();
+        
         JSONArray results = new JSONArray(resultsJson);
         for(int i=0; i<results.length(); i++) {
             JSONObject event = (JSONObject) results.get(i);
@@ -93,16 +96,27 @@ public class InvokeJasmineTests {
                         break;
                     case "specDone":
                         String result = eventResult.getString("status");
+                        resultsMap.put(eventResult.getString("fullName"), result);
                         if(result.equalsIgnoreCase("Passed")) {
                             totalPassed++ ;
                         } else { 
                             totalFailed++ ;
                         }
                         break;
+                    case "specStarted":
+                        resultsMap.put(eventResult.getString("fullName"), "In-Progress");
+                        break;
                     default:
                         break;
                 }
             }
+        }
+        System.out.println("Current Test Results Status is as follows :");
+        System.out.println("=========Test Case Name========================================  Status  ======");
+        for(String testCase : resultsMap.keySet()) {
+            System.out.printf("=========%-52s==", testCase);
+            System.out.printf("%8s  ======", resultsMap.get(testCase));
+            System.out.println("");
         }
     }
     
@@ -130,7 +144,7 @@ public class InvokeJasmineTests {
                 driver = iosdriver;
                 bundleID = (String) iosdriver.getSessionDetail("CFBundleIdentifier");
             }
-            System.out.println("Driver is initialized!!!!!!!!!!!!!!!!!!!!!");
+            System.out.println("Driver is successfully initialized!!!!!!!!!!!!!!!!!!!!!");
             isAndroidDevice = isAndroidDevice();
 
         } else {
@@ -185,6 +199,7 @@ public class InvokeJasmineTests {
             }
         } catch (Exception e) {
             System.out.println("Exception occurred while reading the file from the path: " + deviceFilePath);
+            e.printStackTrace();
         }
         
         return fileData;
@@ -199,6 +214,34 @@ public class InvokeJasmineTests {
         
         System.out.println("Looking for the results file...");
         do {
+            if (isAndroidDevice) {
+                String currentRunningApp = ((AndroidDriver<?>) driver).getCurrentPackage();
+                if (!currentRunningApp.equalsIgnoreCase(bundleID)) {
+                    System.out.println("Application seems crashed or closed? We will try to fetch the jasmine test results if available.");
+                    break;
+                }
+            } else {
+                
+                if(bundleID.equalsIgnoreCase("com.apple.springboard")) {
+                    System.out.println("Seems application is not yet started since we got com.apple.springboard as the active application");
+                    System.out.println("We will wait for one more minute for app to get started.");
+                    Thread.sleep(60000);
+                    String lBundleID = (String) ((IOSDriver<?>) driver).getSessionDetail("CFBundleIdentifier");
+                    if(! lBundleID.equalsIgnoreCase("com.apple.springboard")) {
+                        this.bundleID = lBundleID;
+                    }
+                    System.out.println("We have got this bundle id after the wait - " + bundleID);
+                }
+                
+                ApplicationState testAppStatus = ((IOSDriver<?>) driver).queryAppState(bundleID);
+                System.out.println("Current status of the application is : " + testAppStatus.name());
+                
+                if (!bundleID.equalsIgnoreCase("com.apple.springboard") && testAppStatus != ApplicationState.RUNNING_IN_FOREGROUND) {
+                    System.out.println("Application seems not running in foreground. It will happen if the app either not launched or crashed/closed. "
+                            + "We will try to fetch the jasmine test results if available.");
+                    break;
+                }
+            }
             
             /* Check if jasmine test is triggered or not.
              * If "resultsJSON" object consists of value, marking the status as in-progress.
@@ -210,6 +253,7 @@ public class InvokeJasmineTests {
                 }
             } catch (Exception e) {
                 System.out.println("Unable to find the jasmine Events !!!!");
+                e.printStackTrace();
             }
             
             if(resultsJSON != null) {
@@ -224,28 +268,15 @@ public class InvokeJasmineTests {
                     System.out.println("Jasmine tests execution is completed.");
                     break;
                 }
-            } else if (!isTestInProgress && iterations > 10) {  // Here we give a 150 seconds time to start jasmine tests execution.
-                System.out.println("Jasmine tests doesn't seem to be initiated in the expected time (150 seconds). Please look into the device logs for more information.");
+            } else if (!isTestInProgress && iterations > 10) {  // Here we give a 500 seconds time to start jasmine tests execution.
+                System.out.println("Jasmine tests doesn't seem to be initiated in the expected time (500 seconds). Please look into the device logs for more information.");
                 break;
             }
             
-            if (isAndroidDevice) {
-                String currentRunningApp = ((AndroidDriver<?>) driver).getCurrentPackage();
-                if (!currentRunningApp.equalsIgnoreCase(bundleID)) {
-                    System.out.println("Application seems crashed or closed. We will try to fetch the jasmine test results if avaliable.");
-                    break;
-                }
-            } else {
-                ApplicationState testAppStatus = ((IOSDriver<?>) driver).queryAppState(bundleID);
-                if (testAppStatus != ApplicationState.RUNNING_IN_FOREGROUND) {
-                    System.out.println("Application seems crashed or closed. We will try to fetch the jasmine test results if avaliable.");
-                    break;
-                }
-            }
             
             System.out.println("Tests execution seems in progress.. Waiting for the results..");
             iterations = iterations + 1;
-            Thread.sleep(15000);
+            Thread.sleep(50000);
         } while (iterations <= 100 && driver != null);
 
         saveToFile(htmlResultsFilePath, System.getenv("DEVICEFARM_LOG_DIR") + File.separator + "JasmineTestResult.html");
@@ -276,6 +307,7 @@ public class InvokeJasmineTests {
             checkTestExecutionStatus(getDefaultReportLocationForDevice() + jasmineNativeTestReportFileName);
         } catch(Exception e) {
             System.out.println("Exception occured while running the tests!!!!!");
+            e.printStackTrace();
         } finally {
             tearDownAppium();
         }

@@ -60,6 +60,8 @@ public class InvokeJasmineTests implements ITestListener {
     int totalTests = 0;
     int totalPassed = 0;
     int totalFailed = 0;
+    Map<String, String> prevResultsMap = new HashMap<String, String>();
+    String inProgressTest = null;
             
     private String getWebDriverPath() {
         webDriverPath = System.getProperty("DRIVER_PATH");
@@ -110,7 +112,7 @@ public class InvokeJasmineTests implements ITestListener {
         DesiredCapabilities cap = DesiredCapabilities.chrome();
         LoggingPreferences logPrefs = new LoggingPreferences();
         logPrefs.enable(LogType.BROWSER, Level.ALL);
-        cap.setCapability(CapabilityType.LOGGING_PREFS, logPrefs);
+        cap.setCapability("goog:loggingPrefs", logPrefs);
         cap.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);
         
         ChromeOptions chromeOptions = new ChromeOptions();
@@ -197,7 +199,8 @@ public class InvokeJasmineTests implements ITestListener {
             jasmineTestAppMode = jse.executeScript("return appConfig.isDebug").toString();
             jasmineTestRunUrl = jse.executeScript("return appConfig.testAutomation.scriptsURL").toString();
         } catch (WebDriverException e) {
-            System.out.println("Unable to fetch the app details!");
+            System.out.println("Unable to fetch the app details, because of the following exception:");
+            e.printStackTrace();
         }
         
         if((jasmineTestAppMode != null && !jasmineTestAppMode.equalsIgnoreCase("true")) || !getJasmineTestAppUrl().equalsIgnoreCase(jasmineTestRunUrl)) {
@@ -223,19 +226,11 @@ public class InvokeJasmineTests implements ITestListener {
             try {
                 JavascriptExecutor jse = (JavascriptExecutor) driver;
                 resultsJSON = jse.executeScript("return JSON.stringify(jasmineEvents)").toString();
-            } catch (WebDriverException e) {
-                System.out.println("Unable to run the jasmine test!");
-                /* Here, exiting the test execution run as there is no jasmine event found.*/
-                throw new Exception("TEST EXECUTION ERROR!!!");
-            }
-            
-            /* Looking for the report.html
-             * if it is generated, Test run will be considered as complete.*/
-            System.out.println("Looking for the results file...");
-            isHTMLReportExists = searchForHTMLReport(downloadPath);
-            if(isHTMLReportExists) {
-                System.out.println("Jasmine tests execution is completed. Jasmine Test execution report is found.");
-                break;
+            } catch (WebDriverException exception) {
+                System.out.println("Failed to get the jasmine tests execution status because of the following exception - ");
+                exception.printStackTrace();
+                System.out.println("We will continue to fetch the test execution status after some time "
+                        + "and also look for the jasmine test execution report.");
             }
 
             if(resultsJSON != null) {
@@ -252,7 +247,14 @@ public class InvokeJasmineTests implements ITestListener {
                 }
             }
             
-            System.out.println("Tests execution is in progress.. Waiting for results..");
+            /* Looking for the report.html
+             * if it is generated, Test run will be considered as complete.*/
+            isHTMLReportExists = searchForHTMLReport(downloadPath);
+            if(isHTMLReportExists) {
+                System.out.println("Jasmine tests execution is completed. Jasmine Test execution report is found.");
+                break;
+            }
+            
             iterations = iterations + 1;
             Thread.sleep(30000);
         } while (!isHTMLReportExists && iterations <= 1000 && isTestInProgress);
@@ -272,6 +274,7 @@ public class InvokeJasmineTests implements ITestListener {
             evaluateTestResultStats(resultsJSON);
         } catch (WebDriverException e) {
             System.out.println("Exception occurred while fetching the Jasmine results!");
+            e.printStackTrace();
             throw new Exception("TEST RESULTS FETCH ERROR!!!");
         }
         return resultsJSON;
@@ -306,6 +309,9 @@ public class InvokeJasmineTests implements ITestListener {
         totalTests = 0;
         totalPassed = 0;
         totalFailed = 0;
+        int jasmineStartedEventCount = 0;
+        
+        Map<String, String> currResultsMap = new HashMap<String, String>();
         
         JSONArray results = new JSONArray(resultsJson);
         for(int i=0; i<results.length(); i++) {
@@ -316,20 +322,66 @@ public class InvokeJasmineTests implements ITestListener {
                 switch(eventType) {
                     case "jasmineStarted":
                         totalTests = eventResult.getInt("totalSpecsDefined");
+                        jasmineStartedEventCount++;
                         break;
                     case "specDone":
                         String result = eventResult.getString("status");
+                        currResultsMap.put(eventResult.getString("fullName"), result);
                         if(result.equalsIgnoreCase("Passed")) {
                             totalPassed++ ;
                         } else { 
                             totalFailed++ ;
                         }
                         break;
+                    case "specStarted":
+                        currResultsMap.put(eventResult.getString("fullName"), "In-Progress");
+                        break;
                     default:
                         break;
                 }
             }
         }
+        
+        if(jasmineStartedEventCount > 1){
+            System.out.println("Tests are re-instantiated");
+            prevResultsMap.clear();
+            inProgressTest = null;
+        }
+        
+        if(prevResultsMap.size() == 0) {
+            System.out.println("");
+            System.out.println("Test Results Status is as follows :");
+            System.out.println("------------------------------------------------------------------------------------------------------");
+            System.out.println("|  TEST SPEC NAME                                                                     |  Status      |");
+            System.out.println("------------------------------------------------------------------------------------------------------");
+        }
+        
+        if(inProgressTest != null && !currResultsMap.get(inProgressTest).equalsIgnoreCase("in-progress")) {
+            printMe(inProgressTest, currResultsMap.get(inProgressTest));
+            prevResultsMap.put(inProgressTest, currResultsMap.get(inProgressTest));
+            inProgressTest = null;
+        }
+        
+        for(String testCase : currResultsMap.keySet()) {
+            if(!prevResultsMap.containsKey(testCase)) {
+                if(currResultsMap.get(testCase).equalsIgnoreCase("in-progress")) {
+                    inProgressTest = testCase;
+                } else {
+                    printMe(testCase, currResultsMap.get(testCase));
+                    prevResultsMap.put(testCase, currResultsMap.get(testCase));
+                }
+            }
+        }
+        
+        if(inProgressTest != null) {
+            printMe(inProgressTest, currResultsMap.get(inProgressTest));
+        }
+    }
+    
+    private void printMe(String testCase, String status) {
+        System.out.printf("|  %-80s   |", testCase);
+        System.out.printf(" %-11s  |", status);
+        System.out.println("");
     }
     
     /**
@@ -343,6 +395,7 @@ public class InvokeJasmineTests implements ITestListener {
             jsonStringData = new String(Files.readAllBytes(Paths.get(jsonFileName)));
         } catch (IOException e) {
             System.out.println("Unable to read the file: " + jsonFileName);
+            e.printStackTrace();
         }
         return jsonStringData;
     }
@@ -359,7 +412,7 @@ public class InvokeJasmineTests implements ITestListener {
             resultsJson = readJsonFile(jsonFileName);
         }
         if(resultsJson != null) {
-            evaluateTestResultStats(resultsJson);
+            //evaluateTestResultStats(resultsJson);
         }
     }
     
@@ -379,6 +432,7 @@ public class InvokeJasmineTests implements ITestListener {
             resultsInfoJSON = getResultsInfoJSON();
         } catch (Exception e) {
             System.out.println("Exception occured while running the tests. Please check the browser console log (if created) for more details. " + e.getMessage());
+            e.printStackTrace();
         } finally {
             captureBrowserConsoleLog();
             destroyDriver();

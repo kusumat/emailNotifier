@@ -59,6 +59,7 @@ userReporter = {
         suiteInfo.order = "Empty"
         jasmineStarted.result = suiteInfo;
         jasmineEvents.push(jasmineStarted);
+        kony.print("AppFactory - JasmineStarted Event - Jasmine Tests execution is initiated.");
         writeJasmineEventsToFile();
     },
     
@@ -68,6 +69,7 @@ userReporter = {
         suiteStarted.event = "suiteStarted";
         suiteDurations[result.id] = (new Date()).toISOString();
         suiteStarted.result = result;
+        kony.print("AppFactory - SuiteStarted Event - Suite " + result.fullName + " execution is started.");
         jasmineEvents.push(suiteStarted);
     },
     
@@ -77,6 +79,7 @@ userReporter = {
         specStarted.event = "specStarted";
         specDurations[result.id] = (new Date()).toISOString();
         specStarted.result = result;
+        kony.print("AppFactory - SpecStarted Event - Spec " + result.fullName + " execution is started.");
         jasmineEvents.push(specStarted);
     },
     
@@ -86,6 +89,7 @@ userReporter = {
         specDone.event = "specDone";
         result.duration = new Date((new Date()).toISOString()) - new Date(specDurations[result.id]);
         specDone.result = result;
+        kony.print("AppFactory - SpecDone Event - Spec " + result.fullName + " execution is completed.");
         jasmineEvents.push(specDone);
         writeJasmineEventsToFile();
     },
@@ -96,6 +100,7 @@ userReporter = {
         suiteDone.event = "suiteDone";
         result.duration = new Date((new Date()).toISOString()) - new Date(suiteDurations[result.id]);
         suiteDone.result = result;
+        kony.print("AppFactory - SuiteDone Event - Suite " + result.fullName + " execution is completed.");
         jasmineEvents.push(suiteDone);
     },
  
@@ -103,6 +108,7 @@ userReporter = {
         var jasmineDone = {};
         jasmineDone.event = "jasmineDone";
         jasmineEvents.push(jasmineDone);
+        kony.print("AppFactory - JasmineDone Event - Jasmine Tests execution is completed.");
         reporter.jasmineDone();
     }
  };
