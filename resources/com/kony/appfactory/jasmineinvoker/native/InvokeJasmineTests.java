@@ -11,6 +11,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -138,7 +139,11 @@ public class InvokeJasmineTests {
                 bundleID = (String) androiddriver.getSessionDetail("appPackage");
             } else {
                 capabilities.setCapability("automationName", "XCUITest");
+                // We are not reinstalling the app if it is installed during the device setup phase.
+                capabilities.setCapability("noReset", true);
                 capabilities.setCapability(IOSMobileCapabilityType.AUTO_ACCEPT_ALERTS, true);
+                capabilities.setCapability(IOSMobileCapabilityType.WDA_LAUNCH_TIMEOUT, 120000);
+                capabilities.setCapability(IOSMobileCapabilityType.WDA_STARTUP_RETRIES, 4);
                 System.out.println("Initializing the iOS Driver!!!!!!!!!!!!");
                 iosdriver = new IOSDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
                 driver = iosdriver;
@@ -308,6 +313,8 @@ public class InvokeJasmineTests {
         } catch(Exception e) {
             System.out.println("Exception occured while running the tests!!!!!");
             e.printStackTrace();
+            // Failing the tests since there is an exception during the test execution.
+            Assert.assertTrue(false);
         } finally {
             tearDownAppium();
         }
