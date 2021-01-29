@@ -16,7 +16,11 @@ import com.kony.appfactory.helper.ValidationHelper
 class DesktopWebTests extends RunTests implements Serializable {
 
     /* Build parameters */
-    protected scriptArguments = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
+    protected webTestsArguments = BuildHelper.getCurrentParamName(script, "RUN_WEB_TESTS_ARGUMENTS", "RUN_DESKTOPWEB_TESTS_ARGUMENTS")
+    protected scriptArguments = script.params[webTestsArguments]
+    protected webTestsUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_TESTS_URL', 'DESKTOPWEB_TESTS_URL')
+    protected runWebTestsJobName = (webTestsUrlParamName == "WEB_TESTS_URL") ? "runWebTests" : "runDesktopWebTests"
+    protected runWebTestsChannelName = (runWebTestsJobName == "runWebTests") ? "Web" : "DesktopWeb"
 
     private static desktopTestRunResults = [:]
     private static jasmineTestResults = [:]
@@ -32,7 +36,7 @@ class DesktopWebTests extends RunTests implements Serializable {
 
     protected desktopwebArtifactUrl = script.params.DESKTOPWEB_ARTIFACT_URL
 
-    private boolean isTestScriptGiven = script.params['DESKTOPWEB_TESTS_URL'] ? true : false
+    private boolean isTestScriptGiven = script.params[webTestsUrlParamName] ? true : false
     private selectedBrowser = script.params.AVAILABLE_BROWSERS
 
     /**
@@ -41,7 +45,7 @@ class DesktopWebTests extends RunTests implements Serializable {
      * @param script pipeline object.
      */
     DesktopWebTests(script) {
-        super(script, "DesktopWeb")
+        super(script, "Web")
     }
 
     /*
@@ -62,8 +66,8 @@ class DesktopWebTests extends RunTests implements Serializable {
      * @param testFolder is the folder from which the Jasmine results will be captured.
      */
     private final def fetchJasmineResults(testFolder) {
-        String successMessage = 'Jasmine Test Results have been fetched successfully for DesktopWeb'
-        String errorMessage = 'Failed to fetch the Jasmine Test Results for DesktopWeb'
+        String successMessage = 'Jasmine Test Results have been fetched successfully for ' + runWebTestsChannelName
+        String errorMessage = 'Failed to fetch the Jasmine Test Results for ' + runWebTestsChannelName
         
         def suiteMap = [:]
         def suiteSummaryMap = [:]
@@ -135,8 +139,8 @@ class DesktopWebTests extends RunTests implements Serializable {
      * Now we have all the date in testOutput folder , zip this and place it under target/${projectName}_TestApp
      */
     private final def fetchTestNGResults(testFolder) {
-        String successMessage = 'Test Results have been fetched successfully for DesktopWeb'
-        String errorMessage = 'Failed to fetch the Test Results for DesktopWeb'
+        String successMessage = 'Test Results have been fetched successfully for ' + runWebTestsChannelName
+        String errorMessage = 'Failed to fetch the Test Results for ' + runWebTestsChannelName
 
         script.catchErrorCustom(errorMessage, successMessage) {
             // 'testOutput' folder is being used for storing the log files, css files and all collectively and will be used while publishing them to S3 path. We will try to remove this reference and directly use the 'target' and 'test-output' folders going forward.
@@ -243,7 +247,7 @@ class DesktopWebTests extends RunTests implements Serializable {
      */
     protected final publishTestsResults() {
         def s3ArtifactsPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER]
-        s3ArtifactsPath.add("DesktopWeb")
+        s3ArtifactsPath.add(runWebTestsChannelName)
         s3ArtifactsPath.add(selectedBrowser + '_' + browserVersionsMap[selectedBrowser])
         def s3PublishPath = s3ArtifactsPath.join('/').replaceAll('\\s', '_')
         if(isJasmineEnabled){
@@ -326,7 +330,7 @@ class DesktopWebTests extends RunTests implements Serializable {
     }
 
     /**
-     * Uploads application binaries and Schedules the run for DesktopWeb.
+     * Uploads application binaries and Schedules the run for Web.
      */
     private final void runTests(browserName, testFolder) {
         script.dir(testFolder) {
@@ -366,13 +370,13 @@ class DesktopWebTests extends RunTests implements Serializable {
      * @param buildParameters job parameters.
      */
     protected final void validateBuildParameters(buildParameters) {
-        /* Filter desktopWeb application binaries build parameters */
+        /* Filter Web application binaries build parameters */
         def publishedAppUrlParameters = (!buildParameters['FABRIC_APP_URL']) ? [:] : ['FABRIC_APP_URL': buildParameters['FABRIC_APP_URL']]
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
-        /* Filter desktopWeb test binaries build parameter */
-        def testBinaryUrlParameter = (!buildParameters['DESKTOPWEB_TESTS_URL']) ? [:] : ['DESKTOPWEB_TESTS_URL': buildParameters['DESKTOPWEB_TESTS_URL']]
-        /* Combine desktopWeb binaries build parameters */
+        /* Filter Web test binaries build parameter */
+        def testBinaryUrlParameter = (!buildParameters[webTestsUrlParamName]) ? [:] : ["${webTestsUrlParamName}": buildParameters[webTestsUrlParamName]]
+        /* Combine Web binaries build parameters */
         def urlParameters = testBinaryUrlParameter + publishedAppUrlParameters
 
         if (scmParameters && testBinaryUrlParameter) {
@@ -399,7 +403,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                     validateBuildParameters(script.params)
                 }
                 
-                nodeLabel = TestsHelper.getTestNode(script, libraryProperties, isJasmineEnabled, 'DesktopWeb')
+                nodeLabel = TestsHelper.getTestNode(script, libraryProperties, isJasmineEnabled, runWebTestsChannelName)
                 
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
@@ -444,12 +448,12 @@ class DesktopWebTests extends RunTests implements Serializable {
                             script.stage('Get Test Results') {
                                 fetchTestResults(testFolder)
                                 if (!desktopTestRunResults && !jasmineTestResults)
-                                    throw new AppFactoryException('DesktopWeb tests results are not found as the run result is skipped.', 'ERROR')
+                                    throw new AppFactoryException('Web tests results are not found as the run result is skipped.', 'ERROR')
                                 publishTestsResults()
                             }
                             script.stage('Check PostTest Hook Points') {
                                 if (!desktopTestRunResults && !jasmineTestResults)
-                                    throw new AppFactoryException('DesktopWeb tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
+                                    throw new AppFactoryException('Web tests results not found. Hence CustomHooks execution is skipped.', 'ERROR')
                                 script.currentBuild.result = overAllTestsResultsStatus ? 'SUCCESS' : 'UNSTABLE'
 
                                 if (runCustomHook) {
@@ -458,7 +462,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                                         if (!isSuccess)
                                             throw new Exception("Something went wrong with the Custom hooks execution.")
                                     } else {
-                                        script.echoCustom('Tests got failed for DesktopWeb. Hence CustomHooks execution is skipped.', 'WARN')
+                                        script.echoCustom('Tests got failed for Web. Hence CustomHooks execution is skipped.', 'WARN')
                                     }
                                 } else {
                                     script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped', 'INFO')
@@ -514,10 +518,11 @@ class DesktopWebTests extends RunTests implements Serializable {
                                 listofScreenshots: listofScreenshots,
                                 testArtifact : testArtifact,
                                 testFramework : testFramework,
-                                jasmineWebTestPlan : jasmineTestPlan
+                                jasmineWebTestPlan : jasmineTestPlan,
+                                runWebTestsChannelName : runWebTestsChannelName
                         ], true)
                         if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                            TestsHelper.PrepareMustHaves(script, runCustomHook, "runDesktopWebTests", libraryProperties, mustHaveArtifacts, false)
+                            TestsHelper.PrepareMustHaves(script, runCustomHook, runWebTestsJobName, libraryProperties, mustHaveArtifacts, false)
                             if (TestsHelper.isBuildDescriptionNeeded(script))
                                 TestsHelper.setBuildDescription(script)
                         }

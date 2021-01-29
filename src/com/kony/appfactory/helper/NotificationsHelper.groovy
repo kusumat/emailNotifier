@@ -215,8 +215,8 @@ class NotificationsHelper implements Serializable {
                 /* For test console we are storing both HTML and JSON representation of test results */
                 if(templateData.isDesktopWebAppTestRun){
                     filesToStore.addAll([
-                            [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.html', data: body],
-                            [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.json', data: testDesktopRunsToJson]
+                            [name: 'testResults-'+ templateData.runWebTestsChannelName + buildResultForTestConsole + '.html', data: body],
+                            [name: 'testResults-'+ templateData.runWebTestsChannelName + buildResultForTestConsole + '.json', data: testDesktopRunsToJson]
                     ])
                 }
                 if(templateData.isNativeAppTestRun){

@@ -18,10 +18,9 @@ class WebChannel extends Channel {
     /* Build parameters */
     def publishToFabricParamName = BuildHelper.getCurrentParamName(script, 'PUBLISH_FABRIC_APP', 'PUBLISH_WEB_APP')
     protected final publishWebApp = script.params[publishToFabricParamName]
-    protected final desktopWebChannel = script.params.DESKTOP_WEB
-    /* For below 8.2 AppFactory versions WEB_APP_VERSION is available as SPA_APP_VERSION. Therefore adding backward compatibility. */
-    def appVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
-    protected final webAppVersion = script.params[appVersionParameterName]
+    protected final webChannelParameterName = BuildHelper.getCurrentParamName(script, 'RESPONSIVE_WEB', 'DESKTOP_WEB')
+    protected final desktopWebChannel = script.params[webChannelParameterName]
+    protected final webAppVersion = script.params.WEB_APP_VERSION
     protected final webProtectionPreset = script.params.PROTECTION_LEVEL
     protected final webProtectionExcludeListFile = (script.params.EXCLUDE_LIST_PATH)?.trim()
     protected final webProtectionBlueprintFile = (script.params.CUSTOM_PROTECTION_PATH)?.trim()
@@ -42,51 +41,22 @@ class WebChannel extends Channel {
      */
     WebChannel(script, webChannelType) {
         super(script)
-        if (webChannelType.equalsIgnoreCase("SPA")) {
-            channelOs = channelFormFactor = channelType = 'SPA'
-        } else if (webChannelType.equalsIgnoreCase("DESKTOP_WEB")) {
-            channelOs = channelFormFactor = channelType = 'DESKTOPWEB'
-        } else {
-            channelOs = channelFormFactor = channelType = 'WEB'
-        }
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
-        selectedSpaChannels = getSelectedSpaChannels(this.script.params)
-        /* Expose SPA and DESKTOP_WEB build parameters to environment variables to use it in HeadlessBuild.properties */
+        /* Expose Web build parameters to environment variables to use it in HeadlessBuild.properties */
         this.script.env['APP_VERSION'] = webAppVersion
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         secureJsFileName = libraryProperties.'web_protected.obfuscation.file.name'
-        /* Changing Channel Variable name if only SPA channels are selected */
-        if (webChannelType.equalsIgnoreCase("WEB")) {
-            if(!desktopWebChannel) {
-                channelOs = channelFormFactor = channelType = 'SPA'
-            }
-            else if(!selectedSpaChannels){
-                channelOs = channelFormFactor = channelType = 'DESKTOPWEB'
-            }
-        }
+        channelOs = channelFormFactor = channelType = webChannelParameterName.replaceAll('_', '')
     }
 
     WebChannel(script) {
         this(script, 'WEB')
     }
 
-    /**
-     *
-     * @param buildParameters
-     * @return list of selected SPA channels.
-     */
-    @NonCPS
-    private static getSelectedSpaChannels(buildParameters) {
-        /* Creating a list of parameters that are not Target Channels */
-        def notSpaChannelParams = ['PUBLISH_FABRIC_APP', 'FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE', 'RUN_CUSTOM_HOOKS', 'DESKTOP_WEB']
-        buildParameters.findAll {
-            it.value instanceof Boolean && !(notSpaChannelParams.contains(it.key)) && it.value
-        }.keySet().collect()
-    }
 
     /**
      * Adds env property for securejs properties file.
@@ -136,7 +106,7 @@ class WebChannel extends Channel {
     }
 
     /**
-     * Creates job pipeline for given Web Channel type (SPA/DesktopWeb/Combined SPA+DesktopWeb).
+     * Creates job pipeline for given Web Channel type (DesktopWeb/ResponsiveWeb).
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void pipelineWrapperForWebChannels(webChannelType) {
@@ -145,11 +115,11 @@ class WebChannel extends Channel {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 script.stage('Check provided parameters') {
-                    if (!(webChannelType.equalsIgnoreCase("DESKTOP_WEB")) && !(selectedSpaChannels || desktopWebChannel)) {
+                    if (!(webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("RESPONSIVE_WEB")) && !(selectedSpaChannels || desktopWebChannel)) {
                         script.echoCustom('Please select at least one channel to build!', 'ERROR')
                     }
                     ValidationHelper.checkBuildConfiguration(script)
-                    ValidationHelper.checkBuildConfiguration(script, [appVersionParameterName, 'FABRIC_APP_CONFIG'])
+                    ValidationHelper.checkBuildConfiguration(script, ['WEB_APP_VERSION', 'FABRIC_APP_CONFIG'])
                     // These validations only apply to AppFactory Project >= 9.2.0
                     if(buildMode == libraryProperties.'buildmode.release.protected.type' && script.params.containsKey('OBFUSCATION_PROPERTIES')) {
                         def webProtectionMandatoryParams = ['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL', 'PROTECTED_KEYS']
@@ -162,7 +132,7 @@ class WebChannel extends Channel {
                 /*
                  *  Allocate a slave for the run
                  *  CustomHook always must run in MAC (to use ACLs), However Web Channels can run in both Windows and MAC
-                 *  Due to this, if user need to run Custom Hooks on Web (SPA/DesktopWeb/combine) (runCustomHook is checked) then run Web
+                 *  Due to this, if user need to run Custom Hooks on Web (runCustomHook is checked) then run Web
                  *  build on MAC Agent. Otherwise default node strategy will be followed (WIN || MAC)
                  */
                 resourceList = BuildHelper.getResourcesList()
@@ -277,9 +247,6 @@ class WebChannel extends Channel {
                         script.stage('Publish to Fabric') {
                             /* Publish Fabric application if PUBLISH_FABRIC_APP/PUBLISH_WEB_APP set to true */
                             if (publishWebApp) {
-                                if (webChannelType.equalsIgnoreCase("WEB")) {
-                                    script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Fabric environment you've chosen.")
-                                }
                                 FabricHelper.fetchFabricCli(script, libraryProperties, libraryProperties.'fabric.cli.version')
                                 FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, script.env.FABRIC_ACCOUNT_ID, script.env.FABRIC_ENV_NAME, isUnixNode)
                                 
@@ -345,28 +312,17 @@ class WebChannel extends Channel {
     /**
      * In this method, we will prepare a list of channels for which we need to run the hooks, 
      * depending upon the webChannelType and then call runCustomHooks
-     * @param webChannelType tells us whether the channel is SPA or WEB or DESKTOP_WEB
+     * @param webChannelType tells us whether the channel is  WEB or DESKTOP_WEB
      * @param buildStage is the hook stage such as PRE_BUILD, POST_BUILD, POST_TEST
      */
     protected triggerHooksBasedOnSelectedChannels(webChannelType, buildStage){
         
         def projectsToRun = [], projectStage
-        //In order to avoid duplication of code, added OR condition to trigger hooks of SPA and DESTOPWEB channel in WEB channel
         if (webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("WEB")) {
             projectsToRun << "DESKTOP_WEB"
         }
 
-        if (webChannelType.equalsIgnoreCase("SPA") || webChannelType.equalsIgnoreCase("WEB")) {
-            ['ANDROID_MOBILE_SPA', 'ANDROID_TABLET_SPA', 'IOS_MOBILE_SPA', 'IOS_TABLET_SPA'].each { project ->
-                if (selectedSpaChannels.contains(project))
-                    projectsToRun << project
-            }
-        }
-
         projectsToRun.each { project ->
-            if (project.contains('SPA')) {
-                projectStage = "SPA_" + project - "_SPA" + "_STAGE"
-            }
             if (project.contains('DESKTOP_WEB')) {
                 projectStage = project + "_STAGE"
             }

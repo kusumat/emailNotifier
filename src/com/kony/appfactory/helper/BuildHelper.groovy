@@ -675,14 +675,14 @@ class BuildHelper implements Serializable {
 
     /**
      * Main function to determine node label for build. This function implements node allocation strategy.
-     * 1) CustomHooks always run in Mac/Linux Systems. So if there is any CustomHooks defined, for Android & SPA & IOS build
+     * 1) CustomHooks always run in Mac/Linux Systems. So if there is any CustomHooks defined, for Android & Web & IOS build
      *    should run in Mac machines.
      * 2) If CustomHooks not defined. Then there is case of Handling 7.3 Headless and 8.0 CI builds.
      *    Now, CI builds can run in Parallel but Headless builds doesn't support Parallel builds.
      *    This function take cares in any Headless build running in Any agent, other headless build started, it shouldn't run
      *    in same agent. It finds if there is any other Compatible agent is free and allocate that agent to run current build.
      *
-     *    For eg. Android and SPA both can runs in both WIN and MAC, So if WIN is occupied, then next build should occupy MAC
+     *    For eg. Android and Web both can runs in both WIN and MAC, So if WIN is occupied, then next build should occupy MAC
      *    and vice versa.
      *    For mac, if multiple headless build got triggered, then only one will occupy MAC and all other headless build will
      *    be in waiting state.
@@ -830,7 +830,7 @@ class BuildHelper implements Serializable {
         return isRebuildFlag
     }
 
-    /* This is required as each build can be trigger from IOS Android or SPA.
+    /* This is required as each build can be trigger from IOS, Android or Web.
      *  To give permission to channel jobs workspace we need info about Upstream job
      *
      *  @param script
@@ -912,8 +912,7 @@ class BuildHelper implements Serializable {
         /* Creating a list of boolean parameters that are not Target Channels */
         buildParameters.findAll {
             it.value instanceof Boolean && (it.key.matches('^ANDROID_.*_NATIVE$') || it.key.matches('^IOS_.*_NATIVE$')
-                    || it.key.matches('^ANDROID_.*_SPA$') || it.key.matches('^IOS_.*_SPA$')
-                    || it.key.matches('^DESKTOP_WEB')) && it.value
+                    || it.key.matches('^(DESKTOP|RESPONSIVE)_WEB')) && it.value
         }.keySet().collect()
     }
 

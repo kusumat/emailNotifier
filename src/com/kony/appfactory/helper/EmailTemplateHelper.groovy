@@ -170,8 +170,9 @@ class EmailTemplateHelper implements Serializable {
                 else if (artifact.webAppUrl) {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+                    def webChannelPath =  artifact.channelPath.equals("RESPONSIVEWEB") ? "Responsive Web" : artifact.channelPath.equals("DESKTOPWEB") ? "Desktop Web" : "Web"
                     def map = [
-                            channelPath      : artifact.channelPath,
+                            channelPath      : webChannelPath,
                             artifacts        : [
                                     [
                                             name     : artifact.name,
@@ -193,11 +194,12 @@ class EmailTemplateHelper implements Serializable {
                 else {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+                    def webChannelPath =  artifact.channelPath.equals("RESPONSIVEWEB") ? "Responsive Web" : artifact.channelPath.equals("DESKTOPWEB") ? "Desktop Web" : "Web"
                     def map = [
                             name             : artifact.name,
                             extension        : artifactExtension,
                             url              : artifact.authurl,
-                            channelPath      : artifact.channelPath
+                            channelPath      : webChannelPath
                     ] + artifactsMeta
                     EmailBuilder.addSimpleArtifactTableRowSuccess(htmlBuilder, map)
                 }
@@ -290,7 +292,7 @@ class EmailTemplateHelper implements Serializable {
                     tr {
                         td(style: "text-align:left", class: "text-color") {
                             br()
-                            p(style: "font-weight:bold", "Brief Summary of DesktopWeb Test Results:")
+                            p(style: "font-weight:bold", "Brief Summary of Web Test Results:")
                         }
                     }
 
@@ -359,7 +361,7 @@ class EmailTemplateHelper implements Serializable {
             tr{
                 tr {
                     td(style: "text-align:left", class: "text-color") {
-                        p(style: "font-weight:bold", "Brief Summary of Desktop Test Results:")
+                        p(style: "font-weight:bold", "Brief Summary of Web Test Results:")
                     }
                 }
                 td {

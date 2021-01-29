@@ -33,14 +33,8 @@
         <condition property="androidMobileNative" value="${env.ANDROID_MOBILE_NATIVE}" else="false">
             <isset property="env.ANDROID_MOBILE_NATIVE"/>
         </condition>
-        <condition property="androidMobileSPA" value="${env.ANDROID_MOBILE_SPA}" else="false">
-            <isset property="env.ANDROID_MOBILE_SPA"/>
-        </condition>
         <condition property="androidTabletNative" value="${env.ANDROID_TABLET_NATIVE}" else="false">
             <isset property="env.ANDROID_TABLET_NATIVE"/>
-        </condition>
-        <condition property="androidTabletSPA" value="${env.ANDROID_TABLET_SPA}" else="false">
-            <isset property="env.ANDROID_TABLET_SPA"/>
         </condition>
         <!-- APPFACT-2049: Following flag is used to set the generateAppBundle flag value in androidbuild.properties. In future this condition property may be modified or removed once ci-build supports AAB generation -->
         <condition property="androidAppBundle" value="${env.ANDROID_APP_BUNDLE}" else="false">
@@ -58,14 +52,8 @@
         <condition property="iosMobileNative" value="${env.IOS_MOBILE_NATIVE}" else="false">
             <isset property="env.IOS_MOBILE_NATIVE"/>
         </condition>
-        <condition property="iosMobileSPA" value="${env.IOS_MOBILE_SPA}" else="false">
-            <isset property="env.IOS_MOBILE_SPA"/>
-        </condition>
         <condition property="iosTabletNative" value="${env.IOS_TABLET_NATIVE}" else="false">
             <isset property="env.IOS_TABLET_NATIVE"/>
-        </condition>
-        <condition property="iosTabletSPA" value="${env.IOS_TABLET_SPA}" else="false">
-            <isset property="env.IOS_TABLET_SPA"/>
         </condition>
         <!-- Window Phone 8 is not supported by Microsoft anymore, ignoring this channel -->
         <condition property="windowsMobileWindowsPhone8" value="${env.WINDOWS8_MOBILE_NATIVE}" else="false">
@@ -77,17 +65,11 @@
         <condition property="windowsMobileWindowsPhone10" value="${env.WINDOWS10_MOBILE_NATIVE}" else="false">
             <isset property="env.WINDOWS10_MOBILE_NATIVE"/>
         </condition>
-        <condition property="windowsMobileSPA" value="${env.WINDOWS_MOBILE_SPA}" else="false">
-            <isset property="env.WINDOWS_MOBILE_SPA"/>
-        </condition>
         <condition property="windowsTabletWindows81" value="${env.WINDOWS81_TABLET_NATIVE}" else="false">
             <isset property="env.WINDOWS81_TABLET_NATIVE"/>
         </condition>
         <condition property="windowsTabletWindows10" value="${env.WINDOWS10_TABLET_NATIVE}" else="false">
             <isset property="env.WINDOWS10_TABLET_NATIVE"/>
-        </condition>
-        <condition property="windowsTabletSPA" value="${env.WINDOWS_TABLET_SPA}" else="false">
-            <isset property="env.WINDOWS_TABLET_SPA"/>
         </condition>
         <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_KIOSK}" else="false">
             <isset property="env.WINDOWS_DESKTOP_KIOSK"/>
@@ -95,14 +77,17 @@
         <condition property="windowsDesktopKiosk" value="${env.WINDOWS_DESKTOP_WEB}" else="false">
             <isset property="env.WINDOWS_DESKTOP_WEB"/>
         </condition>
-        <condition property="desktopWeb" value="${env.DESKTOP_WEB}" else="false">
-            <isset property="env.DESKTOP_WEB"/>
-        </condition>
-        <condition property="blackberryMobileSPA" value="${env.BLACKBERRY_MOBILE_SPA}" else="false">
-            <isset property="env.BLACKBERRY_MOBILE_SPA"/>
-        </condition>
-        <condition property="blackberryMobileHybridSPA" value="${env.BLACKBERRY_MOBILE_HYBRID_SPA}" else="false">
-            <isset property="env.BLACKBERRY_MOBILE_HYBRID_SPA"/>
+        <condition property="responsiveWeb" value="true" else="false">
+            <or>
+                <and>
+                    <isset property="env.DESKTOP_WEB" />
+                    <equals arg1="${env.DESKTOP_WEB}" arg2="true" />
+                </and>
+                <and>
+                    <isset property="env.RESPONSIVE_WEB" />
+                    <equals arg1="${env.RESPONSIVE_WEB}" arg2="true" />
+                </and>
+            </or>
         </condition>
     	
         <!-- Set of Test properties -->
@@ -202,7 +187,10 @@
             <isset property="env.IOS_UNIVERSAL_NATIVE"/>
         </condition>
         <condition property="binaryextensionWEB" value="war" else="zip">
-            <equals arg1="${env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE}" arg2="true"/>
+            <or>
+                <equals arg1="${env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE}" arg2="true"/>
+                <equals arg1="${env.LEGACY_WEB}" arg2="true"/>
+            </or>
         </condition>
         <condition property="webProtectionPreset" value="${env.PROTECTION_LEVEL}" else="">
             <isset property="env.PROTECTION_LEVEL"/>
@@ -292,20 +280,12 @@
             <entry key="windowsphone8" value="${windowsMobileWindowsPhone8}"/>
             <entry key="windowsphone81s" value="${windowsMobileWindowsPhone81S}"/>
             <entry key="windowsphone10" value="${windowsMobileWindowsPhone10}"/>
-            <entry key="spa.iphone" value="${iosMobileSPA}"/>
-            <entry key="spa.android" value="${androidMobileSPA}"/>
-            <entry key="spa.blackberry" value="${blackberryMobileSPA}"/>
-            <entry key="spa.winphone" value="${windowsMobileSPA}"/>
-            <entry key="spa.hybrid.blackberry" value="${blackberryMobileHybridSPA}"/>
             <entry key="ipad" value="${iosTabletNative}"/>
             <entry key="androidtablet" value="${androidTabletNative}"/>
             <entry key="windows8.1" value="${windowsTabletWindows81}"/>
             <entry key="windows10" value="${windowsTabletWindows10}"/>
-            <entry key="spa.ipad" value="${iosTabletSPA}"/>
-            <entry key="spa.androidtablet" value="${androidTabletSPA}"/>
-            <entry key="spa.windowstablet" value="${windowsTabletSPA}"/>
             <entry key="desktop_kiosk" value="${windowsDesktopKiosk}"/>
-            <entry key="desktopweb" value="${desktopWeb}"/>
+            <entry key="desktopweb" value="${responsiveWeb}"/>
             <entry key="iphonewatch" value="${iosWatchNative}"/>
             <entry key="mac.ipaddress" value=""/>
             <entry key="mac.username" value=""/>

@@ -90,7 +90,7 @@ class RunTests implements Serializable {
     }
 
     /**
-     * Builds Test Automation scripts for Native and DesktopWeb.
+     * Builds Test Automation scripts for Native and Web.
      *
      * @param testChannel The channel for which you want to run the tests.
      * @param testFolder The folder in which you want to run the tests.
@@ -175,7 +175,7 @@ class RunTests implements Serializable {
             String appfactoryReporting = script.libraryResource(appfactoryReporter)
             script.writeFile file: customReporter, text: customReporting + appfactoryReporting, encoding: 'UTF-8'
 
-            if (channelType.equalsIgnoreCase("DesktopWeb")) {
+            if (channelType.equalsIgnoreCase("Web")) {
                 copyTestPlanFile('Desktop')
             } else {
                 def nativeDevices
@@ -207,8 +207,8 @@ class RunTests implements Serializable {
                 }
             })
 
-            // Only in the case DesktopWeb, we will be hosting the jasmine test scripts through jetty server.
-            if(channelType.equalsIgnoreCase("DesktopWeb")) {
+            // Only in the case Web, we will be hosting the jasmine test scripts through jetty server.
+            if(channelType.equalsIgnoreCase("Web")) {
                 String fullPathToCopyScripts = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
 
                 // Copying the Desktop jasmine test scripts in the jetty webapps folder

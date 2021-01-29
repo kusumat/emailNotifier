@@ -81,9 +81,9 @@ class Channel implements Serializable {
         used for exposing channel to build in HeadlessBuild.properties.
      */
     protected channelVariableName
-    /* Channel type: Native or SPA */
+    /* Channel type: Native or Web */
     protected channelType
-    /* Channel OS type: Android or iOS or Windows or SPA */
+    /* Channel OS type: Android or iOS or Windows or Web */
     protected channelOs
     /* Temp folder location where to search build artifacts */
     protected artifactsBasePath
@@ -559,12 +559,13 @@ class Channel implements Serializable {
         def ciBuildSupport = libraryProperties.'ci.build.support.base.version'
         def zipExtensionSupportBaseVersion = libraryProperties.'webapp.extension.ci.support.base.version'
         def compareCIVizVersions = ValidationHelper.compareVersions(visualizerVersion, ciBuildSupport)
+        def webCompatibilityModeParameterName = BuildHelper.getCurrentParamName(script, 'LEGACY_WEB', 'FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')
 
         if (compareCIVizVersions >= 0) {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
-            if (["SPA", "DESKTOPWEB", "WEB"].contains(channelVariableName)) {
+            if (["DESKTOPWEB", "RESPONSIVEWEB", "WEB"].contains(channelVariableName)) {
                 def compareVizZipExtensionVersions = ValidationHelper.compareVersions(visualizerVersion, zipExtensionSupportBaseVersion)
                 def webObfuscationSupportBaseVersion = libraryProperties.'obfuscation_properties.ci.support.base.version'
                 if (buildMode == 'release-protected' && script.params.containsKey("OBFUSCATION_PROPERTIES")) {
@@ -572,13 +573,13 @@ class Channel implements Serializable {
                         script.env['WEB_PROTECTION'] = "true"
                     }
                 }
-                if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
+                if (script.params.containsKey(webCompatibilityModeParameterName)) {
                     if (compareVizZipExtensionVersions == -1) {
-                        (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
+                        (script.params[webCompatibilityModeParameterName]) ?: (script.env[webCompatibilityModeParameterName] = "true")
                     } else {
-                        script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE ?
-                                script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true" :
-                                /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */
+                        script.params[webCompatibilityModeParameterName] ?
+                                script.env[webCompatibilityModeParameterName] = "true" :
+                                /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE/LEGACY_WEB */
                                 (artifactExtension = 'zip')
                     }
                 }
@@ -821,9 +822,6 @@ class Channel implements Serializable {
             case 'WINDOWS81_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'windows8'])
                 break
-            case ~/^.*SPA.*$/:
-                artifactsTempPath = getPath(['middleware_mobileweb'])
-                break
             case ~/^.*WEB*$/:
                 artifactsTempPath = getPath(['middleware_mobileweb'])
                 break
@@ -847,7 +845,7 @@ class Channel implements Serializable {
         def artifactExtension
 
         switch (channelVariableName) {
-            case ~/^.*SPA.*$|^.*WEB$/:
+            case ~/^.*WEB$/:
                 artifactExtension = 'war'
                 break
             case ~/^.*ANDROID.*$/:

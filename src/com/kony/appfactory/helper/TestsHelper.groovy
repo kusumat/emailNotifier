@@ -61,7 +61,7 @@ class TestsHelper implements Serializable {
         
         if (isJasmineEnabled) {
             nodeLabel = libraryProperties.'test.jasmine.automation.node.label'
-        } else if (testPlatform == 'DesktopWeb') {
+        } else if (testPlatform.contains("Web")) {
             nodeLabel = libraryProperties.'test.dweb.automation.node.label'
         } else {
             nodeLabel = libraryProperties.'test.native.aws.automation.node.label'
