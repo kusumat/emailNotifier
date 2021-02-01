@@ -44,7 +44,23 @@ phases:
           npm install -g --unsafe-perm=true --allow-root node
           export NODE_VERSION=`node -v`
           echo "NodeJS has been upgraded to : \${NODE_VERSION},"
-          DEVICEFARM_DEVICE_UDID_FOR_APPIUM=\$DEVICE_UDID_TEST;
+        fi;
+        DEVICEFARM_DEVICE_UDID_FOR_APPIUM=\$DEVICE_UDID_TEST;
+      - >-
+        if [ "\$TEST_APPIUM_VERSION" -ge 19 ];
+        then
+          DEVICEFARM_WDA_DERIVED_DATA_PATH=\$DEVICEFARM_WDA_DERIVED_DATA_PATH_V6;
+        elif [ "\$TEST_APPIUM_VERSION" -ge 18 ];
+        then
+          DEVICEFARM_WDA_DERIVED_DATA_PATH=\$DEVICEFARM_WDA_DERIVED_DATA_PATH_V5;        
+        elif [ "\$TEST_APPIUM_VERSION" -ge 17 ];
+        then
+          DEVICEFARM_WDA_DERIVED_DATA_PATH=\$DEVICEFARM_WDA_DERIVED_DATA_PATH_V4;        
+        elif [ "\$TEST_APPIUM_VERSION" -ge 16 ];
+        then
+          DEVICEFARM_WDA_DERIVED_DATA_PATH=\$DEVICEFARM_WDA_DERIVED_DATA_PATH_V3;        
+        elif [ "\$TEST_APPIUM_VERSION" -ge 15 ];
+        then
           DEVICEFARM_WDA_DERIVED_DATA_PATH=\$DEVICEFARM_WDA_DERIVED_DATA_PATH_V2;
         else
           DEVICEFARM_DEVICE_UDID_FOR_APPIUM=\$DEVICEFARM_DEVICE_UDID;
@@ -56,9 +72,11 @@ phases:
       # The environment variables below will be auto-populated during run time.
       - echo "Start appium server"
       - >-
-        appium --log-timestamp --device-name "\$DEVICEFARM_DEVICE_NAME"
-        --platform-name "\$DEVICEFARM_DEVICE_PLATFORM_NAME" --app "\$DEVICEFARM_APP_PATH"
-        --udid "\$DEVICEFARM_DEVICE_UDID_FOR_APPIUM" ${customWDA} --chromedriver-executable "\$DEVICEFARM_CHROMEDRIVER_EXECUTABLE"  >> "\$DEVICEFARM_LOG_DIR"/appiumlog.txt 2>&1 &
+        appium --log-timestamp
+        --default-capabilities "{\"usePrebuiltWDA\": true, \"derivedDataPath\":\"\$DEVICEFARM_WDA_DERIVED_DATA_PATH\",
+        \"deviceName\": \"\$DEVICEFARM_DEVICE_NAME\", \"platformName\":\"\$DEVICEFARM_DEVICE_PLATFORM_NAME\", \"app\":\"\$DEVICEFARM_APP_PATH\",
+        \"udid\":\"\$DEVICEFARM_DEVICE_UDID_FOR_APPIUM\", \"platformVersion\":\"\$DEVICEFARM_DEVICE_OS_VERSION\", \"noReset\":\"true\"}"
+        >> \$DEVICEFARM_LOG_DIR/appiumlog.txt 2>&1 &
 
       - >-
         start_appium_timeout=0;
