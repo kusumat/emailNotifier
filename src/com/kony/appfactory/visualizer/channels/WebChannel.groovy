@@ -26,7 +26,6 @@ class WebChannel extends Channel {
     protected final webProtectionBlueprintFile = (script.params.CUSTOM_PROTECTION_PATH)?.trim()
     protected final webProtectionID = script.params.OBFUSCATION_PROPERTIES
     protected webAppUrl
-    protected final selectedSpaChannels
 
     /* Build agent resources */
     def resourceList
@@ -115,7 +114,7 @@ class WebChannel extends Channel {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 script.stage('Check provided parameters') {
-                    if (!(webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("RESPONSIVE_WEB")) && !(selectedSpaChannels || desktopWebChannel)) {
+                    if (!(webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("RESPONSIVE_WEB")) && !(desktopWebChannel)) {
                         script.echoCustom('Please select at least one channel to build!', 'ERROR')
                     }
                     ValidationHelper.checkBuildConfiguration(script)
