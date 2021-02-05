@@ -173,7 +173,7 @@ class WebChannel extends Channel {
                         artifactMeta.add("version": ["App Version": webAppVersion])
                         script.stage('Check PreBuild Hook Points') {
                             if (isCustomHookRunBuild) {
-                                triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.prebuild.name')
+                                triggerHooksBasedOnSelectedChannels(libraryProperties.'customhooks.prebuild.name')
                             } else {
                                 script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                             }
@@ -295,7 +295,7 @@ class WebChannel extends Channel {
                         script.stage('Check PostBuild Hook Points') {
                             if (script.currentBuild.currentResult == 'SUCCESS') {
                                 if (isCustomHookRunBuild) {
-                                    triggerHooksBasedOnSelectedChannels(webChannelType, libraryProperties.'customhooks.postbuild.name')
+                                    triggerHooksBasedOnSelectedChannels(libraryProperties.'customhooks.postbuild.name')
                                 } else {
                                     script.echoCustom('RUN_CUSTOM_HOOK parameter is not selected by the user or there are no active CustomHooks available. Hence CustomHooks execution skipped.', 'WARN')
                                 }
@@ -310,24 +310,12 @@ class WebChannel extends Channel {
     }
 
     /**
-     * In this method, we will prepare a list of channels for which we need to run the hooks, 
-     * depending upon the webChannelType and then call runCustomHooks
-     * @param webChannelType tells us whether the channel is  WEB or DESKTOP_WEB
+     * In this method, depending upon the webChannelType (DESKTOP_WEB, RESPONSIVE_WEB) call runCustomHooks for WEB_STAGE
      * @param buildStage is the hook stage such as PRE_BUILD, POST_BUILD, POST_TEST
      */
-    protected triggerHooksBasedOnSelectedChannels(webChannelType, buildStage){
-        
-        def projectsToRun = [], projectStage
-        if (webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("WEB")) {
-            projectsToRun << "DESKTOP_WEB"
-        }
-
-        projectsToRun.each { project ->
-            if (project.contains('DESKTOP_WEB')) {
-                projectStage = project + "_STAGE"
-            }
-            hookHelper.runCustomHooks(projectName, buildStage, projectStage)
-        }
+    protected triggerHooksBasedOnSelectedChannels(buildStage){
+        def projectStage = "WEB_STAGE"
+        hookHelper.runCustomHooks(projectName, buildStage, projectStage)
     }
 
     /**
