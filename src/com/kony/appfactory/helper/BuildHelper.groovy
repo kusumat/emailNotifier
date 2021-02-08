@@ -240,35 +240,39 @@ class BuildHelper implements Serializable {
     private static getRootCause(cause) {
         def causedBy
 
-        /* If build been triggered by Upstream job */
-        if (cause instanceof Cause.UpstreamCause) {
-            /* checking if the build cause is DeeplyNestedUpstreamCause because of build depth is more than 10 */
-            if (cause instanceof Cause.UpstreamCause.DeeplyNestedUpstreamCause) {
+        switch (cause.class.toString()) {
+            case ~/^.*UserIdCause.*$/:
+                causedBy = cause.getUserId()
+                break
+            case ~/^.*SCMTriggerCause.*$/:
+                causedBy = "SCM"
+                break
+            case ~/^.*TimerTriggerCause.*$/:
+                causedBy = "CRON"
+                break
+            case ~/^.*GitHubPRCause.*$/:
+                causedBy = "GitHub Pullrequest"
+                break
+            case ~/^.*GitHubPushCause.*$/:
+                causedBy = "GitHub Hook"
+                break
+            case ~/^.*UpstreamCause.*$/:
+            case ~/^.*RebuildCause.*$/:
+                def upstreamJob = Jenkins.getInstance().getItemByFullName (cause.getUpstreamProject(), hudson.model.Job.class)
+                if (upstreamJob) {
+                    def upstreamBuild = upstreamJob.getBuildByNumber(cause.getUpstreamBuild())
+                    if (upstreamBuild) {
+                        for (upstreamCause in upstreamBuild.getCauses()) {
+                            causedBy = getRootCause(upstreamCause)
+                            if (causedBy)
+                                break
+                        }
+                    }
+                }
+                break
+            default:
                 causedBy = ''
-            } else {
-                Cause.UpstreamCause c = (Cause.UpstreamCause) cause;
-                List<Cause> upstreamCauses = c.getUpstreamCauses();
-                for (Cause upstreamCause : upstreamCauses)
-                    causedBy = getRootCause(upstreamCause)
-            }
-        } else {
-            switch (cause.class.toString()) {
-                case ~/^.*UserIdCause.*$/:
-                    causedBy = cause.getUserName()
-                    break
-                case ~/^.*SCMTriggerCause.*$/:
-                    causedBy = 'SCM'
-                    break
-                case ~/^.*TimerTriggerCause.*$/:
-                    causedBy = 'CRON'
-                    break
-                case ~/^.*GitHubPushCause.*$/:
-                    causedBy = 'GitHub hook'
-                    break
-                default:
-                    causedBy = ''
-                    break
-            }
+                break
         }
 
         causedBy
