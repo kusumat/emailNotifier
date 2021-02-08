@@ -169,7 +169,7 @@ class FacadeTests implements Serializable {
                         script.string(name: "${webTestsUrlParamName}", value: script.params[webTestsUrlParamName]),
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
                         script.string(name: "${webTestsArgumentsParamName}", value: script.params[webTestsArgumentsParamName]),
-                        script.string(name: 'JASMINE_TEST_URL', value: script.params.JASMINE_TEST_URL?.trim()),
+                        script.string(name: 'JASMINE_TEST_URL', value: BuildHelper.getParamValueOrDefault(script, "JASMINE_TEST_URL", "")?.trim()),
                         script.string(name: 'WEB_TEST_PLAN',  value: BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null))
 
                 ]

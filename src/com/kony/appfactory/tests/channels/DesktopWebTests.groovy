@@ -235,8 +235,10 @@ class DesktopWebTests extends RunTests implements Serializable {
     
     /* This method deletes the Jasmine tests which are hosted in the jetty webapps folder */
     private cleanupJasmineTests(){
-        
-        String fullPathToDelete = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
+        /* Test script path: <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<EPOC_TIME>/
+         * or <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<WedBuildNo>/
+         * "eg: /opt/jetty/webapps/testresources/100000005/RsTestOnly_1612446923377/" */
+        String fullPathToDelete = jettyWebAppsFolder + script.env.JASMINE_TEST_URL.split('testresources')[-1]
         
         // Cleanup the jasmine test scripts in the jetty webapps folder
         script.shellCustom("set +x;rm -Rf $fullPathToDelete", true)
@@ -338,15 +340,24 @@ class DesktopWebTests extends RunTests implements Serializable {
             script.shellCustom("mkdir -p test-output/Screenshots", true)
             script.shellCustom("mkdir -p test-output/Logs", true)
             script.shellCustom("mkdir -p test-output/Appscommon-Logs", true)
+            def webAppUrlForTest = script.params['FABRIC_APP_URL']
             
             if(isJasmineEnabled) {
-                scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DJASMINE_TEST_APP_URL=${script.params['JASMINE_TEST_URL']}"
+                if (ValidationHelper.compareVersions(script.env["visualizerVersion"], libraryProperties.'jasmine.testonly.support.base.version') == -1) {
+                    scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DJASMINE_TEST_APP_URL=${script.env['JASMINE_TEST_URL']} -DCHECK_JASMINE_CONFIG=false"
+                } else {
+                    scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DCHECK_JASMINE_CONFIG=true"
+                    def protocolType = script.env.JASMINE_TEST_URL?.split('://')[0]
+                    def testResourceUrl= script.env.JASMINE_TEST_URL?.split('://')[1]
+                    /* Sample Web App Url for V9.3 "https://appfactoryserver.dev-temenos-cloud.net/apps/SanityWRAutoTest/?protocol=http&testurl=localhost:8888/testresources/100000005/RsTestOnly_1612359688388/"*/
+                    webAppUrlForTest = script.params['FABRIC_APP_URL'] + "/" + "?protocol=${protocolType}&testurl=${testResourceUrl}"
+                }
             }
             else {
                 scriptArguments.contains('-Dsurefire.suiteXmlFiles')?: (scriptArguments += " -Dsurefire.suiteXmlFiles=Testng.xml")
             }
             
-            def testHyphenDParams = "-DDRIVER_PATH=${script.env.CHROME_DRIVER_PATH} -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -DWEB_APP_URL=${script.params['FABRIC_APP_URL']} -Dmaven.test.failure.ignore=true -DFILE_DOWNLOAD_PATH=" + testFolder 
+            def testHyphenDParams = "-DDRIVER_PATH=${script.env.CHROME_DRIVER_PATH} -DBROWSER_PATH=${script.env.CHROME_BROWSER_PATH} -DWEB_APP_URL='${webAppUrlForTest}' -Dmaven.test.failure.ignore=true -DFILE_DOWNLOAD_PATH=" + testFolder
             
             if (script.params.containsKey('SCREEN_RESOLUTION')) {
                 testHyphenDParams = testHyphenDParams + " -DSCREEN_RESOLUTION=${script.params.SCREEN_RESOLUTION}"
@@ -429,6 +440,15 @@ class DesktopWebTests extends RunTests implements Serializable {
                                 }
                                 /* Get the automation test folder */
                                 testFolder = getTestsFolderPath(projectFullPath)
+                                
+                                /* Here, Setting JASMINE_TEST_URL env variable based on JASMINE_TEST_URL param
+                                 * Note: JASMINE_TEST_URL can be as "http://localhost:8888/testresources/<ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<EPOC_TIME>/
+                                 * eg: "http://localhost:8888/testresources/100000005/RsTestOnly_1612446923377/" or
+                                 * "http://localhost:8888/testresources/<ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<WebBuildNo>/"
+                                 * eg: "http://localhost:8888/testresources/100000005/RsTestOnly_5/"
+                                 */
+                                
+                                script.env["JASMINE_TEST_URL"] = (script.params.JASMINE_TEST_URL)?: libraryProperties.'test.automation.jasmine.base.host.url' + script.env.CLOUD_ACCOUNT_ID + '/' + script.env.PROJECT_NAME + '_' + new Date().time + '/'
 
                                 /* Preparing the environment for the Jasmine Tests */
                                 if(isJasmineEnabled){

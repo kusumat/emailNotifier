@@ -206,11 +206,14 @@ class RunTests implements Serializable {
                     script.shellCustom(nodePkgScript, true)
                 }
             })
-
+            
             // Only in the case Web, we will be hosting the jasmine test scripts through jetty server.
             if(channelType.equalsIgnoreCase("Web")) {
-                String fullPathToCopyScripts = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
-
+                /* Test script path: <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<EPOC_TIME>/
+                 * or <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<WedBuildNo>/
+                 * "eg: /opt/jetty/webapps/testresources/100000005/RsTestOnly_1612446923377/" */
+                String fullPathToCopyScripts = jettyWebAppsFolder + script.env.JASMINE_TEST_URL.split('testresources')[-1]
+                
                 // Copying the Desktop jasmine test scripts in the jetty webapps folder
                 script.shellCustom("set +x;mkdir -p $fullPathToCopyScripts", true)
                 script.shellCustom("set +x;cp -R ${jasminePkgFolder}/Desktop ${fullPathToCopyScripts}", true)
