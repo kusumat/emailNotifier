@@ -540,6 +540,7 @@ class AwsDeviceFarmHelper implements Serializable {
                                 script.echoCustom("Test Execution is completed on \'"+ deviceKey
                                         + "\' and over all test result is PASSED", 'INFO')
                                 result = createSummaryOfTestCases(listJobsArrayList, completedRunDevicesList, index)
+                                showDeviceTestRunResults(results, testRunArn)
                                 break
                             case 'WARNED':
                                 script.echoCustom("Build is warned for unknown reason on the device \'" + deviceKey + "\'", 'WARN')
@@ -551,10 +552,11 @@ class AwsDeviceFarmHelper implements Serializable {
                                 script.echoCustom("Looks like your tests failed with an ERRORED message, it usually happens due to some network issue on AWS device or issue with instance itself. Re-triggering the build might solve the issue.", 'WARN')
                             case 'STOPPED':
                             case 'FAILED':
-                                script.echoCustom("Test Execution is completed. One/more tests are failed on the device \'" + deviceKey
-                                        + "\', please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
+                                script.echoCustom("Test Execution is completed on \'" + deviceKey
+                                        + "\' with one or more tests failures. Please find more details of failed test cases in the summary email that you will receive at the end of this build completion.", 'ERROR', false)
                                 script.currentBuild.result = 'UNSTABLE'
                                 result = createSummaryOfTestCases(listJobsArrayList, completedRunDevicesList, index)
+                                showDeviceTestRunResults(result, testRunArn)
                                 break
                             default:
                                 break
@@ -844,5 +846,30 @@ class AwsDeviceFarmHelper implements Serializable {
         }
 
         formFactorsList
+    }
+
+    /**
+     * Show the tests results of a particular device immediately after its test execution is completed
+     *
+     * @param results - detailed test run results of the device
+     * @param deviceTestRunArn - Run Arn of the device
+     */
+    protected final showDeviceTestRunResults(results, deviceTestRunArn) {
+        def singleLineSeparator = {
+            script.echoCustom("*" * 99)
+        }
+        script.echoCustom("Summary of Test Results on \"${results.getDevice().getName()}\":", 'INFO')
+        singleLineSeparator()
+        String displayResults = 'Total Tests: ' + results.getResultsCount().getTotal() +
+                ', Passed: ' + results.getResultsCount().getPassed() +
+                ', Failed: ' + results.getResultsCount().getFailed() +
+                ', Skipped: ' + results.getResultsCount().getSkipped() +
+                ', Warned: ' + results.getResultsCount().getWarned() +
+                ', Stopped: ' + results.getResultsCount().getStopped() +
+                ', Errored: ' + results.getResultsCount().getErrored() +
+                ', Test Duration: ' + results.getTestDuration() +
+                ', Run ARN: ' + deviceTestRunArn
+        script.echoCustom(displayResults)
+        singleLineSeparator()
     }
 }

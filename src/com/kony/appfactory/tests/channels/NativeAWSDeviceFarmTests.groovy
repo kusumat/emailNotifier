@@ -402,19 +402,19 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         }
 
         script.echoCustom("Test execution is completed for all the devices in device pool.", 'INFO')
-        script.echoCustom("Summary of Test Results : ", 'INFO')
+        script.echoCustom("Summary of Test Results: ", 'INFO')
         separator()
         summary.each { deviceName, deviceResults -> 
             
-            String displayResults = 'Total Tests : ' + deviceResults.getResultsCount().getTotal() +
-                ', Passed : ' + deviceResults.getResultsCount().getPassed() +
-                ', Failed : ' + deviceResults.getResultsCount().getFailed() +
-                ', Skipped : ' + deviceResults.getResultsCount().getSkipped() +
-                ', Warned : ' + deviceResults.getResultsCount().getWarned() +
-                ', Stopped : ' + deviceResults.getResultsCount().getStopped() +
-                ', Errored : ' + deviceResults.getResultsCount().getErrored() +
-                ', Test Duration : ' + deviceResults.getTestDuration() +
-                ', Run ARN : ' + deviceResults.getRunARN()
+            String displayResults = 'Total Tests: ' + deviceResults.getResultsCount().getTotal() +
+                ', Passed: ' + deviceResults.getResultsCount().getPassed() +
+                ', Failed: ' + deviceResults.getResultsCount().getFailed() +
+                ', Skipped: ' + deviceResults.getResultsCount().getSkipped() +
+                ', Warned: ' + deviceResults.getResultsCount().getWarned() +
+                ', Stopped: ' + deviceResults.getResultsCount().getStopped() +
+                ', Errored: ' + deviceResults.getResultsCount().getErrored() +
+                ', Test Duration: ' + deviceResults.getTestDuration() +
+                ', Run ARN: ' + deviceResults.getRunARN()
             script.echoCustom("On " + deviceName + ":: " + displayResults )
         }
         separator()
