@@ -39,8 +39,9 @@ public class InvokeJasmineTests {
     public static RemoteWebDriver driver;
     public boolean isAndroidDevice = false;
     public String bundleID = "";
-    public String jasmineAndroidNativeReportDefaultLocation = "/sdcard/JasmineTestResults/";
-    public String jasmineIosNativeReportDefaultLocation = "@[APPLICATIONID]/Library/JasmineTestResults/";
+    public String jasmineAndroidNativeReportDefaultLocation = "/sdcard/Android/data/" + System.getenv("BUNDLE_ID") + "/files/JasmineTestResults/";
+    public String jasmineAndroidNativeReportAlternateLocation = "/sdcard/JasmineTestResults/";
+    public String jasmineIosNativeReportDefaultLocation = "@"+ System.getenv("BUNDLE_ID") + "/Library/JasmineTestResults/";
     public String jasmineNativeTestReportFileName = "TestResult.html";
     public String jasmineJSONReportFileName = "jasmineReport.json";
     int totalTests = 0;
@@ -124,9 +125,11 @@ public class InvokeJasmineTests {
     private void initializeDriver() throws Exception {
         
         DesiredCapabilities capabilities = new DesiredCapabilities();
-        capabilities.setCapability("noReset", false);
+        // We are not reinstalling the app if it is installed during the device setup phase.
+        capabilities.setCapability("noReset", true);
         capabilities.setCapability("autoGrantPermissions", true);
         capabilities.setCapability("newCommandTimeout", "300");
+        bundleID = System.getenv("BUNDLE_ID");
         if (getTestRunEnvironment().equalsIgnoreCase("RUN_IN_CUSTOM_TEST_ENVIRONMENT")) {
 
             System.out.println("Running tests in the Custom Test Mode");
@@ -136,18 +139,14 @@ public class InvokeJasmineTests {
                 capabilities.setCapability(AndroidMobileCapabilityType.AUTO_GRANT_PERMISSIONS, true);   
                 androiddriver = new AndroidDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
                 driver = androiddriver;
-                bundleID = (String) androiddriver.getSessionDetail("appPackage");
             } else {
                 capabilities.setCapability("automationName", "XCUITest");
-                // We are not reinstalling the app if it is installed during the device setup phase.
-                capabilities.setCapability("noReset", true);
                 capabilities.setCapability(IOSMobileCapabilityType.AUTO_ACCEPT_ALERTS, true);
                 capabilities.setCapability(IOSMobileCapabilityType.WDA_LAUNCH_TIMEOUT, 120000);
                 capabilities.setCapability(IOSMobileCapabilityType.WDA_STARTUP_RETRIES, 4);
                 System.out.println("Initializing the iOS Driver!!!!!!!!!!!!");
                 iosdriver = new IOSDriver<WebElement>(new URL("http://127.0.0.1:4723/wd/hub"), capabilities);
                 driver = iosdriver;
-                bundleID = (String) iosdriver.getSessionDetail("CFBundleIdentifier");
             }
             System.out.println("Driver is successfully initialized!!!!!!!!!!!!!!!!!!!!!");
             isAndroidDevice = isAndroidDevice();
@@ -192,10 +191,6 @@ public class InvokeJasmineTests {
     private byte[] getFileContentFromDevice(String deviceFilePath) {
         byte[] fileData = null;
         
-        if(!isAndroidDevice) {
-            deviceFilePath = deviceFilePath.replace("[APPLICATIONID]", bundleID);
-        }
-        
         try {
             fileData = ((InteractsWithFiles) driver).pullFile(deviceFilePath);
 
@@ -203,6 +198,13 @@ public class InvokeJasmineTests {
                 System.out.println("Oops.. found that jasmine test results file " + deviceFilePath + " is either empty or not exists.");
             }
         } catch (Exception e) {
+            // Fallback scenarios for result files locations as per framework dependency.
+            if (deviceFilePath.contains(jasmineJSONReportFileName) && !deviceFilePath.contains(jasmineAndroidNativeReportAlternateLocation)) {
+                fileData = getFileContentFromDevice(jasmineAndroidNativeReportAlternateLocation + jasmineJSONReportFileName);
+            }
+            if (deviceFilePath.contains(jasmineNativeTestReportFileName) && !deviceFilePath.contains(jasmineAndroidNativeReportAlternateLocation)) {
+                fileData = getFileContentFromDevice(jasmineAndroidNativeReportAlternateLocation + jasmineNativeTestReportFileName);
+            }
             System.out.println("Exception occurred while reading the file from the path: " + deviceFilePath);
             e.printStackTrace();
         }
@@ -226,18 +228,6 @@ public class InvokeJasmineTests {
                     break;
                 }
             } else {
-                
-                if(bundleID.equalsIgnoreCase("com.apple.springboard")) {
-                    System.out.println("Seems application is not yet started since we got com.apple.springboard as the active application");
-                    System.out.println("We will wait for one more minute for app to get started.");
-                    Thread.sleep(60000);
-                    String lBundleID = (String) ((IOSDriver<?>) driver).getSessionDetail("CFBundleIdentifier");
-                    if(! lBundleID.equalsIgnoreCase("com.apple.springboard")) {
-                        this.bundleID = lBundleID;
-                    }
-                    System.out.println("We have got this bundle id after the wait - " + bundleID);
-                }
-                
                 ApplicationState testAppStatus = ((IOSDriver<?>) driver).queryAppState(bundleID);
                 System.out.println("Current status of the application is : " + testAppStatus.name());
                 

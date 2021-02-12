@@ -326,7 +326,9 @@ class AwsDeviceFarmHelper implements Serializable {
      * @return upload ARN.
      */
     protected final uploadArtifact(String projectArn, String uploadType, String uploadFileName) {
+        def uploadData = null
         def uploadArn = null
+        def uploadAppData = [:]
         String successMessage = "Artifact ${uploadFileName} uploaded successfully"
         String errorMessage = "Failed to upload ${uploadFileName} artifact"
 
@@ -347,23 +349,35 @@ class AwsDeviceFarmHelper implements Serializable {
             /* Upload artifact */
             script.shellCustom(uploadScript, true)
 
+            def getUploadJSON
+            String uploadStatus
+            String uploadMetadata
             /* Check status of upload */
             script.waitUntil {
                 String getUploadScript = "set +x;aws devicefarm get-upload --arn ${uploadArn}"
                 String getUploadOutput = script.shellCustom(getUploadScript, true, [returnStdout: true]).trim()
-                def getUploadJSON = script.readJSON text: getUploadOutput
-                String uploadStatus = getUploadJSON.upload.status
-                String uploadMetadata = getUploadJSON.upload.metadata
-
+                getUploadJSON = script.readJSON text: getUploadOutput
+                uploadStatus = getUploadJSON.upload.status
+                uploadMetadata = getUploadJSON.upload.metadata
                 if (uploadStatus == 'FAILED') {
                     throw new AppFactoryException(uploadMetadata, 'ERROR')
                 }
 
                 uploadStatus == 'SUCCEEDED'
             }
-        }
+            if ((uploadType.equalsIgnoreCase("android_app") || uploadType.equalsIgnoreCase("ios_app")) && uploadStatus.equalsIgnoreCase("succeeded")) {
+                def uploadMetaDataJSON = script.readJSON text: uploadMetadata
+                try {
+                    uploadAppData.putAll(["name": getUploadJSON.upload.name, "arn": getUploadJSON.upload.arn, "type": getUploadJSON.upload.type, "packageName": uploadMetaDataJSON."package_name"])
+                    script.echoCustom("Fetched App metadata successfully.")
+                } catch (Exception e) {
+                    throw AppFactoryException("Unable to fetch app metadata" + e.printStackTrace(), 'ERROR')
+                }
 
-        uploadArn
+            }
+        }
+        uploadData = uploadAppData?:uploadArn
+        uploadData
     }
 
     /**

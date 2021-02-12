@@ -32,7 +32,15 @@ var writeJasmineEventsToFile = function() {
     if(platform == "android") {
         var isExternalStorageAvailable = kony.io.FileSystem.isExternalStorageAvailable();
         if (isExternalStorageAvailable) {
-            var jasmineResultsFolder = "/sdcard" + constants.FILE_PATH_SEPARATOR + "JasmineTestResults";
+            var appExternalLocation;
+            // Fallback scenarios for result file location as per framework dependency.
+            try {
+                appExternalLocation = kony.io.FileSystem.getExternalFilesDir();
+            }
+            catch(error){
+                appExternalLocation = kony.io.FileSystem.getExternalStorageDirectoryPath();
+            }
+            var jasmineResultsFolder = appExternalLocation + constants.FILE_PATH_SEPARATOR + "JasmineTestResults";
 	        if (new kony.io.File(jasmineResultsFolder).exists()) {
 	            kony.print("Results folder already exists.");
 	        } else {

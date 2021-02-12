@@ -29,6 +29,9 @@ phases:
       - export "CLASSPATH"="\$CLASSPATH":"\$DEVICEFARM_TEST_PACKAGE_PATH"/*
       - export "CLASSPATH"="\$CLASSPATH":"\$DEVICEFARM_TEST_PACKAGE_PATH"/dependency-jars/*
 
+      # Setup environment variables for Jasmine
+      - export "BUNDLE_ID"=${appPackageName}
+
       # For users of Appium versions 1.15.0 and higher, your Appium version requires that your UDID of the device does not contain any "-" characters
       # So, we will create a new environment variable of your UDID specifically for Appium based on your Appium version
       - export 'TEST_APPIUM_VERSION'=`echo \$APPIUM_VERSION | cut -d "." -f2`
@@ -113,6 +116,23 @@ phases:
       # Please refer "http://testng.org/doc/documentation-main.html#running-testng" for more options on running TestNG tests from the command line.
       - echo "Unzipping TestNG tests jar"
       - unzip *-tests.jar
+      # Place Jasmine Automation scripts at appropriate storage locations if Extra Data Package is present
+      - >-
+        extra_data_file=${projectName}_${channel}_${formFactor}_TestExtraDataPkg.zip;
+        if [ -f "\$extra_data_file" ]; then
+            unzip "\$extra_data_file";
+            cd JasmineTests;
+            if [ "${channel}" = "Android" ]; then
+                # Uninstall and re-install app by granting all permissions to avoid conflict with noReset capability.
+                adb uninstall ${appPackageName}
+                adb install -g \$DEVICEFARM_APP_PATH
+                echo "Pushing automation scripts.";
+                #Add scripts to scoped and general storage for framework to read from irrespective of framework plugin version.
+                adb push automationScripts.zip /sdcard/${channel}/data/${appPackageName}/files/JasmineTests/automationScripts.zip;
+                adb push automationScripts.zip /sdcard/JasmineTests/automationScripts.zip;
+            fi;
+            cd ..;
+        fi;
       - echo "Start Appium TestNG test"
       - java -Dappium.screenshots.dir="\$DEVICEFARM_SCREENSHOT_PATH" org.testng.TestNG -d "\$DEVICEFARM_LOG_DIR"/test-output ${testngFiles} -verbose 10
 
