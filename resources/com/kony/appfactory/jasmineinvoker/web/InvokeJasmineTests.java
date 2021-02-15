@@ -203,14 +203,14 @@ public class InvokeJasmineTests implements ITestListener {
             e.printStackTrace();
         }
         
-        if(System.getProperty("CHECK_JASMINE_CONFIG").equalsIgnoreCase("true")) {
+        if(System.getProperty("SKIP_URL_CHECK").equalsIgnoreCase("true")) {
             if(jasmineTestAppMode != null && !jasmineTestAppMode.equalsIgnoreCase("true")) {
                 System.out.println("Web Application doesn't seem to be build on the test mode. Make sure you build the app in test mode to run the jasmine tests.!");
                 throw new Exception("APPLICATION BUILD IN INVALID MODE!!!");
             }
         } else {
             if((jasmineTestAppMode != null && !jasmineTestAppMode.equalsIgnoreCase("true")) || !getJasmineTestAppUrl().equalsIgnoreCase(jasmineTestRunUrl)) {
-                System.out.println("Web Application doesn't have the appropriate jasmine configuration!");
+                System.out.println("Web Application doesn't have the appropriate jasmine configuration. Deployed Web application doesn't have the expected jasmine test scripts url. Expected URL : <" + getJasmineTestAppUrl() + ">, Actual URL : <" + jasmineTestRunUrl + ">");
                 throw new Exception("WEB APP CONFIG ERROR!!!");
             }
         }

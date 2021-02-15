@@ -118,7 +118,6 @@ class Facade implements Serializable {
     private final runWebTestsParamName = BuildHelper.getCurrentParamName(script, 'RUN_WEB_TESTS', 'RUN_DESKTOPWEB_TESTS')
     private final webTestsArguments = script.params[webTestsArgumentsParamName]
     private final runWebTests = script.params[runWebTestsParamName]
-    private final webTestsUrlParamName = (runWebTestsParamName == "RUN_WEB_TESTS") ? "WEB_TESTS_URL" : "DESKTOPWEB_TESTS_URL"
 
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
@@ -434,7 +433,6 @@ class Facade implements Serializable {
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                         value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'NATIVE_TESTS_URL', value: ''),
-                script.string(name: "${webTestsUrlParamName}", value: ''),
                 script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}"),
                 script.booleanParam(name: "${runWebTestsParamName}", value: "${runWebTests}"),
                 script.string(name: 'AVAILABLE_BROWSERS', value: "${availableBrowsers}"),

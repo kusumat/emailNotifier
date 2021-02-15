@@ -79,8 +79,7 @@ class FacadeTests implements Serializable {
 
     /* Web TestAutomation build parameters */
     private final webTestsArgumentsParamName = BuildHelper.getCurrentParamName(script, 'RUN_WEB_TESTS_ARGUMENTS', 'RUN_DESKTOPWEB_TESTS_ARGUMENTS')
-    private final webTestsUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_TESTS_URL', 'DESKTOPWEB_TESTS_URL')
-    private final runWebTestsJobName =  (webTestsUrlParamName == "WEB_TESTS_URL")? "runWebTests" : "runDesktopWebTests"
+    private final runWebTestsJobName =  (webTestsArgumentsParamName == "RUN_WEB_TESTS_ARGUMENTS")? "runWebTests" : "runDesktopWebTests"
 
     /* To maintain backward compatibility, we are checking whether 'Channels' folder is present under 'Tests' folder or not and then modifying the subject of mail accordingly */
     String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
@@ -166,7 +165,6 @@ class FacadeTests implements Serializable {
         getTestAutomationCommonJobParameters() + getDesktopWebTestAutomationArtifactURLParameter() +
                 [
                         script.string(name: 'FABRIC_APP_URL', value: script.params.FABRIC_APP_URL),
-                        script.string(name: "${webTestsUrlParamName}", value: script.params[webTestsUrlParamName]),
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
                         script.string(name: "${webTestsArgumentsParamName}", value: script.params[webTestsArgumentsParamName]),
                         script.string(name: 'JASMINE_TEST_URL', value: BuildHelper.getParamValueOrDefault(script, "JASMINE_TEST_URL", "")?.trim()),

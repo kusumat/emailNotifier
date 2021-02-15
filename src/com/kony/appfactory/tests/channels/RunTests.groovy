@@ -211,7 +211,8 @@ class RunTests implements Serializable {
             if(channelType.equalsIgnoreCase("Web")) {
                 /* Test script path: <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<EPOC_TIME>/
                  * or <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<WedBuildNo>/
-                 * "eg: /opt/jetty/webapps/testresources/100000005/RsTestOnly_1612446923377/" */
+                 * "eg: /opt/jetty/webapps/testresources/100000005/RsTestOnly_1612446923377/" 
+                 */
                 String fullPathToCopyScripts = jettyWebAppsFolder + script.env.JASMINE_TEST_URL.split('testresources')[-1]
                 
                 // Copying the Desktop jasmine test scripts in the jetty webapps folder
