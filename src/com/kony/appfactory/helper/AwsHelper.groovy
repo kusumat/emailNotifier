@@ -115,6 +115,9 @@ class AwsHelper implements Serializable {
                                  ],
                                  pluginFailureResultConstraint       : 'FAILURE'])
                 }
+                // collecting artifact for metrics
+                def artifact = ["artifact": [bucketPath, fileName].join('/')]
+                script.statspublish artifact.inspect()
             }
         }
         String artifactUrl = getS3ArtifactUrl(script, [finalBucketPath, fileName].join('/'))
