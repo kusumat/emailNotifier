@@ -138,7 +138,19 @@ class FabricHelper implements Serializable {
         String errorMessage = 'Failed to build the maven java project!'
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            script.shellCustom(mavenBuildCommand, isUnixNode)
+            /* The settings.xml file contains elements used to define values such as the local repository location, alternate remote repository servers and authentication information.
+               Maven can refer this settings.xml for connecting to their local repository with logins configured for downloading all assets.*/
+            def mvnSettingsFileID = script.env.MVN_SETTINGS
+            if (mvnSettingsFileID) {
+                script.withCredentials([
+                        script.file(credentialsId: "${mvnSettingsFileID}", variable: 'MVN_SETTINGS_FILE')
+                ]) {
+                    mavenBuildCommand += " -s ${script.env.MVN_SETTINGS_FILE}"
+                    script.shellCustom(mavenBuildCommand, isUnixNode)
+                }
+            } else {
+                script.shellCustom(mavenBuildCommand, isUnixNode)
+            }
         }
     }
 
