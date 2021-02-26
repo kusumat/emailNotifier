@@ -1,0 +1,277 @@
+# Customise this file, documentation can be found here:
+# https://github.com/fastlane/fastlane/tree/master/fastlane/docs
+# All available actions: https://docs.fastlane.tools/actions
+# can also be listed using the `fastlane actions` command
+
+# Change the syntax highlighting to Ruby
+# All lines starting with a # are ignored when running `fastlane`
+
+# If you want to automatically update fastlane if a new version is available:
+#update_fastlane
+
+skip_docs
+
+default_platform :ios
+
+platform :ios do
+  before_all do
+    ENV["SLACK_URL"] = "https://hooks.slack.com/services/..."
+    ENV['MATCH_KEYCHAIN_NAME'] = "konyappfactory_#{ENV['GYM_OUTPUT_NAME']}_#{ENV['BUILD_NUMBER']}"
+    ENV['MATCH_KEYCHAIN_PASSWORD'] = ENV.fetch('MATCH_KEYCHAIN_PASSWORD')
+    ENV['FASTLANE_SKIP_UPDATE_CHECK'] = "1"
+    ENV['FASTLANE_HIDE_GITHUB_ISSUES']  = "1"
+    ENV['FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT'] = "120"
+    ENV['FASTLANE_XCODEBUILD_SETTINGS_RETRIES'] = "5"
+    ENV['APPLE_WATCH_EXTENSION'] = ENV.fetch('APPLE_WATCH_EXTENSION') { 'false' }
+    ENV['MANUAL_CERTS'] = ENV.fetch('MANUAL_CERTS') { 'false' }
+    @derivedDataPath = "#{ENV['PROJECT_WORKSPACE']}/#{ENV['FORM_FACTOR']}/DerivedData"
+    @buildArchivePath  = "#{ENV['PROJECT_WORKSPACE']}/#{ENV['FORM_FACTOR']}/Archive"
+    @buildlogPath = "#{ENV['PROJECT_WORKSPACE']}/#{ENV['FORM_FACTOR']}/Logs/gym"
+    @profileMap = Hash.new
+    begin
+      keychain_count = `security list-keychains -d user | wc -l`.strip.split(' ')[0].to_i
+      if keychain_count > 1
+        begin
+          delete_keychain(name: ENV["MATCH_KEYCHAIN_NAME"])
+          $keychain_count -= 1
+        end while keychain_count == 1
+      end
+    rescue => ex
+    end
+    # delete any keychains that has konyappfactorydev in their name, these were created while we are on Xcode <10.
+    sh("security list-keychains -d user | grep konyappfactorydev | xargs security delete-keychain")
+
+    create_keychain(name: ENV["MATCH_KEYCHAIN_NAME"], password: ENV["MATCH_KEYCHAIN_PASSWORD"], unlock: true, timeout: false)
+    #sh("security list-keychains -d user -s \"#{ENV["MATCH_KEYCHAIN_NAME"]}\"")
+    sh("security list-keychains -d user")
+    sh("security set-keychain-settings #{ENV["MATCH_KEYCHAIN_NAME"]}")
+    update_code_signing_settings(path: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"])
+    update_info_plist(xcodeproj: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"], plist_path: 'Info.plist', app_identifier: ENV['MATCH_APP_IDENTIFIER'])
+    update_info_plist(xcodeproj: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"],
+        plist_path: 'Info.plist',
+        block: proc do |plist|
+            plist["CFBundleShortVersionString"] = "#{ENV["APP_VERSION"]}"
+        end
+    )
+    certinfo = nil
+    if ENV['MANUAL_CERTS'] == "false"
+      match(force_for_new_devices: true)
+      certinfo = sh("security find-identity -v -p codesigning")
+    else
+      import_certificate(keychain_name: ENV["MATCH_KEYCHAIN_NAME"], keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"], certificate_path: ENV["PROVISION_CERT_FILE"], certificate_password: ENV["PROVISION_CERT_PASSWORD"])
+      certinfo = sh("security find-identity -v -p codesigning \"#{ENV["MATCH_KEYCHAIN_NAME"]}\"")
+      if certinfo.include?(ENV['GYM_CODE_SIGNING_IDENTITY'])
+        UI.success("Found the correct Provisioning Ceritificate.")
+      else
+        UI.user_error!("Unable to find the signing certificate in the keychain. Certificate installation got failed, please cross check the Provisioning Certificates and password for '#{ENV['EXPORT_METHOD']}' distribution type are proper!!")
+      end 
+    end
+    if certinfo.include?('Distribution')
+	if certinfo.include?('Apple')
+	  ENV['GYM_CODE_SIGNING_IDENTITY'] = 'Apple Distribution'
+	else
+	  ENV['GYM_CODE_SIGNING_IDENTITY'] = 'iPhone Distribution'
+	end
+    else
+        if certinfo.include?('Apple')
+	  ENV['GYM_CODE_SIGNING_IDENTITY'] = 'Apple Development'
+	else
+	  ENV['GYM_CODE_SIGNING_IDENTITY'] = 'iPhone Developer'
+	end
+    end
+    ENV['GYM_XCARGS'] = "DEVELOPMENT_TEAM=#{ENV["sigh_#{ENV['MATCH_APP_IDENTIFIER']}_#{ENV['MATCH_TYPE']}_team-id"]} OTHER_CODE_SIGN_FLAGS=\"--keychain #{ENV['MATCH_KEYCHAIN_NAME']}\""
+  end
+
+
+
+  desc "Build and sign (Release)"
+  lane :kony_ios_release do
+    # update project build settings with profile for this specific target
+    update_provisioning_profile(target: "KRelease", app_identifier: "#{ENV['MATCH_APP_IDENTIFIER']}")
+    if ENV['APPLE_WATCH_EXTENSION'] == "true"
+      iwatch_app_settings
+    end
+    # find and update target depdencies like extensions
+    project_extensions(scheme: 'KRelease')
+    # build and sign
+    gym(scheme: 'KRelease', export_method: ENV["EXPORT_METHOD"],
+        export_options: {
+                        compileBitcode: false, uploadBitcode: false, provisioningProfiles: @profileMap
+                }, disable_xcpretty: true, derived_data_path: @derivedDataPath, build_path: @buildArchivePath, buildlog_path: @buildlogPath)
+  end
+
+
+
+  desc "Build and sign (Debug)"
+  lane :kony_ios_debug do
+    # update project build settings with profile for this specific target
+    update_provisioning_profile(target: "KDebug", app_identifier: "#{ENV['MATCH_APP_IDENTIFIER']}")
+    if ENV['APPLE_WATCH_EXTENSION'] == "true"
+      iwatch_app_settings
+    end
+    # find and update target depdencies like extensions
+    project_extensions(scheme: 'KDebug')
+    # build and sign
+    gym(scheme: 'KDebug', export_method: ENV["EXPORT_METHOD"],
+        export_options: {
+                        compileBitcode: false, uploadBitcode: false, provisioningProfiles: @profileMap
+                }, disable_xcpretty: true, derived_data_path: @derivedDataPath, build_path: @buildArchivePath, buildlog_path: @buildlogPath)
+  end
+
+
+
+  desc "Build and sign (Debug/Release) using same schema but with build configuration settings (from 8.1.0, this is the default lane to build)"
+  lane :kony_ios_build do
+    # update project build settings with profile for this specific target
+    update_provisioning_profile(target: "KRelease", app_identifier: "#{ENV['MATCH_APP_IDENTIFIER']}")
+    if ENV['APPLE_WATCH_EXTENSION'] == "true"
+      iwatch_app_settings
+    end
+    # Adding the File Sharing capability into the Info.plist file if the Jasmine is selected as test framework
+    if ENV['ENABLE_FILE_SHARING'] == "true"
+      update_file_sharing_in_info_plist
+    end
+    # find and update target depdencies like extensions
+    project_extensions(scheme: 'KRelease')
+    # build and sign
+    gym(scheme: 'KRelease', configuration: ENV["PROJECT_BUILDMODE"], export_method: ENV["EXPORT_METHOD"],
+        export_options: {
+                        compileBitcode: false, uploadBitcode: false, provisioningProfiles: @profileMap
+                }, disable_xcpretty: true, derived_data_path: @derivedDataPath, build_path: @buildArchivePath, buildlog_path: @buildlogPath)
+
+  end
+
+
+
+  desc "Build and sign (Protected)"
+  lane :kony_ios_release_protected do
+    # update project build settings with profile for this specific target
+    update_provisioning_profile(target: "KProtected", app_identifier: "#{ENV['MATCH_APP_IDENTIFIER']}")
+    if ENV['APPLE_WATCH_EXTENSION'] == "true"
+      iwatch_app_settings
+    end
+    # find and update target depdencies like extensions
+    project_extensions(scheme: 'KProtected')
+    # build and sign
+    gym(scheme: 'KProtected', configuration: 'Protected', export_method: ENV["EXPORT_METHOD"],
+        export_options: {
+                        compileBitcode: false, uploadBitcode: false, provisioningProfiles: @profileMap
+                }, disable_xcpretty: true, derived_data_path: @derivedDataPath, build_path: @buildArchivePath, buildlog_path: @buildlogPath)
+  end
+
+  # You can define as many lanes as you want
+  desc "Watch App extension to build"
+  lane :iwatch_app_settings do
+    if ENV['MANUAL_CERTS'] == "false"
+      match(app_identifier: ["#{ENV['MATCH_APP_IDENTIFIER']}.watchkitapp", "#{ENV['MATCH_APP_IDENTIFIER']}.watchkitapp.watchkitextension"], force_for_new_devices: true)
+    end
+
+    # update project build settings with profile for this specific target
+    update_provisioning_profile(target: "KWatchOS2", app_identifier: "#{ENV['MATCH_APP_IDENTIFIER']}.watchkitapp")
+    # updating the app version into the Info.plist file of a specific target
+    update_version_in_info_plist(target: "KWatchOS2")
+    # update project build settings with profile for this specific target
+    update_provisioning_profile(target: "KWatchOS2 Extension", app_identifier: "#{ENV['MATCH_APP_IDENTIFIER']}.watchkitapp.watchkitextension")
+    # updating the app version into the Info.plist file of a specific target
+    update_version_in_info_plist(target: "KWatchOS2 Extension")
+  end
+
+
+
+  desc "Find App Extensions"
+  lane :project_extensions do |values|
+    scheme  = values[:scheme]
+    require 'xcodeproj'
+    project = Xcodeproj::Project.open("#{ENV['FL_PROJECT_SIGNING_PROJECT_PATH']}")
+    dependent_targets = project.native_targets.find {|s| s.name == scheme }
+    UI.success(dependent_targets)
+    dependent_targets.dependencies.each do |e|
+      UI.success "dependency found: #{e.target}. getting cert and profile .."
+
+      identifier = get_info_plist_value(path: "#{e.target}/Info.plist", key: "CFBundleIdentifier")
+      # check proper bundle identifier specified or not
+      if identifier != "$(PRODUCT_BUNDLE_IDENTIFIER)" && "#{e.target}" != "KWatchOS2"
+        UI.success "#{e.target} target identifier is: #{identifier}"
+        if ENV['MANUAL_CERTS'] == "false"
+          # create corresponding profile
+          match(app_identifier: [ "#{identifier}" ], force_for_new_devices: true)
+        end
+        # update project build settings with profile for this specific target
+        update_provisioning_profile(target: "#{e.target}", app_identifier: "#{identifier}")
+      	# updating the app version into the Info.plist file
+      	update_version_in_info_plist(target: "#{e.target}")
+      end
+    end
+  end
+
+  desc "Update application version for the extension Info.plist file"
+  lane :update_version_in_info_plist do |values|
+    target  = values[:target]
+
+    # updating the version in the plist file of the specific target
+    update_info_plist(xcodeproj: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"],
+        plist_path: "#{target}/Info.plist",
+        block: proc do |plist|
+            plist["CFBundleShortVersionString"] = "#{ENV["APP_VERSION"]}"
+        end
+    )
+  end
+
+  desc "Adding the File Sharing capability into the Info.plist file"
+  lane :update_file_sharing_in_info_plist do
+
+    # updating the version in the plist file of the specific target
+    update_info_plist(xcodeproj: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"],
+        plist_path: "Info.plist",
+        block: proc do |plist|
+            plist["UIFileSharingEnabled"] = true
+        end
+    )
+  end
+
+  desc "Update project build settings with exact provisioning profiles"
+  lane :update_provisioning_profile do |values|
+    target  = values[:target]
+    app_identifier  = values[:app_identifier]
+
+    # update project build settings with profile for the given target
+    update_project_provisioning(
+      xcodeproj: ENV["FL_PROJECT_SIGNING_PROJECT_PATH"],
+      target_filter: "#{target}$",
+      profile: "#{ENV["sigh_#{app_identifier}_#{ENV['MATCH_TYPE']}_profile-path"]}"
+    )
+    @profileMap["#{app_identifier}"]="#{ENV["sigh_#{app_identifier}_#{ENV['MATCH_TYPE']}"]}"
+  end
+
+
+
+  after_all do |lane|
+    # This block is called, only if the executed lane was successful
+    delete_keychain(name: ENV["MATCH_KEYCHAIN_NAME"])
+    sh("security list-keychains -d user")
+  end
+
+  error do |lane, exception|
+    # slack(
+    #   message: exception.message,
+    #   success: false
+    # )
+    # Cleanup keychain search list
+    if exception.message.include?('Multiple Teams found; unable to choose, terminal not ineractive')
+      UI.error " "
+      UI.error " "
+      UI.error "###################################################"
+      UI.error "###################################################"
+      UI.error "ERROR: Found that, your Apple ID is registered with Multiple teams on the Developer Portal. Please find the exact TEAM_ID that has APP_ID or Profile registered and make sure to enter that TEAM_ID value at APPLE_DEVELOPER_TEAM_ID input parameter on build screen."
+      UI.error "###################################################"
+      UI.error "###################################################"
+      UI.error " "
+      UI.error " "
+    end
+    delete_keychain(name: ENV["MATCH_KEYCHAIN_NAME"])
+    UI.message "deleted keychain: #{ENV['MATCH_KEYCHAIN_NAME']}"
+  end
+end
+
+
+# More information about multiple platforms in fastlane: https://github.com/fastlane/fastlane/blob/master/fastlane/docs/Platforms.md

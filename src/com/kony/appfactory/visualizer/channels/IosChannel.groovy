@@ -104,34 +104,22 @@ class IosChannel extends Channel {
      */
     protected final void fetchFastlaneConfig() {
         String fastlaneFastfileName = libraryProperties.'fastlane.fastfile.name'
-        String fastlaneFastfileNameConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' +
-                fastlaneFastfileName
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
-        String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
-        String awsIAMRole = script.env.S3_CONFIG_BUCKET_IAM_ROLE
-        String configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
-        String configBucketName = script.env.S3_CONFIG_BUCKET_NAME
 
-        script.catchErrorCustom('Failed to fetch fastlane configuration') {
-            /* Switch to configuration bucket region, and use role to pretend aws instance that has S3 access */
-            script.withAWS(region: configBucketRegion, role: awsIAMRole) {
-                script.dir(fastlaneConfigStashName) {
-                    /* Fetch fastlane configuration */
-                    script.s3Download file: fastlaneEnvFileName,
-                            bucket: configBucketName,
-                            path: fastlaneEnvFileConfigBucketPath,
-                            force: true
+        script.catchErrorCustom('Failed to create fastlane configuration') {
+            script.dir(fastlaneConfigStashName) {
+                
+                String fastFileContents = script.libraryResource(
+                    'com/kony/appfactory/configurations/Fastfile')
+                script.writeFile file: fastlaneFastfileName, text : fastFileContents, encoding: "UTF-8"
+                
+                def envContent = "MATCH_PASSWORD=${script.env.FASTLANE_MATCH_ENCRYPTION_KEY} \nMATCH_GIT_URL=${script.env.FASTLANE_GIT_CERTIFICATES_REPO_URL} \nMATCH_GIT_TOKEN=${script.env.FASTLANE_MATCH_GIT_TOKEN}"
+                script.writeFile file: fastlaneEnvFileName, text : envContent, encoding: "UTF-8"
+                
+                script.stash name: fastlaneConfigStashName
 
-                    script.s3Download file: fastlaneFastfileName,
-                            bucket: configBucketName,
-                            path: fastlaneFastfileNameConfigBucketPath,
-                            force: true
-                    /* Stash fetch fastlane configuration files to be able to use them during signing */
-                    script.stash name: fastlaneConfigStashName
-
-                    /* Remove fetched fastlane configuration files */
-                    script.deleteDir()
-                }
+                /* Remove fetched fastlane configuration files */
+                script.deleteDir()
             }
         }
     }
@@ -328,7 +316,8 @@ class IosChannel extends Channel {
                     "FASTLANE_SKIP_UPDATE_CHECK=1",
                     "APP_VERSION=${script.env.APP_VERSION}",
                     "ENABLE_FILE_SHARING=${isFileShareEnabled}",
-                    "FORM_FACTOR=${channelFormFactor}"
+                    "FORM_FACTOR=${channelFormFactor}",
+                    "MATCH_KEYCHAIN_PASSWORD=${script.env.MAC_KEYCHAIN_ENCRYPTION_KEY}"
                 ]) {
                     def fastlaneBashEnvironment="export {LANG,LANGUAGE,LC_ALL}=en_US.UTF-8"
 
