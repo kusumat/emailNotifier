@@ -19,7 +19,7 @@ class Channel implements Serializable {
     protected script
     /*
         List of channel artifacts in format:
-            [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+            [channelPath: <relative path to the artifact on artifact storage>, name: <artifact file name>, url: <artifact URL>]
      */
     protected artifacts = []
     /*
@@ -29,7 +29,7 @@ class Channel implements Serializable {
     protected mustHavePath
     protected String upstreamJob = null
     protected isRebuild = false
-    protected String s3MustHaveAuthUrl
+    protected String mustHaveArtifactUrl
     /*
         Platform dependent default name-separator character as String.
         For windows, it's '\' and for unix it's '/'.
@@ -72,7 +72,7 @@ class Channel implements Serializable {
     /* Visualizer version */
     protected visualizerVersion
     /*
-        Channel relative path on S3, used for storing artifacts on S3 according to agreed bucket structure,
+        Channel relative path on artifactStorage, used for storing artifacts according to agreed folder structure,
         also used in e-mail notifications.
      */
     protected channelPath
@@ -91,8 +91,8 @@ class Channel implements Serializable {
     protected artifactExtension
     /* Project's AppID key */
     protected projectAppId
-    /* Path for storing artifact on S3 bucket, has following format: Builds/<Fabric environment name>/channelPath */
-    protected s3ArtifactPath
+    /* Path for storing artifact, has following format: Builds/<Fabric environment name>/channelPath */
+    protected destinationArtifactPath
     /* Library configuration */
     protected libraryProperties
     /*
@@ -232,11 +232,11 @@ class Channel implements Serializable {
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
-        /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
+        /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to artifact storage. */
 
-        /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */
+        /* fabricEnvName consist default value for fabric env name which is required to construct upload path */
         fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
-        s3ArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
+        destinationArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
         isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, BuildType.Visualizer, runCustomHook, libraryProperties)
@@ -912,8 +912,8 @@ class Channel implements Serializable {
         if (script.env.FABRIC_ENV_NAME) {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
-        if ((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null) {
-            mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
+        if ((upstreamJob == null || isRebuild) && mustHaveArtifactUrl != null) {
+            mustHavesDescription = "<p><a href='${mustHaveArtifactUrl}'>Logs</a></p>"
         }
         script.currentBuild.description = """\
         <div id="build-description">
@@ -1067,21 +1067,21 @@ class Channel implements Serializable {
     }
     /**
      * Prepares all the information for the debugging any build failures.
-     * Zips all the files into a single zip file and upload into S3 and give the S3 URL
-     * in a map so that Viz job copies later from S3 to create single zip for all builds.
+     * Zips all the files into a single zip file and upload into artifactStorage and give the artifactStorage URL
+     * in a map so that Viz job copies later from artifactStorage to create single zip for all builds.
      */
     protected final String PrepareMustHaves() {
         String mustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
         try {
             script.catchErrorCustom("Error while preparing must haves") {
                 collectAllInformation()
-                s3MustHaveAuthUrl = BuildHelper.uploadBuildMustHavesToS3(script, projectFullPath, mustHavePath, mustHaveFile, separator, s3ArtifactPath, channelVariableName)
+                mustHaveArtifactUrl = BuildHelper.uploadBuildMustHaves(script, projectFullPath, mustHavePath, mustHaveFile, separator, destinationArtifactPath, channelVariableName)
             }
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed while collecting the logs (must-gather) for debugging.'
             script.echoCustom(exceptionMessage, 'ERROR')
         }
-        return s3ArtifactPath + "/" + mustHaveFile
+        return destinationArtifactPath + "/" + mustHaveFile
     }
     
     /**

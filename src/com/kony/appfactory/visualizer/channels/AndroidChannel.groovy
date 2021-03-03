@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.AppFactoryException
@@ -199,6 +199,7 @@ class AndroidChannel extends Channel {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
+                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 script.stage('Check provided parameters') {
                     ValidationHelper.checkBuildConfiguration(script)
                     def mandatoryParameters = ['APP_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']
@@ -346,19 +347,17 @@ class AndroidChannel extends Channel {
                             }
                         }
 
-                        script.stage("Publish artifacts to S3") {
+                        script.stage("Publish artifacts") {
                             /* Rename artifacts for publishing */
                             def channelArtifacts = renameArtifacts(buildArtifacts)
 
                             channelArtifacts?.each { artifact ->
                                 String artifactName = artifact.name
                                 String artifactPath = artifact.path
-                                String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                        sourceFileName: artifactName, sourceFilePath: artifactPath, script
-
-                                String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                                String artifactUrl = ArtifactHelper.publishArtifact sourceFileName: artifactName,
+                                        sourceFilePath: artifactPath, destinationPath: destinationArtifactPath, script
+                                String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true);
                                 String binaryFormat = getArtifactBinaryFormat(artifactName)
-
                                 /*Excluding the android universal binary (i.e FAT_APK) to store in the artifacts list as it is not recommended to upload to Google Play store.*/
                                 if(!artifactName.contains('_FAT_APK_')) {
                                     artifacts.add([

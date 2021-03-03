@@ -21,7 +21,7 @@ import com.kony.appfactory.enums.BuildType
  *  testing application binaries.
  *
  * Logic here validates user provided parameters, prepares build parameters for channels and test automation job,
- *  triggers channel jobs and/or test automation job with prepared parameters, stores e-mail notification body on S3
+ *  triggers channel jobs and/or test automation job with prepared parameters, stores e-mail notification body on artifactStorage (S3 or Master or other)
  *  for App Factory console.
  */
 class Facade implements Serializable {
@@ -41,7 +41,7 @@ class Facade implements Serializable {
     private channelsToRun
     /*
         List of channel artifacts in format:
-            [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+            [channelPath: <relative path to the artifact on ArtifactStorage>, name: <artifact file name>, url: <ArtifactStorage URL for the artifact>]
      */
     private artifacts = []
     private mustHaveArtifacts = []
@@ -238,10 +238,10 @@ class Facade implements Serializable {
     }
 
     /**
-     * Returns relative channel path on S3.
+     * Returns relative channel path on ArtifactStorage (S3 or Master or other).
      *
      * @param channel channel build parameter name.
-     * @return relative channel path on S3.
+     * @return relative channel path on ArtifactStorage.
      */
     private final getChannelPath(channel) {
         def channelPath = channel.tokenize('_').collect() { item ->
@@ -452,7 +452,7 @@ class Facade implements Serializable {
     /**
      * Deserializes channel artifact object.
      *
-     * @param channelPath relative path to the artifact on S3, generated from channel build parameter.
+     * @param channelPath relative path to the artifact on artifact storage, generated from channel build parameter.
      * @param artifacts serialized list of channel artifacts.
      * @return list of channel artifacts.
      */
@@ -470,8 +470,8 @@ class Facade implements Serializable {
 
     /**
      * Generates Test Automation job application binaries build parameters.
-     * If AVAILABLE_TEST_POOLS build parameter been provided, we need generate values with URLs to application binaries
-     *  on S3 from artifact object and pass them to Test Automation job.
+     * If AVAILABLE_TEST_POOLS build parameter been provided, we need to generate values with URLs to application binaries
+     *  on ArtifactStorage from artifact object and pass them to Test Automation job.
      *
      * @param buildJobArtifacts list of channel artifacts.
      * @return Test Automation binaries build parameters.
@@ -489,7 +489,7 @@ class Facade implements Serializable {
 
             /*
                 Workaround to get ipa URL for iOS, just switching extension in URL to ipa,
-                because ipa file should be places nearby plist file on S3.
+                because ipa file should be places nearby plist file on ArtifactStorage.
              */
             String artifactUrl = artifact.url ? (!artifact.url.contains('.plist') ? artifact.url :
                     artifact.url.replaceAll('.plist', '.ipa')) : ''
@@ -720,9 +720,12 @@ class Facade implements Serializable {
     protected final void createPipeline() {
         /* Allocate a slave for the run */
         script.node(libraryProperties.'facade.node.label') {
+            script.cleanWs deleteDirs: true
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 try {
+                    script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
+
                     /* Wrapper for injecting timestamp to the build console output */
                     script.timestamps {
                         script.stage('Check provided parameters') {
@@ -1004,12 +1007,12 @@ class Facade implements Serializable {
                     // Publish Facade metrics keys to build Stats Action class.
                     script.statspublish buildStats.inspect()
 
-                    String s3MustHaveAuthUrl = ''
+                    String mustHaveAuthUrl = ''
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                        s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
+                        mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
                     }
 
-                    BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl)
+                    BuildHelper.setBuildDescription(script, mustHaveAuthUrl)
 
 
                     if (script.params.IS_SOURCE_VISUALIZER) {

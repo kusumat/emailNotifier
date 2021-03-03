@@ -17,10 +17,10 @@ import java.util.*
  * runTests job responsible for Test Automation scripts build and scheduling Device Farm test runs and Web tests with provided
  *  application binaries, device pools and fabric app URLs.
  *
- * Test run and Test Automation scripts artifacts are stored on S3 according with approved folder structure.
+ * Test run and Test Automation scripts artifacts are stored on artifactStorage according with approved folder structure.
  *
  * E-mail notification template and JSON file for App Factory console,
- *  also stored on S3 according with approved folder structure.
+ *  also stored on artifactStorage according with approved folder structure.
  */
 class FacadeTests implements Serializable {
     /* Pipeline object */
@@ -175,9 +175,9 @@ class FacadeTests implements Serializable {
     }
 
     /**
-     * This method returns Desktopweb Test Artifact S3 url parameter.
+     * This method returns Desktopweb Test Artifact artifactStorage url parameter.
      *
-     * @return Desktopweb Test Artifact S3 url parameter.
+     * @return Desktopweb Test Artifact artifactStorage url parameter.
      */
     private final getDesktopWebTestAutomationArtifactURLParameter() {
         !script.params.containsKey('DESKTOPWEB_ARTIFACT_URL') ? [] :
@@ -267,6 +267,7 @@ class FacadeTests implements Serializable {
                     script.timestamps {
                         /* Wrapper for colorize the console output in a pipeline build */
                         script.ansiColor('xterm') {
+                            script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                             script.stage('Validate parameters') {
                                 if (isNativeApp)
                                     nativeAWSDeviceFarmTests.validateBuildParameters(script.params)
@@ -328,6 +329,7 @@ class FacadeTests implements Serializable {
             script.timestamps {
                 /* Wrapper for colorize the console output in a pipeline build */
                 script.ansiColor('xterm') {
+                    script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
 
                     if (isWebApp)
                         desktopWebTests.createPipeline()

@@ -9,8 +9,8 @@ import jenkins.model.Jenkins
 import groovy.text.SimpleTemplateEngine
 import groovy.json.JsonSlurper
 import com.kony.AppFactory.Jenkins.rootactions.AppFactoryVersions
-import com.kony.appfactory.helper.ConfigFileHelper
-import com.kony.appfactory.helper.ValidationHelper
+import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.AppFactory.fabric.api.oauth1.KonyOauth1Client
 import com.kony.AppFactory.fabric.api.oauth1.dto.KonyExternalAuthN
 import com.kony.AppFactory.fabric.FabricException;
@@ -19,7 +19,7 @@ import com.kony.appfactory.project.settings.ProjectSettingsProperty
 import com.kony.appfactory.project.settings.dto.FabricSettingsDTO
 import com.kony.appfactory.project.settings.dto.ProjectSettingsDTO
 import com.kony.appfactory.project.settings.dto.VisualizerSettingsDTO
-import java.util.stream.Collectors;
+import java.util.stream.Collectors
 
 /**
  * Implements logic related to channel build process.
@@ -773,47 +773,6 @@ class BuildHelper implements Serializable {
         return paramsInfo.toString()
     }
 
-    /*
-     * This method is used to to create authenticated urls from S3 urls
-     * @param artifactUrl is the url which we want to convert as authenticated
-     * @param script is default script parameter
-     * @param exposeUrl is made as true if we want to display it in the console
-     * @param action - (downloads or view): decides whether the url is direct download link or directly view from browser (such as HTML files), default value is "downloads"
-     */
-
-    protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false, String action = "downloads") {
-
-        def authArtifactUrl = artifactUrl
-
-        if (script.env['CLOUD_ENVIRONMENT_GUID'] && script.env['CLOUD_DOMAIN']) {
-            String searchString = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME].join("/")
-            //artifactUrl is already encoded but only for space and double quote character. Avoid double encoding for these two special characters.
-            def subStringIndex = 0
-            if (artifactUrl.indexOf(searchString) > 0)
-                subStringIndex = artifactUrl.indexOf(searchString)
-            def encodedArtifactUrl = artifactUrl
-                    .substring(subStringIndex)
-                    .replace('%20', ' ')
-                    .replace('%22', '"')
-                    .split("/")
-                    .collect({ URLEncoder.encode(it, "UTF-8") })
-                    .join('/')
-                    .replace('+', '%20')
-                    .replace('"', '%22')
-
-            def externalAuthID = (script.env['URL_PATH_INFO']) ? "?url_path=" + URLEncoder.encode(script.env['URL_PATH_INFO'], "UTF-8") : ''
-            authArtifactUrl = script.kony.FABRIC_CONSOLE_URL + "/console/" + externalAuthID + "#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + encodedArtifactUrl
-        } else {
-            script.echoCustom("Failed to generate the authenticated URLs. Unable to find the cloud environment guid.", 'WARN')
-        }
-
-        if (exposeUrl) {
-            script.echoCustom("Artifact URL: ${authArtifactUrl}")
-        }
-
-        authArtifactUrl
-    }
-
     /**
      *  Tells whether the current build is rebuilt or not
      *
@@ -858,8 +817,6 @@ class BuildHelper implements Serializable {
 
 
     /*  Provides the Upstream Job Build Number.
-     *  It is required to keep the S3 upload path of buildresults.html in Cloud Build consistent with Single Tenant.
-     *
      *  @param script
      *  return upstreamJobNumber
      * */
@@ -981,32 +938,6 @@ class BuildHelper implements Serializable {
         return defaultParam
     }
 
-    /**
-     * Created a zip with all MustHaves the artifacts, uploads to s3, creates Auth URL and sets the environment variable "MUSTHAVE_ARTIFACTS".
-     * @param script current build instance
-     * @param projectFullPath The full path of the project for which we are creating the MustHaves
-     * @param mustHaveFile The file for which we are going to create a zip
-     * @param separator This is used while creating paths
-     * @param s3ArtifactPath Path where we are going to publish the S3 artifacts
-     * @param channelVariableName The channel for which we are creating the MustHaves
-     * @return s3MustHaveAuthUrl The authenticated URL of the S3 url
-     */
-    protected static def uploadBuildMustHavesToS3 (script, projectFullPath, mustHavePath, mustHaveFile, separator, s3ArtifactPath, channelVariableName) {
-        def upstreamJob = BuildHelper.getUpstreamJobName(script)
-        def isRebuild = BuildHelper.isRebuildTriggered(script)
-        def mustHaves = []
-        def s3MustHaveAuthUrl
-        String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
-        script.dir(projectFullPath) {
-            script.catchErrorCustom("Failed to create the zip file") {
-                script.zip dir: mustHavePath, zipFile: mustHaveFile
-                if (script.fileExists(mustHaveFilePath)) {
-                    s3MustHaveAuthUrl = AwsHelper.publishMustHavesToS3(script, s3ArtifactPath, mustHaveFile, projectFullPath, upstreamJob, isRebuild, channelVariableName, mustHaves)
-                }
-            }
-        }
-        s3MustHaveAuthUrl
-    }
 
     /**
      * Set the external (third party) authentication login path as URL_PATH_INFO env variable, if enabled for the provided MF Account.
@@ -1338,10 +1269,10 @@ class BuildHelper implements Serializable {
      * @param jobBuildLogFile
      * @param libraryProperties
      * @param mustHaveArtifacts
-     * @return s3MustHaveAuthUrl fabric authenticated auth url to download musthaves
+     * @return mustHaveAUrl fabric authenticated auth url to download musthaves
      */
     protected static final String prepareMustHaves(script, buildType, jobMustHavesFolderName, jobBuildLogFile, libraryProperties, mustHaveArtifacts) {
-        String s3MustHaveAuthUrl = ''
+        String mustHaveArtifactUrl = ''
         String separator = script.isUnix() ? '/' : '\\'
         String mustHaveFolderPath = [script.env.WORKSPACE, jobMustHavesFolderName].join(separator)
         String mustHaveFile = [jobMustHavesFolderName, script.env.BUILD_NUMBER].join("_") + ".zip"
@@ -1354,7 +1285,7 @@ class BuildHelper implements Serializable {
             script.writeFile file: "environmentInfo.txt", text: getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: getInputParamsAsString(script)
             if(buildType.toString().equals("Visualizer")) {
-                AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
+                downloadChildJobMustHaves(script, mustHaveArtifacts)
             } else {
                 /* We copy the Custom Hooks logs for Fabric only, because for Viz, they would have 
                  * been copied by the Channel builds and are part of Channel musthave logs. */
@@ -1373,16 +1304,30 @@ class BuildHelper implements Serializable {
             script.zip dir: jobMustHavesFolderName, zipFile: mustHaveFile
             script.catchErrorCustom("Failed to create the Zip file") {
                 if (script.fileExists(mustHaveFilePath)) {
-                    String s3ArtifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
-                    s3MustHaveAuthUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath, sourceFileName: mustHaveFile,
-                            sourceFilePath: script.env.WORKSPACE, script
-                    s3MustHaveAuthUrl = createAuthUrl(s3MustHaveAuthUrl, script)
+                    String artifactPath = ['Builds', script.env.PROJECT_NAME].join('/')
+                    mustHaveArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: mustHaveFile,
+                            sourceFilePath: script.env.WORKSPACE, destinationPath: artifactPath, script
+                    mustHaveArtifactUrl = ArtifactHelper.createAuthUrl(mustHaveArtifactUrl, script)
                 }
             }
         }
-        s3MustHaveAuthUrl
+        mustHaveArtifactUrl
     }
-    
+
+
+    /**
+     * Downloads the child job artifacts and then deletes them from artifact Storage while preparing musthaves by the parent/upstream job.
+     * @param mustHaveArtifacts Artifacts that are to be captured in musthaves zip file.
+     */
+    static void downloadChildJobMustHaves(script, mustHaveArtifacts) {
+        mustHaveArtifacts.each { mustHaveArtifact ->
+            if (mustHaveArtifact.path.trim().length() > 0) {
+                ArtifactHelper.retrieveArtifact(script, mustHaveArtifact.job, mustHaveArtifact.buildId, [mustHaveArtifact.path, mustHaveArtifact.name].join('/'));
+                ArtifactHelper.deleteArtifact(script,  mustHaveArtifact.job, mustHaveArtifact.buildId, [mustHaveArtifact.path, mustHaveArtifact.name].join('/'))
+            }
+        }
+    }
+
     /**
      * Copies the custom hooks build logs into must haves folder
      */
@@ -1395,10 +1340,10 @@ class BuildHelper implements Serializable {
     /**
      * Sets build description at the end of the build.
      * @param script
-     * @param s3MustHaveAuthUrl
+     * @param mustHaveAuthUrl
      * @param buildArtifactName its optional param
      */
-    protected static final void setBuildDescription(script, s3MustHaveAuthUrl, String buildArtifactName = null) {
+    protected static final void setBuildDescription(script, mustHaveAuthUrl, String buildArtifactName = null) {
         String EnvironmentDescription = ""
         String mustHavesDescription = ""
         String buildArtifactDescription = ""
@@ -1409,8 +1354,8 @@ class BuildHelper implements Serializable {
         if(buildArtifactName)
             buildArtifactDescription = "<p>App Name: $buildArtifactName</p>"
 
-        if(s3MustHaveAuthUrl)
-            mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
+        if(mustHaveAuthUrl)
+            mustHavesDescription = "<p><a href='${mustHaveAuthUrl}'>Logs</a></p>"
 
         script.currentBuild.description = """\
             <div id="build-description">
@@ -1459,5 +1404,45 @@ class BuildHelper implements Serializable {
            So, returning 'null' incase for 9.1 and 9.1 below versions.
          */
          return (getAppFactoryProjectSettings(projectName)?.getProjectDSLVersion())
+    }
+
+    /**
+     * Created a zip with all MustHaves the artifacts, uploads to artifact storage, creates Auth URL and sets the environment variable "MUSTHAVE_ARTIFACTS".
+     * @param script current build instance
+     * @param projectFullPath The full path of the project for which we are creating the MustHaves
+     * @param mustHaveFile The file for which we are going to create a zip
+     * @param separator This is used while creating paths
+     * @param ArtifactPath, destination path where we are going to publish the artifacts on artifact Storage (S3 or Master or other)
+     * @param channelVariableName The channel for which we are creating the MustHaves
+     * @return MustHaveAuthUrl The authenticated URL for S3 and artifact url for Master
+     */
+    protected static def uploadBuildMustHaves(script, projectFullPath, mustHavePath, mustHaveFile, separator, artifactPath, channelVariableName) {
+        def upstreamJob = getUpstreamJobName(script)
+        def isRebuild = isRebuildTriggered(script)
+        def mustHaves = []
+        def mustHaveArtifactUrl
+        String mustHaveFilePath = [projectFullPath, mustHaveFile].join(separator)
+        script.dir(projectFullPath) {
+            script.catchErrorCustom("Failed to create the zip file") {
+                script.zip dir: mustHavePath, zipFile: mustHaveFile
+                if (script.fileExists(mustHaveFilePath)) {
+                    String mustHaveArtifactFullPath = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME, artifactPath].join('/')
+                    mustHaveArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: mustHaveFile,
+                            sourceFilePath: projectFullPath, mustHaveArtifactFullPath, script
+                    /* We will be keeping the artifact url of the must haves into the collection only if the
+                     * channel job is triggered by the parent job that is buildVisualiser job.
+                     * Handling the case where we rebuild a child job, from an existing job which was
+                     * triggered by the buildVisualiser job.
+                     */
+                    if (upstreamJob != null && !isRebuild) {
+                        mustHaves.add([
+                                channelVariableName: channelVariableName, name: mustHaveFile, path: mustHaveArtifactFullPath, job: script.env.JOB_NAME, buildId: script.env.BUILD_NUMBER
+                        ])
+                        script.env['MUSTHAVE_ARTIFACTS'] = mustHaves?.inspect()
+                    }
+                }
+            }
+        }
+        mustHaveArtifactUrl
     }
 }

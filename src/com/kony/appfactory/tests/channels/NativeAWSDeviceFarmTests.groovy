@@ -1,14 +1,12 @@
 package com.kony.appfactory.tests.channels
 
 import com.kony.appfactory.helper.BuildHelper
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.AwsDeviceFarmHelper
-import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.TestsHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.ValidationHelper
-import com.kony.appfactory.dto.tests.NativeTestsDTO
 import com.kony.appfactory.dto.tests.DetailedNativeResults
 
 import groovy.json.JsonOutput
@@ -235,7 +233,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 script.shellCustom("cp $artifactPath $deviceFarmWorkingFolder", true)
                 /* else, fetch binaries */
             } else {
-                deviceFarm.fetchArtifact(artifactName + '.' + artifactExt, artifactURL)
+                ArtifactHelper.retrieveArtifact(script, artifactName + '.' + artifactExt, artifactURL)
             }
         }
         /* For universal build test run job setting the artifacts url path to fetch the binary from universal artifacts  */
@@ -262,7 +260,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
 
     /**
      * Fetches test run results from Device Farm, generates data for e-mail template and JSON file and moves artifacts
-     * to customer S3 bucket.
+     * to artifactStorage.
      */
     protected final fetchTestResults() {
         def stepsToRun = [:]
@@ -303,7 +301,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                     DetailedNativeResults result = results.get(runArtifacts.device.name + ' ' + runArtifacts.device.os)
                     def artifacts = fetchTestBinaryDetails(result.getDevice().getFormFactor(), result.getDevice().getPlatform())
                     if(artifacts.url.contains(script.env.S3_BUCKET_NAME)) {
-                        artifacts.url = BuildHelper.createAuthUrl(artifacts.url, script, true)
+                        artifacts.url = ArtifactHelper.createAuthUrl(artifacts.url, script, true)
                     }
                     result.setBinaryURL(artifacts.url)
                     result.setBinaryExt(artifacts.extension)
@@ -419,9 +417,9 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         }
         separator()
 
-        /* Move artifacts to customer bucket */
+        /* Move artifacts to customer artifactStorage (S3 or Master or other) */
         script.dir('artifacts') {
-            deviceFarm.moveArtifactsToCustomerS3Bucket(
+            deviceFarm.publishDeviceFarmTestRunResults(
                     deviceFarmTestRunResults,
                     ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
             )
@@ -655,6 +653,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
+                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
+
                 script.stage('Validate parameters') {
                     validateBuildParameters(script.params)
                 }
@@ -708,10 +708,10 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                     /* Set runTests flag to true when build is successful,otherwise set it to false (in catch block) */
                                     runTests = true
                                 }
-                                script.stage('Publish test automation scripts build result to S3') {
+                                script.stage('Publish test automation scripts build results') {
                                     if (script.fileExists("${testFolder}/target/${projectName}_TestApp.zip")) {
-                                        AwsHelper.publishToS3 sourceFileName: "${projectName}_TestApp.zip",
-                                                bucketPath: [
+                                        ArtifactHelper.publishArtifact sourceFileName: "${projectName}_TestApp.zip",
+                                                destinationPath: [
                                                         'Tests',
                                                         script.env.JOB_BASE_NAME,
                                                         script.env.BUILD_NUMBER
@@ -840,17 +840,17 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     }
 
     /**
-     * Publish the TestNG test-output folder to S3.
+     * Publish the TestNG test-output folder to ArtifactStorage (S3 or Master or other).
      *
      * @param runArtifact the run result from devicefarm
      * @param suiteName the test suite name
      * @param folderPath the folder path need to upload
      * @returns testngReportsAuthURL the authenticated S3 URL of TestNG test-output
      */
-    protected  publishTestReportsToS3(runArtifact, suiteName, folderPath) {
-        def s3ArtifactsPath = TestsHelper.getS3ResultsPath(script, runArtifact, suiteName)
-        def testngReportsUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactsPath, sourceFilePath: folderPath, script, false
-        def testngReportsAuthURL = BuildHelper.createAuthUrl(testngReportsUrl, script, true, "view")
+    protected  publishTestReports(runArtifact, suiteName, folderPath) {
+        def destinationArtifactPath = TestsHelper.getDestinationResultsPath(script, runArtifact, suiteName)
+        def testngReportsUrl = ArtifactHelper.publishArtifact sourceFilePath: folderPath, destinationPath: destinationArtifactPath, script
+        def testngReportsAuthURL = ArtifactHelper.createAuthUrl(testngReportsUrl, script, true, "view")
         return testngReportsAuthURL
 
     }
@@ -907,10 +907,11 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 if(isJasmineJSONReportExists && isJasmineHTMLReportExists) {
                     def jasmineTestResults = script.readJSON file: "${deviceFarmWorkingFolder}/${deviceName}/JasmineTestResult.json"
                     test_results = parseAndgetJasmineResults(jasmineTestResults)
-                    def s3path = TestsHelper.getS3ResultsPath(script, testRunArtifacts, "JasmineSuite")
-                    authUrl = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: "JasmineTestResult.html",
-                            sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}" , script, false
-                    authUrl = BuildHelper.createAuthUrl(authUrl, script, true)
+                    def destinationArtifactPath = TestsHelper.getDestinationResultsPath(script, testRunArtifacts, "JasmineSuite")
+                    authUrl = ArtifactHelper.publishArtifact sourceFileName: "JasmineTestResult.html",
+                            sourceFilePath: "${deviceFarmWorkingFolder}/${deviceName}",
+                            destinationPath: destinationArtifactPath, script
+                    authUrl = ArtifactHelper.createAuthUrl(authUrl, script, true)
                 } else {
                     script.echoCustom("Jasmine Test report is not found for the ${deviceDisplayName} device. Please check the device logs for more information!!!", "ERROR", false)
                     script.currentBuild.result = "UNSTABLE"
@@ -919,7 +920,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 script.shellCustom("cp -R ${deviceFarmWorkingFolder}/${deviceName}/Host_Machine_Files/*DEVICEFARM_LOG_DIR/*  ${deviceFarmWorkingFolder}/${deviceName}/", true)
                 boolean isTestNGResultsFileExists = script.fileExists file: "${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml"
                 if(isTestNGResultsFileExists) {
-                    authUrl = publishTestReportsToS3(testRunArtifacts, "TestNGSuite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
+                    authUrl = publishTestReports(testRunArtifacts, "TestNGSuite", "${deviceFarmWorkingFolder}/${deviceName}/test-output/")
                     String testNGResultsFileContent = script.readFile("${deviceFarmWorkingFolder}/${deviceName}/test-output/testng-results.xml")
                     test_results = parseTestResults(testNGResultsFileContent)
                     authUrl = authUrl.replace("*/**", 'index.html')

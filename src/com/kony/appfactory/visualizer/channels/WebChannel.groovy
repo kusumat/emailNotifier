@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
@@ -113,6 +113,7 @@ class WebChannel extends Channel {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
+                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 script.stage('Check provided parameters') {
                     if (!(webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("RESPONSIVE_WEB")) && !(desktopWebChannel)) {
                         script.echoCustom('Please select at least one channel to build!', 'ERROR')
@@ -269,18 +270,17 @@ class WebChannel extends Channel {
                         }
 
 
-                        script.stage("Publish artifacts to S3") {
+                        script.stage("Publish artifacts") {
                             /* Rename artifacts for publishing */
                             def channelArtifacts = renameArtifacts(buildArtifacts)
 
                             channelArtifacts?.each { artifact ->
                                 String artifactName = artifact.name
                                 String artifactPath = artifact.path
-                                String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                        sourceFileName: artifactName, sourceFilePath: artifactPath, script
+                                String artifactUrl = ArtifactHelper.publishArtifact sourceFileName: artifactName,
+                                        sourceFilePath: artifactPath, destinationPath: destinationArtifactPath, script
 
-
-                                String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
+                                String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true)
                                 /* Add War/Zip to MustHaves Artifacts */
                                 mustHaveArtifacts.add([name: artifact.name, path: artifactPath])
                                 artifacts.add([

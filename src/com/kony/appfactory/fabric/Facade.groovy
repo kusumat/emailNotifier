@@ -3,7 +3,7 @@ package com.kony.appfactory.fabric
 import java.io.Serializable
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.FabricHelper
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.ValidationHelper
@@ -104,14 +104,14 @@ class Facade implements Serializable{
         def appBinariesReleasePath
         /*
          List of fabric app artifacts in format:
-             [fabricAppPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+             [fabricAppPath: <relative path to the artifact on ArtifactStorage>, name: <artifact file name>, url: <ArtifactStorage URL for the artifact>]
         */
         def fabricBuildArtifacts = []
         def javaServiceBuildTargetFolderName = "target"
         
         //MustHave variables
         def mustHaveArtifacts = []
-        def s3MustHaveAuthUrl = ''
+        def mustHaveAuthUrl = ''
         
         //Build stats variable
         def fabricStats = [:]
@@ -120,6 +120,7 @@ class Facade implements Serializable{
         script.node(nodeLabel) {
             fabricStats.put('fabtsstart', new Date().time)
             script.ansiColor('xterm') {
+                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 def workspace = script.env.WORKSPACE
                 isUnixNode = script.isUnix()
                 separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)
@@ -456,24 +457,24 @@ class Facade implements Serializable{
                             }
                         }
                         
-                        script.stage('Archive build artifacts') {
+                        script.stage('Publish build artifacts') {
 
-                            script.echoCustom("Publishing build artifacts to AWS S3 bucket..", 'INFO')
-                            def s3FabricArtifactPath = ['Builds', fabricEnvironmentName, 'Fabric', fabricAppName, script.env.BUILD_NUMBER].join('/')
+                            script.echoCustom("Publishing build artifacts to artifact storage..", 'INFO')
+                            def fabricArtifactPath = ['Builds', fabricEnvironmentName, 'Fabric', fabricAppName, script.env.BUILD_NUMBER].join('/')
 
-                            String fabricAppArtifactUrl = AwsHelper.publishToS3 bucketPath: s3FabricArtifactPath,
-                                sourceFileName: projectNameZip, sourceFilePath: appBinariesReleasePath, script
-                            String authenticatedFabricAppArtifactUrl = BuildHelper.createAuthUrl(fabricAppArtifactUrl, script, true)
+                            String fabricAppArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: projectNameZip,
+                                    sourceFilePath: appBinariesReleasePath, destinationPath: fabricArtifactPath, script
+                            String authenticatedFabricAppArtifactUrl = ArtifactHelper.createAuthUrl(fabricAppArtifactUrl, script, true)
                             fabricBuildArtifacts.add([fabricAppName: fabricAppName, name: projectNameZip, fabricArtifactUrl: fabricAppArtifactUrl,
                                             authurl: authenticatedFabricAppArtifactUrl])
 
                             script.dir(javaAssetsBinariesReleasePath) {
                                 def jarFiles = script.findFiles(glob: '*.jar')
                                 jarFiles?.each { jarFile ->
-                                    String javaAssestArtifactUrl = AwsHelper.publishToS3 bucketPath: s3FabricArtifactPath,
-                                        sourceFileName: jarFile.name, sourceFilePath: ".", script
+                                    String javaAssestArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: jarFile.name,
+                                            sourceFilePath: ".", destinationPath: fabricArtifactPath, script
                                         
-                                    String authenticatedJavaAssestArtifactUrl = BuildHelper.createAuthUrl(javaAssestArtifactUrl, script, true)
+                                    String authenticatedJavaAssestArtifactUrl = ArtifactHelper.createAuthUrl(javaAssestArtifactUrl, script, true)
                                     
                                     fabricBuildArtifacts.add([fabricAppName: fabricAppName, name: jarFile.name, fabricArtifactUrl: javaAssestArtifactUrl,
                                         authurl: authenticatedJavaAssestArtifactUrl])
@@ -519,7 +520,7 @@ class Facade implements Serializable{
                         if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             def fabricJobMustHavesFolderName = "fabricMustHaves"
                             def fabricJobBuildLogFile = "fabricBuildlog.log"
-                            s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
+                            mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
                         }
                         
                     } catch (Exception Ex) {
@@ -528,7 +529,7 @@ class Facade implements Serializable{
                         script.currentBuild.result = "UNSTABLE"
                     }
                     
-                    BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl, fabricAppName)
+                    BuildHelper.setBuildDescription(script, mustHaveAuthUrl, fabricAppName)
                     script.echoCustom("Notifying build results..", 'INFO')
                     NotificationsHelper.sendEmail(script, 'fabricBuild',
                         [

@@ -1,7 +1,7 @@
 package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AppFactoryException
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
@@ -16,11 +16,11 @@ class IosChannel extends Channel {
     private karArtifact
     private plistArtifact
     private ipaArtifact
-    /* IPA file S3 URL, used for PLIST file creation */
+    /* IPA file artifact URL, used for PLIST file creation */
     private ipaArtifactUrl
     private authenticatedIPAArtifactUrl
 
-    /* KAR file S3 URL */
+    /* KAR file artifact URL */
     private karArtifactUrl
     private authenticatedKARArtifactUrl
 
@@ -100,7 +100,7 @@ class IosChannel extends Channel {
     }
 
     /**
-     * Fetches fastlane configuration files for signing build artifacts from S3.
+     * Prepare fastlane configuration files for signing build artifacts from global environment variables.
      */
     protected final void fetchFastlaneConfig() {
         String fastlaneFastfileName = libraryProperties.'fastlane.fastfile.name'
@@ -176,14 +176,14 @@ class IosChannel extends Channel {
     }
 
     /**
-     * Publish iOS KAR artifact to S3
+     * Publish iOS KAR artifact
      */
     private final void publishKar() {
-            script.echoCustom('Publishing KAR artifact to S3...')
-            karArtifact = renameArtifacts([karArtifact]).first()
-            karArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                    sourceFileName: karArtifact.name, sourceFilePath: karArtifact.path, script
-            authenticatedKARArtifactUrl = BuildHelper.createAuthUrl(karArtifactUrl, script, false)
+        script.echoCustom('Publish KAR artifact ...')
+        karArtifact = renameArtifacts([karArtifact]).first()
+        karArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: karArtifact.name,
+                 sourceFilePath: karArtifact.path, destinationPath: destinationArtifactPath, script
+        authenticatedKARArtifactUrl = ArtifactHelper.createAuthUrl(karArtifactUrl, script, false)
     }
 
     /**
@@ -440,7 +440,7 @@ class IosChannel extends Channel {
     
     /**
      * Creates PLIST file.
-     * @param ipaArtifactUrl IPA file S3 URL.
+     * @param ipaArtifactUrl IPA file URL.
      * @return PLIST file object, format: {name: <NameOfPlistFile>, path: <PlistFilePath>}.
      */
     private final createPlist(String ipaArtifactUrl) {
@@ -479,6 +479,7 @@ class IosChannel extends Channel {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
+                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 script.stage('Check provided parameters') {
                     ValidationHelper.checkBuildConfiguration(script)
 
@@ -563,7 +564,7 @@ class IosChannel extends Channel {
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
                             mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
 
-                            /* Publish iOS KAR artifact to S3 */
+                            /* Publish iOS KAR artifact */
                             if(karArtifact) {
                                 publishKar()
                                 artifacts.add([
@@ -582,26 +583,26 @@ class IosChannel extends Channel {
                             channelBuildStats.put('binsize', getBinarySize(ipaArtifact.path, ipaArtifact.name))
                         }
 
-                        script.stage("Publish IPA artifact to S3") {
-                            ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                    sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
-
+                        script.stage("Publish IPA artifact") {
+                            ipaArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: ipaArtifact.name,
+                                    sourceFilePath: ipaArtifact.path, destinationPath: destinationArtifactPath, script
                         }
 
+
                         script.stage("Generate PLIST file") {
-                            authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
+                            authenticatedIPAArtifactUrl = ArtifactHelper.createAuthUrl(ipaArtifactUrl, script, false);
 
                             /* Get plist artifact */
                             plistArtifact = createPlist(authenticatedIPAArtifactUrl)
                         }
 
-                        script.stage("Publish PLIST artifact to S3") {
+                        script.stage("Publish PLIST artifact") {
                             String artifactName = plistArtifact.name
                             String artifactPath = plistArtifact.path
-                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script
+                            String artifactUrl = ArtifactHelper.publishArtifact sourceFileName: artifactName,
+                                    sourceFilePath: artifactPath, destinationPath: destinationArtifactPath, script
 
-                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                            String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true);
                             String plistArtifactOTAUrl = authenticatedArtifactUrl
 
                             if(ipaArtifact.name)

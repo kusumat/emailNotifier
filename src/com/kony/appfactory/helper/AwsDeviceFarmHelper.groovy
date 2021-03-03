@@ -1,7 +1,5 @@
 package com.kony.appfactory.helper
 
-
-import java.net.URLDecoder
 import groovy.json.JsonOutput
 import groovy.json.JsonBuilder
 import java.text.SimpleDateFormat
@@ -11,6 +9,8 @@ import java.math.*;
 import com.kony.appfactory.dto.tests.DetailedNativeResults
 import com.kony.appfactory.dto.tests.ResultsCount
 import com.kony.appfactory.dto.tests.Device
+import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ArtifactHelper
 
 /**
  * Implements Device Farm logic.
@@ -31,40 +31,6 @@ class AwsDeviceFarmHelper implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
-    }
-
-    /**
-     * Fetches artifact via provided URL. Checks if URL contains S3 bucket path, then simply fetch from S3.
-     *
-     * @param artifactName artifact name.
-     * @param artifactUrl artifact URL.
-     */
-    protected final void fetchArtifact(String artifactName, String artifactUrl) {
-        String successMessage = 'Artifact ' + artifactName + ' fetched successfully'
-        String errorMessage = 'Failed to fetch artifact ' + artifactName
-        artifactUrl = artifactUrl.replace(' ', '%20')
-        script.catchErrorCustom(errorMessage, successMessage) {
-
-            /* We need to check artifactUrl link is containing S3 bucket name that appfactory instance is pointing,
-             * if so instead of downloading through https URL we can simply copy directly from S3.
-             * This eliminates unnecessary burden of processing signed URLs for downloading artifact passed by Facade job.
-             **/
-            artifactUrl = (artifactUrl) ? (artifactUrl.contains(script.env.S3_BUCKET_NAME) ?
-                    artifactUrl.replaceAll('https://'+script.env.S3_BUCKET_NAME+'(.*)amazonaws.com',
-                            's3://'+script.env.S3_BUCKET_NAME) : artifactUrl) : ''
-            if (artifactUrl.startsWith('http://') || artifactUrl.startsWith('https://')) {
-                script.shellCustom("curl -k -s -S -f -L -o \'${artifactName}\' \'${artifactUrl}\'", true)
-            }
-            else {
-                /* copy from S3 bucket without printing expansion of command on console */
-                String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
-                String artifactNameDecoded = URLDecoder.decode(artifactName, "UTF-8")
-
-                String cpS3Cmd = "set +x;aws --region " + script.env.S3_BUCKET_REGION + " s3 cp \"${artifactUrlDecoded}\" \"${artifactNameDecoded}\" --only-show-errors"
-                script.shellCustom(cpS3Cmd, true)
-            }
-
-        }
     }
 
     /**
@@ -744,15 +710,12 @@ class AwsDeviceFarmHelper implements Serializable {
     }
 
     /**
-     * Move test run artifacts to customer S3 bucket.
+     * Move test run artifacts to artifactStorage (S3 or Master or other).
      *
      * @param runResultArtifacts Map with run result artifacts.
-     * @param bucketName S3 bucket name.
-     * @param bucketRegion S3 bucket region.
-     * @param s3BasePath base path in S3 bucket.
-     * @param artifactFolder path to artifact in workspace.
+     * @param destinationBasePath base path in artifactStorage.
      */
-    protected final moveArtifactsToCustomerS3Bucket(runResultArtifacts, s3BasePath) {
+    protected final publishDeviceFarmTestRunResults(runResultArtifacts, destinationBasePath) {
         String successMessage = 'Artifacts moved successfully'
         String errorMessage = 'Failed to move artifacts'
 
@@ -760,26 +723,26 @@ class AwsDeviceFarmHelper implements Serializable {
             for (runArtifact in runResultArtifacts) {
                 for (suite in runArtifact.suites) {
                     for (test in suite.tests) {
-                        def resultPath = [s3BasePath]
+                        def resultPath = [destinationBasePath]
                         resultPath.add(runArtifact.device.formFactor)
                         resultPath.add(runArtifact.device.name + '_' + runArtifact.device.platform + '_' +
                                 runArtifact.device.os)
                         resultPath.add(suite.name)
                         resultPath.add(test.name)
                         for (artifact in test.artifacts) {
-                            /* Replace all spaces with underscores in S3 path */
-                            def s3path = resultPath.join('/').replaceAll('\\s', '_')
+                            /* Replace all spaces with underscores in destination path */
+                            def destinationPath = resultPath.join('/').replaceAll('\\s', '_')
                             /* Replace all spaces with underscores in artifact name */
                             def artifactFullName = (artifact.name + '.' + artifact.extension).replaceAll('\\s', '_')
                             /* persisting the aws urls for the future use - we currently use for extracting the customer artifacts */
                             artifact.awsurl = artifact.url
 
                             /* Fetch run artifact */
-                            fetchArtifact(artifactFullName, artifact.url)
-                            /* Publish to S3 and update run artifact URL */
-                            artifact.url = AwsHelper.publishToS3 bucketPath: s3path, sourceFileName: artifactFullName,
-                                    sourceFilePath: script.pwd(), script
-                            artifact.authurl = BuildHelper.createAuthUrl(artifact.url, script, true)
+                            ArtifactHelper.retrieveArtifact(script, artifactFullName, artifact.url)
+                            /* Publish to Artifact Storage and update run artifact URL */
+                            artifact.url = ArtifactHelper.publishArtifact sourceFileName: artifactFullName,
+                                    sourceFilePath: script.pwd(), destinationPath: destinationPath, script
+                            artifact.authurl = ArtifactHelper.createAuthUrl(artifact.url, script, true)
                         }
                     }
                 }
