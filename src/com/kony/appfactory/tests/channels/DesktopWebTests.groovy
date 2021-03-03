@@ -265,7 +265,7 @@ class DesktopWebTests extends RunTests implements Serializable {
      * @param destinationArtifactPath is the artifact path into which the results will be published.
      */
     private publishJasmineResults(destinationArtifactPath) {
-        String jasmineHTMLReport, bowserConsoleLog
+        String jasmineHTMLReport, browserConsoleLog
         script.dir(testFolder) {
             def files = script.findFiles(glob: '**/TestResult_*.html')
             if (files.size() > 0) {
@@ -277,7 +277,7 @@ class DesktopWebTests extends RunTests implements Serializable {
         if (script.fileExists("${testFolder}/browserConsoleLog.txt")) {
             browserConsoleLog = ArtifactHelper.publishArtifact sourceFileName: "browserConsoleLog.txt",
                 sourceFilePath: "${testFolder}", destinationPath: destinationArtifactPath, script
-            listofLogFiles.put("Browser Console Log", ArtifactHelper.createAuthUrl(bowserConsoleLog, script, true));
+            listofLogFiles.put("Browser Console Log", ArtifactHelper.createAuthUrl(browserConsoleLog, script, true));
         }
     }
     
