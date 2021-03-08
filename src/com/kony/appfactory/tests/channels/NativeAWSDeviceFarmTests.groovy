@@ -538,7 +538,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             it.key.contains('NATIVE_BINARY_URL') && it.value
         }
         /* Filter all SCM build parameters */
-        def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
+        def scmParameters = buildParameters.findAll { it.key.equals('PROJECT_SOURCE_CODE_BRANCH') && it.value }
         /* Filter test binaries build parameter. This check is needed to maintain backward compatibility*/
         def nativeTestsUrl = script.params.containsKey('NATIVE_TESTS_URL') ? 'NATIVE_TESTS_URL' : 'TESTS_BINARY_URL'
         def nativeTestBinaryUrlParameter = buildParameters.findAll { it.key == nativeTestsUrl && it.value }

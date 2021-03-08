@@ -369,7 +369,7 @@ class DesktopWebTests extends RunTests implements Serializable {
         /* Filter desktopWeb application binaries build parameters */
         def publishedAppUrlParameters = (!buildParameters['FABRIC_APP_URL']) ? [:] : ['FABRIC_APP_URL': buildParameters['FABRIC_APP_URL']]
         /* Filter all SCM build parameters */
-        def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
+        def scmParameters = buildParameters.findAll { it.key.equals('PROJECT_SOURCE_CODE_BRANCH') && it.value }
         /* Filter desktopWeb test binaries build parameter */
         def testBinaryUrlParameter = (!buildParameters['DESKTOPWEB_TESTS_URL']) ? [:] : ['DESKTOPWEB_TESTS_URL': buildParameters['DESKTOPWEB_TESTS_URL']]
         /* Combine desktopWeb binaries build parameters */
