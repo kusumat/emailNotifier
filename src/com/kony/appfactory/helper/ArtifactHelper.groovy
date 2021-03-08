@@ -172,7 +172,6 @@ class ArtifactHelper implements Serializable {
      * @return URL for artifact, all special characters in URL path will be escaped.
      */
     protected static String getArtifactUrl(script, artifactURL, String artifactPath) {
-        script.echoCustom("Artifact url is : " + artifactURL)
         if (!artifactURL.startsWith(script.env.JENKINS_URL) && !artifactURL.contains("/artifact/")) {
             URL s3Url
             URI s3Uri
