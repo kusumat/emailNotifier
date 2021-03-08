@@ -15,7 +15,7 @@ class ArtifactHelper implements Serializable {
      */
     static void retrieveArtifact(script, String jobName, String buildId, String artifactName) {
         script.withStorageEnv(){
-            script.downloadArtifact(job: jobName, buildId:buildId, artifactName: artifactName)
+            script.downloadArtifact(job: jobName, buildId: buildId, artifactName: artifactName)
         }
     }
 
@@ -64,9 +64,8 @@ class ArtifactHelper implements Serializable {
              * retrieve buildArtifactName: 100000005/Test2599/Builds/AppFactoryServer/Android/Mobile/Native/59/Test2599_59.apk
              */
             if (artifactUrl.startsWith(script.env.JENKINS_URL) && artifactUrl.contains("/artifact/")) {
-                def artifactString = artifactUrl.replaceAll(script.env.JENKINS_URL+'job/', "").replaceAll("/artifact/", "@")
-
-                String[] jobWithBuildIDString = artifactString.split("@")
+                def artifactString = artifactUrl.replaceAll(script.env.JENKINS_URL+'job/', "")
+                String[] jobWithBuildIDString = artifactString.split("/artifact/")
                 def jobWithBuildID = jobWithBuildIDString[0]
                 def buildArtifactName = jobWithBuildIDString[1]
                 def buildJob = jobWithBuildID.substring(0, jobWithBuildID.lastIndexOf("/")).replaceAll("/job/", "/")
@@ -92,7 +91,7 @@ class ArtifactHelper implements Serializable {
      */
     static void deleteArtifact(script, String jobName, String buildId, String artifactName) {
         script.withStorageEnv(){
-            script.deleteArtifact(job: jobName, buildId:buildId, artifactName: artifactName)
+            script.deleteArtifact(job: jobName, buildId: buildId, artifactName: artifactName)
         }
     }
 
