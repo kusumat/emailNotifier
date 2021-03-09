@@ -19,6 +19,15 @@ class ArtifactHelper implements Serializable {
         }
     }
 
+    /**
+     * Fetches artifact from artifactStorage (S3 or Master or other) using DownloadArtifact build step from storage plugin.
+     * @param artifactName artifact name
+     */
+    static void retrieveArtifact(script, String artifactName) {
+        script.withStorageEnv(){
+            script.downloadArtifact(artifactName: artifactName)
+        }
+    }
 
     /**
      * Fetches artifact via provided URL.
@@ -47,11 +56,11 @@ class ArtifactHelper implements Serializable {
                 }
                 else {
                     /* copy from S3 bucket without printing expansion of command on console */
-                    String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
-                    String artifactNameDecoded = URLDecoder.decode(artifactName, "UTF-8")
-
-                    String cpS3Cmd = "set +x;aws --region " + script.env.S3_BUCKET_REGION + " s3 cp \"${artifactUrlDecoded}\" \"${artifactNameDecoded}\" --only-show-errors"
-                    script.shellCustom(cpS3Cmd, true)
+                    def s3uri = 's3://'+script.env.S3_BUCKET_NAME+'/'
+                     def artifactPath =  artifactUrl.replaceAll(s3uri, "")
+                    retrieveArtifact(script, artifactPath)
+                    def artifactNameFromURL = artifactUrl.substring(artifactUrl.lastIndexOf("/") + 1)
+                    script.shellCustom("mv \'${artifactNameFromURL}\' \'${artifactName}\'", true)
                 }
             }
         }
