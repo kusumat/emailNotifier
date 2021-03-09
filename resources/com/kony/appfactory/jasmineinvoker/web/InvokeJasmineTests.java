@@ -43,6 +43,7 @@ import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.WebDriverException;
+import org.openqa.selenium.JavascriptException;
 import org.testng.Assert;
 import org.testng.ITestContext;
 import org.testng.ITestListener;
@@ -57,10 +58,12 @@ public class InvokeJasmineTests implements ITestListener {
     String windowSize;
     String fileDownloadPath;
     String jasmineTestAppUrl;
+    String baseAppName;
     int totalTests = 0;
     int totalPassed = 0;
     int totalFailed = 0;
     Map<String, String> prevResultsMap = new HashMap<String, String>();
+    Map<String, String> resultsJsonMap = new HashMap<String, String>();
     String inProgressTest = null;
             
     private String getWebDriverPath() {
@@ -103,6 +106,13 @@ public class InvokeJasmineTests implements ITestListener {
         if (jasmineTestAppUrl != null)
             return jasmineTestAppUrl;
         else throw new RuntimeException("Jasmine test app URL is not set properly.");
+    }
+    
+    private String getBaseAppName() {
+        baseAppName = System.getProperty("BASE_APP_NAME");
+        if (baseAppName != null)
+            return baseAppName;
+        else throw new RuntimeException("Unable to find the appId from the given project");
     }
     
     private void setupDriver() throws ClientProtocolException, IOException {
@@ -223,48 +233,62 @@ public class InvokeJasmineTests implements ITestListener {
      */
     private void checkTestExecutionStatus(String downloadPath) throws Exception {
         String resultsJSON = null;
-        boolean isTestInProgress = false;
-        boolean isHTMLReportExists = false;
         int iterations = 0;
+        boolean isTestCompleted = true;
+        List<String> tabListWithNonKonyApp = new ArrayList<String>();
         do {
-            /* Check jasmine test is triggered or not.
-             * If "resultsJSON" object consists of value, marking the status as in-progress.
-             * */
-            try {
-                JavascriptExecutor jse = (JavascriptExecutor) driver;
-                resultsJSON = jse.executeScript("return JSON.stringify(jasmineEvents)").toString();
-            } catch (WebDriverException exception) {
-                System.out.println("Failed to get the jasmine tests execution status because of the following exception - ");
-                exception.printStackTrace();
-                System.out.println("We will continue to fetch the test execution status after some time "
-                        + "and also look for the jasmine test execution report.");
-            }
-
-            if(resultsJSON != null) {
-                isTestInProgress = true;
-                evaluateTestResultStats(resultsJSON);
-                /* Evaluate the test execution stats.
-                 * Comparing the current test execution stats (total passed and failed test count)
-                 * with total test count, if it matches marking test execution is completed.
-                 * */
-                int currentTotalTestsCount = totalPassed + totalFailed;
-                if(currentTotalTestsCount == totalTests && currentTotalTestsCount > 0) {
-                    System.out.println("Jasmine tests execution is completed.");
-                    break;
+            /* Get the list of tabs opened in current browser */
+            List<String> tabsList = new ArrayList<String>(driver.getWindowHandles());
+            
+            /* Skip iterating the tab openend with non-kony app */
+            if(!tabListWithNonKonyApp.isEmpty()) {
+                for(String tabId : tabListWithNonKonyApp) {
+                    tabsList.remove(tabId);
                 }
             }
             
-            /* Looking for the report.html
-             * if it is generated, Test run will be considered as complete.*/
-            isHTMLReportExists = searchForHTMLReport(downloadPath);
-            if(isHTMLReportExists) {
-                System.out.println("Jasmine tests execution is completed. Jasmine Test execution report is found.");
+            /* Iterate for each opened tab and store the resultsJson in a map*/
+            for(String currentTab : tabsList){
+                driver.switchTo().window(currentTab);
+                try {
+                    JavascriptExecutor jse = (JavascriptExecutor) driver;
+                    resultsJSON = jse.executeScript("return JSON.stringify(jasmineEvents)").toString();
+                } catch (JavascriptException jsException) {
+                    tabListWithNonKonyApp.add(currentTab);
+                    System.out.println("Unable to run the 'jasmineEvents' check for the current running app because of following exception - ");
+                    jsException.printStackTrace();
+                    System.out.println("We will continue to fetch the test execution status for running app "
+                            + "and also look for the jasmine test execution report.");
+                } catch (WebDriverException exception) {
+                    System.out.println("Failed to get the jasmine tests execution status because of the following exception - ");
+                    exception.printStackTrace();
+                    System.out.println("We will continue to fetch the test execution status after some time "
+                            + "and also look for the jasmine test execution report.");
+                }
+                /* Storing the resultJSON per tab in a global map */
+                if(!tabListWithNonKonyApp.contains(currentTab)) {
+                    resultsJsonMap.put(currentTab, resultsJSON);
+                }
+            }
+            
+            /* Check the each tab resultsJson status and set the flag 'isTestCompleted' based on the current status*/
+            Set<String> tabsKeys = resultsJsonMap.keySet();
+            for(String currentTab : tabsKeys) {
+                String currentTabResultsJson = resultsJsonMap.get(currentTab);
+                if(currentTabResultsJson!= null) {
+                    isTestCompleted = (isTestCompleted && evaluateTestResultStats(currentTabResultsJson));
+                }
+            }
+            
+            /* if all the tab status is done, break and come out from loop */
+            if(isTestCompleted) {
+                System.out.println("Jasmine tests execution is completed.");
                 break;
             }
             
             iterations = iterations + 1;
             Thread.sleep(30000);
-        } while (!isHTMLReportExists && iterations <= 1000 && isTestInProgress);
+        } while (iterations <= 1000 && !isTestCompleted);
     }
 
     /**
@@ -274,11 +298,19 @@ public class InvokeJasmineTests implements ITestListener {
     private String getResultsInfoJSON() throws Exception {
         String resultsJSON = null;
         try {
-            JavascriptExecutor jse = (JavascriptExecutor) driver;
-            resultsJSON = jse.executeScript("return JSON.stringify(jasmineEvents)").toString();
-            File jsonFile = new File(getDownloadFilePath() + File.separator + "report.json");
-            writeToFile(jsonFile, resultsJSON);
-            evaluateTestResultStats(resultsJSON);
+            Set<String> tabsKeys = resultsJsonMap.keySet();
+            for(String currentTab : tabsKeys) {
+                driver.switchTo().window(currentTab);
+                JavascriptExecutor jse = (JavascriptExecutor) driver;
+                String testAppId = jse.executeScript("return appConfig.appId").toString();
+                if(getBaseAppName().equals(testAppId)) {
+                    resultsJSON = resultsJsonMap.get(currentTab);
+                    File jsonFile = new File(getDownloadFilePath() + File.separator + "report.json");
+                    writeToFile(jsonFile, resultsJSON);
+                    evaluateTestResultStats(resultsJSON);
+                    break;
+                }
+            }
         } catch (WebDriverException e) {
             System.out.println("Exception occurred while fetching the Jasmine results!");
             e.printStackTrace();
@@ -311,8 +343,9 @@ public class InvokeJasmineTests implements ITestListener {
      * Evaluate the in-progress test execution stats
      * @param resultsJson json string of current results
      * @throws JSONException
+     * @return boolean flag for test status results: true/false
      */
-    private void evaluateTestResultStats(String resultsJson) throws JSONException {
+    private boolean evaluateTestResultStats(String resultsJson) throws JSONException {
         totalTests = 0;
         totalPassed = 0;
         totalFailed = 0;
@@ -383,6 +416,13 @@ public class InvokeJasmineTests implements ITestListener {
         if(inProgressTest != null) {
             printMe(inProgressTest, currResultsMap.get(inProgressTest));
         }
+        
+        /* Check the total test exceuted */
+        int currentTotalTestsCount = totalPassed + totalFailed;
+        if(currentTotalTestsCount == totalTests && currentTotalTestsCount > 0) {
+            return true;
+        }
+        return false;
     }
     
     private void printMe(String testCase, String status) {

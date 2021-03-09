@@ -498,7 +498,7 @@ class EmailTemplateHelper implements Serializable {
                             )
                         }
                         logFiles.each { logFileName, logLink ->
-                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, logFileName, logLink, logFileName)
+                            EmailBuilder.addRunTestLogsAnchorRow(htmlBuilder, logFileName, logLink)
                         }
                     }
                     br()

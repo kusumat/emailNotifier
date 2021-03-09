@@ -18,11 +18,11 @@ class EmailBuilder {
     }
 
     @NonCPS
-    static void addBuildSummaryAnchorRow(htmlBuilder, key, url, buildNo) {
+    static void addBuildSummaryAnchorRow(htmlBuilder, key, url, linkLabel) {
         htmlBuilder.tr {
             td(style: "width:280px;text-align:left;color: #858484;padding-bottom: 3px !important;", key)
             td(style:"padding-bottom: 3px !important;") {
-                a(href: url, buildNo)
+                a(href: url, linkLabel)
             }
         }
     }
@@ -184,6 +184,26 @@ class EmailBuilder {
                 }
                 td {
                     p(style: "font-size:12px;", command.status)
+                }
+            }
+        }
+    }
+    
+    @NonCPS
+    static void addRunTestLogsAnchorRow(htmlBuilder, logFileName, logLink) {
+        htmlBuilder.tr {
+            td(style: "width:280px;text-align:left;color: #858484;padding-bottom: 3px !important;", logFileName)
+            if(logFileName == 'Detailed Test Report') {
+                td(style:"padding-bottom: 3px !important;") {
+                    logLink?.each { tetsResultFileName, fileUrl ->
+                        p(style: "font-size:12px;") {
+                            a(href: fileUrl, tetsResultFileName)
+                        }
+                    }
+                }
+            } else {
+                td(style:"padding-bottom: 3px !important;") {
+                    a(href: logLink, logFileName)
                 }
             }
         }

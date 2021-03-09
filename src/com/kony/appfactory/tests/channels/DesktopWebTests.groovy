@@ -238,10 +238,12 @@ class DesktopWebTests extends RunTests implements Serializable {
          * or <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<WedBuildNo>/
          * "eg: /opt/jetty/webapps/testresources/100000005/RsTestOnly_1612446923377/" 
          */
-        String fullPathToDelete = jettyWebAppsFolder + script.env.JASMINE_TEST_URL.split('testresources')[-1]
         
-        // Cleanup the jasmine test scripts in the jetty webapps folder
-        script.shellCustom("set +x;rm -Rf $fullPathToDelete", true)
+        // Cleanup the jasmine test scripts in the jetty webapps folder for each app
+        appsList?.each { appName ->
+            def appTesScriptDepyloyedPath = appsTestScriptDeploymentInfo[appName]?.get('jasTestScriptDeploymentPath')
+            script.shellCustom("set +x;rm -Rf $appTesScriptDepyloyedPath", true)
+        }
     }
     
     /*
@@ -266,13 +268,17 @@ class DesktopWebTests extends RunTests implements Serializable {
      */
     private publishJasmineResults(destinationArtifactPath) {
         String jasmineHTMLReport, browserConsoleLog
+        def htmlFilesAuthUrl = [:]
         script.dir(testFolder) {
-            def files = script.findFiles(glob: '**/TestResult_*.html')
-            if (files.size() > 0) {
-                jasmineHTMLReport = ArtifactHelper.publishArtifact sourceFileName: files[0].name,
+            def htmlFiles = script.findFiles(glob: '**/TestResult_*.html')
+            htmlFiles?.each { htmlResultFile ->
+                jasmineHTMLReport = ArtifactHelper.publishArtifact sourceFileName: htmlResultFile.name,
                     sourceFilePath: "${testFolder}", destinationPath: destinationArtifactPath, script
-                listofLogFiles.put("Detailed Test Report", ArtifactHelper.createAuthUrl(jasmineHTMLReport, script, true));
+                
+                def htmlFileAuthUrl = ArtifactHelper.createAuthUrl(jasmineHTMLReport, script, true)
+                htmlFilesAuthUrl.put(htmlResultFile.name, htmlFileAuthUrl)
             }
+            listofLogFiles.put("Detailed Test Report", htmlFilesAuthUrl);
         }
         if (script.fileExists("${testFolder}/browserConsoleLog.txt")) {
             browserConsoleLog = ArtifactHelper.publishArtifact sourceFileName: "browserConsoleLog.txt",
@@ -348,9 +354,9 @@ class DesktopWebTests extends RunTests implements Serializable {
             
             if(isJasmineEnabled) {
                 if (ValidationHelper.compareVersions(script.env["visualizerVersion"], libraryProperties.'jasmine.testonly.support.base.version') == -1) {
-                    scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DJASMINE_TEST_APP_URL=${script.env['JASMINE_TEST_URL']} -DSKIP_URL_CHECK=false"
+                    scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DJASMINE_TEST_APP_URL=${script.env['JASMINE_TEST_URL']} -DSKIP_URL_CHECK=false -DBASE_APP_NAME=${baseAppName}"
                 } else {
-                    scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DSKIP_URL_CHECK=true"
+                    scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DSKIP_URL_CHECK=true -DBASE_APP_NAME=${baseAppName}"
                     def protocolType = script.env.JASMINE_TEST_URL?.split('://')[0]
                     def testResourceUrl= script.env.JASMINE_TEST_URL?.split('://')[1]
                     /* Sample Web App Url for V9.3 "https://appfactoryserver.dev-temenos-cloud.net/apps/SanityWRAutoTest/?protocol=http&testurl=localhost:8888/testresources/100000005/RsTestOnly_1612359688388/"*/

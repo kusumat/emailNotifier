@@ -1,4 +1,5 @@
 package com.kony.appfactory.helper
+import com.kony.appfactory.helper.BuildHelper
 
 class FabricHelper implements Serializable {
     
@@ -170,7 +171,7 @@ class FabricHelper implements Serializable {
         def fabricAppsDirPath = [fabricAppBasePath, 'Apps'].join(separator)
         script.catchErrorCustom("Failed to get fabric app version!") {
             script.dir(fabricAppsDirPath) {
-                fabricAppsDirList = FabricHelper.getSubDirectories(script, isUnixNode, fabricAppsDirPath)
+                fabricAppsDirList = BuildHelper.getSubDirectories(script, isUnixNode, fabricAppsDirPath)
                 if(fabricAppsDirList.isEmpty())
                     throw new AppFactoryException("The path ${fabricAppsDirPath} does not appear to contain a valid Fabric app.", "ERROR")
                 //Find the directory which does not start with _ underscore( will be fabric app name dir)
@@ -277,32 +278,6 @@ class FabricHelper implements Serializable {
         ]
         
         fabricCli(script, 'publish', cloudCredentialsID, isUnixNode, fabricCliPath, publishCommandOptions)
-    }
-    
-    /**
-     * Get sub-directory list for given base dir path for linux
-     * @param script
-     * @param isUnixNode
-     * @param baseDirPath
-     */
-    protected static final getSubDirectories(script, isUnixNode, baseDirPath){
-        def subDirList = []
-        def errorMsg = "Failed to get sub-directory for base dir:[${baseDirPath}]!"
-        script.catchErrorCustom(errorMsg) {
-            script.dir(baseDirPath) {
-                if(isUnixNode) {
-                    def subDirsWithSeparator = script.shellCustom('set +x; ls -d */', isUnixNode, [returnStdout:true])
-                    def subDirs = subDirsWithSeparator.trim().split("/")
-                    subDirs.each { subDir ->
-                        subDirList << subDir.trim()
-                    }
-                } else {
-                    // TODO: Not in scope, will add later
-                    script.echoCustom("Not supported to get the sub-directories list for Windows!", 'ERROR')
-                }
-            }
-        }
-        subDirList
     }
     
     /**

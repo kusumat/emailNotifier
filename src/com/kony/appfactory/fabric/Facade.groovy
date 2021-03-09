@@ -279,7 +279,7 @@ class Facade implements Serializable{
 
                                     // If there is no POM exist at root of java folder, build each java sub-folder that has POM
                                     else {
-                                        def javaAssetSubDirList = FabricHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
+                                        def javaAssetSubDirList = BuildHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
                                         javaAssetSubDirList?.each { javaServiceDir ->
                                             if (script.fileExists(javaServiceDir + '/' + pomFileName)) {
                                                 script.dir(javaServiceDir) {
@@ -294,7 +294,7 @@ class Facade implements Serializable{
 
                                     //If POM exist at root of java folder, but it is not an aggregator POM, build each java sub-folder that is inheriting parent POM.
                                     if( script.fileExists(pomFileName) && !isAnAggregatorPom) {
-                                        def javaAssetSubDirList = FabricHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
+                                        def javaAssetSubDirList = BuildHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
                                         javaAssetSubDirList?.each { javaServiceDir ->
                                             if (script.fileExists(javaServiceDir + '/' + pomFileName)) {
                                                 def pomFileContent = script.readMavenPom file: pomFileName

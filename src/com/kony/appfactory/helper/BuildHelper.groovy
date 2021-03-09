@@ -1445,4 +1445,30 @@ class BuildHelper implements Serializable {
         }
         mustHaveArtifactUrl
     }
+    
+    /**
+     * Get sub-directory list for given base dir path for linux
+     * @param script
+     * @param isUnixNode
+     * @param baseDirPath
+     */
+    protected static final getSubDirectories(script, isUnixNode, baseDirPath){
+        def subDirList = []
+        def errorMsg = "Failed to get sub-directory for base dir:[${baseDirPath}]!"
+        script.catchErrorCustom(errorMsg) {
+            script.dir(baseDirPath) {
+                if(isUnixNode) {
+                    def subDirsWithSeparator = script.shellCustom('set +x; ls -d */', isUnixNode, [returnStdout:true])
+                    def subDirs = subDirsWithSeparator.trim().split("/")
+                    subDirs.each { subDir ->
+                        subDirList << subDir.trim()
+                    }
+                } else {
+                    // TODO: Not in scope, will add later
+                    script.echoCustom("Not supported to get the sub-directories list for Windows!", 'ERROR')
+                }
+            }
+        }
+        subDirList
+    }
 }
