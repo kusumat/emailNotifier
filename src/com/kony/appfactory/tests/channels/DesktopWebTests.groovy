@@ -20,6 +20,7 @@ class DesktopWebTests extends RunTests implements Serializable {
     protected scriptArguments = script.params[webTestsArguments]
     protected runWebTestsJobName = (webTestsArguments == "RUN_WEB_TESTS_ARGUMENTS") ? "runWebTests" : "runDesktopWebTests"
     protected runWebTestsChannelName = (runWebTestsJobName == "runWebTests") ? "Web" : "DesktopWeb"
+    protected webAppUrlParamName = script.params['FABRIC_APP_URL']
 
     private static desktopTestRunResults = [:]
     private static jasmineTestResults = [:]
@@ -350,7 +351,7 @@ class DesktopWebTests extends RunTests implements Serializable {
             script.shellCustom("mkdir -p test-output/Screenshots", true)
             script.shellCustom("mkdir -p test-output/Logs", true)
             script.shellCustom("mkdir -p test-output/Appscommon-Logs", true)
-            def webAppUrlForTest = script.params['FABRIC_APP_URL']
+            def webAppUrlForTest = webAppUrlParamName
             
             if(isJasmineEnabled) {
                 if (ValidationHelper.compareVersions(script.env["visualizerVersion"], libraryProperties.'jasmine.testonly.support.base.version') == -1) {
@@ -360,7 +361,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                     def protocolType = script.env.JASMINE_TEST_URL?.split('://')[0]
                     def testResourceUrl= script.env.JASMINE_TEST_URL?.split('://')[1]
                     /* Sample Web App Url for V9.3 "https://appfactoryserver.dev-temenos-cloud.net/apps/SanityWRAutoTest/?protocol=http&testurl=localhost:8888/testresources/100000005/RsTestOnly_1612359688388/"*/
-                    webAppUrlForTest = script.params['FABRIC_APP_URL'] + "/" + "?protocol=${protocolType}&testurl=${testResourceUrl}"
+                    webAppUrlForTest = webAppUrlParamName + "/" + "?protocol=${protocolType}&testurl=${testResourceUrl}"
                 }
             }
             else {
@@ -536,6 +537,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                         NotificationsHelper.sendEmail(script, 'runTests', [
                                 isDesktopWebAppTestRun  : true,
                                 isJasmineEnabled : isJasmineEnabled,
+                                webAppURL        : webAppUrlParamName,
                                 jasmineruns      : jasmineTestResults,
                                 desktopruns      : desktopTestRunResults,
                                 listofLogFiles   : listofLogFiles,

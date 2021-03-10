@@ -233,15 +233,16 @@ class EmailTemplateHelper implements Serializable {
                 tr {
                     td {
                         table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%", class: "text-color table-border cell-spacing") {
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
                             if (binding.triggeredBy) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
                             }
-
                             EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
-                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
+                            if (binding.isDesktopWebAppTestRun)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Target Web Application', binding.webAppURL)
                             if(binding.isJasmineEnabled) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Framework:', binding.testFramework)
                                 if (binding.isDesktopWebAppTestRun)
