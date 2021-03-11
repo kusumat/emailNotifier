@@ -352,7 +352,6 @@ class DesktopWebTests extends RunTests implements Serializable {
             script.shellCustom("mkdir -p test-output/Logs", true)
             script.shellCustom("mkdir -p test-output/Appscommon-Logs", true)
             def webAppUrlForTest = webAppUrlParamName
-            
             if(isJasmineEnabled) {
                 if (ValidationHelper.compareVersions(script.env["visualizerVersion"], libraryProperties.'jasmine.testonly.support.base.version') == -1) {
                     scriptArguments = " -Dsurefire.suiteXmlFiles=Testng.xml -DJASMINE_TEST_APP_URL=${script.env['JASMINE_TEST_URL']} -DSKIP_URL_CHECK=false -DBASE_APP_NAME=${baseAppName}"
@@ -376,7 +375,7 @@ class DesktopWebTests extends RunTests implements Serializable {
             
             switch (browserName) {
                 case 'CHROME':
-                    script.shellCustom("mvn test " + testHyphenDParams + " ${scriptArguments}", true)
+                    script.shellCustom("set +x; mvn test " + testHyphenDParams + " ${scriptArguments}", true)
                     browserVersionsMap << ["CHROME":script.env.CHROME_VERSION]
                     break
                 default:
@@ -393,7 +392,9 @@ class DesktopWebTests extends RunTests implements Serializable {
      */
     protected final void validateBuildParameters(buildParameters) {
         /* Filter Web application binaries build parameters */
-        def publishedAppUrlParameters = (!buildParameters['FABRIC_APP_URL']) ? [:] : ['FABRIC_APP_URL': buildParameters['FABRIC_APP_URL']]
+        def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
+
+        def publishedAppUrlParameters = (!buildParameters[webAppUrlParamName]) ? [:] : [webAppUrlParamName: buildParameters[webAppUrlParamName]]
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
         /* Combine Web binaries build parameters */
@@ -407,7 +408,15 @@ class DesktopWebTests extends RunTests implements Serializable {
         if (scmParameters && !publishedAppUrlParameters) {
             throw new AppFactoryException("Please provide Web application URL!",'ERROR')
         }
-        
+
+        if (isJasmineEnabled){
+            String jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", "testPlan.js")
+            // Fail the build if param contains special characters that can cause security breach on the agent.
+            if(!jasmineTestPlan.endsWith(".js") || jasmineTestPlan.contains(";") || jasmineTestPlan.contains("..") || jasmineTestPlan.contains("&&")){
+                throw new AppFactoryException("Please provide valid WEB_TEST_PLAN.",'ERROR')
+            }
+        }
+
         /* Check if at least one application binaries parameter been provided */
         (!publishedAppUrlParameters) ?: validateApplicationBinariesURLs(urlParameters)
     }

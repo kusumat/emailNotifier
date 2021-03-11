@@ -573,6 +573,14 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             throw new AppFactoryException("Please provide pool to test on", 'ERROR')
         }
 
+        if (isJasmineEnabled){
+            String jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", "testPlan.js")
+            // Fail the build if param contains special characters that can cause security breach on the agent.
+            if(!jasmineTestPlan.endsWith(".js") || jasmineTestPlan.contains(";") || jasmineTestPlan.contains("..") || jasmineTestPlan.contains("&&")){
+                throw new AppFactoryException("Please provide valid NATIVE_TEST_PLAN.",'ERROR')
+            }
+        }
+
         /* Check if at least one application binaries parameter been provided */
         (!nativeAppBinaryUrlParameters) ?: validateApplicationBinariesURLs(nativeUrlParameters)
 

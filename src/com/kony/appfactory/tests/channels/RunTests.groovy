@@ -318,14 +318,15 @@ class RunTests implements Serializable {
                         integrationTestJsonFileContent = script.readJSON file: integrationTestJsonFileName
                         boolean isBaseAppInfoExist = integrationTestJsonFileContent.containsKey(baseAppName)
                         /* if base app json object exist update it with latest script URL info generated */
+                        def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
                         if(isBaseAppInfoExist) {
-                            integrationTestJsonFileContent[baseAppName]['URL'] = script.params['FABRIC_APP_URL']
+                            integrationTestJsonFileContent[baseAppName]['URL'] = script.params[webAppUrlParamName]
                             integrationTestJsonFileContent[baseAppName]['protocol'] = appsTestScriptUrlInfo[baseAppName].get('protocolType')
                             integrationTestJsonFileContent[baseAppName]['ScriptURL'] = appsTestScriptUrlInfo[baseAppName].get('scriptUrl')
                         } else {
                             /* Add a json object with base app's script URL info in existing json file */
                             def parentAppScriptInfo = [:]
-                            parentAppScriptInfo.put("URL", script.params['FABRIC_APP_URL'])
+                            parentAppScriptInfo.put("URL", script.params[webAppUrlParamName])
                             parentAppScriptInfo.put("protocol", appsTestScriptUrlInfo[baseAppName].get('protocolType'))
                             parentAppScriptInfo.put("ScriptURL", appsTestScriptUrlInfo[baseAppName].get('scriptUrl'))
                             integrationTestJsonFileContent.putAt(baseAppName, parentAppScriptInfo)
@@ -398,28 +399,23 @@ class RunTests implements Serializable {
      */
     protected void copyTestPlanFile(String formFactor) {
         if (formFactor.equalsIgnoreCase("Desktop")) {
-            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)
+            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", "testPlan.js")
         } else {
-            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null)
+            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", "testPlan.js")
         }
         String testPlanBasePath = ['testresources', 'Jasmine', formFactor, 'Test Plans'].join(separator)
         String defaultTestPlan = [testPlanBasePath, 'testPlan.js'].join(separator)
-            if(jasmineTestPlan.equals("") || jasmineTestPlan.equals("testPlan.js")){
-                if (!script.fileExists("${defaultTestPlan}")) {
-                    throw new AppFactoryException("Failed to find ${defaultTestPlan}, please check your application!!", 'ERROR')
-                }
-                jasmineTestPlan = "testPlan.js"
-            } else {
-                String testPlanFile = [testPlanBasePath, jasmineTestPlan].join(separator)
-                if (script.fileExists("${testPlanFile}")) {
-                    defaultTestPlan = BuildHelper.addQuotesIfRequired(defaultTestPlan)
-                    testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
-                    script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestPlan}", true)
-                } else {
-                    throw new AppFactoryException("Failed to find ${testPlanFile}, please provide valid TEST_PLAN!!", 'ERROR')
-                }
-            }
+        String testPlanFile = [testPlanBasePath, jasmineTestPlan].join(separator)
 
+        if (script.fileExists("${testPlanFile}")) {
+            if(!testPlanFile.equals(defaultTestPlan)) {
+                defaultTestPlan = BuildHelper.addQuotesIfRequired(defaultTestPlan)
+                testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
+                script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestPlan}", true)
+            }
+        } else {
+            throw new AppFactoryException("Failed to find ${testPlanFile}, please provide valid TEST_PLAN!!", 'ERROR')
+        }
     }
 
 

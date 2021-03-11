@@ -61,7 +61,8 @@ class FacadeTests implements Serializable {
     private runCustomHook = script.params.RUN_CUSTOM_HOOKS
 
     /* Parameters used to differentiate Native and Web apps */
-    public isWebApp = script.params.findAll { it.key == 'FABRIC_APP_URL' && it.value }
+    def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
+    public isWebApp = script.params.findAll { it.key == webAppUrlParamName && it.value }
     public isNativeApp = script.params.findAll { it.key.contains('NATIVE_BINARY_URL') && it.value }
 
     /* List of run Results, used for setting up final result of the runTests job */
@@ -164,7 +165,7 @@ class FacadeTests implements Serializable {
     private final getDesktopWebTestAutomationJobParameters() {
         getTestAutomationCommonJobParameters() + getDesktopWebTestAutomationArtifactURLParameter() +
                 [
-                        script.string(name: 'FABRIC_APP_URL', value: script.params.FABRIC_APP_URL),
+                        script.string(name: webAppUrlParamName, value: script.params[webAppUrlParamName]),
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
                         script.string(name: "${webTestsArgumentsParamName}", value: script.params[webTestsArgumentsParamName]),
                         script.string(name: 'JASMINE_TEST_URL', value: BuildHelper.getParamValueOrDefault(script, "JASMINE_TEST_URL", "")?.trim()),
@@ -259,7 +260,7 @@ class FacadeTests implements Serializable {
         desktopWebTests = new DesktopWebTests(script)
         nativeAWSDeviceFarmTests = new NativeAWSDeviceFarmTests(script)
         if(!isNativeApp && !isWebApp)
-            throw new AppFactoryException("Please provide atleast one of the Native Binary URLs or FABRIC_APP_URL to proceed with the build.", 'ERROR')
+            throw new AppFactoryException("Please provide atleast one of the Native Binary URLs or ${webAppUrlParamName} to proceed with the build.", 'ERROR')
         /* Allocate a slave for the run */
         script.node(libraryProperties.'facade.node.label') {
             try {

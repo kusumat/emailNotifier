@@ -498,8 +498,10 @@ class Facade implements Serializable {
             /* Create build parameter for Test Automation job */
             if(artifactName) {
                 if((artifact.name.matches("^.*.?(war|zip)\$"))) {
-                    if(publishWebApp)
-                        [script.stringParam(name: "FABRIC_APP_URL", value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
+                    if(publishWebApp) {
+                        def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
+                        script.stringParam(name: webAppUrlParamName, value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
+                    }
                 } else
                     if(availableTestPools)
                         return script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl)
