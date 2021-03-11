@@ -14,7 +14,7 @@ class ArtifactHelper implements Serializable {
      * @param artifactName artifact name
      */
     static void retrieveArtifact(script, String jobName, String buildId, String artifactName) {
-        script.withStorageEnv(){
+        script.withStorageEnv {
             script.downloadArtifact(job: jobName, buildId: buildId, artifactName: artifactName)
         }
     }
@@ -24,7 +24,7 @@ class ArtifactHelper implements Serializable {
      * @param artifactName artifact name
      */
     static void retrieveArtifact(script, String artifactName) {
-        script.withStorageEnv(){
+        script.withStorageEnv {
             script.downloadArtifact(artifactName: artifactName)
         }
     }
@@ -99,7 +99,7 @@ class ArtifactHelper implements Serializable {
      * @param artifactName the exact artifact to be deleted.
      */
     static void deleteArtifact(script, String jobName, String buildId, String artifactName) {
-        script.withStorageEnv(){
+        script.withStorageEnv {
             script.deleteArtifact(job: jobName, buildId: buildId, artifactName: artifactName)
         }
     }
@@ -154,7 +154,7 @@ class ArtifactHelper implements Serializable {
 
         script.catchErrorCustom(errorMessage, successMessage) {
             script.dir(artifactFolder) {
-                script.withStorageEnv(){
+                script.withStorageEnv {
                     archivePath = archivePath.endsWith('/') ?: archivePath + '/'
                     artifactURL = script.uploadArtifact(file:fileName, path:archivePath)
                 }
