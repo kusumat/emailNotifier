@@ -500,7 +500,7 @@ class Facade implements Serializable {
                 if((artifact.name.matches("^.*.?(war|zip)\$"))) {
                     if(publishWebApp) {
                         def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
-                        script.stringParam(name: webAppUrlParamName, value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
+                        [script.stringParam(name: webAppUrlParamName, value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
                     }
                 } else
                     if(availableTestPools)
