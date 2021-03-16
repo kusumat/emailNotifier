@@ -56,8 +56,9 @@ class ArtifactHelper implements Serializable {
                 }
                 else {
                     /* copy from S3 bucket without printing expansion of command on console */
+                    String artifactUrlDecoded = URLDecoder.decode(artifactUrl, "UTF-8")
                     def s3uri = 's3://'+script.env.S3_BUCKET_NAME+'/'
-                     def artifactPath =  artifactUrl.replaceAll(s3uri, "")
+                    def artifactPath =  artifactUrlDecoded.replaceAll(s3uri, "")
                     retrieveArtifact(script, artifactPath)
                     def artifactNameFromURL = artifactUrl.substring(artifactUrl.lastIndexOf("/") + 1)
                     script.shellCustom("mv \'${artifactNameFromURL}\' \'${artifactName}\'", true)
