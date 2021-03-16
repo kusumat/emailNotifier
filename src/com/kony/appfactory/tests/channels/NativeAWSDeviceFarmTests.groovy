@@ -112,15 +112,22 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      * @param devicePoolArns is the ARN that is associated with a device pool
      */
     final void uploadAndRun(deviceFarmProjectArn, devicePoolArns) {
+        script.echoCustom("Selected Appium Version: " + appiumVersion)
         /* Prepare step to run in parallel */
         def step = { artifactName, artifactURL, artifactExt, uploadType, extraDataPkgArn ->
             /* Upload application binaries to Device Farm */
-            def uploadArn = deviceFarm.uploadArtifact(deviceFarmProjectArn,
+            def uploadData = [:]
+            uploadData = deviceFarm.uploadArtifact(deviceFarmProjectArn,
                     uploadType, artifactName + '.' + artifactExt)
+            def uploadArn = uploadData.get("arn")
+            def appPackageName = uploadData.get("packageName")
             /* Add upload ARN to list for cleanup at the end of the build */
             deviceFarmUploadArns.add(uploadArn)
             String formFactor = (artifactName.toLowerCase().contains('mobile')) ? "MOBILE" : "TABLET"
             String channel = (artifactExt.toLowerCase().contains('ipa')) ? "IOS" : "ANDROID"
+            script.when(runInCustomTestEnvironment, 'Upload test spec') {
+                prepareAndUploadTestSpec(appPackageName, formFactor.toLowerCase().capitalize(), channel.toLowerCase().capitalize())
+            }
 
             /* Depending on artifact name we need to chose appropriate pool for the run */
             def devicePoolArnOrSelectionConfig
@@ -621,30 +628,24 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     /**
      * Prepares the Test Spec YAML and uploads it to AWS.
      */
-    private final void prepareAndUploadTestSpec() {
+    private final void prepareAndUploadTestSpec(appPackageName, formFactor, channel) {
         def testSpecUploadType = testSpec.get("${projectName}_TestSpec").uploadType
         def testSpecExtension = testSpec.get("${projectName}_TestSpec").extension
         String configFolderPath = 'com/kony/appfactory/configurations'
-        /* If Test Spec File is not available inside the source, create one from template. */
-        if (!testSpecUploadFilePath) {
-            script.echoCustom("Value of Appium Version is :" + appiumVersion)
-            /* Load YAML Template */
-            ymlTemplate = script.loadLibraryResource(configFolderPath + '/KonyYamlTestSpec.template')
-            testngFiles = testngFiles.replaceAll("," , " ")
-            def customWDA = ''
-            // We need to use the WDA V1 if user has selected appium 1.8.1 or higher version.
-            if (ValidationHelper.compareVersions(appiumVersion, APPIUM_1_8_1_VERSION) > -1) {
-                customWDA = '--default-capabilities "{\\"usePrebuiltWDA\\": true, \\"derivedDataPath\\":\\"$DEVICEFARM_WDA_DERIVED_DATA_PATH\\"}"'
-            }
-            def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles, customWDA: customWDA])
-            /* Create YAML file from template */
-            testSpecUploadFileName = "${projectName}_TestSpec.${testSpecExtension}"
-            script.writeFile file: testSpecUploadFileName, text: template
-            testSpecUploadFilePath = script.pwd() + "/${testSpecUploadFileName}"
+        /* Load YAML Template */
+        ymlTemplate = script.loadLibraryResource(configFolderPath + '/KonyYamlTestSpec.template')
+        testngFiles = testngFiles.replaceAll(",", " ")
+        def customWDA = ''
+        // We need to use the WDA V1 if user has selected appium 1.8.1 or higher version.
+        if (ValidationHelper.compareVersions(appiumVersion, APPIUM_1_8_1_VERSION) > -1) {
+            customWDA = '--default-capabilities "{\\"usePrebuiltWDA\\": true, \\"derivedDataPath\\":\\"$DEVICEFARM_WDA_DERIVED_DATA_PATH\\"}"'
         }
-        else{
-            script.shellCustom("cp ${testSpecUploadFilePath} .", true)
-        }
+        def template = BuildHelper.populateTemplate(ymlTemplate, [appiumVersion: appiumVersion, testngFiles: testngFiles, customWDA: customWDA, appPackageName: appPackageName, formFactor: formFactor, channel: channel, projectName: projectName])
+        /* Create YAML file from template */
+        testSpecUploadFileName = "${projectName}_${channel}_${formFactor}_TestSpec.${testSpecExtension}"
+        script.writeFile file: testSpecUploadFileName, text: template
+        testSpecUploadFilePath = script.pwd() + "/${testSpecUploadFileName}"
+
         mustHaveArtifacts.add(testSpecUploadFilePath)
         /* Upload test spec and get upload ARN */
         deviceFarmTestSpecUploadArtifactArn = deviceFarm.uploadArtifact(
@@ -652,7 +653,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                 testSpecUploadType,
                 testSpecUploadFileName
         )
-        script.echoCustom("Device Farm Test Spec Arn : " + deviceFarmTestSpecUploadArtifactArn)
+        script.echoCustom("Device Farm Test Spec Arn for ${channel}_${formFactor} : " + deviceFarmTestSpecUploadArtifactArn)
         /* Add test spec upload ARN to upload ARNs list */
         deviceFarmUploadArns.add(deviceFarmTestSpecUploadArtifactArn)
     }
@@ -703,14 +704,24 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                 }
 
                                 script.stage('Build') {
-                                    if (runInCustomTestEnvironment && !appiumVersion) {
-                                        if (script.fileExists("${testFolder}/src/test/resources/${testSpecUploadFileName}"))
-                                            testSpecUploadFilePath = "${testFolder}/src/test/resources/${testSpecUploadFileName}"
-                                    }
                                     /* Build Test Automation scripts */
                                     buildTestScripts(testFolder)
 
                                     script.dir(testFolder) {
+                                        if (isJasmineEnabled) {
+                                            /* Due to storage restrictions introduced on Android 10 and 11,
+                                             * Jasmine scripts have to be manually placed to app's scoped storage on device.
+                                             * Therefore, zipping extra data package (jasmine test scripts) along with Test Package.
+                                             * */
+                                            projectArtifacts.each { platformData ->
+                                                def platformDataArray = platformData.key.split('_')
+                                                def platform = platformDataArray[0]
+                                                def formFactor = platformDataArray[1]
+                                                if (platform.equalsIgnoreCase("android")) {
+                                                    script.shellCustom("set +x;zip -u -j target/zip-with-dependencies.zip ${deviceFarmWorkingFolder}/${projectName}_${platform}_${formFactor}_TestExtraDataPkg.zip", true)
+                                                }
+                                            }
+                                        }
                                         script.shellCustom("mv target/zip-with-dependencies.zip target/${projectName}_TestApp.zip", true)
                                     }
                                     /* Set runTests flag to true when build is successful,otherwise set it to false (in catch block) */
@@ -772,21 +783,19 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
                                     script.stage('Upload test package') {
                                         uploadTestBinaries(testPackage, deviceFarmProjectArn)
 
-                                        /* Uploading the Jasmine scripts as extra data package */
+                                        /* Due to storage restrictions introduced on Android 10 and 11, Jasmine scripts have to be manually placed to app's scoped storage on device.
+                                         * Therefore, Uploading the Jasmine scripts as extra data package only for iOS platform.
+                                         *  */
                                         if(isJasmineEnabled){
                                             projectArtifacts.each { platformData ->
                                                 def pltArray = platformData.key.split('_')
-                                                platformData.value.extraPkg = uploadExtraDataPackage(deviceFarmProjectArn, pltArray[0], pltArray[1])
+                                                if (pltArray[0].equalsIgnoreCase("ios")){
+                                                    platformData.value.extraPkg = uploadExtraDataPackage(deviceFarmProjectArn, pltArray[0], pltArray[1])
+                                                }
                                             }
                                         }
                                     }
-                                    script.stage('Upload test spec') {
-                                        script.when(runInCustomTestEnvironment, 'Upload test spec')
-                                                {
-                                                    prepareAndUploadTestSpec()
-                                                }
-                                    }
-                                    script.stage('Upload application binaries and schedule run') {
+                                    script.stage('Upload test spec & application binaries and schedule run') {
                                         uploadAndRun(deviceFarmProjectArn, devicePoolArns)
                                     }
 
