@@ -694,7 +694,7 @@ class Fabric implements Serializable {
                             /* If user selects Ignore Jars flag as true but if '_JARs' dir doesn't exist in fabric app set the flag as false */
                             if(ignoreJarsForExport) {
                                 def appJarsDirAbsolutePath = [workspace, appUnzipTempDir, 'Apps', '_JARs'].join(separator)
-                                boolean isPathExistForAppJars = FabricHelper.isDirExist(script, appJarsDirAbsolutePath, isUnixNode)
+                                boolean isPathExistForAppJars = BuildHelper.isDirExist(script, appJarsDirAbsolutePath, isUnixNode)
                                 if(!isPathExistForAppJars) {
                                     script.echoCustom("${fabricAppName}(${fabricAppVersion}) does not contain '_JARs' dir, so by default export jars will be skipped.")
                                     ignoreJarsForExport = false

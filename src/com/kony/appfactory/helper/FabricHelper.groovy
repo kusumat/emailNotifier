@@ -291,20 +291,6 @@ class FabricHelper implements Serializable {
     }
 
     /**
-     * To check directory exists or not
-     * @param script
-     * @param dirPath: complete path upto directory.
-     * @param isUnixNode
-     * @return boolean true or false
-     */
-    protected static boolean isDirExist(script, dirPath, isUnixNode ){
-        def isDirExist = script.shellCustom("set +x;test -d ${dirPath} && echo 'exist' || echo 'doesNotExist'", isUnixNode, [returnStdout: true])
-        if (isDirExist.trim() == 'doesNotExist')
-            return false
-        return true
-    }
-
-    /**
      * Validating the maven goals and options command by allowing (;|&&) operands in -Darguments Or
      * If these operands are followed with mvn command again
      *

@@ -191,7 +191,7 @@ class Facade implements Serializable{
                             def fabricAppsDirPath = (fabricAppDir.isEmpty()) ? 'Apps' : [fabricAppDir, 'Apps'].join(separator)
 
                             // If the fabric App does not exist then failing the build
-                            def isFabricDirExist = FabricHelper.isDirExist(script, fabricAppBasePath, isUnixNode)
+                            def isFabricDirExist = BuildHelper.isDirExist(script, fabricAppBasePath, isUnixNode)
                             if (!isFabricDirExist)
                                 throw new AppFactoryException("The path [${fabricAppsDirPath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
                                     "does not exist.", 'ERROR')
@@ -203,7 +203,7 @@ class Facade implements Serializable{
 
                             // If the given java asset path does not exist then failing the build
                             if(isBuildWithJavaAssets && fabricJavaProjectsDir) {
-                                def isPathExistForJavaAssest = FabricHelper.isDirExist(script, javaAssetBasePath, isUnixNode)
+                                def isPathExistForJavaAssest = BuildHelper.isDirExist(script, javaAssetBasePath, isUnixNode)
                                 if(!isPathExistForJavaAssest)
                                     throw new AppFactoryException("The path [${fabricJavaProjectsDir}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
                                         "does not appear to contain any Java projects.", 'ERROR')

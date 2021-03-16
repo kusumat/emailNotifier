@@ -19,6 +19,7 @@ import com.kony.appfactory.project.settings.ProjectSettingsProperty
 import com.kony.appfactory.project.settings.dto.FabricSettingsDTO
 import com.kony.appfactory.project.settings.dto.ProjectSettingsDTO
 import com.kony.appfactory.project.settings.dto.VisualizerSettingsDTO
+import com.kony.appfactory.project.settings.dto.MicroserviceSettingsDTO
 import java.util.stream.Collectors
 
 /**
@@ -43,7 +44,7 @@ class BuildHelper implements Serializable {
      *   script pipeline object.
      *   downloadURL from which the source project should be downloaded
      *   relativeTargetDir path where project should be stored.
-     *   
+     *
      * @param args for checkoutType s3download
      *   script pipeline object.
      *   projectFileName name of the file which is in the s3 path.
@@ -1380,7 +1381,8 @@ class BuildHelper implements Serializable {
             if (projectSettings) {
                 VisualizerSettingsDTO vizSettings = projectSettings.getVisualizerSettings()
                 FabricSettingsDTO fabSettings = projectSettings.getFabricSettings()
-                def settingsMap = (projectType == "Visualizer") ? ((vizSettings)?.toMap()) : (fabSettings?.toMap())
+                MicroserviceSettingsDTO microserviceSettings = projectSettings.getMicroserviceSettings()
+                def settingsMap = (projectType == "Visualizer") ? ((vizSettings)?.toMap()) : (projectType == "Fabric")?  (fabSettings?.toMap()) : (microserviceSettings?.toMap())
                 /* Set each value to the environmental variables */
                 settingsMap?.values().each { childSectionMap ->
                     if(childSectionMap.getClass().equals(HashMap.class)) {
@@ -1452,13 +1454,13 @@ class BuildHelper implements Serializable {
      * @param isUnixNode
      * @param baseDirPath
      */
-    protected static final getSubDirectories(script, isUnixNode, baseDirPath){
+    protected static final getSubDirectories(script, isUnixNode, baseDirPath) {
         def subDirList = []
         def errorMsg = "Failed to get sub-directory for base dir:[${baseDirPath}]!"
         script.catchErrorCustom(errorMsg) {
             script.dir(baseDirPath) {
-                if(isUnixNode) {
-                    def subDirsWithSeparator = script.shellCustom('set +x; ls -d */', isUnixNode, [returnStdout:true])
+                if (isUnixNode) {
+                    def subDirsWithSeparator = script.shellCustom('set +x; ls -d */', isUnixNode, [returnStdout: true])
                     def subDirs = subDirsWithSeparator.trim().split("/")
                     subDirs.each { subDir ->
                         subDirList << subDir.trim()
@@ -1471,4 +1473,19 @@ class BuildHelper implements Serializable {
         }
         subDirList
     }
+
+    /**
+     * To check directory exists or not
+     * @param script
+     * @param dirPath: complete path upto directory.
+     * @param isUnixNode
+     * @return boolean true or false
+     */
+    protected static boolean isDirExist(script, dirPath, isUnixNode ){
+        def isDirExist = script.shellCustom("set +x;test -d ${dirPath} && echo 'exist' || echo 'doesNotExist'", isUnixNode, [returnStdout: true])
+        if (isDirExist.trim() == 'doesNotExist')
+            return false
+        return true
+    }
 }
+

@@ -286,6 +286,9 @@ class NotificationsHelper implements Serializable {
             case 'flyway':
                 templateContent = EmailTemplateHelper.createFlywayContent(commonBinding)
                 break
+            case 'configureMS':
+                templateContent = EmailTemplateHelper.createMicroserviceContent(commonBinding)
+                break
             default:
                 templateContent = ''
                 break
@@ -331,6 +334,9 @@ class NotificationsHelper implements Serializable {
                 break
             case 'flyway':
                 modifiedBuildTag = "${script.env.PROJECT_NAME}-Flyway Build-${script.env.BUILD_NUMBER}"
+                break
+            case 'configureMS':
+                modifiedBuildTag = "${script.env.PROJECT_NAME}-Microservice Configuration-${script.env.BUILD_NUMBER}"
                 break
             default:
                 modifiedBuildTag = ''

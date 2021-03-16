@@ -1275,6 +1275,70 @@ class EmailTemplateHelper implements Serializable {
     }
 
     /**
+     * Creates HTML content for microservice run.
+     *
+     * @param binding provides data for HTML.
+     * @return HTML content as a string.
+     */
+    @NonCPS
+    protected static String createMicroserviceContent(Map binding) {
+        markupBuilderWrapper { MarkupBuilder htmlBuilder ->
+            htmlBuilder.table(style: "width:100%") {
+                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
+                tr {
+                    td(style: "text-align:left", class: "text-color") {
+                        h4(class: "subheading", "Run Details")
+                    }
+                }
+                tr {
+                    td {
+                        table(role: "presentation", cellspacing: "0", cellpadding: "0", style: "width:100%", class: "text-color table-border cell-spacing") {
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
+                            if (binding.triggeredBy)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
+
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
+                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
+
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Generic Config Microservice Url:', binding.microserviceBaseUrl)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Deploy Jolt Files:', binding.deployJoltFiles)
+                            if(binding.deployJoltFiles)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Group ID:', binding.msGroupID)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Deploy Policy Files:', binding.deployPolicyFiles)
+                        }
+                    }
+                }
+
+                if (binding.build.result == 'FAILURE') {
+                    tr {
+                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
+                            h4(style: "margin-bottom:0", 'Console Output')
+                            binding.build.log.each { line ->
+                                p(style: "width:950px;", line)
+                            }
+                        }
+                    }
+                } else {
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            h4(class: "subheading", 'Build Information')
+                        }
+                    }
+                    tr {
+                        td {
+                            p(style: "font-size:12px;", "The provided Jolt or Policy configuration files are successfully deployed to the given microservice.")
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+
+    /**
      * Converts the given time difference into hours, minutes, seconds
      * @param Time difference between two times
      * @returns value with a specific time format

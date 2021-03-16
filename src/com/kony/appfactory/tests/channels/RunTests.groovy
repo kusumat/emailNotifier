@@ -199,7 +199,7 @@ class RunTests implements Serializable {
             def jasIntegrationTestRelativePath = ['testresources', 'JasmineIntegrationTests'].join(separator)
             def jasIntegrationTestPath = [projectFullPath, jasIntegrationTestRelativePath].join(separator)
             def jasIntegrationTestJsonFile = [jasIntegrationTestPath, integrationTestJsonFileName].join(separator)
-            isMultiAppTest = FabricHelper.isDirExist(script, jasIntegrationTestRelativePath, true)
+            isMultiAppTest = BuildHelper.isDirExist(script, jasIntegrationTestRelativePath, true)
 
             if (channelType.equalsIgnoreCase("Web") && isMultiAppTest) {
                 /* Get the apps list including parent app if test run is for Web */
