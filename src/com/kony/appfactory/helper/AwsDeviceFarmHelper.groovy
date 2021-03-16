@@ -506,7 +506,7 @@ class AwsDeviceFarmHelper implements Serializable {
                                 script.echoCustom("Test Execution is completed on \'"+ deviceKey
                                         + "\' and over all test result is PASSED", 'INFO')
                                 result = createSummaryOfTestCases(listJobsArrayList, completedRunDevicesList, index)
-                                showDeviceTestRunResults(results, testRunArn)
+                                showDeviceTestRunResults(result, testRunArn)
                                 break
                             case 'WARNED':
                                 script.echoCustom("Build is warned for unknown reason on the device \'" + deviceKey + "\'", 'WARN')
