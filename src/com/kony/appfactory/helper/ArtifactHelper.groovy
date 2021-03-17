@@ -216,8 +216,9 @@ class ArtifactHelper implements Serializable {
      * @param artifactUrl is the url which we want to convert as authenticated
      * @param script is default script parameter
      * @param exposeUrl is made as true if we want to display it in the console
+     * @param action - (downloads or view): decides whether the url is direct download link or directly view from browser (such as HTML files), default value is "downloads"
      */
-    protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false) {
+    protected final static createAuthUrl(artifactUrl, script, boolean exposeUrl = false, String action = "downloads") {
 
         def authArtifactUrl
 
@@ -239,7 +240,7 @@ class ArtifactHelper implements Serializable {
                         .replace('"', '%22')
 
                 def externalAuthID = (script.env['URL_PATH_INFO']) ? "?url_path=" + URLEncoder.encode(script.env['URL_PATH_INFO'], "UTF-8") : ''
-                authArtifactUrl = script.kony.FABRIC_CONSOLE_URL + "/console/" + externalAuthID + "#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/downloads?path=" + encodedArtifactUrl
+                authArtifactUrl = script.kony.FABRIC_CONSOLE_URL + "/console/" + externalAuthID + "#/environments/" + script.env['CLOUD_ENVIRONMENT_GUID'] + "/${action}?path=" + encodedArtifactUrl
             } else {
                 script.echoCustom("Failed to generate the authenticated URLs. Unable to find the cloud environment guid.", 'WARN')
             }

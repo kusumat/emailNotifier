@@ -499,8 +499,8 @@ class Facade implements Serializable {
             if(artifactName) {
                 if((artifact.name.matches("^.*.?(war|zip)\$"))) {
                     if(publishWebApp) {
-                        def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
-                        [script.stringParam(name: webAppUrlParamName, value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
+                        //in DSL 9.3 below, we had FABRIC_APP_URL param in place of WEB_APP_URL. So sending the same value for two params to handle backward compatibility.
+                        [script.stringParam(name: 'WEB_APP_URL', value: artifact.webAppUrl), script.stringParam(name: 'FABRIC_APP_URL', value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
                     }
                 } else
                     if(availableTestPools)

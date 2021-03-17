@@ -295,7 +295,9 @@ class DesktopWebTests extends RunTests implements Serializable {
      */
     private publishTestNGResults(destinationArtifactPath) {
         
-        String testng_reportsCSSAndCSS = ArtifactHelper.publishArtifact sourceFileName: "testng.css,testng-reports.css",
+        String testng_reportsCSSAndCSS = ArtifactHelper.publishArtifact sourceFileName: "testng.css",
+                sourceFilePath: "${testFolder}/testOutput/Smoke", destinationPath: destinationArtifactPath + "/testOutput/Smoke", script, true
+        testng_reportsCSSAndCSS = ArtifactHelper.publishArtifact sourceFileName: "testng-reports.css",
                 sourceFilePath: "${testFolder}/testOutput/Smoke", destinationPath: destinationArtifactPath + "/testOutput/Smoke", script, true
 
         suiteNameList.each {
