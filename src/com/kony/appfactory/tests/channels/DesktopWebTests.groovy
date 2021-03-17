@@ -20,7 +20,7 @@ class DesktopWebTests extends RunTests implements Serializable {
     protected scriptArguments = script.params[webTestsArguments]
     protected runWebTestsJobName = (webTestsArguments == "RUN_WEB_TESTS_ARGUMENTS") ? "runWebTests" : "runDesktopWebTests"
     protected runWebTestsChannelName = (runWebTestsJobName == "runWebTests") ? "Web" : "DesktopWeb"
-    protected webAppUrlParamName = script.params['FABRIC_APP_URL']
+    protected webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
 
     private static desktopTestRunResults = [:]
     private static jasmineTestResults = [:]
@@ -394,8 +394,6 @@ class DesktopWebTests extends RunTests implements Serializable {
      */
     protected final void validateBuildParameters(buildParameters) {
         /* Filter Web application binaries build parameters */
-        def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
-
         def publishedAppUrlParameters = (!buildParameters[webAppUrlParamName]) ? [:] : [webAppUrlParamName: buildParameters[webAppUrlParamName]]
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.contains('PROJECT_SOURCE_CODE') && it.value }
