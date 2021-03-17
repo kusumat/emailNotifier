@@ -142,7 +142,8 @@ class FabricHelper implements Serializable {
             /* The settings.xml file contains elements used to define values such as the local repository location, alternate remote repository servers and authentication information.
                Maven can refer this settings.xml for connecting to their local repository with logins configured for downloading all assets.*/
             def mvnSettingsFileID = script.env.MVN_SETTINGS
-            if (mvnSettingsFileID) {
+            if (mvnSettingsFileID && mvnSettingsFileID != 'null') {
+                script.echoCustom("Fetched maven settings successfully")
                 script.withCredentials([
                         script.file(credentialsId: "${mvnSettingsFileID}", variable: 'MVN_SETTINGS_FILE')
                 ]) {
