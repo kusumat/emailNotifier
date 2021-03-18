@@ -726,8 +726,6 @@ class Facade implements Serializable {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 try {
-                    script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
-
                     /* Wrapper for injecting timestamp to the build console output */
                     script.timestamps {
                         script.stage('Check provided parameters') {

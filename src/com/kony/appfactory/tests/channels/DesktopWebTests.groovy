@@ -425,7 +425,6 @@ class DesktopWebTests extends RunTests implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 script.stage('Validate parameters') {
                     validateBuildParameters(script.params)
                 }

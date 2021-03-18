@@ -26,7 +26,6 @@ class TestAutomation implements Serializable {
     protected void createPipeline() {
         /* Wrapper for colorize the console output in a pipeline build */
         script.ansiColor('xterm') {
-            script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
             try {
                 /* Calls createPipeline method for the Native/DesktopWeb channels respectively */
                 new FacadeTests(script).createPipeline()

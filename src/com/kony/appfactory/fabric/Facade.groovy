@@ -120,7 +120,6 @@ class Facade implements Serializable{
         script.node(nodeLabel) {
             fabricStats.put('fabtsstart', new Date().time)
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 def workspace = script.env.WORKSPACE
                 isUnixNode = script.isUnix()
                 separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)

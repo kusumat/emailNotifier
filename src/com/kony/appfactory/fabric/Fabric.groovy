@@ -555,7 +555,6 @@ class Fabric implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 def overwriteExistingScmBranchOrValidateVersionParamName = BuildHelper.getCurrentParamName(script, 'VALIDATE_VERSION', 'OVERWRITE_EXISTING_SCM_BRANCH')
                 overwriteExisting = BuildHelper.getParamValueOrDefault(script, overwriteExistingScmBranchOrValidateVersionParamName, overwriteExisting)
 
@@ -724,7 +723,6 @@ class Fabric implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 overwriteExisting = BuildHelper.getParamValueOrDefault(script, 'OVERWRITE_EXISTING_APP_VERSION', overwriteExisting)
 
                 /* Data for e-mail notification */
@@ -812,8 +810,6 @@ class Fabric implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
-
                 /* Data for e-mail notification */
                 emailData = [
                         commandName          : 'PUBLISH'
@@ -877,7 +873,6 @@ class Fabric implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 overwriteExistingScmBranch = script.params.OVERWRITE_EXISTING_SCM_BRANCH
                 exportCloudAccountId = script.params.EXPORT_CLOUD_ACCOUNT_ID
                 def exportFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'EXPORT_CLOUD_CREDENTIALS_ID', 'EXPORT_FABRIC_CREDENTIALS_ID')

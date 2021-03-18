@@ -199,7 +199,6 @@ class AndroidChannel extends Channel {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 script.stage('Check provided parameters') {
                     ValidationHelper.checkBuildConfiguration(script)
                     def mandatoryParameters = ['APP_VERSION', 'ANDROID_VERSION_CODE', 'FORM_FACTOR']

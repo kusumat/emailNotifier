@@ -139,7 +139,6 @@ class AllChannels implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 /* Allocating Mac slave for CloudBuilds run */
                 nodeLabel = libraryProperties.'ios.node.label'
 

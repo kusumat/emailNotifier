@@ -113,7 +113,6 @@ class WebChannel extends Channel {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-                script.properties([[$class: 'CopyArtifactPermissionProperty', projectNames: '/*']])
                 script.stage('Check provided parameters') {
                     if (!(webChannelType.equalsIgnoreCase("DESKTOP_WEB") || webChannelType.equalsIgnoreCase("RESPONSIVE_WEB")) && !(desktopWebChannel)) {
                         script.echoCustom('Please select at least one channel to build!', 'ERROR')
