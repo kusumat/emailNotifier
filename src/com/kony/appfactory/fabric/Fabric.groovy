@@ -32,6 +32,8 @@ class Fabric implements Serializable {
         on *nix machine, for future improvements OS type check been added to every command(export, import, publish).
      */
     private boolean isUnixNode
+    /* Separator based on OS */
+    protected separator
     /* Common build parameters */
     private final String exportRepositoryUrl
     private final String exportRepositoryBranch
@@ -322,7 +324,7 @@ class Fabric implements Serializable {
      */
     private final void zipProjectForExport(projectName, fabricAppDir) {
         String errorMessage = "Failed to create zip file for project ${projectName}"
-        def localCheckedOutAppDir = (fabricAppDir.isEmpty()) ? projectName : [projectName, fabricAppDir].join("/")
+        def localCheckedOutAppDir = (fabricAppDir.isEmpty()) ? projectName : [projectName, fabricAppDir].join(separator)
         def localExportZipName = "${script.env.WORKSPACE}/${projectName}_PREV.zip"
 
         script.catchErrorCustom(errorMessage) {
@@ -511,7 +513,9 @@ class Fabric implements Serializable {
                     'App Version'   : fabricAppVersion
             ]
             buildDescriptionItems = [ 'App Name': fabricAppName ] + buildDescriptionItems
-                
+            /* Set node related properties */
+            isUnixNode = script.isUnix()
+            separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)
             closure()
         } catch (AppFactoryException e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Something went wrong...'
@@ -536,7 +540,7 @@ class Fabric implements Serializable {
             fabricStats.put('buildtype', "Fabric")
 
             if (publishJob?.number) {
-                fabricRunListStats.put(publishJob.fullProjectName + "/" + publishJob.number, publishJob.fullProjectName)
+                fabricRunListStats.put(publishJob.fullProjectName + separator + publishJob.number, publishJob.fullProjectName)
                 fabricStats.put("pipeline-run-jobs", fabricRunListStats)
             }
             // Publish fabric metrics keys to build Stats Action class.
@@ -605,11 +609,9 @@ class Fabric implements Serializable {
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     pipelineWrapper {
-                        isUnixNode = script.isUnix()
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
-                        def separator = FabricHelper.getPathSeparatorBasedOnOs(isUnixNode)
                         
                         def workspace = script.env.WORKSPACE
                         def checkoutRelativeTargetFolder = projectName
@@ -633,8 +635,8 @@ class Fabric implements Serializable {
                             /* If 'SERVICE_CONFIG_PATH' param is not empty, Refer the path given to export the app service config and commit */
                             if(!serviceConfigPath.isEmpty()) {
                                 def appServiceConfigFilePath = [workspace, projectName, serviceConfigPath].join(separator)
-                                def appServiceConfigDirPath = appServiceConfigFilePath.substring(0, appServiceConfigFilePath.lastIndexOf("/"))
-                                def serviceConfigFileName = appServiceConfigFilePath.substring(appServiceConfigFilePath.lastIndexOf("/") + 1)
+                                def appServiceConfigDirPath = appServiceConfigFilePath.substring(0, appServiceConfigFilePath.lastIndexOf(separator))
+                                def serviceConfigFileName = appServiceConfigFilePath.substring(appServiceConfigFilePath.lastIndexOf(separator) + 1)
                                 
                                 /* Check the service config file type and name */
                                 if(!serviceConfigFileName.endsWith(".json") || serviceConfigFileName.contains(" ")) {
@@ -760,7 +762,6 @@ class Fabric implements Serializable {
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     pipelineWrapper {
-                        isUnixNode = script.isUnix()
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
@@ -828,7 +829,6 @@ class Fabric implements Serializable {
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     pipelineWrapper {
-                        isUnixNode = script.isUnix()
                         if(!isUnixNode){
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
@@ -953,7 +953,6 @@ class Fabric implements Serializable {
                 /* Allocate a slave for the run */
                 script.node(nodeLabel) {
                     pipelineWrapper {
-                        isUnixNode = script.isUnix()
                         if(!isUnixNode) {
                             throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                         }
@@ -1099,7 +1098,7 @@ class Fabric implements Serializable {
      * @param invalidFabricAppError
      */
     private void validateLocalFabricApp(String projectName, String invalidVersionError, String invalidFabricAppError, String exportFolder="/export/") {
-        def metaFileLocation = (exportFolder.isEmpty()) ? [projectName, "Apps/$fabricAppName/Meta.json"].join(separator) : [projectName, exportFolder, "Apps/$fabricAppName/Meta.json"].join("/")
+        def metaFileLocation = (exportFolder.isEmpty()) ? [projectName, "Apps/$fabricAppName/Meta.json"].join(separator) : [projectName, exportFolder, "Apps/$fabricAppName/Meta.json"].join(separator)
         def fileExist = script.fileExists file: metaFileLocation
         if (fileExist) {
             if (!validateLocalFabricAppVersion(fabricAppVersion, metaFileLocation)) {
@@ -1118,7 +1117,7 @@ class Fabric implements Serializable {
      */
     private void findAppChanges(boolean overwriteExisting, String projectName, String fabricAppDir, boolean ignoreJarsForExport = false) {
         if (overwriteExisting) {
-            def fabricAppsDirRelativePath = (fabricAppDir.isEmpty()) ? 'Apps' : [fabricAppDir, 'Apps'].join("/")
+            def fabricAppsDirRelativePath = (fabricAppDir.isEmpty()) ? 'Apps' : [fabricAppDir, 'Apps'].join(separator)
             script.echoCustom("Force Push ${fabricAppName}(${fabricAppVersion}) is selected, exporting updates to '${fabricAppsDirRelativePath}' path in '${exportRepositoryBranch}' branch.")
             
             /* If Override Existing is selected, setting flag appChanged as true, in this case will delete all the files from previous version and check in the code. */
