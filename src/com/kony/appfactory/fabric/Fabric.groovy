@@ -425,8 +425,8 @@ class Fabric implements Serializable {
             */
             String hideShellOutput = '#!/bin/sh -e\n'
             String checkoutCommand = "git checkout \"$exportRepositoryBranch\""
-            String commitCommand = "git commit -m \"$commitMessage\" || error=true"
-            String pushCommand = "git push \"$pushUrl\" || error=true"
+            String commitCommand = "git commit -m \"$commitMessage\""
+            String pushCommand = "git push \"$pushUrl\""
 
             if(ignoreJarsForExport) {
                 String jarsDirPath = (exportFolder?.isEmpty()) ? "Apps/_JARs/*" : "${exportFolder}/Apps/_JARs/*"
