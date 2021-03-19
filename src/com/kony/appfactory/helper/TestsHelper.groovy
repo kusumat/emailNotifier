@@ -140,7 +140,8 @@ class TestsHelper implements Serializable {
         }
 
         try {
-            mustHaveAuthUrl = BuildHelper.uploadBuildMustHaves(script, projectFullPath, mustHaveFolderPath, mustHaveFile, separator, destinationArtifactPath, "Tests")
+            String mustHaveUrl = BuildHelper.uploadBuildMustHaves(script, projectFullPath, mustHaveFolderPath, mustHaveFile, separator, destinationArtifactPath, "Tests")
+            mustHaveAuthUrl = ArtifactHelper.createAuthUrl(mustHaveUrl, script)
         } catch (Exception e) {
             String exceptionMessage = (e.toString()) ?: 'Failed while collecting the logs (must-gather) for debugging.'
             script.echoCustom(exceptionMessage, 'ERROR')
