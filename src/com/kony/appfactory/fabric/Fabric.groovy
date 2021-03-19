@@ -90,6 +90,7 @@ class Fabric implements Serializable {
      * for backward compatibility for older project.*/
     private boolean isScmUrlParamExistInCurrentProject
     private final appUnzipTempDir = "appUnzipTempDir"
+    boolean isScmUrlOfTypeHttps
 
     /**
      * Class constructor.
@@ -406,10 +407,16 @@ class Fabric implements Serializable {
         String errorMessage = 'Failed to push changes to remote git repository'
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            /* Escape special characters in git username and password, to be able to use them in push step */
-            String gitUsername = URLEncoder.encode(script.env.GIT_USERNAME)
-            String gitPassword = URLEncoder.encode(script.env.GIT_PASSWORD)
-            String pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}@")
+            String pushUrl
+            if(isScmUrlOfTypeHttps) {
+                /* Escape special characters in git username and password, to be able to use them in push step */
+                String gitUsername = URLEncoder.encode(script.env.GIT_USERNAME)
+                String gitPassword = URLEncoder.encode(script.env.GIT_PASSWORD)
+                pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}@")
+            } else {
+                pushUrl = exportRepositoryUrl
+            }
+            
             /*
                 Because of need to escape special characters in git username and password,
                 we have URLEncoder.encode() call which modifies the values from credentials parameter,
@@ -449,13 +456,20 @@ class Fabric implements Serializable {
      * @param closure block of code.
      */
     private final void gitCredentialsWrapper(closure) {
-        script.withCredentials([
+        isScmUrlOfTypeHttps = exportRepositoryUrl.startsWith("http://") || exportRepositoryUrl.startsWith("https://")
+        if(isScmUrlOfTypeHttps) {
+            script.withCredentials([
                 [$class          : 'UsernamePasswordMultiBinding',
                  credentialsId   : exportRepositoryCredentialsId,
                  passwordVariable: 'GIT_PASSWORD',
                  usernameVariable: 'GIT_USERNAME']
-        ]) {
-            closure()
+            ]){
+                closure()
+            }
+        } else {
+            script.sshagent([exportRepositoryCredentialsId]) {
+                closure()
+            }
         }
     }
 
