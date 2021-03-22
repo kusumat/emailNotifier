@@ -91,6 +91,7 @@ class Fabric implements Serializable {
     private boolean isScmUrlParamExistInCurrentProject
     private final appUnzipTempDir = "appUnzipTempDir"
     boolean isScmUrlOfTypeHttps
+    private fabricAppDir
 
     /**
      * Class constructor.
@@ -127,6 +128,7 @@ class Fabric implements Serializable {
                 this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 'SCM_CREDENTIALS')
         exportRepositoryCredentialsId = this.script.env[sourceCodeRepoCredentialParamName]
         isScmUrlParamExistInCurrentProject = BuildHelper.doesAnyParamExistFromProbableParamList(this.script, fabricScmUrlProbableParams)
+        fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR).trim() : ((script.env.FABRIC_APP_ROOT_FOLDER) ? script.env.FABRIC_APP_ROOT_FOLDER.trim() : "")
     }
 
     /**
@@ -595,7 +597,7 @@ class Fabric implements Serializable {
                 /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR param not exist in Export Job.
                  * If Fabric_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
                  */
-                String fabricAppDir = BuildHelper.getParamValueOrDefault(script, 'FABRIC_DIR', "export")
+                fabricAppDir = script.params.containsKey('FABRIC_DIR') ? fabricAppDir : "export"
                 boolean ignoreJarsForExport = BuildHelper.getParamValueOrDefault(script, 'IGNORE_JARS', false)
                 
                 String projectName = script.env.PROJECT_NAME
