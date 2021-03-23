@@ -594,10 +594,11 @@ class Fabric implements Serializable {
                         commandName           : 'EXPORT'
                 ]
 
-                /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR param not exist in Export Job.
-                 * If Fabric_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
+                /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR/IGNORE_JARS param does not exist
+                 * in Export Job for older DSL param. If FABRIC_DIR/PROJECT PATH param or value exist, then set fabric app dir as path given.
+                 * Note: Here below using the 'IGNORE_JARS' param in place of "FABRIC_DIR" to identify as new DSL project as we are removing from V9SP3.
                  */
-                fabricAppDir = script.params.containsKey('FABRIC_DIR') ? fabricAppDir : "export"
+                fabricAppDir = script.params.containsKey('IGNORE_JARS') ? fabricAppDir : "export"
                 boolean ignoreJarsForExport = BuildHelper.getParamValueOrDefault(script, 'IGNORE_JARS', false)
                 
                 String projectName = script.env.PROJECT_NAME
