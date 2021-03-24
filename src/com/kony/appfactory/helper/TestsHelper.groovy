@@ -29,11 +29,18 @@ class TestsHelper implements Serializable {
      * @param script Current build instance
      */
     protected final static void setBuildDescription(script) {
+        String mustHavesDescription = ""
+        if (isMustHavesDescriptionNeeded(script))
+            mustHavesDescription = "<p><a href='${mustHaveAuthUrl}'>Logs</a></p>"
+
         script.currentBuild.description = """\
             <div id="build-description">
-                <p><a href='${mustHaveAuthUrl}'>Logs</a></p>
+                <p>Rebuild:<a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
+                <img src="/static/b33030df/images/24x24/clock.png" style="width: 24px; height: 24px; margin: 2px;"
+                class="icon-clock icon-md"></a>${mustHavesDescription}</p>
             </div>\
-        """.stripIndent()
+            """.stripIndent()
+
     }
 
     /**
@@ -149,10 +156,10 @@ class TestsHelper implements Serializable {
     }
 
     /**
-     * Method which says whether to setBuildDescription or not for a build.
+     * Method which says whether to set mustHaves to the buildDescriptor or not for a build.
      * @param script Current build instance
      */
-    protected final static void isBuildDescriptionNeeded(script) {
+    protected final static void isMustHavesDescriptionNeeded(script) {
         String upstreamJob = BuildHelper.getUpstreamJobName(script)
         boolean isRebuild = BuildHelper.isRebuildTriggered(script)
 

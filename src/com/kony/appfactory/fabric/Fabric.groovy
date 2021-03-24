@@ -481,13 +481,17 @@ class Fabric implements Serializable {
      * @param itemsToExpose list of the items to expose.
      */
     private final void setBuildDescription(itemsToExpose) {
-        String descriptionItems = itemsToExpose ? itemsToExpose.findResults {
-            item -> if(item.value) "<p>${item.key}: ${item.value}</p>"
-        }?.join('\n') : ""
+        String descriptionItems = ""
+        buildDescriptionItems?.each { k, v ->
+            descriptionItems = descriptionItems + "<p>${k}: ${v}<p>"
+        }
 
         script.currentBuild.description = """\
             <div id="build-description">
                 ${descriptionItems}
+                <p>Rebuild:<a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
+                <img src="/static/b33030df/images/24x24/clock.png" style="width: 24px; height: 24px; margin: 2px;"
+                class="icon-clock icon-md"></a></p>
             </div>\
             """.stripIndent()
     }
