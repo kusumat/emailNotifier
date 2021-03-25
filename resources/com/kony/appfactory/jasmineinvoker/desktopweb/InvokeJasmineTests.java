@@ -356,19 +356,21 @@ public class InvokeJasmineTests implements ITestListener {
             System.out.println("------------------------------------------------------------------------------------------------------");
         }
         
-        if(inProgressTest != null && !currResultsMap.get(inProgressTest).equalsIgnoreCase("in-progress")) {
+        if(inProgressTest != null && currResultsMap != null && currResultsMap.get(inProgressTest) != null && !currResultsMap.get(inProgressTest).equalsIgnoreCase("in-progress")) {
             printMe(inProgressTest, currResultsMap.get(inProgressTest));
             prevResultsMap.put(inProgressTest, currResultsMap.get(inProgressTest));
             inProgressTest = null;
         }
         
-        for(String testCase : currResultsMap.keySet()) {
-            if(!prevResultsMap.containsKey(testCase)) {
-                if(currResultsMap.get(testCase).equalsIgnoreCase("in-progress")) {
-                    inProgressTest = testCase;
-                } else {
-                    printMe(testCase, currResultsMap.get(testCase));
-                    prevResultsMap.put(testCase, currResultsMap.get(testCase));
+        if (currResultsMap != null) {
+            for(String testCase : currResultsMap.keySet()) {
+                if(!prevResultsMap.containsKey(testCase)) {
+                    if(currResultsMap.get(testCase).equalsIgnoreCase("in-progress")) {
+                        inProgressTest = testCase;
+                    } else {
+                        printMe(testCase, currResultsMap.get(testCase));
+                        prevResultsMap.put(testCase, currResultsMap.get(testCase));
+                    }
                 }
             }
         }
