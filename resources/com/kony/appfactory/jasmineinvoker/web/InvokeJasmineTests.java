@@ -234,9 +234,10 @@ public class InvokeJasmineTests implements ITestListener {
     private void checkTestExecutionStatus(String downloadPath) throws Exception {
         String resultsJSON = null;
         int iterations = 0;
-        boolean isTestCompleted = true;
+        boolean isTestCompleted;
         List<String> tabListWithNonKonyApp = new ArrayList<String>();
         do {
+            isTestCompleted = true;
             /* Get the list of tabs opened in current browser */
             List<String> tabsList = new ArrayList<String>(driver.getWindowHandles());
             
