@@ -391,6 +391,8 @@ class Facade implements Serializable {
                         script.booleanParam(name: 'SUPPORT_x86_DEVICES', value: "${supportX86Devices}")
 
                 ]
+                if(script.params.containsKey("SUPPORT_32BIT_DEVICES"))
+                    channelJobParameters.add(script.booleanParam(name: 'SUPPORT_32BIT_DEVICES', value: script.params.SUPPORT_32BIT_DEVICES))
                 break
             case ~/^.*IOS.*$/:
                 channelJobParameters = commonParameters + [
