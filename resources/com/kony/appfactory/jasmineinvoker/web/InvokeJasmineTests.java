@@ -388,8 +388,8 @@ public class InvokeJasmineTests implements ITestListener {
             prevResultsMap.clear();
             inProgressTest = null;
         }
-        
-        if(prevResultsMap.size() == 0) {
+
+        if(prevResultsMap.size() == 0 && inProgressTest != null) {
             System.out.println("");
             System.out.println("Test Results Status is as follows :");
             System.out.println("------------------------------------------------------------------------------------------------------");
