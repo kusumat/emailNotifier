@@ -96,7 +96,7 @@ class ConfigureMS implements Serializable {
 
         def configFileExtension
         def configFilesDir
-        def providedFilesList = []
+        List providedFilesList = []
 
         if (configurationFileType.equals("Jolt")) {
             configFileExtension = "json"
@@ -115,14 +115,17 @@ class ConfigureMS implements Serializable {
                 /* Search complete directory if the provided files list is empty */
                 if (providedFilesList.isEmpty()) {
                     def configFiles = script.findFiles(glob: "*.${configFileExtension}")
-                    if (!configFiles)
-                        throw new AppFactoryException("There are no ${configurationFileType} configuration files available in the provided ${configFilesDir} directory.", 'ERROR')
                     configFiles.each { configFile ->
                         if (checkIfValidConfigFile(configFile))
                             configurationFiles.add([name: configFile.name, path: configurationFilesPath, extension: configFileExtension])
                     }
                 } else {
                     providedFilesList.each { configFileName ->
+                        /* Check the config file type */
+                        if(!configFileName.endsWith("." + configFileExtension)) {
+                            throw new AppFactoryException("Invalid file type given for ${configurationFileType.toUpperCase()}_FILES_LIST! Only '.${configFileExtension}' files are supported for ${configurationFileType} config deployments.", "ERROR")
+                        }
+
                         def configFile = script.findFiles(glob: configFileName)[0]
                         if (!configFile)
                             throw new AppFactoryException("The ${configurationFileType} file ${searchFile} does not exist.", 'ERROR')

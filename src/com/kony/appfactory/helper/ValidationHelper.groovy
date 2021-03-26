@@ -162,6 +162,9 @@ class ValidationHelper implements Serializable {
                 case 'CUSTOM_PROTECTION_PATH' :
                     regex = /.*(\.json)$/
                     break
+                case 'MICROSERVICE_BASE_URL':
+                    regex = /^http(s)?:(\/\/)(.*\/ms-genericconfig-api\/api\/)(v(\d+\.)(\d+\.)(\*|\d+))(\/)?$/
+                    break
                 default:
                     regex = /.*/
                     break
@@ -209,6 +212,9 @@ class ValidationHelper implements Serializable {
                     break
                 case 'EXCLUDE_LIST_PATH':
                     parameter_message = it.key + ' : ' + 'Please enter valid exclude list file path as specified in parameter description. Expecting EXCLUDE_LIST_PATH in the .txt extension format.The path must be relative to the root of the repository.' + '\n' + 'For Example.: exclude_files_for_protection.txt)'
+                    break
+                case 'MICROSERVICE_BASE_URL' :
+                    parameter_message = it.key + ' : ' + 'Please enter valid microservice base url as specified in parameter description. Expecting something like http(s)://<hostname>:<port>/ms-genericconfig-api/api/<api-version>/'
                     break
                 default:
                     parameter_message = parameter_message = it.key + ' : ' + 'The parameter expects a string value.'
