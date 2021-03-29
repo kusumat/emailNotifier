@@ -12,6 +12,9 @@ class CustomHook implements Serializable {
     /* Library configuration */
     private libraryProperties
 
+    /* NodeJS Property */
+    private nodejsVersion
+
     /* Commons */
     protected final projectName = script.env.PROJECT_NAME
     /* parameters */
@@ -34,19 +37,20 @@ class CustomHook implements Serializable {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
+        nodejsVersion = libraryProperties.'customhooks.nodejs.version'
     }
 
     /* CustomHooks pipeline, each hook follows same execution process */
-    protected final void processPipeline(){
+    protected final void processPipeline() {
         script.ansiColor('xterm') {
             upstreamJobWorkspace && buildSlave && hookSlave ?: script.echoCustom("CustomHooks aren't supposed to be triggered directly. CustomHooks will only be triggered as part of the Visualizer jobs.", 'ERROR')
         }
-        if(BuildType.Visualizer.toString().equalsIgnoreCase(buildType)) {
+        if (BuildType.Visualizer.toString().equalsIgnoreCase(buildType)) {
             buildWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
         } else {
             buildWorkspace = [upstreamJobWorkspace, libraryProperties.'fabric.project.workspace.folder.name'].join('/')
         }
-        
+
         /* Wrapper for injecting timestamp to the build console output */
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
@@ -56,8 +60,7 @@ class CustomHook implements Serializable {
 
                     if (hookLabel.contains(libraryProperties.'test.hooks.node.label') && BuildType.Visualizer.toString().equalsIgnoreCase(buildType)) {
                         hookDir = buildWorkspace + "/" + projectName + "/deviceFarm/" + "Hook"
-                    }
-                    else{
+                    } else {
                         hookDir = buildWorkspace + "/" + projectName + "/Hook"
                     }
 
@@ -78,39 +81,40 @@ class CustomHook implements Serializable {
                                  * definitions with same convention.
                                  */
                                 def EnvVariablesList = script.env.getEnvironment().findAll { envkey, envvalue ->
-                                    envkey.equals(envkey.toUpperCase()) }.keySet().join(' ')
+                                    envkey.equals(envkey.toUpperCase())
+                                }.keySet().join(' ')
 
                                 def defaultParams = getCustomhookDefaultArgs()
 
                                 script.dir(hookDir) {
                                     try {
-                                        if (buildAction == "Execute Ant") {
-                                            def antCmd = "set +ex; unset $EnvVariablesList; set -e; $antBinPath" + "/ant" + " -f build.xml ${scriptArguments} $defaultParams"
-                                            script.shellCustom("$antCmd", true)
-                                        } else if (buildAction == "Execute Maven") {
-                                            def mvnCmd = "set +ex; unset $EnvVariablesList; set -e; $mavenBinPath" + "/mvn" + " ${scriptArguments} $defaultParams"
-                                            script.shellCustom("$mvnCmd ", true)
-                                        } else {
-                                            script.echoCustom("unknown build script",'WARN')
+                                        script.nodejs(nodejsVersion) {
+                                            if (buildAction == "Execute Ant") {
+                                                def antCmd = "set +ex; unset $EnvVariablesList; set -e; $antBinPath" + "/ant" + " -f build.xml ${scriptArguments} $defaultParams"
+                                                script.shellCustom("$antCmd", true)
+                                            } else if (buildAction == "Execute Maven") {
+                                                def mvnCmd = "set +ex; unset $EnvVariablesList; set -e; $mavenBinPath" + "/mvn" + " ${scriptArguments} $defaultParams"
+                                                script.shellCustom("$mvnCmd ", true)
+                                            } else {
+                                                script.echoCustom("unknown build script", 'WARN')
+                                            }
                                         }
                                     } catch (Exception e) {
-                                        throw new AppFactoryException("Hook build execution failed!!",'ERROR')
+                                        throw new AppFactoryException("Hook build execution failed!!", 'ERROR')
                                     } finally {
                                         script.stage('Prepare Environment for actual Build Run') {
                                             def customHooksLogDir = [buildWorkspace, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join('/')
-                                            script.dir(customHooksLogDir){
+                                            script.dir(customHooksLogDir) {
                                                 def buildLogName = script.env.JOB_NAME.replaceAll("/", "_") + ".log"
                                                 script.writeFile file: buildLogName, text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
                                             }
-                                            
+
                                             /* Applying ACLs, allow buildslave/jenkins user permissions*/
                                             if (hookLabel.contains(libraryProperties.'visualizer.hooks.node.label')) {
                                                 macACLafterRun()
-                                            }
-                                            else if (hookLabel.contains(libraryProperties.'test.hooks.node.label')) {
+                                            } else if (hookLabel.contains(libraryProperties.'test.hooks.node.label')) {
                                                 linuxACLafterRun()
-                                            }
-                                            else {
+                                            } else {
                                                 script.echoCustom("Something went wrong.. unable to run hook", 'ERROR')
                                             }
                                         }
