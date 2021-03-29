@@ -273,6 +273,8 @@ class AndroidChannel extends Channel {
                         script.stage('Build') {
                             if(script.params.containsKey("SUPPORT_32BIT_DEVICES") && script.params.SUPPORT_32BIT_DEVICES )
                                 script.echoCustom('Android 32-bit binary support has been removed from Appfactory!','WARN')
+                            if(script.params.ANDROID_APP_BUNDLE && script.params.SUPPORT_x86_DEVICES)
+                                script.echoCustom("Since you have selected Android App Bundle build option, X86 binary will not be generated separately.", 'INFO')
                             /* Copy protected keys to project workspace if build mode is "release-protected" */
                             if (buildMode == libraryProperties.'buildmode.release.protected.type') {
                                 script.echoCustom("Placing encryptions keys for protected mode build.")
