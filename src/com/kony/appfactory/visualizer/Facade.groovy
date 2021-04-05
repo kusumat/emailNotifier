@@ -114,6 +114,8 @@ class Facade implements Serializable {
     private final testFramework = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
     private final availableBrowsers = script.params.AVAILABLE_BROWSERS
+    
+    private final screenResolution = BuildHelper.getParamValueOrDefault(script, 'SCREEN_RESOLUTION', '1024x768')
     private final webTestsArgumentsParamName = BuildHelper.getCurrentParamName(script, 'RUN_WEB_TESTS_ARGUMENTS', 'RUN_DESKTOPWEB_TESTS_ARGUMENTS')
     private final runWebTestsParamName = BuildHelper.getCurrentParamName(script, 'RUN_WEB_TESTS', 'RUN_DESKTOPWEB_TESTS')
     private final webTestsArguments = script.params[webTestsArgumentsParamName]
@@ -443,7 +445,8 @@ class Facade implements Serializable {
                 script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook),
                 script.string(name: 'TEST_FRAMEWORK', value: "${testFramework}"),
                 script.string(name: 'WEB_TEST_PLAN', value: "${jasmineWebTestPlan}"),
-                script.string(name: 'NATIVE_TEST_PLAN', value: "${jasmineNativeTestPlan}")
+                script.string(name: 'NATIVE_TEST_PLAN', value: "${jasmineNativeTestPlan}"),
+                script.string(name: 'SCREEN_RESOLUTION', value: "${screenResolution}")
             ]
         if(script.params.containsKey("RUN_NATIVE_TESTS"))
             automationParams.add(script.booleanParam(name: 'RUN_NATIVE_TESTS', value: script.params.RUN_NATIVE_TESTS))

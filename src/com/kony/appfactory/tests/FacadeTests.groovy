@@ -93,6 +93,8 @@ class FacadeTests implements Serializable {
     def buildStats = [:]
     def runListStats = [:]
     private runInCustomTestEnvironment = (script.params.containsKey("TEST_ENVIRONMENT")) ? ((script.params.TEST_ENVIRONMENT == 'Custom') ? true : false ) : script.params.RUN_IN_CUSTOM_TEST_ENVIRONMENT
+    
+    private final screenResolution = BuildHelper.getParamValueOrDefault(script, 'SCREEN_RESOLUTION', '1024x768')
     /**
      * Class constructor.
      *
@@ -169,7 +171,8 @@ class FacadeTests implements Serializable {
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
                         script.string(name: "${webTestsArgumentsParamName}", value: script.params[webTestsArgumentsParamName]),
                         script.string(name: 'JASMINE_TEST_URL', value: BuildHelper.getParamValueOrDefault(script, "JASMINE_TEST_URL", "")?.trim()),
-                        script.string(name: 'WEB_TEST_PLAN',  value: BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null))
+                        script.string(name: 'WEB_TEST_PLAN',  value: BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)),
+                        script.string(name: 'SCREEN_RESOLUTION', value: "${screenResolution}")
 
                 ]
 
