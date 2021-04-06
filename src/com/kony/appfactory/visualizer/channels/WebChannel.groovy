@@ -183,6 +183,8 @@ class WebChannel extends Channel {
                                 script.echoCustom("For Visualizer 9.2.0 below projects release-protected mode is not applicable for DesktopWeb channel build." +
                                             " It will build as Release mode only.", 'WARN')
                                 if(webProtectionID) {
+                                    def securejsFullPath = [workspace, projectWorkspaceFolderName, "temp", projectName, libraryProperties.'web.protection.securejs.log.folder.path'].join(separator)
+                                    mustHaveArtifacts.add([name: "securejs.log", path: securejsFullPath])
                                     setProtectedModePropertiesPath()
                                     if (webProtectionExcludeListFile) {
                                         def excludeListFilePath = [projectFullPath, webProtectionExcludeListFile].join(separator)
