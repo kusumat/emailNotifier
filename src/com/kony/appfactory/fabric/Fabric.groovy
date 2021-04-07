@@ -41,7 +41,7 @@ class Fabric implements Serializable {
     private String cloudAccountId = script.params.CLOUD_ACCOUNT_ID
     private fabricCredentialsProbableParamNames = ['CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID', 'IMPORT_CLOUD_CREDENTIALS_ID', 'IMPORT_FABRIC_CREDENTIALS_ID']
     private final fabricCredentialsParamName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, fabricCredentialsProbableParamNames, 'FABRIC_CREDENTIALS')
-    private final String fabricCredentialsID = script.params[fabricCredentialsParamName]
+    private String fabricCredentialsID = script.params[fabricCredentialsParamName]
     private String fabricAppName = script.params.FABRIC_APP_NAME
     private final String recipientsList
     private String fabricAppVersion
@@ -841,8 +841,12 @@ class Fabric implements Serializable {
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            fabricCredentialsParamName
+                        fabricCredentialsParamName
                     ]
+                    if(script.params.FABRIC_CREDENTIALS) {
+                        script.env[fabricCredentialsParamName] = script.params.FABRIC_CREDENTIALS
+                        fabricCredentialsID = script.params.FABRIC_CREDENTIALS
+                    }
                     mandatoryParameters = checkCompatibility(mandatoryParameters, 'publish')
                     ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                 }
@@ -954,12 +958,12 @@ class Fabric implements Serializable {
                             if (enablePublish) {
                                 mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
                             }
-                            mandatoryParameters << ['FABRIC_APP_NAME']
+                            mandatoryParameters << 'FABRIC_APP_NAME'
                             if ((!script.params.FABRIC_EXPORT_CONSOLE_URL && !script.params.EXPORT_CLOUD_ACCOUNT_ID) || (!script.params.FABRIC_IMPORT_CONSOLE_URL && !script.params.IMPORT_CLOUD_ACCOUNT_ID)) {
                                 throw new AppFactoryException('One of the parameters among (EXPORT_CLOUD_ACCOUNT_ID, FABRIC_EXPORT_CONSOLE_URL) and (IMPORT_CLOUD_ACCOUNT_ID, FABRIC_IMPORT_CONSOLE_URL) is mandatory.')
                             }
-                            if (script.params.containsKey('FABRIC_EXPORT_CONSOLE_URL') && script.params.FABRIC_EXPORT_CONSOLE_URL) mandatoryParameters << ['FABRIC_EXPORT_IDENTITY_URL']
-                            if (script.params.containsKey('FABRIC_IMPORT_CONSOLE_URL') && script.params.FABRIC_IMPORT_CONSOLE_URL) mandatoryParameters << ['FABRIC_IMPORT_IDENTITY_URL']
+                            if (script.params.containsKey('FABRIC_EXPORT_CONSOLE_URL') && script.params.FABRIC_EXPORT_CONSOLE_URL) mandatoryParameters << 'FABRIC_EXPORT_IDENTITY_URL'
+                            if (script.params.containsKey('FABRIC_IMPORT_CONSOLE_URL') && script.params.FABRIC_IMPORT_CONSOLE_URL) mandatoryParameters << 'FABRIC_IMPORT_IDENTITY_URL'
                             fabricAppVersion = script.params.FABRIC_APP_VERSION
                             break
                     }
@@ -1193,7 +1197,7 @@ class Fabric implements Serializable {
         def publishJobParameters = [
                 script.string(name: 'FABRIC_APP_VERSION', value: fabricAppVersion),
                 script.booleanParam(name: "SET_DEFAULT_VERSION", value: setDefaultVersion),
-                script.string(name: fabricCredentialsParamName, value: fabricCredentialsID),
+                script.credentials(name: 'FABRIC_CREDENTIALS', value: fabricCredentialsID),
                 script.string(name: 'CLOUD_ACCOUNT_ID', value: cloudAccountId),
                 script.string(name: 'FABRIC_APP_NAME', value: fabricAppName),
                 script.string(name: 'FABRIC_ENVIRONMENT_NAME', value: fabricEnvironmentName),
@@ -1206,24 +1210,22 @@ class Fabric implements Serializable {
             publishJobParameters << script.string(name: 'FABRIC_CONSOLE_URL', value: consoleUrl) <<
                     script.string(name: 'FABRIC_IDENTITY_URL', value: identityUrl)
         }
-
         publishJob = script.build job: "Publish", parameters: publishJobParameters
     }
-
     /**
      * To implement few backward compatibility checks for FABRIC_CONSOLE_URL
      */
     private final checkCompatibility(def mandatoryParameters, String jobName) {
         switch (appConfigParameter) {
             case 'FABRIC_APP_CONFIG':
-                mandatoryParameters << ['FABRIC_APP_CONFIG']
+                mandatoryParameters << 'FABRIC_APP_CONFIG'
                 break
             case 'CLOUD_ACCOUNT_ID':
-                mandatoryParameters << ['FABRIC_APP_NAME']
+                mandatoryParameters << 'FABRIC_APP_NAME'
                 if (!script.params.FABRIC_CONSOLE_URL && !script.params.CLOUD_ACCOUNT_ID) {
                     throw new AppFactoryException('Please enter one of CLOUD_ACCOUNT_ID or FABRIC_CONSOLE_URL parameters.')
                 }
-                if (script.params.containsKey('FABRIC_CONSOLE_URL') && script.params.FABRIC_CONSOLE_URL) mandatoryParameters << ['FABRIC_IDENTITY_URL']
+                if (script.params.containsKey('FABRIC_CONSOLE_URL') && script.params.FABRIC_CONSOLE_URL) mandatoryParameters << 'FABRIC_IDENTITY_URL'
                 if (enablePublish || jobName == 'publish') {
                     mandatoryParameters.add('FABRIC_ENVIRONMENT_NAME')
                 }
