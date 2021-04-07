@@ -180,8 +180,6 @@ class WebChannel extends Channel {
 
                         script.stage('Build') {
                             if(buildMode == libraryProperties.'buildmode.release.protected.type') {
-                                script.echoCustom("For Visualizer 9.2.0 below projects release-protected mode is not applicable for DesktopWeb channel build." +
-                                            " It will build as Release mode only.", 'WARN')
                                 if(webProtectionID) {
                                     def securejsFullPath = [workspace, projectWorkspaceFolderName, "temp", projectName, libraryProperties.'web.protection.securejs.log.folder.path'].join(separator)
                                     mustHaveArtifacts.add([name: "securejs.log", path: securejsFullPath])
@@ -195,7 +193,7 @@ class WebChannel extends Channel {
                                             throw new AppFactoryException('Failed to find exclude list file at the location \n' + excludeListFilePath, 'ERROR')
                                         }
                                         /* Check the exclude list file type and name */
-                                        if(!excludeListFileName.endsWith(".txt") || excludeListFileName.contains(" ")) {
+                                        if (!excludeListFileName.endsWith(".txt") || excludeListFileName.contains(" ")) {
                                             throw new AppFactoryException("Invalid file name or type given for Exclude list file! Expecting Exclude list in '.txt' file format and should not contains spaces in file name.", "ERROR")
                                         }
                                     }

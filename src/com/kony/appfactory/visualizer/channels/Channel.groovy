@@ -373,7 +373,7 @@ class Channel implements Serializable {
      * Builds the project.
      */
     protected final void build() {
-        script.echoCustom("Running the build in ${buildMode} mode..")
+
         /* List of required build resources */
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
 
@@ -405,6 +405,14 @@ class Channel implements Serializable {
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
                     Date plugindlStart = new Date()
+
+                    if(channelOs.contains("WEB") &&
+                            buildMode == libraryProperties.'buildmode.release.protected.type' &&
+                            ValidationHelper.compareVersions(visualizerVersion, libraryProperties.'obfuscation_properties.ci.support.base.version') == -1) {
+                        script.echoCustom("App Factory will build your code in release mode as release-protected mode is not applicable for Web channel build in Visualizer ${visualizerVersion}.", 'INFO')
+                        script.env.BUILD_MODE = "release"
+                    }
+                    script.echoCustom("Running the build in ${script.env.BUILD_MODE} mode.. ",'INFO')
                     /* Download Visualizer Starter feature XML*/
                     if (script.env.IS_STARTER_PROJECT.equals("true")) {
                         /* Added the check to use update site link for v9 prod if project version is :9.X.X  */
