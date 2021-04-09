@@ -43,24 +43,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     private runTests = false
     /* Device Farm AWS region */
     private awsRegion
-    protected projectArtifacts = [
-            Android_Mobile: [binaryName: getBinaryName(script.env.ANDROID_MOBILE_NATIVE_BINARY_URL),
-                             extension : 'apk',
-                             uploadType: 'ANDROID_APP',
-                             url       : script.env.ANDROID_MOBILE_NATIVE_BINARY_URL],
-            Android_Tablet: [binaryName: getBinaryName(script.env.ANDROID_TABLET_NATIVE_BINARY_URL),
-                             extension : 'apk',
-                             uploadType: 'ANDROID_APP',
-                             url       : script.env.ANDROID_TABLET_NATIVE_BINARY_URL],
-            iOS_Mobile    : [binaryName: getBinaryName(script.env.IOS_MOBILE_NATIVE_BINARY_URL),
-                             extension : 'ipa',
-                             uploadType: 'IOS_APP',
-                             url       : script.env.IOS_MOBILE_NATIVE_BINARY_URL],
-            iOS_Tablet    : [binaryName: getBinaryName(script.env.IOS_TABLET_NATIVE_BINARY_URL),
-                             extension : 'ipa',
-                             uploadType: 'IOS_APP',
-                             url       : script.env.IOS_TABLET_NATIVE_BINARY_URL]
-    ]
+    protected projectArtifacts = [:]
 
     /*Added backward compatibility check here so that it works for both NATIVE_TESTS_URL and TESTS_BINARY_URL */
     private testPackage = [
@@ -92,6 +75,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
     private deviceStatsList = [:]
     private deviceStats = [:]
     private Date pretestdurstart, devicewaitstart
+
     /**
      * Class constructor.
      *
@@ -103,6 +87,12 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         deviceFarm = new AwsDeviceFarmHelper(script)
         awsRegion = libraryProperties.'test.automation.device.farm.aws.region'
         runInCustomTestEnvironment = (script.params.containsKey("TEST_ENVIRONMENT")) ? ((script.params.TEST_ENVIRONMENT == "Custom") ? true : false) : BuildHelper.getParamValueOrDefault(script, "RUN_IN_CUSTOM_TEST_ENVIRONMENT", false)
+        
+        /* Initializing Project Artifacts for device Farm run */
+        initializeProjectArtifactsData(script.env.ANDROID_MOBILE_NATIVE_BINARY_URL, "Android_Mobile", "apk", "ANDROID_APP")
+        initializeProjectArtifactsData(script.env.ANDROID_TABLET_NATIVE_BINARY_URL, "Android_Tablet", "apk", "ANDROID_APP")
+        initializeProjectArtifactsData(script.env.IOS_MOBILE_NATIVE_BINARY_URL, "iOS_Mobile", "ipa", "IOS_APP")
+        initializeProjectArtifactsData(script.env.IOS_TABLET_NATIVE_BINARY_URL, "iOS_Tablet", "ipa", "IOS_APP")
     }
 
     /**
@@ -115,6 +105,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
         script.echoCustom("Selected Appium Version: " + appiumVersion)
         /* Prepare step to run in parallel */
         def step = { artifactName, artifactURL, artifactExt, uploadType, extraDataPkgArn ->
+
             /* Upload application binaries to Device Farm */
             def uploadData = [:]
             uploadData = deviceFarm.uploadArtifact(deviceFarmProjectArn,
@@ -128,7 +119,8 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             script.when(runInCustomTestEnvironment, 'Upload test spec') {
                 prepareAndUploadTestSpec(appPackageName, formFactor.toLowerCase().capitalize(), channel.toLowerCase().capitalize())
             }
-
+            
+            deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
             /* Depending on artifact name we need to chose appropriate pool for the run */
             def devicePoolArnOrSelectionConfig
             if (isPoolWithDeviceFarmFilters) {
@@ -151,17 +143,6 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             }
         }
 
-        deviceFarmTestSpecUploadArtifactArn ? script.echoCustom("Running in Custom Test Environment.", 'INFO') : script.echoCustom("Running in Standard Test Environment.", 'INFO')
-
-        /* Setting the Universal binary url to respective platform input run test job paramaters*/
-        if (script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL) {
-            projectArtifacts.'Android_Mobile'.'url' = devicePoolArns.'android_mobile' ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
-            projectArtifacts.'Android_Tablet'.'url' = devicePoolArns.'android_tablet' ? script.env.ANDROID_UNIVERSAL_NATIVE_BINARY_URL : null
-        }
-        if (script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL) {
-            projectArtifacts.'iOS_Mobile'.'url' = devicePoolArns.'ios_mobile' ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
-            projectArtifacts.'iOS_Tablet'.'url' = devicePoolArns.'ios_tablet' ? script.env.IOS_UNIVERSAL_NATIVE_BINARY_URL : null
-        }
         /* Prepare parallel steps */
         def stepsToRun = prepareParallelSteps(projectArtifacts, 'uploadAndRun_', step)
 
@@ -1077,4 +1058,22 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
             }
         }
     }
+    
+    /**
+     * Initializes projectArtifacts map based on available channel binary
+     * @param projectArtifacts
+     * @param binaryUrl
+     * @param binaryChannel
+     * @param extension
+     * @param uplaodType
+     */
+    @NonCPS
+    protected void initializeProjectArtifactsData(binaryUrl, binaryChannel, extension, uplaodType) {
+        if (binaryUrl)
+            projectArtifacts.put(binaryChannel, [binaryName: getBinaryName(binaryUrl),
+                                                 extension : extension,
+                                                 uploadType: uplaodType,
+                                                 url       : binaryUrl])
+        }
+    
 }

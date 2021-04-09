@@ -295,8 +295,8 @@ class AwsDeviceFarmHelper implements Serializable {
         def uploadData = null
         def uploadArn = null
         def uploadAppData = [:]
-        String successMessage = "Artifact ${uploadFileName} uploaded successfully"
-        String errorMessage = "Failed to upload ${uploadFileName} artifact"
+        String successMessage = "Artifact ${uploadFileName} uploaded successfully."
+        String errorMessage = "Failed to upload ${uploadFileName} artifact."
 
         script.catchErrorCustom(errorMessage, successMessage) {
             String createUploadScript = "set +x;aws devicefarm create-upload --project-arn ${projectArn}" +
