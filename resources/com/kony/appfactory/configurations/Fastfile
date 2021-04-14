@@ -79,6 +79,8 @@ platform :ios do
 	  ENV['GYM_CODE_SIGNING_IDENTITY'] = 'iPhone Developer'
 	end
     end
+    # Workaround for Xcode 12.0 Simulator issues.Refer: APPFACT-2731
+    sh("sudo xcrun simctl delete unavailable")
     ENV['GYM_XCARGS'] = "DEVELOPMENT_TEAM=#{ENV["sigh_#{ENV['MATCH_APP_IDENTIFIER']}_#{ENV['MATCH_TYPE']}_team-id"]} OTHER_CODE_SIGN_FLAGS=\"--keychain #{ENV['MATCH_KEYCHAIN_NAME']}\""
   end
 
