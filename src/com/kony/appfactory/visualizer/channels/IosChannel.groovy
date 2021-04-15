@@ -424,9 +424,9 @@ class IosChannel extends Channel {
 
             // Preparing the commands to copy the profile files. If we run the copy command here, we are getting the java.io.NotSerializableException
             copyCMDs.add("mkdir -p ${profileHome}")
-            copyCMDs.add("cp -f ${filePath} ${profileHome}/${UUID}.mobileprovision")
+            copyCMDs.add("cp -f \"${filePath}\" ${profileHome}/${UUID}.mobileprovision")
         }
-        
+
         if(!isValidBundleID){
             script.echoCustom("There is no matching profile found for the given bundle identifier (Application Identifier). " + 
                             "Looks like mapping profiles are not available in the APPLE_SIGNING_CERTIFICATES uploaded files.", "ERROR")
