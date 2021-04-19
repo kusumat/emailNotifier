@@ -159,6 +159,10 @@ class ArtifactHelper implements Serializable {
                     archivePath = archivePath.endsWith('/') ?: archivePath + '/'
                     artifactURL = script.uploadArtifact(file:fileName, path:archivePath)
                 }
+                if(!fileName.endsWith('/')) {
+                    def artifactInfo = ["artifact": archivePath + fileName]
+                    script.statspublish artifactInfo.inspect()
+                }
             }
         }
 
