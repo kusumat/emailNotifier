@@ -53,7 +53,7 @@ class FabricHelper implements Serializable {
                      passwordVariable: 'fabricPassword',
                      usernameVariable: 'fabricUsername']
             ]) {
-                // Switch command options(removing account id) if Console Url represents OnPrem Fabric.(Visit https://docs.kony.com/konylibrary/konyfabric/kony_fabric_user_guide/Content/CI_MobileFabric.htm for details).
+                // Switch command options(removing account id) if Console Url represents OnPrem Fabric.(Visit https://opensource.hcltechsw.com/volt-mx-docs/docs/documentation/Foundry/voltmx_foundry_user_guide/Content/CI_Foundry.html for details).
                 if(!script.env.CONSOLE_URL.matches(script.kony.FABRIC_CONSOLE_URL))
                 {
                     fabricCommandOptions.remove('-t')

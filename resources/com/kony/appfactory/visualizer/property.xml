@@ -141,7 +141,7 @@
         <condition property="domainParam" value="${env.domainParam}" else="">
             <isset property="env.domainParam"/>
         </condition>
-        <condition property="fabricUrl" value="${env.CONSOLE_URL}" else="https://manage.kony.com">
+        <condition property="fabricUrl" value="${env.CONSOLE_URL}" else="https://manage.hclvoltmx.com">
             <isset property="env.CONSOLE_URL"/>
         </condition>
         <condition property="fabricEnvironmentName" value="${env.FABRIC_ENV_NAME}" else="">
