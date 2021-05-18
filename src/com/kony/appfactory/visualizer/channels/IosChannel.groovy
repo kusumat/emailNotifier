@@ -204,7 +204,7 @@ class IosChannel extends Channel {
     private final void createIPA() {
         String successMessage = 'IPA file created successfully'
         String errorMessage = 'Failed to create IPA file'
-        /* Point Dropins folder based on Headless build and CI build to location whereVolt MXplugins are stored */
+        /* Point Dropins folder based on Headless build and CI build to location where Volt MX plugins are stored */
         String visualizerDropinsPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
         String codeSignIdentity = (iosDistributionType == 'development') ? 'Develop' : 'Distribution'
         String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
