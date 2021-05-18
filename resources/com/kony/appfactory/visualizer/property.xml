@@ -8,7 +8,7 @@
 
     <target name="main"
             depends="init-ivy,property,projectprop-xml-update,wipe"
-            description="-> generate properties, update projectprop xml, generate ivy.xml, retrieve artifacts, wipes outVolt MXplugins from plugins directory"/>
+            description="-> generate properties, update projectprop xml, generate ivy.xml, retrieve artifacts, wipes out Volt MX plugins from plugins directory"/>
 
     <target name="download-ivy" unless="ivy.installed">
         <get src="http://search.maven.org/remotecontent?filepath=org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
