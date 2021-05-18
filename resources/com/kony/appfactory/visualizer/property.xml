@@ -284,7 +284,7 @@
         <ivy:retrieve pattern="${visInner}/dropins/[artifact]_[revision].[ext]"/>
     </target>
 
-    <target name="wipe" depends="clean,retrieve,plugins" description="-> wipes outVolt MXplugins from plugins directory">
+    <target name="wipe" depends="clean,retrieve,plugins" description="-> wipes out Volt MX plugins from plugins directory">
         <delete>
             <fileset dir="${visInner}/plugins">
                 <include name="com.pat.*.jar"/>
