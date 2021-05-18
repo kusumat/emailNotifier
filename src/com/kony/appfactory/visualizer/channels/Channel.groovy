@@ -171,7 +171,7 @@ class Channel implements Serializable {
         scmCredentialsId = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
         scmUrl = script.env.PROJECT_SOURCE_CODE_URL
 
-        /* Expose Kony global variables to use them in HeadlessBuild.properties */
+        /* Expose Volt MX global variables to use them in HeadlessBuild.properties */
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
@@ -285,7 +285,7 @@ class Channel implements Serializable {
 
     /**
      * Wraps code with required environment variables (home paths of dependencies,
-     *  updates PATH environment variable, Kony Fabric credentials).
+     *  updates PATH environment variable, Volt MX Fabric credentials).
      *
      * @param closure block of code.
      */
@@ -484,7 +484,7 @@ class Channel implements Serializable {
                             /* Get Project common AppId to be used in the Headless build */
                             script.env.projectAppId = getProjectAppIdKey()
 
-                            /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Kony plugins */
+                            /* Populate HeadlessBuild.properties, HeadlessBuild-Global.properties and download Volt MX plugins */
                             script.shellCustom('ant -buildfile property.xml', isUnixNode)
 
                             /* Build project using headless build tool*/

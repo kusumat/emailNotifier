@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<project name="kony" basedir="." default="main" xmlns:ivy="antlib:org.apache.ivy.ant">
+<project name="VoltMX" basedir="." default="main" xmlns:ivy="antlib:org.apache.ivy.ant">
     <property name="ivy.install.version" value="2.4.0"/>
     <property name="ivy.home" value="${ant.library.dir}"/>
     <property name="ivy.jar.file" value="${ivy.home}/ivy.jar"/>

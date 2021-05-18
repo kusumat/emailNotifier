@@ -1008,8 +1008,8 @@ class BuildHelper implements Serializable {
     /**
      * Set the external (third party) authentication login path as URL_PATH_INFO env variable, if enabled for the provided MF Account.
      * @param script
-     * @param mfApiVersion: The version of the Kony API to be used for authentication.
-     * @param environmentGuid: The GUID of the Kony environment (MF_ENVIRONMENT_GUID).
+     * @param mfApiVersion: The version of the Volt MX API to be used for authentication.
+     * @param environmentGuid: The GUID of the Volt MX environment (MF_ENVIRONMENT_GUID).
      */
     protected final static void getExternalAuthInfoForCloudBuild(script, mfApiVersion, environmentGuid) {
         try{
@@ -1021,7 +1021,7 @@ class BuildHelper implements Serializable {
             }
         }
         catch (FabricUnreachableException e1) {
-            throw new AppFactoryException("Unable to reach the Kony Cloud..")
+            throw new AppFactoryException("Unable to reach the Volt MX Cloud..")
         }
         catch(FabricException e){
             throw new AppFactoryException("Looks like Oauth key is no longer accepted.. Please retry..")
@@ -1029,7 +1029,7 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Fetches list of Kony released versions from Visualizer updatesite.
+     * Fetches list of Volt MX released versions from Visualizer updatesite.
      * @param script pipeline object.
      * @param common Library properties object
      * return releasedVersionsList
@@ -1305,7 +1305,7 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Get the AppFactory version information (appfactory plugin version, core plugins versions, Kony Libarary branch information )
+     * Get the AppFactory version information (appfactory plugin version, core plugins versions, Volt MX Libarary branch information )
      */
     protected static final String getMyAppFactoryVersions() {
         def apver = new AppFactoryVersions()

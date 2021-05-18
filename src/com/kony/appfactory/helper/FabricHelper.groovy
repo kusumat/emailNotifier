@@ -30,7 +30,7 @@ class FabricHelper implements Serializable {
      *
      * @param script Build script object.
      * @param fabricCommand command name.
-     * @param fabricCredentialsID Kony Fabric credentials Id in Jenkins credentials store.
+     * @param fabricCredentialsID Volt MX Fabric credentials Id in Jenkins credentials store.
      * @param isUnixNode UNIX node flag.
      * @param fabricCliFileName fabric cli file name that need to executed.
      * @param fabricCommandOptions options for Fabric command.
