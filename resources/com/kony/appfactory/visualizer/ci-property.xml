@@ -266,7 +266,7 @@
             <entry key="plugin.dir" value="${pluginDir}"/>
 
             <entry key="project.name" value="${env.VISUALIZER_PROJECT_ROOT_FOLDER_NAME}"/>
-            <!-- Mode been hardcoded to 0 to fit requirement of publishing Fabric application with Fabric CLI -->
+            <!-- Mode been hardcoded to 0 to fit requirement of publishing Foundry application with Foundry CLI -->
             <entry key="mode" value="0"/>
             <entry key="build.mode" value="${buildMode}"/>
             <entry key="appid" value="${projectAppId}"/>

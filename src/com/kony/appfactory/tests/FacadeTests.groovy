@@ -101,7 +101,7 @@ class FacadeTests implements Serializable {
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
-        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Iris')
 
         workspace = script.env.WORKSPACE
         projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')

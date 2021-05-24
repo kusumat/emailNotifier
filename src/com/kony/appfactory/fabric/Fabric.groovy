@@ -10,7 +10,7 @@ import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
 /**
- * Implements logic for base Fabric commands and some additional method (fetch Fabric CLI, prettify JSON files, etc).
+ * Implements logic for base Foundry commands and some additional method (fetch Foundry CLI, prettify JSON files, etc).
  */
 class Fabric implements Serializable {
     /* Pipeline object */
@@ -50,10 +50,10 @@ class Fabric implements Serializable {
     private final String commitAuthor = script.params.COMMIT_AUTHOR?.trim() ?: 'Jenkins'
     private final String authorEmail = script.params.AUTHOR_EMAIL
     private String commitMessage = script.params.COMMIT_MESSAGE?.trim() ?:
-            "Automatic backup of Fabric services" +
+            "Automatic backup of Foundry services" +
                     (script.env.BUILD_NUMBER ? ", build-${script.env.BUILD_NUMBER}" : '.')
 
-    /* Force Fabric CLI to overwrite existing application on import */
+    /* Force Foundry CLI to overwrite existing application on import */
     private boolean overwriteExisting
     private boolean overwriteExistingScmBranch
     private boolean overwriteExistingAppVersion
@@ -70,7 +70,7 @@ class Fabric implements Serializable {
     /* Publish build parameters */
     private String fabricEnvironmentName = script.params.FABRIC_ENVIRONMENT_NAME
     private final boolean setDefaultVersion = script.params.SET_DEFAULT_VERSION
-    /* OnPrem Fabric parameters */
+    /* OnPrem Foundry parameters */
     private String consoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_CONSOLE_URL', script.kony.FABRIC_CONSOLE_URL)
     private String identityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IDENTITY_URL', script.kony.FABRIC_CONSOLE_URL)
     private fabricAppConfig = script.params.FABRIC_APP_CONFIG?:null
@@ -110,10 +110,10 @@ class Fabric implements Serializable {
         this.script.env['CLOUD_DOMAIN'] = (this.script.kony.CLOUD_DOMAIN) ?: 'kony.com'
         overwriteExisting = BuildHelper.getParamValueOrDefault(this.script, 'OVERWRITE_EXISTING', true)
         /* Set the fabric project settings values to the corresponding fabric environmental variables */
-        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Fabric')
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Foundry')
 
         recipientsList = script.env.RECIPIENTS_LIST
-         /* To maintain Fabric triggers jobs backward compatibility */
+         /* To maintain Foundry triggers jobs backward compatibility */
         def fabricScmUrlProbableParams = ['PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL']
         exportRepositoryUrl = BuildHelper.getParamValueOrDefaultFromProbableParamList(
                 this.script, fabricScmUrlProbableParams, this.script.env.PROJECT_SOURCE_CODE_URL_FOR_FABRIC)
@@ -320,7 +320,7 @@ class Fabric implements Serializable {
      *
      * @param projectName name of the application.
      * @param exportFolder is the folder where app is exported.
-     * @param fabricApplicationName name of the application on Fabric.
+     * @param fabricApplicationName name of the application on Foundry.
      */
     private final void zipProjectForExport(projectName, fabricAppDir) {
         String errorMessage = "Failed to create zip file for project ${projectName}"
@@ -340,7 +340,7 @@ class Fabric implements Serializable {
      * Creates application zip file for import.
      *
      * @param projectName name of the application.
-     * @param fabricApplicationName name of the application on Fabric.
+     * @param fabricApplicationName name of the application on Foundry.
      */
     private final void zipProject(projectName, fabricApplicationName) {
         String errorMessage = "Failed to create zip file for project ${projectName}"
@@ -487,7 +487,7 @@ class Fabric implements Serializable {
                 case 'FABRIC_APP_CONFIG':
                     BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                         script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
-                                script.echoCustom("Fabric environment value can't be null", 'ERROR')
+                                script.echoCustom("Foundry environment value can't be null", 'ERROR')
                         fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                         cloudAccountId = script.env.FABRIC_ACCOUNT_ID
                         fabricAppName = script.env.FABRIC_APP_NAME
@@ -537,7 +537,7 @@ class Fabric implements Serializable {
             fabricStats.put('fabsrcurl', exportRepositoryUrl)
             fabricStats.put('fabsrcbrch', exportRepositoryBranch)
             fabricStats.put('buildemlrecipients', script.env.RECIPIENTS_LIST)
-            fabricStats.put('buildtype', "Fabric")
+            fabricStats.put('buildtype', "Foundry")
 
             if (publishJob?.number) {
                 fabricRunListStats.put(publishJob.fullProjectName + separator + publishJob.number, publishJob.fullProjectName)
@@ -551,7 +551,7 @@ class Fabric implements Serializable {
     }
 
     /**
-     * Exports Fabric application.
+     * Exports Foundry application.
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void exportApp() {
@@ -579,7 +579,7 @@ class Fabric implements Serializable {
                 ]
 
                 /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR param not exist in Export Job.
-                 * If Fabric_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
+                 * If Foundry_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
                  */
                 String fabricAppDir = BuildHelper.getParamValueOrDefault(script, 'FABRIC_DIR', "export")
                 boolean ignoreJarsForExport = BuildHelper.getParamValueOrDefault(script, 'IGNORE_JARS', false)
@@ -622,7 +622,7 @@ class Fabric implements Serializable {
                         script.stage('Prepare build-node environment') {
                             prepareBuildEnvironment()
                         }
-                        script.stage('Export project from Fabric') {
+                        script.stage('Export project from Foundry') {
                             exportProjectFromFabric(cloudAccountId, fabricCredentialsID, projectName)
                         }
                         
@@ -643,19 +643,19 @@ class Fabric implements Serializable {
                                     throw new AppFactoryException("Invalid file name or type given for service config file! Service config export is supported with '.json' file and should not contains spaces in file name.", "ERROR")
                                 }
                                 
-                                /* Health check call to get the Fabric Server version for environment*/
+                                /* Health check call to get the Foundry Server version for environment*/
                                 FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                                 
-                                /* Check the Fabric Server Version supported for Export of App Service config */
+                                /* Check the Foundry Server Version supported for Export of App Service config */
                                 def featuresSupportToCheckInFabric = [:]
                                 featuresSupportToCheckInFabric.put('app_service_config', ['featureDisplayName': 'App Service Config'])
                                 if(FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)) {
                                     
-                                    /* Create the Fabric App's service configuration dir if not available at given repo's root path */
+                                    /* Create the Foundry App's service configuration dir if not available at given repo's root path */
                                     script.shellCustom("set +x;mkdir -p ${appServiceConfigDirPath}", isUnixNode)
                                     script.shellCustom("set +x;rm -f ${appServiceConfigFilePath}", isUnixNode)
                                     
-                                    script.echoCustom("Fabric app service config will be exported at Fabric App's repo path '${serviceConfigPath}'", "INFO")
+                                    script.echoCustom("Foundry app service config will be exported at Foundry App's repo path '${serviceConfigPath}'", "INFO")
                                     FabricHelper.exportFabricAppServiceConfig(
                                         script,
                                         fabricCliFileName,
@@ -668,11 +668,11 @@ class Fabric implements Serializable {
                                         isUnixNode)
                                 }
                             } else {
-                                script.echoCustom("Skipping to export Fabric app service config, since you have not provided value for 'SERVICE_CONFIG_PATH' param!", "INFO")
+                                script.echoCustom("Skipping to export Foundry app service config, since you have not provided value for 'SERVICE_CONFIG_PATH' param!", "INFO")
                             }
                         }
 
-                        script.stage("Validate the Local Fabric App") {
+                        script.stage("Validate the Local Foundry App") {
 
                             def invalidVersionError = "Repository contains a different version of the fabric app." +
                                     " Selected version '${fabricAppVersion}' and version in ${fabricAppsDirRelativePath}/${fabricAppName}/Meta.json file is mis matching." +
@@ -717,7 +717,7 @@ class Fabric implements Serializable {
     }
 
     /**
-     * Imports Fabric application.
+     * Imports Foundry application.
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void importApp() {
@@ -773,8 +773,8 @@ class Fabric implements Serializable {
                             checkoutProjectFromRepo(projectName)
                         }
 
-                        script.stage("Validate the Local Fabric App") {
-                            def invalidVersionError = "This repository contains a different version of Fabric app." +
+                        script.stage("Validate the Local Foundry App") {
+                            def invalidVersionError = "This repository contains a different version of Foundry app." +
                                     " Please select the appropriate branch."
                             def invalidFabricAppError = "Repository doesn't contain valid fabric app."
                             validateLocalFabricApp(projectName, invalidVersionError, invalidFabricAppError)
@@ -784,7 +784,7 @@ class Fabric implements Serializable {
                             zipProject(projectName, fabricAppName)
                         }
                         
-                        script.stage('Import project to Fabric') {
+                        script.stage('Import project to Foundry') {
                             FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                             importProjectToFabric(cloudAccountId, fabricCredentialsID, overwriteExisting)
                         }
@@ -803,7 +803,7 @@ class Fabric implements Serializable {
     }
 
     /**
-     * Publishes Fabric application.
+     * Publishes Foundry application.
      * This method is called from the job and contains whole job's pipeline logic.
      */
     protected final void publishApp() {
@@ -840,7 +840,7 @@ class Fabric implements Serializable {
                         script.stage('Prepare environment for Publish task') {
                             prepareBuildEnvironment()
                         }
-                        script.stage('Publish project on Fabric') {
+                        script.stage('Publish project on Foundry') {
                             FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, cloudAccountId, fabricEnvironmentName, isUnixNode)
                             
                             def fabricCliOptions = [
@@ -871,7 +871,7 @@ class Fabric implements Serializable {
 
     /**
      * Migrate method is called from the job and contains whole job's pipeline logic.
-     * This will migrate Fabric application from one environment to other.
+     * This will migrate Foundry application from one environment to other.
      */
     protected final void migrateApp() {
         /* Wrapper for injecting timestamp to the build console output */
@@ -965,10 +965,10 @@ class Fabric implements Serializable {
                         script.stage('Prepare environment for Migrate task') {
                             prepareBuildEnvironment()
                         }
-                        script.stage('Export project from Fabric') {
-                            script.echoCustom("Exporting the ${fabricAppName} app from Fabric..", 'INFO')
+                        script.stage('Export project from Foundry') {
+                            script.echoCustom("Exporting the ${fabricAppName} app from Foundry..", 'INFO')
                             exportProjectFromFabric(exportCloudAccountId, exportFabricCredentialsID, projectName, exportConsoleUrl, exportIdentityUrl)
-                            script.echoCustom("Exported the ${fabricAppName} app from Fabric successfully.", 'INFO')
+                            script.echoCustom("Exported the ${fabricAppName} app from Foundry successfully.", 'INFO')
                         }
 
                         script.stage('Fetch project from remote git repository') {
@@ -976,7 +976,7 @@ class Fabric implements Serializable {
                             checkoutProjectFromRepo(projectName)
                         }
 
-                        script.stage("Validate the Local Fabric App") {
+                        script.stage("Validate the Local Foundry App") {
                             def invalidVersionError = "Repository contains a different version of fabric app." +
                                     " Please select an appropriate branch OR \n Select OVERWRITE_EXISTING parameter to use force push to SCM."
                             def invalidFabricAppError = "Repository doesn't contain valid fabric app." +
@@ -1002,8 +1002,8 @@ class Fabric implements Serializable {
                         /* Steps for importing fabric app configuration for migrate task */
                         overwriteExistingAppVersion = script.params.OVERWRITE_EXISTING_APP_VERSION
 
-                        script.stage("Validate the Local Fabric App for Import") {
-                            def invalidVersionError = "This repository contains a different version of Fabric app." +
+                        script.stage("Validate the Local Foundry App for Import") {
+                            def invalidVersionError = "This repository contains a different version of Foundry app." +
                                     " Please select the appropriate branch."
                             def invalidFabricAppError = "Repository doesn't contain valid fabric app."
                             validateLocalFabricApp(projectName, invalidVersionError, invalidFabricAppError)
@@ -1013,7 +1013,7 @@ class Fabric implements Serializable {
                             zipProject(projectName, fabricAppName)
                         }
                         
-                        script.stage('Import project to Fabric') {
+                        script.stage('Import project to Foundry') {
                             FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, importFabricCredentialsID, importCloudAccountId, fabricEnvironmentName, isUnixNode)
                             importProjectToFabric(importCloudAccountId, importFabricCredentialsID, overwriteExistingAppVersion, importConsoleUrl,importIdentityUrl)
                         }
@@ -1135,10 +1135,10 @@ class Fabric implements Serializable {
             zipProjectForExport(projectName, fabricAppDir)
             appChanged = fabricAppChanged(previousPath: "${script.env.WORKSPACE}/${projectName}_PREV.zip", currentPath: "${script.env.WORKSPACE}/${projectName}.zip", ignoreJarsForExport: ignoreJarsForExport)
             if (appChanged) {
-                script.echoCustom("Found updates on Fabric for ${fabricAppName}(${fabricAppVersion}), exporting updates to ${exportRepositoryBranch} branch.")
+                script.echoCustom("Found updates on Foundry for ${fabricAppName}(${fabricAppVersion}), exporting updates to ${exportRepositoryBranch} branch.")
                 script.unzip zipFile: "${projectName}.zip", dir: appUnzipTempDir
             } else {
-                script.echoCustom("${fabricAppName}(${fabricAppVersion}) has no updates in Fabric.")
+                script.echoCustom("${fabricAppName}(${fabricAppVersion}) has no updates in Foundry.")
             }
         }
     }
@@ -1163,7 +1163,7 @@ class Fabric implements Serializable {
                     pushChanges(exportFolder, ignoreJarsForExport)
                 }
             } else {
-                script.echoCustom("${fabricAppName}(${fabricAppVersion}) has no updates in Fabric.")
+                script.echoCustom("${fabricAppName}(${fabricAppVersion}) has no updates in Foundry.")
             }
         }
     }

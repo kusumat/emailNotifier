@@ -62,7 +62,7 @@ class EmailTemplateHelper implements Serializable {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
 
                             if (binding.fabricEnvironmentName)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric Environment Name:', binding.fabricEnvironmentName)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Foundry Environment Name:', binding.fabricEnvironmentName)
                         }
                     }
                 }
@@ -1009,7 +1009,7 @@ class EmailTemplateHelper implements Serializable {
         }
     }
     /**
-     * Creates HTML content for Fabric jobs(Export, Import, Publish).
+     * Creates HTML content for Foundry jobs(Export, Import, Publish).
      *
      * @param binding provides data for HTML.
      * @return HTML content as a string.
@@ -1074,7 +1074,7 @@ class EmailTemplateHelper implements Serializable {
                     td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
                         h4(style: "margin-bottom:0", "${binding.commandName} Details")
                         p(style:"margin:10px 15px;") {
-                            mkp.yield "${binding.commandName} of Fabric app ${binding.fabricAppName}(${binding.fabricAppVersion}) is: "
+                            mkp.yield "${binding.commandName} of Foundry app ${binding.fabricAppName}(${binding.fabricAppVersion}) is: "
                             strong binding.build.result
                             mkp.yield '.'
                         }
@@ -1097,7 +1097,7 @@ class EmailTemplateHelper implements Serializable {
     
     
     /**
-     * Creates HTML content for Fabric build jobs.
+     * Creates HTML content for Foundry build jobs.
      *
      * @param binding provides data for HTML.
      * @return HTML content as a string.
@@ -1125,13 +1125,13 @@ class EmailTemplateHelper implements Serializable {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
                             if(binding.appVersion)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric App Version:', binding.appVersion)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Foundry App Version:', binding.appVersion)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Clean Java Assets:', binding.isBuildWithCleanJavaAssets)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build Java Assets:', binding.isBuildWithJavaAssets)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Import:', binding.importApp)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Publish:', binding.publishApp)
                             if (binding.publishApp && binding.fabricEnvironmentName)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Fabric Publish Environment:', binding.fabricEnvironmentName)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Foundry Publish Environment:', binding.fabricEnvironmentName)
                         }
                     }
                 }

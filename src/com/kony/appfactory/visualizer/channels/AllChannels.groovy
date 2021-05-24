@@ -43,7 +43,7 @@ class AllChannels implements Serializable {
     private scmMeta = [:]
 
     /*
-        Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
+        Iris workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
      */
     final projectWorkspaceFolderName
@@ -170,7 +170,7 @@ class AllChannels implements Serializable {
 
                         script.callStageCustom(buildStatus, "Downloading Project/Application source binaries") {
                             if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
-                                // if Quantum preview app build, checkout  AppViewer master source code for reading version mapper json
+                                // if Volt MX preview app build, checkout  AppViewer master source code for reading version mapper json
                                 scmMeta = BuildHelper.checkoutProject script:script,
                                         checkoutType: "scm",
                                         projectRelativePath: checkoutRelativeTargetFolder,
@@ -178,7 +178,7 @@ class AllChannels implements Serializable {
                                         scmUrl: libraryProperties.'quantum.app.repo.url',
                                         scmBranch: libraryProperties.'quantum.app.repo.master.branch'
 
-                                // lets re-set checkoutFolder for downloading actual child app for Quantum preview app build in different location.
+                                // lets re-set checkoutFolder for downloading actual child app for Volt MX preview app build in different location.
                                 checkoutFolder = [projectWorkspaceFolderName,
                                                   libraryProperties.'quantum.childapp.temp.download.dir'].join(separator)
                             }
@@ -191,7 +191,7 @@ class AllChannels implements Serializable {
                                     downloadURL: url,
                                     projectFileName: projectFileName
 
-                            // if Quantum preview app build, checkout the AppViewer source for the dependent branch/tag
+                            // if Volt MX preview app build, checkout the AppViewer source for the dependent branch/tag
                             if (script.env.IS_KONYQUANTUM_APP_BUILD.equalsIgnoreCase("true")) {
                                 script.env.QUANTUM_CHILDAPP_VIZ_VERSION = CloudBuildHelper.getQuantumChildAppVizVersion(script, checkoutFolder, projectPropertyFileName)
                                 // Get the mapper json file name for cloud env to be read
@@ -222,7 +222,7 @@ class AllChannels implements Serializable {
                                     if (projectRoot)
                                         script.env.PROJECT_ROOT_FOLDER_NAME = projectRoot[0].path.minus(separator + projectPropertyFileName)
                                     else
-                                        script.echoCustom("Unable to recognize Visualizer project source code.", 'ERROR')
+                                        script.echoCustom("Unable to recognize Iris project source code.", 'ERROR')
                                 }
                             }
                             projectDir = script.env.PROJECT_ROOT_FOLDER_NAME ?

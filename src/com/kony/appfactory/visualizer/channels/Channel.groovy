@@ -40,12 +40,12 @@ class Channel implements Serializable {
         For example PATH or CLASSPATH variable list of paths separated by ':' in Unix systems and ';' in Windows system.
      */
     protected pathSeparator
-    /* Stores Visualizer dependencies list */
+    /* Stores Iris dependencies list */
     protected visualizerDependencies
     /* Build artifacts */
     protected buildArtifacts
     /*
-        Contains instance of Fabric class for publishing Fabric application,
+        Contains instance of Foundry class for publishing Foundry application,
         if PUBLISH_FABRIC_APP/PUBLISH_WEB_APP build parameter set to true.
      */
     protected fabricEnvName
@@ -67,9 +67,9 @@ class Channel implements Serializable {
     protected projectWorkspacePath
     /* Absolute path to the project folder (<job_workspace>/vis_ws/<project_name>[/<project_root>]) */
     protected projectFullPath
-    /* Visualizer home folder, slave(build-node) dependent value, fetched from environment variables of the slave */
+    /* Iris home folder, slave(build-node) dependent value, fetched from environment variables of the slave */
     protected visualizerHome
-    /* Visualizer version */
+    /* Iris version */
     protected visualizerVersion
     /*
         Channel relative path on S3, used for storing artifacts on S3 according to agreed bucket structure,
@@ -91,12 +91,12 @@ class Channel implements Serializable {
     protected artifactExtension
     /* Project's AppID key */
     protected projectAppId
-    /* Path for storing artifact on S3 bucket, has following format: Builds/<Fabric environment name>/channelPath */
+    /* Path for storing artifact on S3 bucket, has following format: Builds/<Foundry environment name>/channelPath */
     protected s3ArtifactPath
     /* Library configuration */
     protected libraryProperties
     /*
-        Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
+        Iris workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
      */
     final projectWorkspaceFolderName
@@ -137,7 +137,7 @@ class Channel implements Serializable {
     /* This variable holds whether the selected test framework is jasmine or other. Based on this we will enable some capabilities (Android - Write to Ext Disk, iOS - UIFileSharingMode to true in plist) */
     protected boolean isJasmineTestsExecEnabled = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')?.trim()?.equalsIgnoreCase("jasmine")
 
-    /* Visualizer command-line build types */
+    /* Iris command-line build types */
     protected final enum VisualizerBuildType {
         headless, ci
     }
@@ -158,7 +158,7 @@ class Channel implements Serializable {
      */
     Channel(script) {
         this.script = script
-        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Iris)
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
@@ -167,7 +167,7 @@ class Channel implements Serializable {
         resourceBasePath = libraryProperties.'project.resources.base.path'
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
-        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Iris')
         scmCredentialsId = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
         scmUrl = script.env.PROJECT_SOURCE_CODE_URL
 
@@ -181,8 +181,8 @@ class Channel implements Serializable {
             this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-kony.com"))
         }
         
-        if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-temenos-cloud.com") > 0) {
-            this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-temenos-cloud.com"))
+        if (this.script.env.CLOUD_DOMAIN && this.script.env.CLOUD_DOMAIN.indexOf("-hclvoltmx.com") > 0) {
+            this.script.env.domainParam = this.script.env.CLOUD_DOMAIN.substring(0, this.script.env.CLOUD_DOMAIN.indexOf("-hclvoltmx.com"))
         }
         
         /* Re-setting for global access of build mode */
@@ -196,7 +196,7 @@ class Channel implements Serializable {
      * @param closure block of code that implements build pipeline.
      */
     protected final void pipelineWrapper(closure) {
-        /* Expose Fabric configuration */
+        /* Expose Foundry configuration */
         if (fabricAppConfig && !fabricAppConfig.equals("null")) {
             BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                 /* Workaround to fix masking of the values from fabricAppTriplet credentials build parameter,
@@ -221,7 +221,7 @@ class Channel implements Serializable {
         projectWorkspacePath = (projectRoot) ?
                 ([workspace, checkoutRelativeTargetFolder] + projectRoot.dropRight(1))?.join(separator) :
                 [workspace, projectWorkspaceFolderName]?.join(separator)
-        /* Expose Visualizer workspace to environment variables to use it in HeadlessBuild.properties */
+        /* Expose Iris workspace to environment variables to use it in HeadlessBuild.properties */
         script.env['PROJECT_WORKSPACE'] = projectWorkspacePath
         script.env['VISUALIZER_PROJECT_ROOT_FOLDER_NAME'] = (projectRoot) ? projectRoot.takeRight(1).join('') : projectName
         projectFullPath = [
@@ -239,7 +239,7 @@ class Channel implements Serializable {
         s3ArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
-        isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, BuildType.Visualizer, runCustomHook, libraryProperties)
+        isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, BuildType.Iris, runCustomHook, libraryProperties)
 
         channelBuildStats.put("atype", channelType)
         channelBuildStats.put("plat", channelOs)
@@ -285,7 +285,7 @@ class Channel implements Serializable {
 
     /**
      * Wraps code with required environment variables (home paths of dependencies,
-     *  updates PATH environment variable, Volt MX Fabric credentials).
+     *  updates PATH environment variable, Volt MX Foundry credentials).
      *
      * @param closure block of code.
      */
@@ -300,7 +300,7 @@ class Channel implements Serializable {
         script.env.IS_STARTER_PROJECT = (ValidationHelper.isValidStringParam(script, 'IS_SOURCE_VISUALIZER') ? script.params.IS_SOURCE_VISUALIZER : false) || !konyPluginExists
         script.env.IS_KONYQUANTUM_APP_BUILD = ValidationHelper.isValidStringParam(script, 'IS_KONYQUANTUM_APP_BUILD') ? script.params.IS_KONYQUANTUM_APP_BUILD : false
 
-        /* Get Visualizer version */
+        /* Get Iris version */
         visualizerVersion = BuildHelper.getVisualizerVersion(script)
         script.env.visualizerVersion = visualizerVersion
         script.echoCustom("Current Project version: " + visualizerVersion)
@@ -317,7 +317,7 @@ class Channel implements Serializable {
 
             def mostRecentVersion
             script.dir("FeatureXMLDownloader") {
-                // Fetch Visualizer current released versions
+                // Fetch Iris current released versions
                 def versions = BuildHelper.getVisualizerReleasedVersions(script, libraryProperties)
                 // Find n-4 release from most recent version.
                 mostRecentVersion = BuildHelper.getMostRecentNthVersion(versions, -4)
@@ -327,14 +327,14 @@ class Channel implements Serializable {
             if (compareCIVizVersions < 0)
                 visualizerVersion = mostRecentVersion?.trim()
 
-            script.echoCustom("Building through latest Visualizer version: " + visualizerVersion)
+            script.echoCustom("Building through latest Iris version: " + visualizerVersion)
         }
 
         script.env.visualizerVersion = visualizerVersion
         setVersionBasedProperties(visualizerVersion)
 
 
-        /* Get Visualizer dependencies */
+        /* Get Iris dependencies */
         visualizerDependencies = (
                 BuildHelper.getVisualizerDependencies(script, isUnixNode, separator, visualizerHome,
                         visualizerVersion, libraryProperties.'visualizer.dependencies.file.name',
@@ -343,7 +343,7 @@ class Channel implements Serializable {
                         libraryProperties.'visualizer.dependencies.archive.file.extension')
         )
         if(!visualizerDependencies){
-            throw new AppFactoryException('Missing Visualizer dependencies!', 'ERROR')
+            throw new AppFactoryException('Missing Iris dependencies!', 'ERROR')
         }
         /* Expose tool installation path as environment variable */
         def exposeToolPath = { variableName, homePath ->
@@ -405,7 +405,7 @@ class Channel implements Serializable {
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
                     Date plugindlStart = new Date()
-                    /* Download Visualizer Starter feature XML*/
+                    /* Download Iris Starter feature XML*/
                     if (script.env.IS_STARTER_PROJECT.equals("true")) {
                         /* Added the check to use update site link for v9 prod if project version is :9.X.X  */
                         def updateSiteVersion = Pattern.matches("^9\\.\\d+\\.\\d+\$", script.env["visualizerVersion"]) ? "90" : "80"
@@ -420,11 +420,11 @@ class Channel implements Serializable {
                     
                     if (script.env.isCIBUILD) {
                         /** Check CI build support exist for few features.
-                         *  If user triggered a build with a feature that is not supported by Visualizer CI, make the build fail.
+                         *  If user triggered a build with a feature that is not supported by Iris CI, make the build fail.
                          */
                         ValidationHelper.checkFeatureSupportExist(script, libraryProperties, getFeatureParamsToCheckCIBuildSupport(), VisualizerBuildType.ci)
 
-                        /* Retrieve Visualizer plugins for the project */
+                        /* Retrieve Iris plugins for the project */
                         script.shellCustom('ant -buildfile ci-property.xml retrieve', isUnixNode)
                         channelBuildStats.put('plugindldur', BuildHelper.getDuration(plugindlStart, new Date()))
                         /* Run npm install */
@@ -474,7 +474,7 @@ class Channel implements Serializable {
                         def iosResource = libraryProperties.'ios.lockable.resource.name'
 
                         /** Check Headless build support exist for few features.
-                         *  If user triggered a build with a feature that is not supported by Visualizer Headless, make the build fail.
+                         *  If user triggered a build with a feature that is not supported by Iris Headless, make the build fail.
                          */
                         ValidationHelper.checkFeatureSupportExist(script, libraryProperties, getFeatureParamsToCheckHeadlessBuildSupport(), VisualizerBuildType.headless)
                         
@@ -495,7 +495,7 @@ class Channel implements Serializable {
                                  *  This helps out to kick-start other Headless build in-parallel for KAR generation,
                                  * as we are going to release lock here.
                                  */
-                                String visualizerDropinsPath = [visualizerHome, 'Kony_Visualizer_Enterprise', 'dropins'].join(separator)
+                                String visualizerDropinsPath = [visualizerHome, 'VoltMX_Iris_Enterprise', 'dropins'].join(separator)
                                 String iOSPluginPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
                                 script.dir(iOSPluginPath) {
                                     script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar ${iOSPluginPath}", true)
@@ -551,9 +551,9 @@ class Channel implements Serializable {
 
 
     /**
-     * Set properties that vary based upon the Visualizer Version of users' app.
+     * Set properties that vary based upon the Iris Version of users' app.
      *
-     * @param Visualizer version of the project.
+     * @param Iris version of the project.
      */
     protected final void setVersionBasedProperties(visualizerVersion) {
         def ciBuildSupport = libraryProperties.'ci.build.support.base.version'
@@ -963,11 +963,11 @@ class Channel implements Serializable {
                     if (tempJson != null) {
                         propertiesToValueMap.put(objectPath, tempJson)
                     } else {
-                        throw new AppFactoryException("Failed to read the ${objectPath} in ${propertyFileName} file, please check your Visualizer project!!", 'ERROR')
+                        throw new AppFactoryException("Failed to read the ${objectPath} in ${propertyFileName} file, please check your Iris project!!", 'ERROR')
                     }
                 }
             } else {
-                throw new AppFactoryException("Could not find $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+                throw new AppFactoryException("Could not find $propertyFileName file, please check your Iris project!!", 'ERROR')
             }
             propertiesToValueMap
         }
@@ -1013,7 +1013,7 @@ class Channel implements Serializable {
                     script.writeJSON file: propertyFileName, json: projectPropertiesJsonContent
                 }
             } else {
-                throw new AppFactoryException("Could not find $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+                throw new AppFactoryException("Could not find $propertyFileName file, please check your Iris project!!", 'ERROR')
             }
         }
     }
@@ -1087,7 +1087,7 @@ class Channel implements Serializable {
     }
     
     /**
-     * Get the CI build parameters to check if Visualizer build support exists for few of new features
+     * Get the CI build parameters to check if Iris build support exists for few of new features
      */
     protected final getFeatureParamsToCheckCIBuildSupport() {
         def featureBooleanParameters = [:]
@@ -1112,7 +1112,7 @@ class Channel implements Serializable {
     }
     
     /**
-     * Get the headless build parameters to check if Visualizer build support exists for few of new features.
+     * Get the headless build parameters to check if Iris build support exists for few of new features.
      */
     protected final getFeatureParamsToCheckHeadlessBuildSupport() {
         def finalFeatureParamsToCheckHeadlessSupport = [:]
@@ -1141,7 +1141,7 @@ class Channel implements Serializable {
                 channelBuildStats.put('aname', projectPropertiesJsonContent['appnamekey'])
                 return projectPropertiesJsonContent['appidkey']
             } else {
-                throw new AppFactoryException("Failed to find $propertyFileName file, please check your Visualizer project!!", 'ERROR')
+                throw new AppFactoryException("Failed to find $propertyFileName file, please check your Iris project!!", 'ERROR')
             }
         }
     }

@@ -9,7 +9,7 @@ class CloudBuildHelper implements Serializable {
     
     /**
      * Getting the AppViewer source version tag required to checkout based on
-     * Visualizer project version of child App, checking the minimumVisualizer version supported for
+     * Iris project version of child App, checking the minimumVisualizer version supported for
      * FPreview release tag from mapper version json file of FPreview.
      * @param args its a map with arguments - script, quantumAppMapperJsonFileName, quantumChildAppVisualizerVersion
      * @return quantumAppCheckoutVersion its version/tag for quantum appviewer source
@@ -61,8 +61,8 @@ class CloudBuildHelper implements Serializable {
      * @return mapper json file based on cloud environment
      */
     protected static String getMapperJsonFileForQuantumAppBuid(String cloudEnv, String nonProdMapperJsonFile, String prodMapperJsonFile) {
-        if (cloudEnv.equalsIgnoreCase("temenos-cloud.com") ||
-                cloudEnv.equalsIgnoreCase("stg-temenos-cloud.com") ||
+        if (cloudEnv.equalsIgnoreCase("hclvoltmx.com") ||
+                cloudEnv.equalsIgnoreCase("stg-hclvoltmx.com") ||
                 cloudEnv.equalsIgnoreCase("kony.com") ||
                 cloudEnv.equalsIgnoreCase("stg-kony.com")) {
             return prodMapperJsonFile

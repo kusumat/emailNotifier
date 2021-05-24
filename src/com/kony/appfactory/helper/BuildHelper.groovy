@@ -319,10 +319,10 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Wraps code with Fabric environment variables.
+     * Wraps code with Foundry environment variables.
      *
      * @param script pipeline object.
-     * @param fabricAppConfigId Fabric config ID in Jenkins credentials store.
+     * @param fabricAppConfigId Foundry config ID in Jenkins credentials store.
      * @param closure block of code.
      */
     protected final static void fabricConfigEnvWrapper(script, fabricAppConfigId, closure) {
@@ -344,14 +344,14 @@ class BuildHelper implements Serializable {
             /* Block of code to run */
             if (script.env.HOST_TYPE.equals("KONYCLOUD")) {
                 script.env['FABRIC_ACCOUNT_ID'] = script.env.FABRIC_ACCOUNT_ID
-                //setting default values for console/identity as we expect only accountId from Fabric triplet incase of KonyCloud host type.
+                //setting default values for console/identity as we expect only accountId from Foundry triplet incase of KonyCloud host type.
                 script.env['CONSOLE_URL'] = script.kony.FABRIC_CONSOLE_URL
                 script.env['IDENTITY_URL'] = null
             }
             else {
                 script.env['CONSOLE_URL'] = script.env.MF_CONSOLE_URL
                 script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL
-                //setting default value for accountId as we expect only console/identity urls from Fabric triplet incase of non KonyCloud host type.
+                //setting default value for accountId as we expect only console/identity urls from Foundry triplet incase of non KonyCloud host type.
                 script.env['FABRIC_ACCOUNT_ID'] = script.env.CLOUD_ACCOUNT_ID
             }
 
@@ -406,14 +406,14 @@ class BuildHelper implements Serializable {
         libraryProperties
     }
 
-    /*  Workaround for switching Visualizer dependencies */
+    /*  Workaround for switching Iris dependencies */
     /* --------------------------------------------------- START --------------------------------------------------- */
 
     /**
-     * Parses dependencies file to fetch list of required dependencies for specific Visualizer version.
+     * Parses dependencies file to fetch list of required dependencies for specific Iris version.
      *
      * @param script pipeline object.
-     * @param dependenciesFileContent JSON string with the list of the dependencies for specific Visualizer version.
+     * @param dependenciesFileContent JSON string with the list of the dependencies for specific Iris version.
      * @return Map object with required dependencies.
      */
     private final static parseDependenciesFileContent(script, dependenciesFileContent) {
@@ -422,7 +422,7 @@ class BuildHelper implements Serializable {
 
         def requiredDependencies = null
 
-        script.catchErrorCustom('Failed to parse Visualizer dependencies file content') {
+        script.catchErrorCustom('Failed to parse Iris dependencies file content') {
             requiredDependencies = script.readJSON(text: dependenciesFileContent)?.visualizer.dependencies
         }
 
@@ -430,7 +430,7 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Changes the dependency inside Visualizer's folder (drops existing folder with dependencies and adds symbolic
+     * Changes the dependency inside Iris's folder (drops existing folder with dependencies and adds symbolic
      *      links to the required dependency.
      * Been agreed that all required dependencies will be installed by chef during the slave bootstrap.
      * Path to the dependency on slave will be exposed on Jenkins as property for Global Tools Plugin.
@@ -463,7 +463,7 @@ class BuildHelper implements Serializable {
      * Fetches dependencies file from provided URL.
      *
      * @param script pipeline object.
-     * @param visualizerVersion version of Visualizer
+     * @param visualizerVersion version of Iris
      * @param dependenciesFileName dependencies file name.
      * @param dependenciesBaseUrl URL for fetch.
      * @param dependenciesArchiveFilePrefix dependencies file prefix.
@@ -475,7 +475,7 @@ class BuildHelper implements Serializable {
             dependenciesArchiveFileExtension
     ) {
         /* Check required arguments */
-        (visualizerVersion) ?: script.echoCustom("Visualizer version couldn't be null!", 'ERROR')
+        (visualizerVersion) ?: script.echoCustom("Iris version couldn't be null!", 'ERROR')
 
         def dependenciesArchive = null
         def dependenciesArchiveFileName = dependenciesArchiveFilePrefix + visualizerVersion +
@@ -488,11 +488,11 @@ class BuildHelper implements Serializable {
                 dependenciesBaseUrl, visualizerVersion, dependenciesArchiveFileName
         ].join('/')
 
-        script.catchErrorCustom('Failed to fetch Visualizer dependencies file!') {
+        script.catchErrorCustom('Failed to fetch Iris dependencies file!') {
             script.httpRequest url: dependenciesURL, acceptType: 'APPLICATION_ZIP', contentType: 'APPLICATION_ZIP',
                     outputFile: dependenciesArchiveFileName, validResponseCodes: '200'
         }
-        script.catchErrorCustom('Failed to unzip Visualizer dependencies file!') {
+        script.catchErrorCustom('Failed to unzip Iris dependencies file!') {
             /* Unarchive dependencies file */
             dependenciesArchive = script.unzip zipFile: dependenciesArchiveFileName, read: true
             script.unzip zipFile: dependenciesArchiveFileName
@@ -502,14 +502,14 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Main method for shuffling Visualizer dependencies.
+     * Main method for shuffling Iris dependencies.
      * Prepers data for static methods that required for shuffling dependencies.
      *
      * @param script pipeline object.
      * @param isUnixNode flag that is used for appropriate shell call (depending on OS).
      * @param separator path separator.
-     * @param visualizerHome Visualizer home folder.
-     * @param visualizerVersion Visualizer version.
+     * @param visualizerHome Iris home folder.
+     * @param visualizerVersion Iris version.
      * @param dependenciesFileName Dependencies file name.
      * @param dependenciesBaseUrl Dependencies URL.
      * @param dependenciesArchiveFilePrefix dependencies file prefix.
@@ -537,7 +537,7 @@ class BuildHelper implements Serializable {
         def visualizerDependencies = parseDependenciesFileContent(script, dependenciesFileContent)
 
         if (!visualizerDependencies) {
-            throw new AppFactoryException("Visualizer dependencies object can't be null!", 'ERROR')
+            throw new AppFactoryException("Iris dependencies object can't be null!", 'ERROR')
         }
 
         /* Construct installation path */
@@ -1029,7 +1029,7 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Fetches list of Volt MX released versions from Visualizer updatesite.
+     * Fetches list of Volt MX released versions from Iris updatesite.
      * @param script pipeline object.
      * @param common Library properties object
      * return releasedVersionsList
@@ -1103,10 +1103,10 @@ class BuildHelper implements Serializable {
     }
 
     /**
-     * Determine which Visualizer version project requires,
+     * Determine which Iris version project requires,
      * according to the version that matches first in the order of branding/studioviz/keditor plugin.
      *
-     * @return Visualizer version.
+     * @return Iris version.
      */
     protected final static getVisualizerVersion(script) {
         if(script.env.IS_STARTER_PROJECT.equals("true")) {
@@ -1169,7 +1169,7 @@ class BuildHelper implements Serializable {
         finalParamsJasmineTestsSupport.put('Jasmine', ['featureDisplayName': 'Jasmine Tests Execution'])
         ValidationHelper.checkFeatureSupportExist(script, libraryProperties, finalParamsJasmineTestsSupport, 'tests')
 
-        /* Get Visualizer dependencies */
+        /* Get Iris dependencies */
         def dependenciesFilePath = fetchRequiredDependencies(script, visualizerVersion, libraryProperties.'visualizer.dependencies.file.name',
                         libraryProperties.'visualizer.dependencies.base.url',
                         libraryProperties.'visualizer.dependencies.archive.file.prefix',
@@ -1350,10 +1350,10 @@ class BuildHelper implements Serializable {
             script.writeFile file: "AppFactoryVersionInfo.txt", text: getMyAppFactoryVersions()
             script.writeFile file: "environmentInfo.txt", text: getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: getInputParamsAsString(script)
-            if(buildType.toString().equals("Visualizer")) {
+            if(buildType.toString().equals("Iris")) {
                 AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
             } else {
-                /* We copy the Custom Hooks logs for Fabric only, because for Viz, they would have 
+                /* We copy the Custom Hooks logs for Foundry only, because for Viz, they would have 
                  * been copied by the Channel builds and are part of Channel musthave logs. */
                 if (!buildType.toString().equalsIgnoreCase("flyway") && script.params.RUN_CUSTOM_HOOKS && script.isUnix() ) {
                     def chLogs = [script.env.WORKSPACE, libraryProperties.'fabric.project.workspace.folder.name', script.env.PROJECT_NAME, libraryProperties.'customhooks.buildlog.folder.name'].join("/")
@@ -1432,7 +1432,7 @@ class BuildHelper implements Serializable {
             if (projectSettings) {
                 VisualizerSettingsDTO vizSettings = projectSettings.getVisualizerSettings()
                 FabricSettingsDTO fabSettings = projectSettings.getFabricSettings()
-                def settingsMap = (projectType == "Visualizer") ? ((vizSettings)?.toMap()) : (fabSettings?.toMap())
+                def settingsMap = (projectType == "Iris") ? ((vizSettings)?.toMap()) : (fabSettings?.toMap())
                 /* Set each value to the environmental variables */
                 settingsMap?.values().each { childSectionMap ->
                     if(childSectionMap.getClass().equals(HashMap.class)) {

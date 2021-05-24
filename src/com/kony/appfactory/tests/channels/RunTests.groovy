@@ -41,7 +41,7 @@ class RunTests implements Serializable {
     protected mustHaveArtifacts = []
     protected String channelType
     /*
-        Visualizer workspace folder, please note that values 'workspace' and 'ws' are reserved words and
+        Iris workspace folder, please note that values 'workspace' and 'ws' are reserved words and
         can not be used.
      */
     final projectWorkspaceFolderName
@@ -77,12 +77,12 @@ class RunTests implements Serializable {
         this.channelType = channelType
         projectWorkspaceFolderName = libraryProperties.'project.workspace.folder.name'
         /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
-        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Iris')
         scmCredentialsId = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
         scmUrl = script.env.PROJECT_SOURCE_CODE_URL
         projectRoot = script.env.PROJECT_ROOT_FOLDER_NAME?.tokenize('/')
 
-        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Iris)
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
         this.script.env['CLOUD_DOMAIN'] = (script.kony.CLOUD_DOMAIN) ?: 'kony.com'
