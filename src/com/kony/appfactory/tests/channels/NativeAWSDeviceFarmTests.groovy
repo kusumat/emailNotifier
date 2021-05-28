@@ -438,7 +438,7 @@ class NativeAWSDeviceFarmTests extends RunTests implements Serializable {
      */
     protected final void runCustomHooks() {
         ['Android_Mobile', 'Android_Tablet', 'iOS_Mobile', 'iOS_Tablet'].each { project ->
-            if (projectArtifacts."$project".'binaryName') {
+            if (projectArtifacts.containsKey(project)) {
                 hookHelper.runCustomHooks(projectName, libraryProperties.'customhooks.posttest.name', project.toUpperCase() + "_STAGE")
             }
         }
