@@ -155,7 +155,7 @@ class EmailTemplateHelper implements Serializable {
                             artifacts        : artifactsMap[channelPath].reverse()
                     ] + artifactsMeta
 
-                    EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
+                    EmailBuilder.addiOSArtifactTableRow(htmlBuilder, map)
                 }
                 /* Android */
                 else if (artifact.channelPath.toUpperCase().contains('ANDROID')) {

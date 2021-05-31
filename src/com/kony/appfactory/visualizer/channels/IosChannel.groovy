@@ -604,13 +604,14 @@ class IosChannel extends Channel {
                             String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true);
                             String plistArtifactOTAUrl = authenticatedArtifactUrl
 
-                            if(ipaArtifact.name)
+                            if(ipaArtifact.name) {
                                 artifacts.add([
-                                        channelPath: channelPath, name: ipaArtifact.name, authurl: authenticatedIPAArtifactUrl, extension: 'IPA'
+                                    channelPath: channelPath, name: ipaArtifact.name, authurl: authenticatedIPAArtifactUrl, extension: 'IPA'
                                 ])
-                            artifacts.add([
+                                artifacts.add([
                                     channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: plistArtifactOTAUrl, extension: 'OTA'
-                            ])
+                                ])
+                            }
                         }
 
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()

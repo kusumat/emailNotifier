@@ -111,7 +111,9 @@ class EmailBuilder {
                     else if (binding.artifacts[rownum].url)
                         a(href: binding.artifacts[rownum].url, target: '_blank', binding.artifacts[rownum].name)
                     else
-                        mkp.yield("Build failed")
+                        p(style: "color:red") {
+                            mkp.yield("Build failed")
+                        }
                 }
                 if (rownum == 0) {
                     td(style: "border-right: 1px solid #e8e8e8", rowspan: countRows){
@@ -204,6 +206,46 @@ class EmailBuilder {
             } else {
                 td(style:"padding-bottom: 3px !important;") {
                     a(href: logLink, logFileName)
+                }
+            }
+        }
+    }
+    
+    @NonCPS
+    static void addiOSArtifactTableRow(htmlBuilder, binding) {
+        def artifactsExpectedList = ['OTA','IPA','KAR']
+        for (int rownum = 0; rownum < artifactsExpectedList.size(); rownum++) {
+            htmlBuilder.tr {
+                if (rownum == 0)
+                    th(rowspan: artifactsExpectedList.size(), binding.channelPath.replaceAll('/', ' '))
+                
+                td(style: "text-align:left; border-right: 1px dotted #e8e8e8; width: 65px;", artifactsExpectedList[rownum])
+                td {
+                    def artifactFound = false
+                    binding.artifacts.each { artifact ->
+                        if(artifact.extension == artifactsExpectedList[rownum]) {
+                            artifactFound = true
+                            if (artifact.authurl)
+                                a(href: artifact.authurl, target: '_blank', artifact.name)
+                            else if (artifact.url)
+                                a(href: artifact.url, target: '_blank', artifact.name)
+                            else
+                                p(style: "color:red") {
+                                    mkp.yield(artifactsExpectedList[rownum] + " generation failed")
+                                }
+                        }
+                    }
+                    if(!artifactFound) {
+                        p(style: "color:red") {
+                            mkp.yield(artifactsExpectedList[rownum] +" generation failed")
+                        }
+                    }
+                }
+                if (rownum == 0) {
+                    td(style: "border-right: 1px solid #e8e8e8", rowspan: artifactsExpectedList.size()){
+                        if (binding."${binding.channelPath}")
+                            binding."${binding.channelPath}"[0]['version']?.each{ k, v -> p(style: "font-size:12px;", "${k}: ${v}") }
+                    }
                 }
             }
         }
