@@ -40,7 +40,17 @@ userReporter = {
         var specDone = {};
         specDone.event = "specDone";
         result.duration = new Date((new Date()).toISOString()) - new Date(specDurations[result.id]);
-        specDone.result = result;
+
+        let tempResult = Object.assign({}, result);
+        if(result.status === 'failed') {
+            for (i = 0; i < tempResult.failedExpectations.length; i++) {
+                //Nullifying screenshot information in appfactory related json.
+                tempResult.failedExpectations[i].additionalDetails = null;
+            }
+        }
+        kony.print('Temp Result is : ' + tempResult);
+        kony.print('Result is : ' + result);
+        specDone.result = tempResult;
         jasmineEvents.push(specDone);
     },
  

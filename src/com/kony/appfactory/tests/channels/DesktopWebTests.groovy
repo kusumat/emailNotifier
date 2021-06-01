@@ -272,15 +272,26 @@ class DesktopWebTests extends RunTests implements Serializable {
         String jasmineHTMLReport, browserConsoleLog
         def htmlFilesAuthUrl = [:]
         script.dir(testFolder) {
-            def htmlFiles = script.findFiles(glob: '**/TestResult_*.html')
-            htmlFiles?.each { htmlResultFile ->
-                jasmineHTMLReport = ArtifactHelper.publishArtifact sourceFileName: htmlResultFile.name,
-                    sourceFilePath: "${testFolder}", destinationPath: destinationArtifactPath, script
-                
-                def htmlFileAuthUrl = ArtifactHelper.createAuthUrl(jasmineHTMLReport, script, true)
-                htmlFilesAuthUrl.put(htmlResultFile.name, htmlFileAuthUrl)
+            def finalReportFile = null, lastModified = null
+            def files = script.findFiles(glob: '**/TestResult_*.html')
+            // If multiple reports found per say from custom reporter from application code, collect the latest file.
+            if (files.size() > 0) {
+                def jasmineReport
+                finalReportFile = files[0]
+                files.each { file ->
+                    jasmineReport = AwsHelper.publishToS3 bucketPath: s3PublishPath, sourceFileName: file.name,
+                    sourceFilePath: "${testFolder}", script
+                    
+                    if (finalReportFile.lastModified < file.lastModified) {
+                        jasmineHTMLReport = jasmineReport
+                        finalReportFile = file
+                    }
+                }
             }
-            listofLogFiles.put("Detailed Test Report", htmlFilesAuthUrl);
+
+            if (finalReportFile) {
+                listofLogFiles.put("Detailed Test Report", BuildHelper.createAuthUrl(jasmineHTMLReport, script, true));
+            }
         }
         if (script.fileExists("${testFolder}/browserConsoleLog.txt")) {
             browserConsoleLog = ArtifactHelper.publishArtifact sourceFileName: "browserConsoleLog.txt",
