@@ -58,7 +58,7 @@ class CodeScanners implements Serializable {
         )
         nodeLabel = libraryProperties.'sonarqube.node.label'
 
-        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Iris')
 
         scmVendor = script.env.PROJECT_SOURCE_CODE_SERVER_TYPE
         scmCredentialsId = script.env.SCM_CREDENTIALS

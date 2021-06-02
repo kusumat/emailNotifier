@@ -155,7 +155,7 @@ class Facade implements Serializable {
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         /* Set the visualizer project settings values to the corresponding visualizer environmental variables */
-        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Visualizer')
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Iris')
 
         projectSourceCodeRepositoryCredentialsId = script.env.PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID
         recipientsList = script.env.RECIPIENTS_LIST
@@ -638,7 +638,7 @@ class Facade implements Serializable {
     private final void prepareCloudBuildRun() {
 
         /* Setting blank credential id so that CloudBuild service won't fail to find Cloud credentials.
-         Note: This account is not relevant for Visualizer CI build to run, just to ensure single-tenant backward flow
+         Note: This account is not relevant for Iris CI build to run, just to ensure single-tenant backward flow
          works. Setting one blank account for this build scope. Post the build, it will get this removed.*/
         fabricCredentialsID = "CloudID-" + buildNumber
         credentialsHelper.addUsernamePassword(fabricCredentialsID, "Cloud Creds", "dummyuser", "dummypasswd")
@@ -914,7 +914,7 @@ class Facade implements Serializable {
 
                         script.params.IS_SOURCE_VISUALIZER ? prepareCloudBuildRun() : prepareRun()
 
-                        /* Expose Fabric configuration */
+                        /* Expose Foundry configuration */
                         if (fabricAppConfig && !fabricAppConfig.equals("null")) {
                             BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                                 /*
@@ -925,7 +925,7 @@ class Facade implements Serializable {
                                 been added elvis operator for assigning variable value as ''(empty).
                                 */
                                 script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
-                                        script.echoCustom("Fabric environment value can't be null", 'ERROR')
+                                        script.echoCustom("Foundry environment value can't be null", 'ERROR')
                                 fabricEnvironmentName = script.env.FABRIC_ENV_NAME
                                 script.env['CONSOLE_URL'] = (script.env.MF_CONSOLE_URL) ?: script.kony.FABRIC_CONSOLE_URL
                                 script.env['IDENTITY_URL'] = script.env.MF_IDENTITY_URL ?: null
@@ -1054,20 +1054,20 @@ class Facade implements Serializable {
                         buildStats.put("pipeline-run-jobs", runListStats)
                     buildStats.put("projname", projectName)
                     buildStats.put('buildemlrecipients', script.env["RECIPIENTS_LIST"])
-                    buildStats.put('buildtype', "Visualizer")
+                    buildStats.put('buildtype', "Iris")
                     // Publish Facade metrics keys to build Stats Action class.
                     script.statspublish buildStats.inspect()
 
                     String s3MustHaveAuthUrl = ''
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                        s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
+                        s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Iris, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
                     }
 
                     BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl)
 
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
-                        credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Fabric" + buildNumber])
+                        credentialsHelper.deleteUserCredentials([buildNumber, PlatformType.IOS.toString() + buildNumber, "Foundry" + buildNumber])
                     } else {
                         if (channelsToRun && script.currentBuild.result != 'FAILURE') {
                             /*

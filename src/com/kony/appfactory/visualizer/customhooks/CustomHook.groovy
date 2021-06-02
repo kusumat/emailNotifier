@@ -43,9 +43,9 @@ class CustomHook implements Serializable {
     /* CustomHooks pipeline, each hook follows same execution process */
     protected final void processPipeline() {
         script.ansiColor('xterm') {
-            upstreamJobWorkspace && buildSlave && hookSlave ?: script.echoCustom("CustomHooks aren't supposed to be triggered directly. CustomHooks will only be triggered as part of the Visualizer jobs.", 'ERROR')
+            upstreamJobWorkspace && buildSlave && hookSlave ?: script.echoCustom("CustomHooks aren't supposed to be triggered directly. CustomHooks will only be triggered as part of the Iris jobs.", 'ERROR')
         }
-        if (BuildType.Visualizer.toString().equalsIgnoreCase(buildType)) {
+        if (BuildType.Iris.toString().equalsIgnoreCase(buildType)) {
             buildWorkspace = [upstreamJobWorkspace, libraryProperties.'project.workspace.folder.name'].join('/')
         } else {
             buildWorkspace = [upstreamJobWorkspace, libraryProperties.'fabric.project.workspace.folder.name'].join('/')
@@ -58,7 +58,7 @@ class CustomHook implements Serializable {
                 script.node(hookSlave) {
                     def hookLabel = script.env.NODE_LABELS
 
-                    if (hookLabel.contains(libraryProperties.'test.hooks.node.label') && BuildType.Visualizer.toString().equalsIgnoreCase(buildType)) {
+                    if (hookLabel.contains(libraryProperties.'test.hooks.node.label') && BuildType.Iris.toString().equalsIgnoreCase(buildType)) {
                         hookDir = buildWorkspace + "/" + projectName + "/deviceFarm/" + "Hook"
                     } else {
                         hookDir = buildWorkspace + "/" + projectName + "/Hook"

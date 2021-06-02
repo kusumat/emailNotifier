@@ -41,7 +41,7 @@ class Facade implements Serializable{
     protected fabricAppBasePath
     protected projectNameZip
     
-    //Fabric config variable
+    //Foundry config variable
     protected fabricAppName
     protected fabricAppVersion
     protected fabricEnvironmentName
@@ -62,7 +62,7 @@ class Facade implements Serializable{
      */
     Facade(script) {
         this.script = script
-        this.hookHelper = new CustomHookHelper(script, BuildType.Fabric)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Foundry)
         /* Load library configuration */
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
@@ -73,7 +73,7 @@ class Facade implements Serializable{
         projectWorkspaceFolderName = libraryProperties.'fabric.project.workspace.folder.name'
         projectNameZip = projectName + ".zip"
         /* Set the fabric project settings values to the corresponding fabric environmental variables */
-        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Fabric')
+        BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Foundry')
         fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR).trim() : ((script.env.FABRIC_APP_ROOT_FOLDER) ? script.env.FABRIC_APP_ROOT_FOLDER.trim() : "")
         projectSourceCodeRepositoryCredentialsId = script.env.SCM_CREDENTIALS
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
@@ -94,7 +94,7 @@ class Facade implements Serializable{
         def pomFileName = "pom.xml"
         def mavenBuildCommand
         
-        //Fabric repo assets path variables
+        //Foundry repo assets path variables
         def javaAssetBasePath
         def javaServiceDirList = []
         def fabricAppJarsRelativePath
@@ -130,7 +130,7 @@ class Facade implements Serializable{
                 
                 script.env['FABRIC_PROJECT_WORKSPACE'] = projectWorkspacePath
                 projectFullPath = [workspace, checkoutRelativeTargetFolder].join(separator)
-                def isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(this.projectName, BuildType.Fabric, runCustomHook, libraryProperties)
+                def isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(this.projectName, BuildType.Foundry, runCustomHook, libraryProperties)
                 if(!isUnixNode){
                     throw new AppFactoryException("Slave's OS type for this run is not supported!", 'ERROR')
                 }
@@ -153,7 +153,7 @@ class Facade implements Serializable{
                             
                             if(fabricAppVersionToPickFrom == 'Other')
                                 ValidationHelper.checkValidParamValue(script, 'FABRIC_APP_VERSION', "Invalid value for FABRIC_APP_VERSION. The version must be in the format <major>.<minor>.",
-                                    "Since you have chosen to type it in manually Fabric app version.")
+                                    "Since you have chosen to type it in manually Foundry app version.")
                             
                             ValidationHelper.checkBuildConfiguration(script, mandatoryParameters)
                         }
@@ -198,7 +198,7 @@ class Facade implements Serializable{
                             def versionJsonFile = [projectFullPath, fabricAppsDirPath, 'Version.json'].join(separator)
                             if (!script.fileExists(versionJsonFile))
                                 throw new AppFactoryException("The path [${fabricAppsDirPath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
-                                    "does not appear to contain a Fabric app or service.", 'ERROR')
+                                    "does not appear to contain a Foundry app or service.", 'ERROR')
 
                             // If the given java asset path does not exist then failing the build
                             if(isBuildWithJavaAssets && fabricJavaProjectsDir) {
@@ -321,7 +321,7 @@ class Facade implements Serializable{
                         BuildHelper.runPostBuildHook(script, isCustomHookRunBuild, hookHelper, this.projectName, libraryProperties.'customhooks.postbuild.name', 'ALL')
 
                         script.stage('Bundle fabric app') {
-                            script.echoCustom("Generating the Fabric App Bundle ${projectNameZip}..", "INFO")
+                            script.echoCustom("Generating the Foundry App Bundle ${projectNameZip}..", "INFO")
                             if(isBuildWithJavaAssets) {
                                 script.dir(javaAssetBasePath) {
                                     javaServiceDirList?.each { javaServiceDir ->
@@ -359,9 +359,9 @@ class Facade implements Serializable{
                             // Create the app zip for fabric app and place the zip at path "/release/apps" with file name projectName.zip
                             script.dir(fabricAppBasePath) {
                                 script.shellCustom("set +ex;zip --recurse-paths --display-bytes ${projectNameZip} \"Apps\" --exclude *.DS_Store *thumbs.db *.desktop.ini.", isUnixNode)
-                                script.echoCustom("Successfully generated the Fabric App Bundle ${projectNameZip} at Fabric dir path!", "INFO")
+                                script.echoCustom("Successfully generated the Foundry App Bundle ${projectNameZip} at Foundry dir path!", "INFO")
                                 script.shellCustom("set +x;mv -f ${projectNameZip} ${appBinariesReleasePath}", isUnixNode)
-                                script.echoCustom("Successfully copied the Fabric App Bundle ${projectNameZip} to '${defaultReleaseAppBundleDir}' path!", "INFO")
+                                script.echoCustom("Successfully copied the Foundry App Bundle ${projectNameZip} to '${defaultReleaseAppBundleDir}' path!", "INFO")
                                 mustHaveArtifacts.add([name: projectNameZip, path: appBinariesReleasePath])
                             }
                         }
@@ -397,7 +397,7 @@ class Facade implements Serializable{
                                                         throw new AppFactoryException("Invalid file name or type given for service config file! Service config import is supported with '.json' file and should not contains spaces in file name.", "ERROR")
                                                     }
                                                     if (script.fileExists(appServiceConfigFilePath)) {
-                                                        script.echoCustom("Service config file found for Fabric environment is '${serviceConfigPath}', will be importing to Fabric app!", "INFO")
+                                                        script.echoCustom("Service config file found for Foundry environment is '${serviceConfigPath}', will be importing to Foundry app!", "INFO")
                                                         if(FabricHelper.checkFabricFeatureSupportExist(script, libraryProperties, featuresSupportToCheckInFabric)) {
                                                             FabricHelper.importFabricAppServiceConfig(
                                                                 script,
@@ -415,7 +415,7 @@ class Facade implements Serializable{
                                                             "does not exist.", 'ERROR')
                                                     }
                                                 } else {
-                                                    script.echoCustom("Skipping to update Fabric app service config, since you have not provided value for 'SERVICE_CONFIG_PATH' param!", "INFO")
+                                                    script.echoCustom("Skipping to update Foundry app service config, since you have not provided value for 'SERVICE_CONFIG_PATH' param!", "INFO")
                                                 }
                                             }
                                             
@@ -459,7 +459,7 @@ class Facade implements Serializable{
                         script.stage('Archive build artifacts') {
 
                             script.echoCustom("Publishing build artifacts to AWS S3 bucket..", 'INFO')
-                            def s3FabricArtifactPath = ['Builds', fabricEnvironmentName, 'Fabric', fabricAppName, script.env.BUILD_NUMBER].join('/')
+                            def s3FabricArtifactPath = ['Builds', fabricEnvironmentName, 'Foundry', fabricAppName, script.env.BUILD_NUMBER].join('/')
 
                             String fabricAppArtifactUrl = AwsHelper.publishToS3 bucketPath: s3FabricArtifactPath,
                                 sourceFileName: projectNameZip, sourceFilePath: appBinariesReleasePath, script
@@ -499,7 +499,7 @@ class Facade implements Serializable{
                     fabricStats.put('fabsrcbrch', projectSourceCodeBranch)
                     fabricStats.put('fabsrccmtid', fabricScmMeta?.commitID)
                     fabricStats.put('buildemlrecipients', script.env.RECIPIENTS_LIST)
-                    fabricStats.put('buildtype', "Fabric")
+                    fabricStats.put('buildtype', "Foundry")
                     
                     // Pushing stats data
                     script.statspublish fabricStats.inspect()
@@ -519,7 +519,7 @@ class Facade implements Serializable{
                         if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             def fabricJobMustHavesFolderName = "fabricMustHaves"
                             def fabricJobBuildLogFile = "fabricBuildlog.log"
-                            s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
+                            s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Foundry, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
                         }
                         
                     } catch (Exception Ex) {
@@ -548,7 +548,7 @@ class Facade implements Serializable{
         }
     }
     
-    // Get the Fabric app version based on source to pick from app version
+    // Get the Foundry app version based on source to pick from app version
     private String getFabricApplicationVersion() {
         def fabricApplicationVersion
         if(fabricAppVersionToPickFrom == 'PICK_FROM_FABRIC_APP_META_JSON') {

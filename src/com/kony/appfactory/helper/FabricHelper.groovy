@@ -3,11 +3,11 @@ package com.kony.appfactory.helper
 class FabricHelper implements Serializable {
     
     /**
-     * Fetches specified version of Fabric CLI application.
+     * Fetches specified version of Foundry CLI application.
      *
      * @param script Build script object.
      * @param libraryProperties properties object that is loaded with the common.properties file
-     * @param fabricCliVersion version of Fabric CLI application.
+     * @param fabricCliVersion version of Foundry CLI application.
      */
     protected static final void fetchFabricCli(script, libraryProperties, fabricCliVersion = 'latest') {
         
@@ -19,21 +19,21 @@ class FabricHelper implements Serializable {
                 fabricCliFileName
         ].join('/')
 
-        script.catchErrorCustom("Failed to fetch Fabric CLI (version: $fabricCliVersion)") {
+        script.catchErrorCustom("Failed to fetch Foundry CLI (version: $fabricCliVersion)") {
             /* httpRequest step been used here, to be able to fetch application on any slave (any OS) */
             script.httpRequest url: fabricCliUrl, outputFile: fabricCliFileName, validResponseCodes: '200'
         }
     }
         
     /**
-     * Runs Fabric CLI application with provided arguments.
+     * Runs Foundry CLI application with provided arguments.
      *
      * @param script Build script object.
      * @param fabricCommand command name.
-     * @param fabricCredentialsID Volt MX Fabric credentials Id in Jenkins credentials store.
+     * @param fabricCredentialsID Volt MX Foundry credentials Id in Jenkins credentials store.
      * @param isUnixNode UNIX node flag.
      * @param fabricCliFileName fabric cli file name that need to executed.
-     * @param fabricCommandOptions options for Fabric command.
+     * @param fabricCommandOptions options for Foundry command.
      * @param args to shellCustom to return status and command output
      *
      * @return returnStatus/returnStdout
@@ -53,7 +53,7 @@ class FabricHelper implements Serializable {
                      passwordVariable: 'fabricPassword',
                      usernameVariable: 'fabricUsername']
             ]) {
-                // Switch command options(removing account id) if Console Url represents OnPrem Fabric.(Visit https://opensource.hcltechsw.com/volt-mx-docs/docs/documentation/Foundry/voltmx_foundry_user_guide/Content/CI_Foundry.html for details).
+                // Switch command options(removing account id) if Console Url represents OnPrem Foundry.(Visit https://opensource.hcltechsw.com/volt-mx-docs/docs/documentation/Foundry/voltmx_foundry_user_guide/Content/CI_Foundry.html for details).
                 if(!script.env.CONSOLE_URL.matches(script.kony.FABRIC_CONSOLE_URL))
                 {
                     fabricCommandOptions.remove('-t')
@@ -64,7 +64,7 @@ class FabricHelper implements Serializable {
                     fabricCommandOptions['--cloud-url'] = "\"${cloudUrl}\""
                 }
                 
-                /* Collect Fabric command options */
+                /* Collect Foundry command options */
                 String options = fabricCommandOptions?.collect { option, value ->
                     [option, value].join(' ')
                 }?.join(' ')
@@ -160,7 +160,7 @@ class FabricHelper implements Serializable {
             script.dir(fabricAppsDirPath) {
                 fabricAppsDirList = FabricHelper.getSubDirectories(script, isUnixNode, fabricAppsDirPath)
                 if(fabricAppsDirList.isEmpty())
-                    throw new AppFactoryException("The path ${fabricAppsDirPath} does not appear to contain a valid Fabric app.", "ERROR")
+                    throw new AppFactoryException("The path ${fabricAppsDirPath} does not appear to contain a valid Foundry app.", "ERROR")
                 //Find the directory which does not start with _ underscore( will be fabric app name dir)
                 fabricAppsDirList.each{ fabricAppNameDir ->
                     if(fabricAppNameDir =~ /^(?!_.*$).*/) {
@@ -169,7 +169,7 @@ class FabricHelper implements Serializable {
                             def metaJson = script.readJSON file: appMetaJsonFile
                             appVersionFromAppMeta = metaJson.version
                         } else {
-                            throw new AppFactoryException("Fabric app repository does not not exist ${appMetaJsonFile }!", "ERROR")
+                            throw new AppFactoryException("Foundry app repository does not not exist ${appMetaJsonFile }!", "ERROR")
                         }
                     }
                 }
@@ -360,7 +360,7 @@ class FabricHelper implements Serializable {
     }
     
     /**
-     * Run healthcheck for Fabric environment
+     * Run healthcheck for Foundry environment
      * @param script
      * @param fabricCliPath, mfcli.jar with absolute path
      * @param cloudCredentialsID
@@ -460,7 +460,7 @@ class FabricHelper implements Serializable {
     }
     
     /**
-     * Get the Fabric Console version through mfcli healthcheck command.
+     * Get the Foundry Console version through mfcli healthcheck command.
      * @param script
      * @param fabricCliPath
      * @param fabricCredentialsID
@@ -479,22 +479,22 @@ class FabricHelper implements Serializable {
             }
         }
         if(!fabricHealthCheckMap.containsKey("Version"))
-            throw new AppFactoryException('Failed to get the Fabric Console version! It seems something wrong with health check of Fabric environment.', 'ERROR')
+            throw new AppFactoryException('Failed to get the Foundry Console version! It seems something wrong with health check of Foundry environment.', 'ERROR')
         
         fabConsoleVersionFromHealthCheck = fabricHealthCheckMap.get("Version")
-        /* The DEV build convention of the version is slightly different. So in few of lower Fabric environments, 
-         * Fabric Console Version value can be as: '9.2.0.71_DEV' but in actual we have to take value as : '9.2.0.71' */
+        /* The DEV build convention of the version is slightly different. So in few of lower Foundry environments, 
+         * Foundry Console Version value can be as: '9.2.0.71_DEV' but in actual we have to take value as : '9.2.0.71' */
         if(fabConsoleVersionFromHealthCheck.contains("_")) {
             fabricConsoleVersion = fabConsoleVersionFromHealthCheck.split("_").first()
         } else {
             fabricConsoleVersion = fabConsoleVersionFromHealthCheck
         }
         script.env['FABRIC_CONSOLE_VERSION'] = fabricConsoleVersion
-        script.echoCustom("From the given Fabric App Config, found the Fabric Console version: ${fabConsoleVersionFromHealthCheck}", 'INFO')
+        script.echoCustom("From the given Foundry App Config, found the Foundry Console version: ${fabConsoleVersionFromHealthCheck}", 'INFO')
     }
     
     /**
-     * Validates support exists for given feature in Fabric build.
+     * Validates support exists for given feature in Foundry build.
      * @param script
      * @param libraryProperties
      * @param featureSupportToCheckInFabric
@@ -506,8 +506,8 @@ class FabricHelper implements Serializable {
             def featureSupportedVersion = libraryProperties."fabric.${featureKeyInLowers}.support.base.version"
             if (ValidationHelper.compareVersions(script.env["FABRIC_CONSOLE_VERSION"], featureSupportedVersion) == -1) {
                 isFeatureSupportExist = false
-                script.echoCustom("The minimum supported Fabric Console version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
-                    "Please upgrade your Fabric environment to latest version to make use of this feature.", 'WARN')
+                script.echoCustom("The minimum supported Foundry Console version is ${featureSupportedVersion} for ${featureProperties.featureDisplayName} feature. " +
+                    "Please upgrade your Foundry environment to latest version to make use of this feature.", 'WARN')
             }
         }
         return isFeatureSupportExist

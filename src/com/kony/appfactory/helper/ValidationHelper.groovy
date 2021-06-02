@@ -199,10 +199,10 @@ class ValidationHelper implements Serializable {
                     parameter_message = it.key + ' : ' + 'Expecting an <integer_value>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> Android -> Version Code".' + '\n' + 'For Example : 1'
                     break
                 case 'CLOUD_ACCOUNT_ID':
-                    parameter_message = it.key + ' : ' + 'You can find this value by logging in to Fabric Cloud. Expecting a nine digit <integer_value>' + '\n' + 'For Example : 100000011 '
+                    parameter_message = it.key + ' : ' + 'You can find this value by logging in to Foundry Cloud. Expecting a nine digit <integer_value>' + '\n' + 'For Example : 100000011 '
                     break
                 case 'FABRIC_APP_VERSION':
-                    parameter_message = it.key + ' : ' + 'Expecting App Version in the format allowed on Fabric, like <major>.<minor>' + '\n' + 'where major and minor are numeric, and major is between 1 and 999, and  minor is between 0 and 99.' + '\n' + 'For Example.: 1.0 or 999.99'
+                    parameter_message = it.key + ' : ' + 'Expecting App Version in the format allowed on Foundry, like <major>.<minor>' + '\n' + 'where major and minor are numeric, and major is between 1 and 999, and  minor is between 0 and 99.' + '\n' + 'For Example.: 1.0 or 999.99'
                     break
                 case 'CUSTOM_PROTECTION_PATH':
                     parameter_message = it.key + ' : ' + 'Please enter valid JSON file path as specified in parameter description. Expecting CUSTOM_PROTECTION_PATH in the .json extension format. The path must be relative to the root of the repository.' + '\n' + 'For Example.: blue_print_config.json'
@@ -246,7 +246,7 @@ class ValidationHelper implements Serializable {
     }
     
     /**
-     * Validates Visualizer CI/Headless build support exists for few of new features.
+     * Validates Iris CI/Headless build support exists for few of new features.
      * If CI/Headless support not available, fails the build.
      */
     protected static void checkFeatureSupportExist(script, libraryProperties, vizFeaturesSupportToCheck, buildType) {
@@ -255,7 +255,7 @@ class ValidationHelper implements Serializable {
             def featureSupportedVersion = libraryProperties."${featureKeyInLowers}.${buildType}.support.base.version"
             if (ValidationHelper.compareVersions(script.env["visualizerVersion"], featureSupportedVersion) == -1) {
                 String errorMessage = "Sorry, the ${buildType} build for ${featureProperties.featureDisplayName} is not supported for your " +
-                        "Visualizer project version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
+                        "Iris project version. The minimum supported version is ${featureSupportedVersion}. Please upgrade your project to " +
                         "latest version and build the app."
                 throw new AppFactoryException(errorMessage, "ERROR")
             }

@@ -53,7 +53,7 @@ class WebChannel extends Channel {
         libraryProperties = BuildHelper.loadLibraryProperties(
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
-        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Iris)
         selectedSpaChannels = getSelectedSpaChannels(this.script.params)
         /* Expose SPA and DESKTOP_WEB build parameters to environment variables to use it in HeadlessBuild.properties */
         this.script.env['APP_VERSION'] = webAppVersion
@@ -166,7 +166,7 @@ class WebChannel extends Channel {
                  *  build on MAC Agent. Otherwise default node strategy will be followed (WIN || MAC)
                  */
                 resourceList = BuildHelper.getResourcesList()
-                isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, BuildType.Visualizer, runCustomHook, libraryProperties)
+                isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(projectName, BuildType.Iris, runCustomHook, libraryProperties)
                 nodeLabel = BuildHelper.getAvailableNode(resourceList, libraryProperties, script, isCustomHookRunBuild, channelOs)
 
                 script.node(nodeLabel) {
@@ -211,7 +211,7 @@ class WebChannel extends Channel {
 
                         script.stage('Build') {
                             if(buildMode == libraryProperties.'buildmode.release.protected.type') {
-                                script.echoCustom("For Visualizer 9.2.0 below projects release-protected mode is not applicable for DesktopWeb channel build." +
+                                script.echoCustom("For Iris 9.2.0 below projects release-protected mode is not applicable for DesktopWeb channel build." +
                                             " It will build as Release mode only.", 'WARN')
                                 if(webProtectionID) {
                                     setProtectedModePropertiesPath()
@@ -274,16 +274,16 @@ class WebChannel extends Channel {
                         }
 
 
-                        script.stage('Publish to Fabric') {
-                            /* Publish Fabric application if PUBLISH_FABRIC_APP/PUBLISH_WEB_APP set to true */
+                        script.stage('Publish to Foundry') {
+                            /* Publish Foundry application if PUBLISH_FABRIC_APP/PUBLISH_WEB_APP set to true */
                             if (publishWebApp) {
                                 if (webChannelType.equalsIgnoreCase("WEB")) {
-                                    script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Fabric environment you've chosen.")
+                                    script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Foundry environment you've chosen.")
                                 }
                                 FabricHelper.fetchFabricCli(script, libraryProperties, libraryProperties.'fabric.cli.version')
                                 FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, script.env.FABRIC_ACCOUNT_ID, script.env.FABRIC_ENV_NAME, isUnixNode)
                                 
-                                /* Fabric option for cliCommands */
+                                /* Foundry option for cliCommands */
                                 def fabricCommandOptions = ['-t': "\"${script.env.FABRIC_ACCOUNT_ID}\"",
                                                             '-a': "\"${script.env.FABRIC_APP_NAME}\"",
                                                             '-v': "\"${script.env.FABRIC_APP_VERSION}\"",
@@ -291,13 +291,13 @@ class WebChannel extends Channel {
                                                             '-e': "\"${script.env.FABRIC_ENV_NAME}\"",]
                                 /* Prepare string with shell script to run */
                                 FabricHelper.fabricCli(script, 'publish', fabricCredentialsID, isUnixNode, fabricCliFileName, fabricCommandOptions)
-                                script.echoCustom("Published to Fabric Successfully, Fetching AppInfo")
+                                script.echoCustom("Published to Foundry Successfully, Fetching AppInfo")
                                 fabricCommandOptions.remove('--webAppVersion')
                                 webAppUrl = fetchWebAppUrl("appinfo", fabricCommandOptions)
                                 script.echoCustom("Your published app is accessible at : " + webAppUrl)
                             } else {
                                 script.echoCustom("${publishToFabricParamName} flag set to false, " +
-                                        "skipping Fabric application publishing...")
+                                        "skipping Foundry application publishing...")
 
                             }
                         }
@@ -375,7 +375,7 @@ class WebChannel extends Channel {
     }
 
     /**
-     * Runs Fabric CLI commands which have to return something.
+     * Runs Foundry CLI commands which have to return something.
      * @param cliCommand cliCommand for fabric cli command that need to be executed.
      * @param fabricCommandOptions other fabric cli command options that can be provided.
      * @return WebAppUrl of the web app.
@@ -391,7 +391,7 @@ class WebChannel extends Channel {
         def webAppUrlJson = jsonSlurper.parseText(webAppUrlText)
         def webAppUrl = (webAppUrlJson.Webapp?.url) ? webAppUrlJson.Webapp.url : ''
         if(webAppUrl.isEmpty())
-            throw new AppFactoryException('Web app url is not found! It seems Fabric app is not published with uploaded web application.', 'ERROR')
+            throw new AppFactoryException('Web app url is not found! It seems Foundry app is not published with uploaded web application.', 'ERROR')
         webAppUrl.toString()
     }
 

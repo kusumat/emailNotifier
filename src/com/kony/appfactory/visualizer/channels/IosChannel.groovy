@@ -82,7 +82,7 @@ class IosChannel extends Channel {
      */
     IosChannel(script, channelFormFactor) {
         super(script)
-        this.hookHelper = new CustomHookHelper(script, BuildType.Visualizer)
+        this.hookHelper = new CustomHookHelper(script, BuildType.Iris)
         channelOs = 'iOS'
         channelType = 'Native'
         fastlaneConfigStashName = libraryProperties.'fastlane.config.stash.name'
@@ -214,7 +214,7 @@ class IosChannel extends Channel {
         boolean isFileShareEnabled = false
 
         try {
-            /* Extract Visualizer iOS Dummy Project */
+            /* Extract Iris iOS Dummy Project */
             script.dir(iosDummyProjectBasePath) {
                 script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
                 BuildHelper.deleteDirectories(script,["iOS-plugin","VMAppWithKonylib"])
@@ -228,7 +228,7 @@ class IosChannel extends Channel {
                 setExecutePermissions("crypt", false)
             }
 
-            /* Extract necessary files from KAR file to Visualizer iOS Dummy Project */
+            /* Extract necessary files from KAR file to Iris iOS Dummy Project */
             script.dir(iosDummyProjectGenPath) {
                 def karExtractErrorLog = "error.txt"
                 try {
@@ -290,7 +290,7 @@ class IosChannel extends Channel {
                     script.unstash name: fastlaneConfigStashName
                 }
                 
-                /* set iOS build configuration to debug/release based on Visualizer version,
+                /* set iOS build configuration to debug/release based on Iris version,
                  * note that, in 8.1.0 and above versions, to build debug mode binary, set the build configuration of KRelease as debug.
                  */
                  def iOSSchemaChangedVersion = libraryProperties.'ios.schema.buildconfig.changed.version'
@@ -310,7 +310,7 @@ class IosChannel extends Channel {
                  * But this is should be picked from projectprop.xml, So this key is removed, and user committed app name will
                  * be considered.
                  *
-                 * Note: In debug mode, Visualizer prefixes 'debugger' word in App display name.
+                 * Note: In debug mode, Iris prefixes 'debugger' word in App display name.
                  * */
                 script.withEnv([
                     "FASTLANE_DONT_STORE_PASSWORD=true",

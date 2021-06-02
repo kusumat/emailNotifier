@@ -137,7 +137,7 @@ class CustomHookHelper implements Serializable {
                 String hookLabel = script.env.NODE_LABELS
 
                 script.stage('Clean Hook Environment') {
-                    if (hookLabel.contains(libraryProperties.'test.automation.node.label') && buildType.toString().equalsIgnoreCase('Visualizer')) {
+                    if (hookLabel.contains(libraryProperties.'test.automation.node.label') && buildType.toString().equalsIgnoreCase('Iris')) {
                         hookDir = [getWorkspaceLocation(),projectName,"deviceFarm","Hook"].join('/')
                     } else {
                         hookDir = getWorkspaceLocation() + "/" + projectName + "/Hook"
@@ -161,8 +161,8 @@ class CustomHookHelper implements Serializable {
                 }
 
                 /* Setting permissions to hookslave user to read/write/modify in project workspace folder */
-                /* Sample workspace: Visualizer/Builds/Channels/buildAndroid/vis_ws/ProjectName */
-                /* Hook is extracted at: Visualizer/Builds/Channels/buildAndroid/vis_ws/ProjectName/Hook */
+                /* Sample workspace: Iris/Builds/Channels/buildAndroid/vis_ws/ProjectName */
+                /* Hook is extracted at: Iris/Builds/Channels/buildAndroid/vis_ws/ProjectName/Hook */
                 /* Pass Current Job Parameters details to Child Job. These params can be passed later to ANT and Maven scripts */
                 script.stage('Prepare Environment for Run') {
                     /** Construct a String with current Job Parameters key-pair list with -Dkey=value format.
@@ -256,7 +256,7 @@ class CustomHookHelper implements Serializable {
     protected runCustomHooks(String folderName, String hookBuildStage, String pipelineBuildStage) {
         script.echoCustom("Trying to fetch $hookBuildStage $pipelineBuildStage hooks. ")
         /* If CloudBuild, the folder name will be CloudBuildService (project in AppFactory CloudBuild Jenkins Console) */
-        folderName = (buildType.toString().equalsIgnoreCase('Visualizer') && script.params.IS_SOURCE_VISUALIZER) ? libraryProperties.'cloudbuild.project.name' : folderName
+        folderName = (buildType.toString().equalsIgnoreCase('Iris') && script.params.IS_SOURCE_VISUALIZER) ? libraryProperties.'cloudbuild.project.name' : folderName
 
         /* Execute available hooks */
         def executionStatus = triggerHooks(folderName, hookBuildStage, pipelineBuildStage)
@@ -285,7 +285,7 @@ class CustomHookHelper implements Serializable {
     
     protected final getWorkspaceLocation() {
         def projWorkspace
-        if(BuildType.Visualizer.toString().equalsIgnoreCase(buildType.toString())) {
+        if(BuildType.Iris.toString().equalsIgnoreCase(buildType.toString())) {
             projWorkspace = [script.env.WORKSPACE, libraryProperties.'project.workspace.folder.name'].join('/')
         } else {
             projWorkspace = [script.env.WORKSPACE, libraryProperties.'fabric.project.workspace.folder.name'].join('/')

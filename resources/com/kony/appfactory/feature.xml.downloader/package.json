@@ -2,7 +2,7 @@
     "name": "kbuild",
     "version": "8.3.0",
     "author": {
-        "name": "Visualizer Team"
+        "name": "Iris Team"
     },
     "dependencies": {
         "properties-parser": "0.3.1",
