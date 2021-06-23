@@ -279,7 +279,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                 def jasmineReport
                 finalReportFile = files[0]
                 files.each { file ->
-                    jasmineReport = AwsHelper.publishToS3 bucketPath: s3PublishPath, sourceFileName: file.name,
+                    jasmineReport = ArtifactHelper.publishArtifact destinationPath: destinationArtifactPath, sourceFileName: file.name,
                     sourceFilePath: "${testFolder}", script
                     
                     if (finalReportFile.lastModified < file.lastModified) {

@@ -305,11 +305,6 @@ public class InvokeJasmineTests implements ITestListener {
             e.printStackTrace();
             throw new Exception("TEST RESULTS FETCH ERROR!!!");
         }
-        catch (WebDriverException exception) {
-            System.out.println("Exception occurred while fetching the Jasmine results!");
-            e.printStackTrace();
-            throw new Exception("TEST RESULTS FETCH ERROR!!!");
-        }
         return resultsJSON;
     }
     
