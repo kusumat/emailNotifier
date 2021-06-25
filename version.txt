@@ -1,1 +1,1 @@
-Temenos-Version: APPFACT-QA-9.2.1.1
+Temenos-Version: APPFACT-GA-9.2.1.1
