@@ -617,7 +617,7 @@ class Channel implements Serializable {
         (artifactExtension) ?: script.echoCustom("artifactExtension argument can't be null", 'ERROR')
 
         /* Setting the projectAppId to the global variable which is needed to find the build artifacts */
-        projectAppId = script.env.projectAppId
+        projectAppId = getProjectAppIdKey();
 		
         artifactsBasePath = getArtifactTempPath(projectWorkspacePath, script.env['VISUALIZER_PROJECT_ROOT_FOLDER_NAME'], projectAppId, separator, channelVariableName) ?:
                 script.echoCustom('Artifacts base path is missing!', 'ERROR')
