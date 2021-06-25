@@ -282,7 +282,7 @@ class DesktopWebTests extends RunTests implements Serializable {
                     jasmineReport = ArtifactHelper.publishArtifact destinationPath: destinationArtifactPath, sourceFileName: file.name,
                     sourceFilePath: "${testFolder}", script
                     
-                    if (finalReportFile.lastModified < file.lastModified) {
+                    if (finalReportFile.lastModified <= file.lastModified) {
                         jasmineHTMLReport = jasmineReport
                         finalReportFile = file
                     }
@@ -290,7 +290,7 @@ class DesktopWebTests extends RunTests implements Serializable {
             }
 
             if (finalReportFile) {
-                listofLogFiles.put("Detailed Test Report", BuildHelper.createAuthUrl(jasmineHTMLReport, script, true));
+                listofLogFiles.put("Detailed Test Report", ArtifactHelper.createAuthUrl(jasmineHTMLReport, script, true));
             }
         }
         if (script.fileExists("${testFolder}/browserConsoleLog.txt")) {
