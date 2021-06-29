@@ -24,7 +24,7 @@ class Facade implements Serializable{
     private final fabricAppDir
     private final fabricAppVersionToPickFrom = script.params.IMPORT_FABRIC_APP_VERSION
     private final fabricAppVersionInputParam = (script.params.FABRIC_APP_VERSION)?.trim()
-    private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
+    private final fabricAppConfig = script.params.FOUNDRY_APP_CONFIG
     private final fabricCredentialsID = script.params.FABRIC_CREDENTIALS
     private final boolean isBuildWithImport = script.params.IMPORT
     private final boolean isBuildWithPublish = script.params.PUBLISH
@@ -74,7 +74,7 @@ class Facade implements Serializable{
         projectNameZip = projectName + ".zip"
         /* Set the fabric project settings values to the corresponding fabric environmental variables */
         BuildHelper.setProjSettingsFieldsToEnvVars(this.script, 'Fabric')
-        fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR).trim() : ((script.env.FABRIC_APP_ROOT_FOLDER) ? script.env.FABRIC_APP_ROOT_FOLDER.trim() : "")
+        fabricAppDir = (script.params.FOUNDRY_DIR) ? (script.params.FOUNDRY_DIR).trim() : ((script.env.FABRIC_APP_ROOT_FOLDER) ? script.env.FABRIC_APP_ROOT_FOLDER.trim() : "")
         projectSourceCodeRepositoryCredentialsId = script.env.SCM_CREDENTIALS
         this.script.env['CLOUD_ACCOUNT_ID'] = (script.params.MF_ACCOUNT_ID) ?: (this.script.kony.CLOUD_ACCOUNT_ID) ?: ''
         this.script.env['CLOUD_ENVIRONMENT_GUID'] = (script.params.MF_ENVIRONMENT_GUID) ?: (this.script.kony.CLOUD_ENVIRONMENT_GUID) ?: ''
@@ -142,7 +142,7 @@ class Facade implements Serializable{
                             def mandatoryParameters = [
                                 'SCM_BRANCH',
                                 'SCM_CREDENTIALS',
-                                'FABRIC_APP_CONFIG'
+                                'FOUNDRY_APP_CONFIG'
                             ]
 
                             if (isBuildWithImport)
@@ -553,7 +553,7 @@ class Facade implements Serializable{
         def fabricApplicationVersion
         if(fabricAppVersionToPickFrom == 'PICK_FROM_FABRIC_APP_META_JSON') {
             fabricApplicationVersion = FabricHelper.getFabricAppVersionFromAppMetaJson(script, fabricAppBasePath, isUnixNode)
-        } else if(fabricAppVersionToPickFrom == 'PICK_FROM_FABRIC_APP_CONFIG') {
+        } else if(fabricAppVersionToPickFrom == 'PICK_FROM_FOUNDRY_APP_CONFIG') {
             fabricApplicationVersion = (script.env.FABRIC_APP_VERSION) ?: "1.0"
         } else {
             fabricApplicationVersion = (fabricAppVersionInputParam) ?: "1.0"

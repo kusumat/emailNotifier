@@ -109,12 +109,12 @@ class Channel implements Serializable {
 
     /* Common build parameters */
     protected final scmBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
+    protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FOUNDRY_CREDENTIALS_ID')
     protected final fabricCredentialsID = script.params[fabricCredentialsParamName]
     /* Flag to decide whether the build mode is 'test' or not */
     protected final isBuildModeTest = (script.params.BUILD_MODE == 'test') ? true : false
     protected final buildMode = (script.params.BUILD_MODE == 'release-protected [native-only]') ? 'release-protected' : isBuildModeTest ? 'debug' : script.params.BUILD_MODE
-    protected final fabricAppConfig = script.params.FABRIC_APP_CONFIG
+    protected final fabricAppConfig = script.params.FOUNDRY_APP_CONFIG
     protected fabricEnvironmentName
     protected channelFormFactor = script.params.FORM_FACTOR
     /* Flag to decide whether to generate aab or apk */
@@ -232,7 +232,7 @@ class Channel implements Serializable {
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
-        /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
+        /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FOUNDRY_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
 
         /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */
         fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
