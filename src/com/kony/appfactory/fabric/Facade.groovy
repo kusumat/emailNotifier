@@ -553,7 +553,7 @@ class Facade implements Serializable{
         def fabricApplicationVersion
         if(fabricAppVersionToPickFrom == 'PICK_FROM_FABRIC_APP_META_JSON') {
             fabricApplicationVersion = FabricHelper.getFabricAppVersionFromAppMetaJson(script, fabricAppBasePath, isUnixNode)
-        } else if(fabricAppVersionToPickFrom == 'PICK_FROM_FOUNDRY_APP_CONFIG') {
+        } else if(fabricAppVersionToPickFrom == 'PICK_FROM_FABRIC_APP_CONFIG') {
             fabricApplicationVersion = (script.env.FABRIC_APP_VERSION) ?: "1.0"
         } else {
             fabricApplicationVersion = (fabricAppVersionInputParam) ?: "1.0"
