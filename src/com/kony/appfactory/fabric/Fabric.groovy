@@ -581,7 +581,7 @@ class Fabric implements Serializable {
                 /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR param not exist in Export Job.
                  * If Fabric_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
                  */
-                String fabricAppDir = BuildHelper.getParamValueOrDefault(script, 'FOUNDRY_DIR', "export")
+                String fabricAppDir = BuildHelper.getParamValueOrDefault(script, 'FABRIC_DIR', "export")
                 boolean ignoreJarsForExport = BuildHelper.getParamValueOrDefault(script, 'IGNORE_JARS', false)
                 
                 String projectName = script.env.PROJECT_NAME
