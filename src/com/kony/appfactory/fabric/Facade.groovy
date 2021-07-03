@@ -24,7 +24,7 @@ class Facade implements Serializable{
     private final fabricAppDir
     private final fabricAppVersionToPickFrom = script.params.IMPORT_FABRIC_APP_VERSION
     private final fabricAppVersionInputParam = (script.params.FABRIC_APP_VERSION)?.trim()
-    private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
+    private final fabricAppConfig = script.params.FOUNDRY_APP_CONFIG
     private final fabricCredentialsID = script.params.FABRIC_CREDENTIALS
     private final boolean isBuildWithImport = script.params.IMPORT
     private final boolean isBuildWithPublish = script.params.PUBLISH
@@ -142,7 +142,7 @@ class Facade implements Serializable{
                             def mandatoryParameters = [
                                 'SCM_BRANCH',
                                 'SCM_CREDENTIALS',
-                                'FABRIC_APP_CONFIG'
+                                'FOUNDRY_APP_CONFIG'
                             ]
 
                             if (isBuildWithImport)
