@@ -39,7 +39,7 @@ class Fabric implements Serializable {
     private final String exportRepositoryBranch
     private final String exportRepositoryCredentialsId
     private String cloudAccountId = script.params.CLOUD_ACCOUNT_ID
-    private fabricCredentialsProbableParamNames = ['CLOUD_CREDENTIALS_ID', 'FOUNDRY_CREDENTIALS_ID', 'IMPORT_CLOUD_CREDENTIALS_ID', 'IMPORT_FOUNDRY_CREDENTIALS_ID']
+    private fabricCredentialsProbableParamNames = ['CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID', 'IMPORT_CLOUD_CREDENTIALS_ID', 'IMPORT_FABRIC_CREDENTIALS_ID']
     private final fabricCredentialsParamName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, fabricCredentialsProbableParamNames, 'FABRIC_CREDENTIALS')
     private String fabricCredentialsID = script.params[fabricCredentialsParamName]
     private String fabricAppName = script.params.FABRIC_APP_NAME
@@ -58,8 +58,8 @@ class Fabric implements Serializable {
     private boolean overwriteExistingScmBranch
     private boolean overwriteExistingAppVersion
     /* Migrate specific build parameters for backward compatibility */
-    private importfabricAppConfig = script.params.IMPORT_FOUNDRY_APP_CONFIG?:null
-    private exportfabricAppConfig = script.params.EXPORT_FOUNDRY_APP_CONFIG?:null
+    private importfabricAppConfig = script.params.IMPORT_FABRIC_APP_CONFIG?:null
+    private exportfabricAppConfig = script.params.EXPORT_FABRIC_APP_CONFIG?:null
 
     private String importCloudAccountId
     private String importFabricCredentialsID
@@ -73,8 +73,8 @@ class Fabric implements Serializable {
     /* OnPrem Foundry parameters */
     private String consoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_CONSOLE_URL', script.kony.FABRIC_CONSOLE_URL)
     private String identityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IDENTITY_URL', script.kony.FABRIC_CONSOLE_URL)
-    private fabricAppConfig = script.params.FOUNDRY_APP_CONFIG?:null
-    def appConfigParameter = BuildHelper.getCurrentParamName(script, 'FOUNDRY_APP_CONFIG', 'CLOUD_ACCOUNT_ID')
+    private fabricAppConfig = script.params.FABRIC_APP_CONFIG?:null
+    def appConfigParameter = BuildHelper.getCurrentParamName(script, 'FABRIC_APP_CONFIG', 'CLOUD_ACCOUNT_ID')
 
     /*scm meta info like commitID ,commitLogs */
     protected scmMeta = [:]
@@ -484,7 +484,7 @@ class Fabric implements Serializable {
     private final void pipelineWrapper(closure) {
         try {
             switch (appConfigParameter){
-                case 'FOUNDRY_APP_CONFIG':
+                case 'FABRIC_APP_CONFIG':
                     BuildHelper.fabricConfigEnvWrapper(script, fabricAppConfig) {
                         script.env.FABRIC_ENV_NAME = (script.env.FABRIC_ENV_NAME) ?:
                                 script.echoCustom("Foundry environment value can't be null", 'ERROR')
@@ -880,16 +880,16 @@ class Fabric implements Serializable {
             script.ansiColor('xterm') {
                 overwriteExistingScmBranch = script.params.OVERWRITE_EXISTING_SCM_BRANCH
                 exportCloudAccountId = script.params.EXPORT_CLOUD_ACCOUNT_ID
-                def exportFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'EXPORT_CLOUD_CREDENTIALS_ID', 'EXPORT_FOUNDRY_CREDENTIALS_ID')
+                def exportFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'EXPORT_CLOUD_CREDENTIALS_ID', 'EXPORT_FABRIC_CREDENTIALS_ID')
                 exportFabricCredentialsID = script.params[exportFabricCredsParamName]
                 importCloudAccountId = script.params.IMPORT_CLOUD_ACCOUNT_ID
-                def importFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'IMPORT_CLOUD_CREDENTIALS_ID', 'IMPORT_FOUNDRY_CREDENTIALS_ID')
+                def importFabricCredsParamName = BuildHelper.getCurrentParamName(script, 'IMPORT_CLOUD_CREDENTIALS_ID', 'IMPORT_FABRIC_CREDENTIALS_ID')
                 importFabricCredentialsID = script.params[importFabricCredsParamName]
                 def exportConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_CONSOLE_URL', script.kony.FABRIC_CONSOLE_URL)
                 def exportIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_EXPORT_IDENTITY_URL', script.kony.FABRIC_CONSOLE_URL)
                 def importConsoleUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_CONSOLE_URL', script.kony.FABRIC_CONSOLE_URL)
                 def importIdentityUrl = BuildHelper.getParamValueOrDefault(script, 'FABRIC_IMPORT_IDENTITY_URL', script.kony.FABRIC_CONSOLE_URL)
-                appConfigParameter = BuildHelper.getCurrentParamName(script, 'EXPORT_FOUNDRY_APP_CONFIG', 'EXPORT_CLOUD_ACCOUNT_ID')
+                appConfigParameter = BuildHelper.getCurrentParamName(script, 'EXPORT_FABRIC_APP_CONFIG', 'EXPORT_CLOUD_ACCOUNT_ID')
 
                 /* Data for e-mail notification to be specified*/
                 emailData = [
@@ -921,8 +921,8 @@ class Fabric implements Serializable {
                         mandatoryParameters.add(BuildHelper.getCurrentParamName(script, 'PROJECT_SOURCE_CODE_REPOSITORY_URL', 'PROJECT_EXPORT_REPOSITORY_URL'))
                     }
                     switch (appConfigParameter) {
-                        case 'EXPORT_FOUNDRY_APP_CONFIG':
-                            mandatoryParameters << 'EXPORT_FOUNDRY_APP_CONFIG' << 'IMPORT_FOUNDRY_APP_CONFIG'
+                        case 'EXPORT_FABRIC_APP_CONFIG':
+                            mandatoryParameters << 'EXPORT_FABRIC_APP_CONFIG' << 'IMPORT_FABRIC_APP_CONFIG'
                             BuildHelper.fabricConfigEnvWrapper(script, exportfabricAppConfig) {
                                 exportCloudAccountId = script.env.FABRIC_ACCOUNT_ID
                                 fabricAppName = script.env.FABRIC_APP_NAME
@@ -1184,7 +1184,7 @@ class Fabric implements Serializable {
                 script.string(name: 'RECIPIENTS_LIST', value: recipientsList)
         ]
         if (appConfigParam.matches("(.*)_APP_CONFIG")) {
-            publishJobParameters << script.credentials(name: 'FOUNDRY_APP_CONFIG', value: fabricAppConfig)
+            publishJobParameters << script.credentials(name: 'FABRIC_APP_CONFIG', value: fabricAppConfig)
         }
         if (script.params.containsKey('FABRIC_CONSOLE_URL') && script.params.containsKey('FABRIC_IDENTITY_URL')) {
             publishJobParameters << script.string(name: 'FABRIC_CONSOLE_URL', value: consoleUrl) <<
@@ -1199,8 +1199,8 @@ class Fabric implements Serializable {
      */
     private final checkCompatibility(def mandatoryParameters, String jobName) {
         switch (appConfigParameter) {
-            case 'FOUNDRY_APP_CONFIG':
-                mandatoryParameters << 'FOUNDRY_APP_CONFIG'
+            case 'FABRIC_APP_CONFIG':
+                mandatoryParameters << 'FABRIC_APP_CONFIG'
                 break
             case 'CLOUD_ACCOUNT_ID':
                 mandatoryParameters << 'FABRIC_APP_NAME'
