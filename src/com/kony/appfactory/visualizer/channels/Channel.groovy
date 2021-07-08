@@ -278,7 +278,7 @@ class Channel implements Serializable {
             setBuildDescription()
             /* Been agreed to send notification from channel job only if result equals 'FAILURE' and if it's not CloudBuild */
             if (script.currentBuild.result == 'FAILURE' && !script.params.IS_SOURCE_VISUALIZER) {
-                NotificationsHelper.sendEmail(script, 'buildVisualizerApp', [fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: scmBranch])
+                NotificationsHelper.sendEmail(script, 'buildIrisApp', [fabricEnvironmentName: fabricEnvironmentName, projectSourceCodeBranch: scmBranch])
             }
         }
     }

@@ -482,7 +482,7 @@ class AllChannels implements Serializable {
                     }
                     finally {
                         def buildNumber = BuildHelper.getUpstreamJobNumber(script)
-                        def jobName = 'buildVisualizerApp'
+                        def jobName = 'buildIrisApp'
                         def abortMsg = ""
                         if (!script.currentBuild.rawBuild.getActions(jenkins.model.InterruptedBuildAction.class).isEmpty()) {
                             abortMsg = "BUILD ABORTED!!"

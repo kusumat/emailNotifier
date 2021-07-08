@@ -26,7 +26,7 @@ class EmailTemplateHelper implements Serializable {
     }
 
     /**
-     * Creates HTML content for buildVisualizerApp job.
+     * Creates HTML content for buildIrisApp job.
      *
      * @param binding provides data for HTML.
      * @return HTML content as a string.
@@ -48,7 +48,7 @@ class EmailTemplateHelper implements Serializable {
                             if (binding.triggeredBy)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
 
-                            if(templateType.equals('buildVisualizerApp')) {
+                            if(templateType.equals('buildIrisApp')) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
                                 EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
@@ -67,7 +67,7 @@ class EmailTemplateHelper implements Serializable {
                     }
                 }
 
-                if (binding.build.result == 'FAILURE' && templateType.equals('buildVisualizerApp')) {
+                if (binding.build.result == 'FAILURE' && templateType.equals('buildIrisApp')) {
                     tr {
                         td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
                             h4(style: "margin-bottom:0", 'Console Output')
@@ -104,7 +104,7 @@ class EmailTemplateHelper implements Serializable {
                         EmailBuilder.addBuildConsoleLogFields(htmlBuilder, [consolelogs: binding.consolelogs])
                 }
             }
-            if (!(binding.build.result == 'FAILURE') && templateType.equals('buildVisualizerApp')) {
+            if (!(binding.build.result == 'FAILURE') && templateType.equals('buildIrisApp')) {
                 htmlBuilder.br()
                 htmlBuilder.table(style: "width:100%") {
                     tr {
