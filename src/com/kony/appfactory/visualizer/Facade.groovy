@@ -58,10 +58,10 @@ class Facade implements Serializable {
     /* Common build parameters */
     private final projectName = script.env.PROJECT_NAME
     private final projectSourceCodeBranch = script.params.PROJECT_SOURCE_CODE_BRANCH
-    protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FOUNDRY_CREDENTIALS_ID')
+    protected final fabricCredentialsParamName = BuildHelper.getCurrentParamName(script, 'CLOUD_CREDENTIALS_ID', 'FABRIC_CREDENTIALS_ID')
     private fabricCredentialsID = script.params[fabricCredentialsParamName]
     private final buildMode = script.params.BUILD_MODE
-    private final fabricAppConfig = script.params.FOUNDRY_APP_CONFIG
+    private final fabricAppConfig = script.params.FABRIC_APP_CONFIG
     private final publishToFabricParamName = BuildHelper.getCurrentParamName(script, 'PUBLISH_FABRIC_APP', 'PUBLISH_WEB_APP')
     private final publishWebApp = script.params[publishToFabricParamName]
     private final universalAndroid = script.params.ANDROID_UNIVERSAL_NATIVE
@@ -339,7 +339,7 @@ class Facade implements Serializable {
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'BUILD_MODE', value: "${buildMode}"),
                 script.credentials(name: fabricCredentialsParamName, value: "${fabricCredentialsID}"),
-                script.credentials(name: 'FOUNDRY_APP_CONFIG', value: "${fabricAppConfig}"),
+                script.credentials(name: 'FABRIC_APP_CONFIG', value: "${fabricAppConfig}"),
                 script.booleanParam(name: publishToFabricParamName, value: publishWebApp),
                 script.stringParam(name: "TEST_FRAMEWORK", value: testFramework),
                 script.string(name: 'DEFAULT_LOCALE', value: "${defaultLocale}"),
@@ -857,7 +857,7 @@ class Facade implements Serializable {
                             def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
 
                             if (spaChannels || desktopWebChannel) {
-                                def webMandatoryParams = ["${webVersionParameterName}", 'FOUNDRY_APP_CONFIG']
+                                def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
                                 // Below Validations only apply to AppFactory Projects >= 9.2.0
                                 if (tempBuildMode == libraryProperties.'buildmode.release.protected.type' && script.params.containsKey('OBFUSCATION_PROPERTIES')) {
                                         webMandatoryParams.addAll(['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL', 'PROTECTED_KEYS'])
@@ -890,7 +890,7 @@ class Facade implements Serializable {
                             /* For CloudBuild, scan the checkParams list and clean unwanted params */
                             if (script.params.IS_SOURCE_VISUALIZER) {
                                 def cloudBuildNotExistingParams = [
-                                        'FOUNDRY_APP_CONFIG', publishToFabricParamName, 'RECIPIENTS_LIST',
+                                        'FABRIC_APP_CONFIG', publishToFabricParamName, 'RECIPIENTS_LIST',
                                         'RUN_CUSTOM_HOOKS', 'FORM_FACTOR', 'PROTECTED_KEYS', 'APPLE_ID'
                                 ]
                                 checkParams.removeAll(cloudBuildNotExistingParams)

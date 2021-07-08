@@ -149,7 +149,7 @@ class WebChannel extends Channel {
                         script.echoCustom('Please select at least one channel to build!', 'ERROR')
                     }
                     ValidationHelper.checkBuildConfiguration(script)
-                    ValidationHelper.checkBuildConfiguration(script, [appVersionParameterName, 'FOUNDRY_APP_CONFIG'])
+                    ValidationHelper.checkBuildConfiguration(script, [appVersionParameterName, 'FABRIC_APP_CONFIG'])
                     // These validations only apply to AppFactory Project >= 9.2.0
                     if(buildMode == libraryProperties.'buildmode.release.protected.type' && script.params.containsKey('OBFUSCATION_PROPERTIES')) {
                         def webProtectionMandatoryParams = ['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL', 'PROTECTED_KEYS']
