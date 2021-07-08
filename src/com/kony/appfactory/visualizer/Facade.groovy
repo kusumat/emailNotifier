@@ -15,7 +15,7 @@ import com.kony.appfactory.enums.BuildType
 
 
 /**
- * Implements logic for buildVisualizerApp job.
+ * Implements logic for buildIrisApp job.
  *
  * buildVisualizer job is the main job that responsible for orchestration of channel builds and
  *  testing application binaries.
@@ -68,11 +68,11 @@ class Facade implements Serializable {
     private final universalIos = script.params.IOS_UNIVERSAL_NATIVE
     private fabricEnvironmentName
     /* Temporary Base Job name for Cloud Build.
-     * Since console is only looking for 'buildVisualizerApp' in S3 path
+     * Since console is only looking for 'buildIrisApp' in S3 path
      * to fetch the results,for now, hardcoding this value.
      * Later, a change has to be made on console side to fetch results using 'cloudBuildVisualizerApp' also.
      * */
-    protected jobName = 'buildVisualizerApp'
+    protected jobName = 'buildIrisApp'
     /* iOS build parameters */
     private appleID = script.params.APPLE_ID
     private final appleCertID = script.params.APPLE_SIGNING_CERTIFICATES
@@ -1071,11 +1071,11 @@ class Facade implements Serializable {
                     } else {
                         if (channelsToRun && script.currentBuild.result != 'FAILURE') {
                             /*
-                             * Been agreed to send notification from buildVisualizerApp job only,
+                             * Been agreed to send notification from buildIrisApp job only,
                              * if result not equals 'FAILURE',
                              * all notification with failed channel builds will be sent directly from channel job.
                              */
-                            NotificationsHelper.sendEmail(script, 'buildVisualizerApp',
+                            NotificationsHelper.sendEmail(script, 'buildIrisApp',
                                     [
                                             artifacts              : artifacts,
                                             fabricEnvironmentName  : fabricEnvironmentName,

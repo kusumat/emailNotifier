@@ -199,7 +199,7 @@ class NotificationsHelper implements Serializable {
 
         switch (templateType) {
             case 'cloudBuild':
-            case 'buildVisualizerApp':
+            case 'buildIrisApp':
             case 'fabricBuild':
                 filesToStore.add([name: 'buildResults' + buildResultForTestConsole + '.html', data: body])
                 break
@@ -269,7 +269,7 @@ class NotificationsHelper implements Serializable {
         }
 
         switch (templateType) {
-            case 'buildVisualizerApp':
+            case 'buildIrisApp':
             case 'cloudBuild':
                 templateContent = EmailTemplateHelper.createBuildVisualizerAppContent(commonBinding, templateType)
                 break
@@ -296,8 +296,8 @@ class NotificationsHelper implements Serializable {
     private static String modifySubjectOfMail(script, templateType, templateData) {
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
         switch (templateType) {
-            case 'buildVisualizerApp':
-                modifiedBuildTag = (((modifiedBuildTag.minus("-Iris")).minus("s-buildVisualizerApp")).minus("s-Channels")).replaceAll("-build", "-")
+            case 'buildIrisApp':
+                modifiedBuildTag = (((modifiedBuildTag.minus("-Iris")).minus("s-buildIrisApp")).minus("s-Channels")).replaceAll("-build", "-")
                 if (modifiedBuildTag.contains("Android"))
                     return modifiedBuildTag.replace("Android", "Android-$script.env.FORM_FACTOR")
                 if (modifiedBuildTag.contains("Ios"))
