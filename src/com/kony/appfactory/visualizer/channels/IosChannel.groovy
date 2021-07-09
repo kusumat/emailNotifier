@@ -208,7 +208,7 @@ class IosChannel extends Channel {
         String visualizerDropinsPath = [projectWorkspacePath, 'kony-plugins'].join(separator)
         String codeSignIdentity = (iosDistributionType == 'development') ? 'Develop' : 'Distribution'
         String iosDummyProjectBasePath = [projectWorkspacePath, 'KonyiOSWorkspace'].join(separator)
-        String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithKonylib'].join(separator)
+        String iosDummyProjectWorkspacePath = [iosDummyProjectBasePath, 'VMAppWithVoltmxlib'].join(separator)
         String iosDummyProjectGenPath = [iosDummyProjectWorkspacePath, 'gen'].join(separator)
         String fastlaneName
         boolean isFileShareEnabled = false
@@ -217,7 +217,7 @@ class IosChannel extends Channel {
             /* Extract Iris iOS Dummy Project */
             script.dir(iosDummyProjectBasePath) {
                 script.shellCustom("cp ${visualizerDropinsPath}/com.kony.ios_*.jar iOS-plugin.zip", true)
-                BuildHelper.deleteDirectories(script,["iOS-plugin","VMAppWithKonylib"])
+                BuildHelper.deleteDirectories(script,["iOS-plugin","VMAppWithVoltmxlib"])
                 script.unzip dir: 'iOS-plugin', zipFile: 'iOS-plugin.zip'
                 def dummyProjectArchive = script.findFiles(glob: 'iOS-plugin/*.zip')
                 script.shellCustom("unzip -q ${dummyProjectArchive[0].path}", true)
@@ -318,7 +318,7 @@ class IosChannel extends Channel {
                     "GYM_CODE_SIGNING_IDENTITY=${codeSignIdentity}",
                     "GYM_OUTPUT_DIRECTORY=${karArtifact.path}",
                     "GYM_OUTPUT_NAME=${projectName}",
-                    "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithKonylib.xcodeproj",
+                    "FL_PROJECT_SIGNING_PROJECT_PATH=${iosDummyProjectWorkspacePath}/VMAppWithVoltmxlib.xcodeproj",
                     "MATCH_TYPE=${iosDistributionType}",
                     "EXPORT_METHOD=${iOSExportMethod}",
                     "BUILD_NUMBER=${script.env.BUILD_NUMBER}",
