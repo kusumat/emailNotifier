@@ -176,8 +176,8 @@ class CustomHook implements Serializable {
          **/
         defaultParams += " -DPROJECT_NAME=$script.env.PROJECT_NAME"
         defaultParams += " -DPROJECT_WORKSPACE=$buildWorkspace" + "/" + script.env.PROJECT_NAME
-        defaultParams += " -DPROJECT_VMWORKSPACE_PATH=$buildWorkspace" + "/KonyiOSWorkspace/VMAppWithKonylib/"
-        defaultParams += " -DPROJECT_XCODEPROJECT=VMAppWithKonylib.xcodeproj/project.pbxproj"
+        defaultParams += " -DPROJECT_VMWORKSPACE_PATH=$buildWorkspace" + "/KonyiOSWorkspace/VMAppWithVoltmxlib/"
+        defaultParams += " -DPROJECT_XCODEPROJECT=VMAppWithVoltmxlib.xcodeproj/project.pbxproj"
 
         return defaultParams
     }
