@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Configuration>
+  <Targets>
+  <Target path="../">
+      <CustomBuildInfo package_includes="com.kony;com.konylabs;com.pat;com.hcl.voltmx"/>
+      <Include></Include>
+      <Exclude>*sources.jar</Exclude>
+      <Exclude>*javadoc.jar</Exclude>
+      <Exclude>security-scan-configs/</Exclude>
+  </Target>
+  </Targets>
+</Configuration>
