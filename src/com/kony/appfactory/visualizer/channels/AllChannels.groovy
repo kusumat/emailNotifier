@@ -396,7 +396,11 @@ class AllChannels implements Serializable {
                                 def ios_channel_id = it.key
                                 IosChannel ios_channel = it.value
                                 def channel_name = getChannelName(ios_channel_id)
-
+                                script.shellCustom("xcrun simctl shutdown all", true)
+                                script.shellCustom("xcrun simctl erase all", true)
+                                script.shellCustom("killall -9 com.apple.CoreSimulator.CoreSimulatorService", true)
+                                script.shellCustom("xcodebuild -version", true)
+                                script.shellCustom("xcrun simctl list", true)
                                 script.callStageCustom(buildStatus, "Generating IPA and publishing ${channel_name} binaries") {
                                     try {
                                         ios_channel.pipelineWrapper {
