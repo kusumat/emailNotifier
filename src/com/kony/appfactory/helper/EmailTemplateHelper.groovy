@@ -155,7 +155,7 @@ class EmailTemplateHelper implements Serializable {
                             artifacts        : artifactsMap[channelPath].reverse()
                     ] + artifactsMeta
 
-                    EmailBuilder.addMultiSpanArtifactTableRow(htmlBuilder, map)
+                    EmailBuilder.addiOSArtifactTableRow(htmlBuilder, map)
                 }
                 /* Android */
                 else if (artifact.channelPath.toUpperCase().contains('ANDROID')) {
@@ -170,8 +170,9 @@ class EmailTemplateHelper implements Serializable {
                 else if (artifact.webAppUrl) {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+                    def webChannelPath =  artifact.channelPath.equals("RESPONSIVEWEB") ? "Responsive Web" : artifact.channelPath.equals("DESKTOPWEB") ? "Desktop Web" : "Web"
                     def map = [
-                            channelPath      : artifact.channelPath,
+                            channelPath      : webChannelPath,
                             artifacts        : [
                                     [
                                             name     : artifact.name,
@@ -193,11 +194,12 @@ class EmailTemplateHelper implements Serializable {
                 else {
                     def artifactNameUpperCase = (artifact.name).toUpperCase()
                     def artifactExtension = artifactNameUpperCase.substring(artifactNameUpperCase.lastIndexOf(".") + 1)
+                    def webChannelPath =  artifact.channelPath.equals("RESPONSIVEWEB") ? "Responsive Web" : artifact.channelPath.equals("DESKTOPWEB") ? "Desktop Web" : "Web"
                     def map = [
                             name             : artifact.name,
                             extension        : artifactExtension,
                             url              : artifact.authurl,
-                            channelPath      : artifact.channelPath
+                            channelPath      : webChannelPath
                     ] + artifactsMeta
                     EmailBuilder.addSimpleArtifactTableRowSuccess(htmlBuilder, map)
                 }
@@ -231,15 +233,16 @@ class EmailTemplateHelper implements Serializable {
                 tr {
                     td {
                         table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%", class: "text-color table-border cell-spacing") {
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
                             if (binding.triggeredBy) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
                             }
-
                             EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
-                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
+                            if (binding.isDesktopWebAppTestRun)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Target Web Application', binding.webAppURL)
                             if(binding.isJasmineEnabled) {
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Test Framework:', binding.testFramework)
                                 if (binding.isDesktopWebAppTestRun)
@@ -290,7 +293,7 @@ class EmailTemplateHelper implements Serializable {
                     tr {
                         td(style: "text-align:left", class: "text-color") {
                             br()
-                            p(style: "font-weight:bold", "Brief Summary of DesktopWeb Test Results:")
+                            p(style: "font-weight:bold", "Brief Summary of Web Test Results:")
                         }
                     }
 
@@ -359,7 +362,7 @@ class EmailTemplateHelper implements Serializable {
             tr{
                 tr {
                     td(style: "text-align:left", class: "text-color") {
-                        p(style: "font-weight:bold", "Brief Summary of Desktop Test Results:")
+                        p(style: "font-weight:bold", "Brief Summary of Web Test Results:")
                     }
                 }
                 td {
@@ -496,7 +499,7 @@ class EmailTemplateHelper implements Serializable {
                             )
                         }
                         logFiles.each { logFileName, logLink ->
-                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, logFileName, logLink, logFileName)
+                            EmailBuilder.addRunTestLogsAnchorRow(htmlBuilder, logFileName, logLink)
                         }
                     }
                     br()
@@ -1266,6 +1269,70 @@ class EmailTemplateHelper implements Serializable {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates HTML content for microservice run.
+     *
+     * @param binding provides data for HTML.
+     * @return HTML content as a string.
+     */
+    @NonCPS
+    protected static String createMicroserviceContent(Map binding) {
+        markupBuilderWrapper { MarkupBuilder htmlBuilder ->
+            htmlBuilder.table(style: "width:100%") {
+                EmailBuilder.addNotificationHeaderRow(htmlBuilder, binding.notificationHeader)
+                tr {
+                    td(style: "text-align:left", class: "text-color") {
+                        h4(class: "subheading", "Run Details")
+                    }
+                }
+                tr {
+                    td {
+                        table(role: "presentation", cellspacing: "0", cellpadding: "0", style: "width:100%", class: "text-color table-border cell-spacing") {
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
+                            if (binding.triggeredBy)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
+
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
+                            EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
+
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Generic Config Microservice Url:', binding.microserviceBaseUrl)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Deploy Jolt Files:', binding.deployJoltFiles)
+                            if(binding.deployJoltFiles)
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Group ID:', binding.msGroupID)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Deploy Policy Files:', binding.deployPolicyFiles)
+                        }
+                    }
+                }
+
+                if (binding.build.result == 'FAILURE') {
+                    tr {
+                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
+                            h4(style: "margin-bottom:0", 'Console Output')
+                            binding.build.log.each { line ->
+                                p(style: "width:950px;", line)
+                            }
+                        }
+                    }
+                } else {
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            h4(class: "subheading", 'Build Information')
+                        }
+                    }
+                    tr {
+                        td {
+                            p(style: "font-size:12px;", "The provided Jolt or Policy configuration files are successfully deployed to the given microservice.")
+                        }
+                    }
+
                 }
             }
         }

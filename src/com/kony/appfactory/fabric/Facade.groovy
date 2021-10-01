@@ -3,7 +3,7 @@ package com.kony.appfactory.fabric
 import java.io.Serializable
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.FabricHelper
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.NotificationsHelper
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.ValidationHelper
@@ -104,14 +104,14 @@ class Facade implements Serializable{
         def appBinariesReleasePath
         /*
          List of fabric app artifacts in format:
-             [fabricAppPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+             [fabricAppPath: <relative path to the artifact on ArtifactStorage>, name: <artifact file name>, url: <ArtifactStorage URL for the artifact>]
         */
         def fabricBuildArtifacts = []
         def javaServiceBuildTargetFolderName = "target"
         
         //MustHave variables
         def mustHaveArtifacts = []
-        def s3MustHaveAuthUrl = ''
+        def mustHaveAuthUrl = ''
         
         //Build stats variable
         def fabricStats = [:]
@@ -190,7 +190,7 @@ class Facade implements Serializable{
                             def fabricAppsDirPath = (fabricAppDir.isEmpty()) ? 'Apps' : [fabricAppDir, 'Apps'].join(separator)
 
                             // If the fabric App does not exist then failing the build
-                            def isFabricDirExist = FabricHelper.isDirExist(script, fabricAppBasePath, isUnixNode)
+                            def isFabricDirExist = BuildHelper.isDirExist(script, fabricAppBasePath, isUnixNode)
                             if (!isFabricDirExist)
                                 throw new AppFactoryException("The path [${fabricAppsDirPath}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
                                     "does not exist.", 'ERROR')
@@ -202,7 +202,7 @@ class Facade implements Serializable{
 
                             // If the given java asset path does not exist then failing the build
                             if(isBuildWithJavaAssets && fabricJavaProjectsDir) {
-                                def isPathExistForJavaAssest = FabricHelper.isDirExist(script, javaAssetBasePath, isUnixNode)
+                                def isPathExistForJavaAssest = BuildHelper.isDirExist(script, javaAssetBasePath, isUnixNode)
                                 if(!isPathExistForJavaAssest)
                                     throw new AppFactoryException("The path [${fabricJavaProjectsDir}] in revision [${projectSourceCodeBranch}] of repository [${projectRepositoryUrl}] " +
                                         "does not appear to contain any Java projects.", 'ERROR')
@@ -278,7 +278,7 @@ class Facade implements Serializable{
 
                                     // If there is no POM exist at root of java folder, build each java sub-folder that has POM
                                     else {
-                                        def javaAssetSubDirList = FabricHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
+                                        def javaAssetSubDirList = BuildHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
                                         javaAssetSubDirList?.each { javaServiceDir ->
                                             if (script.fileExists(javaServiceDir + '/' + pomFileName)) {
                                                 script.dir(javaServiceDir) {
@@ -293,7 +293,7 @@ class Facade implements Serializable{
 
                                     //If POM exist at root of java folder, but it is not an aggregator POM, build each java sub-folder that is inheriting parent POM.
                                     if( script.fileExists(pomFileName) && !isAnAggregatorPom) {
-                                        def javaAssetSubDirList = FabricHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
+                                        def javaAssetSubDirList = BuildHelper.getSubDirectories(script, isUnixNode, javaAssetBasePath)
                                         javaAssetSubDirList?.each { javaServiceDir ->
                                             if (script.fileExists(javaServiceDir + '/' + pomFileName)) {
                                                 def pomFileContent = script.readMavenPom file: pomFileName
@@ -456,24 +456,22 @@ class Facade implements Serializable{
                             }
                         }
                         
-                        script.stage('Archive build artifacts') {
-
-                            script.echoCustom("Publishing build artifacts to AWS S3 bucket..", 'INFO')
-                            def s3FabricArtifactPath = ['Builds', fabricEnvironmentName, 'Foundry', fabricAppName, script.env.BUILD_NUMBER].join('/')
-
-                            String fabricAppArtifactUrl = AwsHelper.publishToS3 bucketPath: s3FabricArtifactPath,
-                                sourceFileName: projectNameZip, sourceFilePath: appBinariesReleasePath, script
-                            String authenticatedFabricAppArtifactUrl = BuildHelper.createAuthUrl(fabricAppArtifactUrl, script, true)
+                        script.stage('Publish build artifacts') {
+                            script.echoCustom("Publishing build artifacts to artifact storage..", 'INFO')
+                            def fabricArtifactPath = ['Builds', fabricEnvironmentName, 'Fabric', fabricAppName, script.env.BUILD_NUMBER].join('/')
+                            String fabricAppArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: projectNameZip,
+                                    sourceFilePath: appBinariesReleasePath, destinationPath: fabricArtifactPath, script
+                            String authenticatedFabricAppArtifactUrl = ArtifactHelper.createAuthUrl(fabricAppArtifactUrl, script, true)
                             fabricBuildArtifacts.add([fabricAppName: fabricAppName, name: projectNameZip, fabricArtifactUrl: fabricAppArtifactUrl,
                                             authurl: authenticatedFabricAppArtifactUrl])
 
                             script.dir(javaAssetsBinariesReleasePath) {
                                 def jarFiles = script.findFiles(glob: '*.jar')
                                 jarFiles?.each { jarFile ->
-                                    String javaAssestArtifactUrl = AwsHelper.publishToS3 bucketPath: s3FabricArtifactPath,
-                                        sourceFileName: jarFile.name, sourceFilePath: ".", script
+                                    String javaAssestArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: jarFile.name,
+                                            sourceFilePath: ".", destinationPath: fabricArtifactPath, script
                                         
-                                    String authenticatedJavaAssestArtifactUrl = BuildHelper.createAuthUrl(javaAssestArtifactUrl, script, true)
+                                    String authenticatedJavaAssestArtifactUrl = ArtifactHelper.createAuthUrl(javaAssestArtifactUrl, script, true)
                                     
                                     fabricBuildArtifacts.add([fabricAppName: fabricAppName, name: jarFile.name, fabricArtifactUrl: javaAssestArtifactUrl,
                                         authurl: authenticatedJavaAssestArtifactUrl])
@@ -519,7 +517,7 @@ class Facade implements Serializable{
                         if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             def fabricJobMustHavesFolderName = "fabricMustHaves"
                             def fabricJobBuildLogFile = "fabricBuildlog.log"
-                            s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Foundry, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
+                            mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
                         }
                         
                     } catch (Exception Ex) {
@@ -528,7 +526,7 @@ class Facade implements Serializable{
                         script.currentBuild.result = "UNSTABLE"
                     }
                     
-                    BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl, fabricAppName)
+                    BuildHelper.setBuildDescription(script, mustHaveAuthUrl, fabricAppName)
                     script.echoCustom("Notifying build results..", 'INFO')
                     NotificationsHelper.sendEmail(script, 'fabricBuild',
                         [

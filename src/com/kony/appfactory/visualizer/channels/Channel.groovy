@@ -19,7 +19,7 @@ class Channel implements Serializable {
     protected script
     /*
         List of channel artifacts in format:
-            [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+            [channelPath: <relative path to the artifact on artifact storage>, name: <artifact file name>, url: <artifact URL>]
      */
     protected artifacts = []
     /*
@@ -29,7 +29,7 @@ class Channel implements Serializable {
     protected mustHavePath
     protected String upstreamJob = null
     protected isRebuild = false
-    protected String s3MustHaveAuthUrl
+    protected String mustHaveArtifactUrl
     /*
         Platform dependent default name-separator character as String.
         For windows, it's '\' and for unix it's '/'.
@@ -72,7 +72,7 @@ class Channel implements Serializable {
     /* Iris version */
     protected visualizerVersion
     /*
-        Channel relative path on S3, used for storing artifacts on S3 according to agreed bucket structure,
+        Channel relative path on artifactStorage, used for storing artifacts according to agreed folder structure,
         also used in e-mail notifications.
      */
     protected channelPath
@@ -81,9 +81,9 @@ class Channel implements Serializable {
         used for exposing channel to build in HeadlessBuild.properties.
      */
     protected channelVariableName
-    /* Channel type: Native or SPA */
+    /* Channel type: Native or Web */
     protected channelType
-    /* Channel OS type: Android or iOS or Windows or SPA */
+    /* Channel OS type: Android or iOS or Windows or Web */
     protected channelOs
     /* Temp folder location where to search build artifacts */
     protected artifactsBasePath
@@ -91,8 +91,8 @@ class Channel implements Serializable {
     protected artifactExtension
     /* Project's AppID key */
     protected projectAppId
-    /* Path for storing artifact on S3 bucket, has following format: Builds/<Foundry environment name>/channelPath */
-    protected s3ArtifactPath
+    /* Path for storing artifact, has following format: Builds/<Fabric environment name>/channelPath */
+    protected destinationArtifactPath
     /* Library configuration */
     protected libraryProperties
     /*
@@ -232,11 +232,11 @@ class Channel implements Serializable {
         channelVariableName = channelPath.toUpperCase().replaceAll('/', '_')
         /* Expose channel to build to environment variables to use it in HeadlessBuild.properties */
         script.env[channelVariableName] = true
-        /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to S3. */
+        /* Check FABRIC_ENV_NAME is set for the build or not from optional parameter of FABRIC_APP_CONFIG, if not set use by default '_' value for binaries publish to artifact storage. */
 
-        /* fabricEnvName consist default value for fabric env name which is required to construct s3Upload path */
+        /* fabricEnvName consist default value for fabric env name which is required to construct upload path */
         fabricEnvName = (script.env.FABRIC_ENV_NAME) ?: '_'
-        s3ArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
+        destinationArtifactPath = ['Builds', fabricEnvName, channelPath, jobBuildNumber].join('/')
         artifactExtension = getArtifactExtension(channelVariableName) ?:
                 script.echoCustom('Artifacts extension is missing!', 'ERROR')
         isCustomHookRunBuild = BuildHelper.isThisBuildWithCustomHooksRun(script.params.IS_SOURCE_VISUALIZER ? libraryProperties.'cloudbuild.project.name' : projectName, BuildType.Iris, runCustomHook, libraryProperties)
@@ -373,7 +373,7 @@ class Channel implements Serializable {
      * Builds the project.
      */
     protected final void build() {
-        script.echoCustom("Running the build in ${buildMode} mode..")
+
         /* List of required build resources */
         def requiredResources = ['property.xml', 'ivysettings.xml', 'ci-property.xml']
 
@@ -405,7 +405,14 @@ class Channel implements Serializable {
                 /* Inject required build environment variables with visualizerEnvWrapper */
                 visualizerEnvWrapper() {
                     Date plugindlStart = new Date()
-                    /* Download Iris Starter feature XML*/
+                    if(channelOs.contains("WEB") &&
+                            buildMode == libraryProperties.'buildmode.release.protected.type' &&
+                            ValidationHelper.compareVersions(visualizerVersion, libraryProperties.'obfuscation_properties.ci.support.base.version') == -1) {
+                        script.echoCustom("App Factory will build your code in release mode as release-protected mode is not applicable for Web channel build in Visualizer ${visualizerVersion}.", 'INFO')
+                        script.env.BUILD_MODE = "release"
+                    }
+                    script.echoCustom("Running the build in ${script.env.BUILD_MODE} mode.. ",'INFO')
+                    /* Download Visualizer Starter feature XML*/
                     if (script.env.IS_STARTER_PROJECT.equals("true")) {
                         /* Added the check to use update site link for v9 prod if project version is :9.X.X  */
                         def updateSiteVersion = Pattern.matches("^9\\.\\d+\\.\\d+\$", script.env["visualizerVersion"]) ? "90" : "80"
@@ -559,12 +566,13 @@ class Channel implements Serializable {
         def ciBuildSupport = libraryProperties.'ci.build.support.base.version'
         def zipExtensionSupportBaseVersion = libraryProperties.'webapp.extension.ci.support.base.version'
         def compareCIVizVersions = ValidationHelper.compareVersions(visualizerVersion, ciBuildSupport)
+        def webCompatibilityModeParameterName = BuildHelper.getCurrentParamName(script, 'LEGACY_WEB', 'FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')
 
         if (compareCIVizVersions >= 0) {
             /* Set a property for a reference to check current build is CI or not for any other module */
             script.env.isCIBUILD = "true"
             /* Set Web build extension type based on the viz version and compatibility mode parameter selection. */
-            if (["SPA", "DESKTOPWEB", "WEB"].contains(channelVariableName)) {
+            if (["DESKTOPWEB", "RESPONSIVEWEB", "WEB"].contains(channelVariableName)) {
                 def compareVizZipExtensionVersions = ValidationHelper.compareVersions(visualizerVersion, zipExtensionSupportBaseVersion)
                 def webObfuscationSupportBaseVersion = libraryProperties.'obfuscation_properties.ci.support.base.version'
                 if (buildMode == 'release-protected' && script.params.containsKey("OBFUSCATION_PROPERTIES")) {
@@ -572,13 +580,13 @@ class Channel implements Serializable {
                         script.env['WEB_PROTECTION'] = "true"
                     }
                 }
-                if (script.params.containsKey('FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')) {
+                if (script.params.containsKey(webCompatibilityModeParameterName)) {
                     if (compareVizZipExtensionVersions == -1) {
-                        (script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE) ?: (script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true")
+                        (script.params[webCompatibilityModeParameterName]) ?: (script.env[webCompatibilityModeParameterName] = "true")
                     } else {
-                        script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE ?
-                                script.env.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE = "true" :
-                                /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE */
+                        script.params[webCompatibilityModeParameterName] ?
+                                script.env[webCompatibilityModeParameterName] = "true" :
+                                /* Workaround to set the extension based on new flag FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE/LEGACY_WEB */
                                 (artifactExtension = 'zip')
                     }
                 }
@@ -821,9 +829,6 @@ class Channel implements Serializable {
             case 'WINDOWS81_TABLET_NATIVE':
                 artifactsTempPath = getPath(['build', 'windows8'])
                 break
-            case ~/^.*SPA.*$/:
-                artifactsTempPath = getPath(['middleware_mobileweb'])
-                break
             case ~/^.*WEB*$/:
                 artifactsTempPath = getPath(['middleware_mobileweb'])
                 break
@@ -847,7 +852,7 @@ class Channel implements Serializable {
         def artifactExtension
 
         switch (channelVariableName) {
-            case ~/^.*SPA.*$|^.*WEB$/:
+            case ~/^.*WEB$/:
                 artifactExtension = 'war'
                 break
             case ~/^.*ANDROID.*$/:
@@ -914,8 +919,8 @@ class Channel implements Serializable {
         if (script.env.FABRIC_ENV_NAME) {
             EnvironmentDescription = "<p>Environment: $script.env.FABRIC_ENV_NAME</p>"
         }
-        if ((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null) {
-            mustHavesDescription = "<p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>"
+        if ((upstreamJob == null || isRebuild) && mustHaveArtifactUrl != null) {
+            mustHavesDescription = "<p><a href='${mustHaveArtifactUrl}'>Logs</a></p>"
         }
         script.currentBuild.description = """\
         <div id="build-description">
@@ -1069,21 +1074,21 @@ class Channel implements Serializable {
     }
     /**
      * Prepares all the information for the debugging any build failures.
-     * Zips all the files into a single zip file and upload into S3 and give the S3 URL
-     * in a map so that Viz job copies later from S3 to create single zip for all builds.
+     * Zips all the files into a single zip file and upload into artifactStorage and give the artifactStorage URL
+     * in a map so that Viz job copies later from artifactStorage to create single zip for all builds.
      */
     protected final String PrepareMustHaves() {
         String mustHaveFile = ["MustHaves", channelVariableName, jobBuildNumber].join("_") + ".zip"
         try {
             script.catchErrorCustom("Error while preparing must haves") {
                 collectAllInformation()
-                s3MustHaveAuthUrl = BuildHelper.uploadBuildMustHavesToS3(script, projectFullPath, mustHavePath, mustHaveFile, separator, s3ArtifactPath, channelVariableName)
+                mustHaveArtifactUrl = BuildHelper.uploadBuildMustHaves(script, projectFullPath, mustHavePath, mustHaveFile, separator, destinationArtifactPath, channelVariableName)
             }
         } catch (Exception e) {
             String exceptionMessage = (e.getLocalizedMessage()) ?: 'Failed while collecting the logs (must-gather) for debugging.'
             script.echoCustom(exceptionMessage, 'ERROR')
         }
-        return s3ArtifactPath + "/" + mustHaveFile
+        return destinationArtifactPath + "/" + mustHaveFile
     }
     
     /**

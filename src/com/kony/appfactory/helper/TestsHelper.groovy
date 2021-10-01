@@ -8,7 +8,7 @@ import java.util.*
 
 class TestsHelper implements Serializable {
     /* must gathering related variables */
-    protected static String s3MustHaveAuthUrl
+    protected static String mustHaveAuthUrl
 
     /**
      * Validates provided URL.
@@ -29,11 +29,18 @@ class TestsHelper implements Serializable {
      * @param script Current build instance
      */
     protected final static void setBuildDescription(script) {
+        String mustHavesDescription = ""
+        if (isMustHavesDescriptionNeeded(script))
+            mustHavesDescription = "<p><a href='${mustHaveAuthUrl}'>Logs</a></p>"
+
         script.currentBuild.description = """\
             <div id="build-description">
-                <p><a href='${s3MustHaveAuthUrl}'>Logs</a></p>
+                <p>Rebuild:<a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
+                <img src="/static/b33030df/images/24x24/clock.png" style="width: 24px; height: 24px; margin: 2px;"
+                class="icon-clock icon-md"></a>${mustHavesDescription}</p>
             </div>\
-        """.stripIndent()
+            """.stripIndent()
+
     }
 
     /**
@@ -61,7 +68,7 @@ class TestsHelper implements Serializable {
         
         if (isJasmineEnabled) {
             nodeLabel = libraryProperties.'test.jasmine.automation.node.label'
-        } else if (testPlatform == 'DesktopWeb') {
+        } else if (testPlatform.contains("Web")) {
             nodeLabel = libraryProperties.'test.dweb.automation.node.label'
         } else {
             nodeLabel = libraryProperties.'test.native.aws.automation.node.label'
@@ -100,9 +107,9 @@ class TestsHelper implements Serializable {
      * @param channelVariableName The channel from which this method is being called
      * @param libraryProperties This contains the properties that are present in common.properties file
      * @param mustHaveArtifacts The artifacts which you want to add in musthaves
-     * @param isSourceS3 Boolean flag which tells whether the source of artifacts is S3 or local.
+     * @param isSourceStorage Boolean flag which tells whether the source of artifacts is S3 or local.
      */
-    private final static void PrepareMustHaves(script, runCustomHook, channelVariableName, libraryProperties, mustHaveArtifacts = [], isSourceS3 = true) {
+    private final static void PrepareMustHaves(script, runCustomHook, channelVariableName, libraryProperties, mustHaveArtifacts = [], isSourceStorage = true) {
 
         String workspace = script.env.WORKSPACE
         String projectName = script.env.PROJECT_NAME
@@ -112,7 +119,7 @@ class TestsHelper implements Serializable {
         String projectFullPath = [workspace, projectWorkspaceFolderName, projectName].join(separator)
         String mustHaveFolderPath = [projectFullPath, "${channelVariableName}"].join(separator)
         String mustHaveFile = ["MustHaves", script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join("_") + ".zip"
-        String s3ArtifactPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join(separator)
+        String destinationArtifactPath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join(separator)
         def chBuildLogs = [workspace, projectWorkspaceFolderName, projectName, libraryProperties.'customhooks.buildlog.folder.name'].join(separator)
         def mustHaves = []
 
@@ -121,8 +128,8 @@ class TestsHelper implements Serializable {
             script.writeFile file: "ParamInputs.txt", text: BuildHelper.getInputParamsAsString(script)
             script.writeFile file: "runTestBuildLog.log", text: BuildHelper.getBuildLogText(script.env.JOB_NAME, script.env.BUILD_ID, script)
 
-            if(isSourceS3){
-                AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
+            if(isSourceStorage){
+                BuildHelper.downloadChildJobMustHaves(script, mustHaveArtifacts)
             }
             else {
                 for (artifact in mustHaveArtifacts) {
@@ -140,7 +147,8 @@ class TestsHelper implements Serializable {
         }
 
         try {
-            s3MustHaveAuthUrl = BuildHelper.uploadBuildMustHavesToS3(script, projectFullPath, mustHaveFolderPath, mustHaveFile, separator, s3ArtifactPath, "Tests")
+            String mustHaveUrl = BuildHelper.uploadBuildMustHaves(script, projectFullPath, mustHaveFolderPath, mustHaveFile, separator, destinationArtifactPath, "Tests")
+            mustHaveAuthUrl = ArtifactHelper.createAuthUrl(mustHaveUrl, script)
         } catch (Exception e) {
             String exceptionMessage = (e.toString()) ?: 'Failed while collecting the logs (must-gather) for debugging.'
             script.echoCustom(exceptionMessage, 'ERROR')
@@ -148,27 +156,27 @@ class TestsHelper implements Serializable {
     }
 
     /**
-     * Method which says whether to setBuildDescription or not for a build.
+     * Method which says whether to set mustHaves to the buildDescriptor or not for a build.
      * @param script Current build instance
      */
-    protected final static void isBuildDescriptionNeeded(script) {
+    protected final static void isMustHavesDescriptionNeeded(script) {
         String upstreamJob = BuildHelper.getUpstreamJobName(script)
         boolean isRebuild = BuildHelper.isRebuildTriggered(script)
 
-        ((upstreamJob == null || isRebuild) && s3MustHaveAuthUrl != null)
+        ((upstreamJob == null || isRebuild) && mustHaveAuthUrl != null)
     }
     
     
     /**
-     * Method which constructs the S3 Path for the Test Results storage
+     * Method which constructs the artifactStorage Path for the Test Results storage
      * @param script Current build instance
      * @param runArtifact current run artifact results
      * @param suiteName SuiteName for which the results are to be copied
-     * @return the complete the path on the S3 for the storage of the results.
+     * @return the complete destination artifact path for the storage of the results.
      */
-    protected final static getS3ResultsPath(script, runArtifact, suiteName) {
-        def s3BasePath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
-        def resultPath = [s3BasePath]
+    protected final static getDestinationResultsPath(script, runArtifact, suiteName) {
+        def basePath = ['Tests', script.env.JOB_BASE_NAME, script.env.BUILD_NUMBER].join('/')
+        def resultPath = [basePath]
         resultPath.add(runArtifact.device.formFactor.toString())
         resultPath.add(runArtifact.device.name.toString() + '_' + runArtifact.device.platform.toString() + '_' + runArtifact.device.os.toString())
         resultPath.add(suiteName)

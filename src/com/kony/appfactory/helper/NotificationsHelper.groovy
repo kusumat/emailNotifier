@@ -3,6 +3,7 @@ package com.kony.appfactory.helper
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurperClassic
 import com.kony.appfactory.helper.BuildHelper
+import com.kony.appfactory.helper.ArtifactHelper
 /**
  * Implements logic required for sending notifications.
  */
@@ -37,7 +38,7 @@ class NotificationsHelper implements Serializable {
         /* Get data for e-mail notification */
         Map emailData = getEmailData(script, templateType, templateData)
 
-        /* Store e-mail body on workspace, for publishing on S3, if storeBody flag set to true */
+        /* Store e-mail body on workspace, for publishing on ArtifactStorage, if storeBody flag set to true */
         if (storeBody) {
             storeEmailBody(script, emailData.body, templateType, templateData)
         }
@@ -144,14 +145,14 @@ class NotificationsHelper implements Serializable {
                 script.writeFile text: fileToStore.data, file: fileToStore.name
             }
 
-            /* Get sub-folder for S3 path */
+            /* Get sub-folder for ArtifactStorage path */
             String subFolder = (fileToStore.name.contains('build')) ? 'Builds' : 'Tests'
-            /* Get build-Number for S3 path */
+            /* Get build-Number for ArtifactStorage path */
             String baseJobBuildNumber = templateData.buildNumber ?: script.env.BUILD_NUMBER
             String baseJobName = templateData.jobName ?: script.env.JOB_BASE_NAME
-            /* Publish file on S3 */
-            AwsHelper.publishToS3 sourceFileName: fileToStore.name,
-                    bucketPath: [subFolder, baseJobName, baseJobBuildNumber].join('/'),
+            /* Publish file on ArtifactStorage */
+            ArtifactHelper.publishArtifact sourceFileName: fileToStore.name,
+                    destinationPath: [subFolder, baseJobName, baseJobBuildNumber].join('/'),
                     sourceFilePath: script.pwd(), script
         }
     }
@@ -183,14 +184,14 @@ class NotificationsHelper implements Serializable {
     }
 
     /**
-     * Creates list of files that will be stored on workspace and published on S3
+     * Creates list of files that will be stored on workspace and published on ArtifactStorage
      *      depending on a templateType (job name).
      *
      * @param body e-mail body with populated values.
      * @param buildResult job build result.
      * @param templateType type(job name) that is used for determining files to store.
      * @param templateData job specific data for the e-mail notification.
-     * @return list with the files that will be stored and published on S3.
+     * @return list with the files that will be stored and published on ArtifactStorage.
      */
     private static List getFilesToStore(body, buildResult, templateType, templateData) {
         List filesToStore = []
@@ -215,8 +216,8 @@ class NotificationsHelper implements Serializable {
                 /* For test console we are storing both HTML and JSON representation of test results */
                 if(templateData.isDesktopWebAppTestRun){
                     filesToStore.addAll([
-                            [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.html', data: body],
-                            [name: 'testResults-DesktopWeb' + buildResultForTestConsole + '.json', data: testDesktopRunsToJson]
+                            [name: 'testResults-'+ templateData.runWebTestsChannelName + buildResultForTestConsole + '.html', data: body],
+                            [name: 'testResults-'+ templateData.runWebTestsChannelName + buildResultForTestConsole + '.json', data: testDesktopRunsToJson]
                     ])
                 }
                 if(templateData.isNativeAppTestRun){
@@ -264,7 +265,7 @@ class NotificationsHelper implements Serializable {
         ] + templateData
 
         // Adding specifc DesktopWeb Channel binding keys
-        if (script.params.BUILD_MODE == 'release-protected' && script.params.containsKey("PROTECTION_LEVEL")) {
+        if (script.params.BUILD_MODE == 'release-protected' && (script.params.RESPONSIVE_WEB || script.params.DESKTOP_WEB) && script.params.containsKey("PROTECTION_LEVEL")) {
             commonBinding.build += [protectionlevel : script.env.PROTECTION_LEVEL]
         }
 
@@ -284,6 +285,9 @@ class NotificationsHelper implements Serializable {
                 break
             case 'flyway':
                 templateContent = EmailTemplateHelper.createFlywayContent(commonBinding)
+                break
+            case 'configureMS':
+                templateContent = EmailTemplateHelper.createMicroserviceContent(commonBinding)
                 break
             default:
                 templateContent = ''
@@ -330,6 +334,9 @@ class NotificationsHelper implements Serializable {
                 break
             case 'flyway':
                 modifiedBuildTag = "${script.env.PROJECT_NAME}-Flyway Build-${script.env.BUILD_NUMBER}"
+                break
+            case 'configureMS':
+                modifiedBuildTag = "${script.env.PROJECT_NAME}-Microservice Configuration-${script.env.BUILD_NUMBER}"
                 break
             default:
                 modifiedBuildTag = ''

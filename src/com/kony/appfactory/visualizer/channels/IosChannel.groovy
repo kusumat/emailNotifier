@@ -1,7 +1,7 @@
 package com.kony.appfactory.visualizer.channels
 
 import com.kony.appfactory.helper.AppFactoryException
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
@@ -16,11 +16,11 @@ class IosChannel extends Channel {
     private karArtifact
     private plistArtifact
     private ipaArtifact
-    /* IPA file S3 URL, used for PLIST file creation */
+    /* IPA file artifact URL, used for PLIST file creation */
     private ipaArtifactUrl
     private authenticatedIPAArtifactUrl
 
-    /* KAR file S3 URL */
+    /* KAR file artifact URL */
     private karArtifactUrl
     private authenticatedKARArtifactUrl
 
@@ -100,38 +100,26 @@ class IosChannel extends Channel {
     }
 
     /**
-     * Fetches fastlane configuration files for signing build artifacts from S3.
+     * Prepare fastlane configuration files for signing build artifacts from global environment variables.
      */
     protected final void fetchFastlaneConfig() {
         String fastlaneFastfileName = libraryProperties.'fastlane.fastfile.name'
-        String fastlaneFastfileNameConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' +
-                fastlaneFastfileName
         String fastlaneEnvFileName = libraryProperties.'fastlane.envfile.name'
-        String fastlaneEnvFileConfigBucketPath = libraryProperties.'fastlane.envfile.path' + '/' + fastlaneEnvFileName
-        String awsIAMRole = script.env.S3_CONFIG_BUCKET_IAM_ROLE
-        String configBucketRegion = script.env.S3_CONFIG_BUCKET_REGION
-        String configBucketName = script.env.S3_CONFIG_BUCKET_NAME
 
-        script.catchErrorCustom('Failed to fetch fastlane configuration') {
-            /* Switch to configuration bucket region, and use role to pretend aws instance that has S3 access */
-            script.withAWS(region: configBucketRegion, role: awsIAMRole) {
-                script.dir(fastlaneConfigStashName) {
-                    /* Fetch fastlane configuration */
-                    script.s3Download file: fastlaneEnvFileName,
-                            bucket: configBucketName,
-                            path: fastlaneEnvFileConfigBucketPath,
-                            force: true
+        script.catchErrorCustom('Failed to create fastlane configuration') {
+            script.dir(fastlaneConfigStashName) {
+                
+                String fastFileContents = script.libraryResource(
+                    'com/kony/appfactory/configurations/Fastfile')
+                script.writeFile file: fastlaneFastfileName, text : fastFileContents, encoding: "UTF-8"
+                
+                def envContent = "MATCH_PASSWORD=${script.env.FASTLANE_MATCH_ENCRYPTION_KEY} \nMATCH_GIT_URL=${script.env.FASTLANE_GIT_CERTIFICATES_REPO_URL} \nMATCH_GIT_TOKEN=${script.env.FASTLANE_MATCH_GIT_TOKEN}"
+                script.writeFile file: fastlaneEnvFileName, text : envContent, encoding: "UTF-8"
+                
+                script.stash name: fastlaneConfigStashName
 
-                    script.s3Download file: fastlaneFastfileName,
-                            bucket: configBucketName,
-                            path: fastlaneFastfileNameConfigBucketPath,
-                            force: true
-                    /* Stash fetch fastlane configuration files to be able to use them during signing */
-                    script.stash name: fastlaneConfigStashName
-
-                    /* Remove fetched fastlane configuration files */
-                    script.deleteDir()
-                }
+                /* Remove fetched fastlane configuration files */
+                script.deleteDir()
             }
         }
     }
@@ -188,14 +176,14 @@ class IosChannel extends Channel {
     }
 
     /**
-     * Publish iOS KAR artifact to S3
+     * Publish iOS KAR artifact
      */
     private final void publishKar() {
-            script.echoCustom('Publishing KAR artifact to S3...')
-            karArtifact = renameArtifacts([karArtifact]).first()
-            karArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                    sourceFileName: karArtifact.name, sourceFilePath: karArtifact.path, script
-            authenticatedKARArtifactUrl = BuildHelper.createAuthUrl(karArtifactUrl, script, false)
+        script.echoCustom('Publish KAR artifact ...')
+        karArtifact = renameArtifacts([karArtifact]).first()
+        karArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: karArtifact.name,
+                 sourceFilePath: karArtifact.path, destinationPath: destinationArtifactPath, script
+        authenticatedKARArtifactUrl = ArtifactHelper.createAuthUrl(karArtifactUrl, script, false)
     }
 
     /**
@@ -328,7 +316,8 @@ class IosChannel extends Channel {
                     "FASTLANE_SKIP_UPDATE_CHECK=1",
                     "APP_VERSION=${script.env.APP_VERSION}",
                     "ENABLE_FILE_SHARING=${isFileShareEnabled}",
-                    "FORM_FACTOR=${channelFormFactor}"
+                    "FORM_FACTOR=${channelFormFactor}",
+                    "MATCH_KEYCHAIN_PASSWORD=${script.env.MAC_KEYCHAIN_ENCRYPTION_KEY}"
                 ]) {
                     def fastlaneBashEnvironment="export {LANG,LANGUAGE,LC_ALL}=en_US.UTF-8"
 
@@ -435,9 +424,9 @@ class IosChannel extends Channel {
 
             // Preparing the commands to copy the profile files. If we run the copy command here, we are getting the java.io.NotSerializableException
             copyCMDs.add("mkdir -p ${profileHome}")
-            copyCMDs.add("cp -f ${filePath} ${profileHome}/${UUID}.mobileprovision")
+            copyCMDs.add("cp -f \"${filePath}\" ${profileHome}/${UUID}.mobileprovision")
         }
-        
+
         if(!isValidBundleID){
             script.echoCustom("There is no matching profile found for the given bundle identifier (Application Identifier). " + 
                             "Looks like mapping profiles are not available in the APPLE_SIGNING_CERTIFICATES uploaded files.", "ERROR")
@@ -451,7 +440,7 @@ class IosChannel extends Channel {
     
     /**
      * Creates PLIST file.
-     * @param ipaArtifactUrl IPA file S3 URL.
+     * @param ipaArtifactUrl IPA file URL.
      * @return PLIST file object, format: {name: <NameOfPlistFile>, path: <PlistFilePath>}.
      */
     private final createPlist(String ipaArtifactUrl) {
@@ -574,7 +563,7 @@ class IosChannel extends Channel {
                                     script.echoCustom('Build artifacts were not found!', 'ERROR')
                             mustHaveArtifacts.add([name: karArtifact.name, path: karArtifact.path])
 
-                            /* Publish iOS KAR artifact to S3 */
+                            /* Publish iOS KAR artifact */
                             if(karArtifact) {
                                 publishKar()
                                 artifacts.add([
@@ -593,35 +582,36 @@ class IosChannel extends Channel {
                             channelBuildStats.put('binsize', getBinarySize(ipaArtifact.path, ipaArtifact.name))
                         }
 
-                        script.stage("Publish IPA artifact to S3") {
-                            ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                    sourceFileName: ipaArtifact.name, sourceFilePath: ipaArtifact.path, script
-
+                        script.stage("Publish IPA artifact") {
+                            ipaArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: ipaArtifact.name,
+                                    sourceFilePath: ipaArtifact.path, destinationPath: destinationArtifactPath, script
                         }
 
+
                         script.stage("Generate PLIST file") {
-                            authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ipaArtifactUrl, script, false);
+                            authenticatedIPAArtifactUrl = ArtifactHelper.createAuthUrl(ipaArtifactUrl, script, false);
 
                             /* Get plist artifact */
                             plistArtifact = createPlist(authenticatedIPAArtifactUrl)
                         }
 
-                        script.stage("Publish PLIST artifact to S3") {
+                        script.stage("Publish PLIST artifact") {
                             String artifactName = plistArtifact.name
                             String artifactPath = plistArtifact.path
-                            String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script
+                            String artifactUrl = ArtifactHelper.publishArtifact sourceFileName: artifactName,
+                                    sourceFilePath: artifactPath, destinationPath: destinationArtifactPath, script
 
-                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                            String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true);
                             String plistArtifactOTAUrl = authenticatedArtifactUrl
 
-                            if(ipaArtifact.name)
+                            if(ipaArtifact.name) {
                                 artifacts.add([
-                                        channelPath: channelPath, name: ipaArtifact.name, authurl: authenticatedIPAArtifactUrl, extension: 'IPA'
+                                    channelPath: channelPath, name: ipaArtifact.name, authurl: authenticatedIPAArtifactUrl, extension: 'IPA'
                                 ])
-                            artifacts.add([
+                                artifacts.add([
                                     channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: plistArtifactOTAUrl, extension: 'OTA'
-                            ])
+                                ])
+                            }
                         }
 
                         script.env['CHANNEL_ARTIFACTS'] = artifacts?.inspect()

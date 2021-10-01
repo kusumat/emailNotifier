@@ -21,7 +21,7 @@ import com.kony.appfactory.enums.BuildType
  *  testing application binaries.
  *
  * Logic here validates user provided parameters, prepares build parameters for channels and test automation job,
- *  triggers channel jobs and/or test automation job with prepared parameters, stores e-mail notification body on S3
+ *  triggers channel jobs and/or test automation job with prepared parameters, stores e-mail notification body on artifactStorage (S3 or Master or other)
  *  for App Factory console.
  */
 class Facade implements Serializable {
@@ -41,7 +41,7 @@ class Facade implements Serializable {
     private channelsToRun
     /*
         List of channel artifacts in format:
-            [channelPath: <relative path to the artifact on S3>, name: <artifact file name>, url: <S3 artifact URL>]
+            [channelPath: <relative path to the artifact on ArtifactStorage>, name: <artifact file name>, url: <ArtifactStorage URL for the artifact>]
      */
     private artifacts = []
     private mustHaveArtifacts = []
@@ -99,12 +99,11 @@ class Facade implements Serializable {
     private final supportX86Devices = script.params.SUPPORT_x86_DEVICES
 
     /* WEB build parameters */
-    private
-    final webAppVersion = script.params.WEB_APP_VERSION ? script.params.WEB_APP_VERSION : script.params.SPA_APP_VERSION ? script.params.SPA_APP_VERSION : null
-    private
-    final webVersionParameterName = BuildHelper.getCurrentParamName(script, 'WEB_APP_VERSION', 'SPA_APP_VERSION')
-    private final desktopWebChannel = script.params.DESKTOP_WEB
-    private final compatibilityMode = script.params.FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE
+    private final webAppVersion = script.params.WEB_APP_VERSION
+    private final webChannelParameterName = BuildHelper.getCurrentParamName(script, 'RESPONSIVE_WEB', 'DESKTOP_WEB')
+    private final desktopWebChannel = script.params[webChannelParameterName]
+    private final webCompatibilityModeParameterName = BuildHelper.getCurrentParamName(script, 'LEGACY_WEB', 'FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE')
+    private final webCompatibilityMode = script.params[webCompatibilityModeParameterName]
     private final webProtectionPreset = script.params.PROTECTION_LEVEL
     private final webProtectionExcludeListFile = script.params.EXCLUDE_LIST_PATH
     private final webProtectionBlueprintFile = script.params.CUSTOM_PROTECTION_PATH
@@ -114,12 +113,12 @@ class Facade implements Serializable {
     /* TestAutomation build parameters */
     private final testFramework = BuildHelper.getParamValueOrDefault(script, 'TEST_FRAMEWORK', 'TestNG')
     private final availableTestPools = script.params.AVAILABLE_TEST_POOLS
-    private final availableBrowsers = script.params.AVAILABLE_BROWSERS
-    private final desktopWebTestsArguments = script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS
-    private final runDesktopwebTests = script.params.RUN_DESKTOPWEB_TESTS
-    
+    private final availableBrowsers = script.params.AVAILABLE_BROWSERS    
     private final screenResolution = BuildHelper.getParamValueOrDefault(script, 'SCREEN_RESOLUTION', '1024x768')
-
+    private final webTestsArgumentsParamName = BuildHelper.getCurrentParamName(script, 'RUN_WEB_TESTS_ARGUMENTS', 'RUN_DESKTOPWEB_TESTS_ARGUMENTS')
+    private final runWebTestsParamName = BuildHelper.getCurrentParamName(script, 'RUN_WEB_TESTS', 'RUN_DESKTOPWEB_TESTS')
+    private final webTestsArguments = script.params[webTestsArgumentsParamName]
+    private final runWebTests = script.params[runWebTestsParamName]
     /* CustomHooks build Parameters*/
     private final runCustomHook = script.params.RUN_CUSTOM_HOOKS
 
@@ -174,16 +173,6 @@ class Facade implements Serializable {
     }
 
     /**
-     * Filters SPA channels.
-     *
-     * @param channelsToRun list of selected channels.
-     * @return list of SPA selected channels.
-     */
-    private final getSpaChannels(channelsToRun) {
-        channelsToRun.findAll { it.contains('SPA') }
-    }
-
-    /**
      * Filters Native channels.
      *
      * @param channelsToRun channelsToRun list of selected channels.
@@ -191,16 +180,6 @@ class Facade implements Serializable {
      */
     private final getNativeChannels(channelsToRun) {
         channelsToRun.findAll { it.contains('NATIVE') }
-    }
-
-    /**
-     * Converts selected SPA channels to build parameters for SPA job.
-     *
-     * @param channels list of selected SPA channels.
-     * @return
-     */
-    private final convertSpaChannelsToBuildParameters(channels) {
-        channels.collect { script.booleanParam(name: it, value: true) }
     }
 
     /**
@@ -242,17 +221,14 @@ class Facade implements Serializable {
             case ~/^.*IOS.*$/:
                 channelType = 'Ios'
                 break
-            case ~/^.*SPA.*$/:
-                channelType = 'Spa'
-                break
             case ~/^.*WINDOWS.*$/:
                 channelType = 'Windows'
                 break
             case 'DESKTOP_WEB':
                 channelType = 'DesktopWeb'
                 break
-            case 'WEB':
-                channelType = 'Web'
+            case 'RESPONSIVE_WEB':
+                channelType = 'ResponsiveWeb'
                 break
             default:
                 break
@@ -262,17 +238,14 @@ class Facade implements Serializable {
     }
 
     /**
-     * Returns relative channel path on S3.
+     * Returns relative channel path on ArtifactStorage (S3 or Master or other).
      *
      * @param channel channel build parameter name.
-     * @return relative channel path on S3.
+     * @return relative channel path on ArtifactStorage.
      */
     private final getChannelPath(channel) {
         def channelPath = channel.tokenize('_').collect() { item ->
-            /* Workaround for SPA jobs */
-            if (item.contains('SPA')) {
-                item
-            } else if (item.contains('IOS')) {
+            if (item.contains('IOS')) {
                 'iOS'
             } else {
                 item.toLowerCase().capitalize()
@@ -372,13 +345,13 @@ class Facade implements Serializable {
 
     /**
      * Return specific to WEB channel build parameters.
-     * @param spaChannelsToBuildJobParameters list of SPA channels to build.
      * @return WEB specific build parameters.
      */
-    private final getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters = null) {
+    private final getWebChannelJobBuildParameters() {
         def commonWebParameters = getCommonJobBuildParameters() +
-        [script.string(name: "${webVersionParameterName}", value: "${webAppVersion}")] +
-        [script.booleanParam(name: "FORCE_WEB_APP_BUILD_COMPATIBILITY_MODE", value: compatibilityMode)]
+        [script.string(name: "WEB_APP_VERSION", value: "${webAppVersion}")] +
+        [script.booleanParam(name: "${webCompatibilityModeParameterName}", value: "${webCompatibilityMode}")] +
+        [script.booleanParam(name: "${webChannelParameterName}", value: "${desktopWebChannel}")]
         if (script.params.containsKey("OBFUSCATION_PROPERTIES")) {
             commonWebParameters += [script.string(name: "PROTECTION_LEVEL", value: "${webProtectionPreset}")] +
                     [script.string(name: "EXCLUDE_LIST_PATH", value: "${webProtectionExcludeListFile}")] +
@@ -386,15 +359,8 @@ class Facade implements Serializable {
                     [script.credentials(name: 'OBFUSCATION_PROPERTIES', value: "${webProtectionID}")] +
                     [script.credentials(name: 'PROTECTED_KEYS', value: "${protectedKeys}")]
         }
-        if (spaChannelsToBuildJobParameters && desktopWebChannel) {
-            commonWebParameters +
-                [script.booleanParam(name: "DESKTOP_WEB", value: desktopWebChannel)] +
-                spaChannelsToBuildJobParameters
-        } else if (spaChannelsToBuildJobParameters) {
-            commonWebParameters +  spaChannelsToBuildJobParameters
-        }
-        else
-            commonWebParameters
+
+        commonWebParameters
     }
 
     /**
@@ -425,6 +391,8 @@ class Facade implements Serializable {
                         script.booleanParam(name: 'SUPPORT_x86_DEVICES', value: "${supportX86Devices}")
 
                 ]
+                if(script.params.containsKey("SUPPORT_32BIT_DEVICES"))
+                    channelJobParameters.add(script.booleanParam(name: 'SUPPORT_32BIT_DEVICES', value: script.params.SUPPORT_32BIT_DEVICES))
                 break
             case ~/^.*IOS.*$/:
                 channelJobParameters = commonParameters + [
@@ -467,11 +435,10 @@ class Facade implements Serializable {
                 script.credentials(name: 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID',
                         value: "${projectSourceCodeRepositoryCredentialsId}"),
                 script.string(name: 'NATIVE_TESTS_URL', value: ''),
-                script.string(name: 'DESKTOPWEB_TESTS_URL', value: ''),
                 script.string(name: 'AVAILABLE_TEST_POOLS', value: "${availableTestPools}"),
-                script.booleanParam(name: 'RUN_DESKTOPWEB_TESTS', value: "${runDesktopwebTests}"),
+                script.booleanParam(name: "${runWebTestsParamName}", value: "${runWebTests}"),
                 script.string(name: 'AVAILABLE_BROWSERS', value: "${availableBrowsers}"),
-                script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: "${desktopWebTestsArguments}"),
+                script.string(name: "${webTestsArgumentsParamName}", value: "${webTestsArguments}"),
                 script.string(name: 'RECIPIENTS_LIST', value: "${recipientsList}"),
                 script.booleanParam(name: 'RUN_CUSTOM_HOOKS', value: runCustomHook),
                 script.string(name: 'TEST_FRAMEWORK', value: "${testFramework}"),
@@ -488,7 +455,7 @@ class Facade implements Serializable {
     /**
      * Deserializes channel artifact object.
      *
-     * @param channelPath relative path to the artifact on S3, generated from channel build parameter.
+     * @param channelPath relative path to the artifact on artifact storage, generated from channel build parameter.
      * @param artifacts serialized list of channel artifacts.
      * @return list of channel artifacts.
      */
@@ -506,8 +473,8 @@ class Facade implements Serializable {
 
     /**
      * Generates Test Automation job application binaries build parameters.
-     * If AVAILABLE_TEST_POOLS build parameter been provided, we need generate values with URLs to application binaries
-     *  on S3 from artifact object and pass them to Test Automation job.
+     * If AVAILABLE_TEST_POOLS build parameter been provided, we need to generate values with URLs to application binaries
+     *  on ArtifactStorage from artifact object and pass them to Test Automation job.
      *
      * @param buildJobArtifacts list of channel artifacts.
      * @return Test Automation binaries build parameters.
@@ -525,7 +492,7 @@ class Facade implements Serializable {
 
             /*
                 Workaround to get ipa URL for iOS, just switching extension in URL to ipa,
-                because ipa file should be places nearby plist file on S3.
+                because ipa file should be places nearby plist file on ArtifactStorage.
              */
             String artifactUrl = artifact.url ? (!artifact.url.contains('.plist') ? artifact.url :
                     artifact.url.replaceAll('.plist', '.ipa')) : ''
@@ -534,8 +501,10 @@ class Facade implements Serializable {
             /* Create build parameter for Test Automation job */
             if(artifactName) {
                 if((artifact.name.matches("^.*.?(war|zip)\$"))) {
-                    if(publishWebApp)
-                        [script.stringParam(name: "FABRIC_APP_URL", value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
+                    if(publishWebApp) {
+                        //in DSL 9.3 below, we had FABRIC_APP_URL param in place of WEB_APP_URL. So sending the same value for two params to handle backward compatibility.
+                        [script.stringParam(name: 'WEB_APP_URL', value: artifact.webAppUrl), script.stringParam(name: 'FABRIC_APP_URL', value: artifact.webAppUrl), script.string(name: 'JASMINE_TEST_URL', value: artifact.jasmineTestsUrl)]
+                    }
                 } else
                     if(availableTestPools)
                         return script.stringParam(name: "${channelName}_BINARY_URL", value: artifactUrl)
@@ -583,8 +552,6 @@ class Facade implements Serializable {
     private final void prepareRun() {
         /* Filter Native channels */
         def nativeChannelsToRun = getNativeChannels(channelsToRun)
-        /* Filter SPA channels */
-        def spaChannelsToRun = getSpaChannels(channelsToRun)
         for (item in nativeChannelsToRun) {
             def channelName = item
             def channelJobName = (getChannelJobName(channelName)) ?:
@@ -626,8 +593,8 @@ class Facade implements Serializable {
             }
         }
 
-        if (spaChannelsToRun || desktopWebChannel) {
-            runWebChannels(spaChannelsToRun, desktopWebChannel)
+        if (desktopWebChannel) {
+            runWebChannels()
         }
 
     }
@@ -702,30 +669,16 @@ class Facade implements Serializable {
 
     /**
      * Prepares runList for WebChannels
-     * @params spaChannelsToRun , desktopWebChannel web channels to run.
      */
-    private final void runWebChannels(spaChannelsToRun = null, desktopWebChannel = null) {
-        def channelName = (spaChannelsToRun && desktopWebChannel) ? 'WEB' : spaChannelsToRun ? 'SPA' : desktopWebChannel ? 'DESKTOP_WEB' : null
+    private final void runWebChannels() {
+        def channelName = desktopWebChannel ? webChannelParameterName : null
         def channelJobBuildParameters, channelPath
-
         def channelJobName = (getChannelJobName(channelName)) ?:
                 script.echoCustom("Channel job name can't be null", 'ERROR')
-
-        if (spaChannelsToRun) {
-            /* Convert selected SPA channels to build parameters for SPA job */
-            def spaChannelsToBuildJobParameters = convertSpaChannelsToBuildParameters(spaChannelsToRun)
-            channelJobBuildParameters = (getWebChannelJobBuildParameters(spaChannelsToBuildJobParameters)) ?:
+        channelJobBuildParameters = (getWebChannelJobBuildParameters()) ?:
                     script.echoCustom("Channel job build parameters list can't be null", 'ERROR')
-        } else if (desktopWebChannel) {
-            channelJobBuildParameters = (getWebChannelJobBuildParameters()) ?:
-                    script.echoCustom("Channel job build parameters list can't be null", 'ERROR')
-        }
+        channelPath = webChannelParameterName.equals("RESPONSIVE_WEB") ? "Responsive Web" : "Desktop Web"
 
-        // For Web related channels, channelPaths and channelNames slightly different.
-        if (desktopWebChannel)
-            channelPath = "DESKTOPWEB"
-        else
-            channelPath = getChannelPath(channelName)
         runList[channelName] = {
             script.stage(channelName) {
                 /* Trigger channel job */
@@ -761,7 +714,7 @@ class Facade implements Serializable {
      * @return boolean flag which decides whether to run the tests or not.
      */
     private final boolean shallWeRunTests() {
-        boolean testFlags = availableTestPools || (runDesktopwebTests && publishWebApp)
+        boolean testFlags = availableTestPools || (runWebTests && publishWebApp)
         return testFlags && jobResultList.contains('SUCCESS')
     }
 
@@ -772,6 +725,7 @@ class Facade implements Serializable {
     protected final void createPipeline() {
         /* Allocate a slave for the run */
         script.node(libraryProperties.'facade.node.label') {
+            script.cleanWs deleteDirs: true
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
                 try {
@@ -792,7 +746,7 @@ class Facade implements Serializable {
                             }
 
                             /* Check the required param for run DesktopWeb test */
-                            if(runDesktopwebTests) {
+                            if(runWebTests) {
                                 ValidationHelper.checkBuildConfigurationForDesktopWebTest(script, libraryProperties)
                             }
 
@@ -853,11 +807,9 @@ class Facade implements Serializable {
                                 }
                                 checkParams.addAll(iosMandatoryParams)
                             }
-                            /* Collect SPA channel parameters to check */
-                            def spaChannels = channelsToRun?.findAll { it.matches('^.*_.*_SPA$') }
 
-                            if (spaChannels || desktopWebChannel) {
-                                def webMandatoryParams = ["${webVersionParameterName}", 'FABRIC_APP_CONFIG']
+                            if (desktopWebChannel) {
+                                def webMandatoryParams = ["WEB_APP_VERSION", 'FABRIC_APP_CONFIG']
                                 // Below Validations only apply to AppFactory Projects >= 9.2.0
                                 if (tempBuildMode == libraryProperties.'buildmode.release.protected.type' && script.params.containsKey('OBFUSCATION_PROPERTIES')) {
                                         webMandatoryParams.addAll(['OBFUSCATION_PROPERTIES', 'PROTECTION_LEVEL', 'PROTECTED_KEYS'])
@@ -944,7 +896,7 @@ class Facade implements Serializable {
                                         script.echoCustom("runTests job parameters are missing!", 'ERROR')
                                 def testAutomationJobBinaryParameters = getTestAutomationJobBinaryParameters(artifacts) ?: []
 
-                                if (runDesktopwebTests) {
+                                if (runWebTests) {
                                     /* Finding the desktopweb artifact(war/zip) auth url from the list of channel artifacts */
                                     def artifactUrl = artifacts.findResults { artifact ->
                                         String artifactUrl = artifact.authurl ? artifact.authurl : ''
@@ -1058,12 +1010,12 @@ class Facade implements Serializable {
                     // Publish Facade metrics keys to build Stats Action class.
                     script.statspublish buildStats.inspect()
 
-                    String s3MustHaveAuthUrl = ''
+                    String mustHaveAuthUrl = ''
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                        s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Iris, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
+                        mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
                     }
 
-                    BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl)
+                    BuildHelper.setBuildDescription(script, mustHaveAuthUrl)
 
 
                     if (script.params.IS_SOURCE_VISUALIZER) {
