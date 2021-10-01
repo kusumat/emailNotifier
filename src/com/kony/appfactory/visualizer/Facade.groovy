@@ -1012,7 +1012,7 @@ class Facade implements Serializable {
 
                     String mustHaveAuthUrl = ''
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
-                        mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Visualizer, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
+                        mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Iris, "vizMustHaves", "vizbuildlog.log", libraryProperties, mustHaveArtifacts)
                     }
 
                     BuildHelper.setBuildDescription(script, mustHaveAuthUrl)

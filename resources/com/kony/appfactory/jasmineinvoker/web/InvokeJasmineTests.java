@@ -225,7 +225,7 @@ public class InvokeJasmineTests implements ITestListener {
             /* Get the list of tabs opened in current browser */
             List<String> tabsList = new ArrayList<String>(driver.getWindowHandles());
             
-            /* Skip iterating the tab openend with non-kony app */
+            /* Skip iterating the tab openend with non-Volt MX app */
             if(!tabListWithNonKonyApp.isEmpty()) {
                 for(String tabId : tabListWithNonKonyApp) {
                     tabsList.remove(tabId);

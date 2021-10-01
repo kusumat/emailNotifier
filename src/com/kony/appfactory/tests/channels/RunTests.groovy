@@ -192,7 +192,7 @@ class RunTests implements Serializable {
                 baseAppName = projectPropJsonContent['appidkey']
                 appsList << baseAppName
             } else {
-                throw new AppFactoryException("Failed to find ${libraryProperties.'project.props.json.file.name'} at path ${projectFullPath} , please check your Visualizer project source!!", 'ERROR')
+                throw new AppFactoryException("Failed to find ${libraryProperties.'project.props.json.file.name'} at path ${projectFullPath} , please check your Iris project source!!", 'ERROR')
             }
 
             /* Check the repo contain "JasmineIntegrationTests" folder at app source "/testresources" path  */

@@ -458,7 +458,7 @@ class Facade implements Serializable{
                         
                         script.stage('Publish build artifacts') {
                             script.echoCustom("Publishing build artifacts to artifact storage..", 'INFO')
-                            def fabricArtifactPath = ['Builds', fabricEnvironmentName, 'Fabric', fabricAppName, script.env.BUILD_NUMBER].join('/')
+                            def fabricArtifactPath = ['Builds', fabricEnvironmentName, 'Foundry', fabricAppName, script.env.BUILD_NUMBER].join('/')
                             String fabricAppArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: projectNameZip,
                                     sourceFilePath: appBinariesReleasePath, destinationPath: fabricArtifactPath, script
                             String authenticatedFabricAppArtifactUrl = ArtifactHelper.createAuthUrl(fabricAppArtifactUrl, script, true)
@@ -517,7 +517,7 @@ class Facade implements Serializable{
                         if(script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
                             def fabricJobMustHavesFolderName = "fabricMustHaves"
                             def fabricJobBuildLogFile = "fabricBuildlog.log"
-                            mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Fabric, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
+                            mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, BuildType.Foundry, fabricJobMustHavesFolderName, fabricJobBuildLogFile, libraryProperties, mustHaveArtifacts)
                         }
                         
                     } catch (Exception Ex) {

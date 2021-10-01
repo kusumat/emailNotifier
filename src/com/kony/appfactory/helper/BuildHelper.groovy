@@ -1383,7 +1383,7 @@ class BuildHelper implements Serializable {
                 VisualizerSettingsDTO vizSettings = projectSettings.getVisualizerSettings()
                 FabricSettingsDTO fabSettings = projectSettings.getFabricSettings()
                 MicroserviceSettingsDTO microserviceSettings = projectSettings.getMicroserviceSettings()
-                def settingsMap = (projectType == "Visualizer") ? ((vizSettings)?.toMap()) : (projectType == "Fabric")?  (fabSettings?.toMap()) : (microserviceSettings?.toMap())
+                def settingsMap = (projectType == "Iris") ? ((vizSettings)?.toMap()) : (projectType == "Foundry")?  (fabSettings?.toMap()) : (microserviceSettings?.toMap())
                 /* Set each value to the environmental variables */
                 settingsMap?.values().each { childSectionMap ->
                     if(childSectionMap.getClass().equals(HashMap.class)) {

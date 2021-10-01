@@ -91,7 +91,7 @@ class Channel implements Serializable {
     protected artifactExtension
     /* Project's AppID key */
     protected projectAppId
-    /* Path for storing artifact, has following format: Builds/<Fabric environment name>/channelPath */
+    /* Path for storing artifact, has following format: Builds/<Foundry environment name>/channelPath */
     protected destinationArtifactPath
     /* Library configuration */
     protected libraryProperties
@@ -408,11 +408,11 @@ class Channel implements Serializable {
                     if(channelOs.contains("WEB") &&
                             buildMode == libraryProperties.'buildmode.release.protected.type' &&
                             ValidationHelper.compareVersions(visualizerVersion, libraryProperties.'obfuscation_properties.ci.support.base.version') == -1) {
-                        script.echoCustom("App Factory will build your code in release mode as release-protected mode is not applicable for Web channel build in Visualizer ${visualizerVersion}.", 'INFO')
+                        script.echoCustom("App Factory will build your code in release mode as release-protected mode is not applicable for Web channel build in Iris ${visualizerVersion}.", 'INFO')
                         script.env.BUILD_MODE = "release"
                     }
                     script.echoCustom("Running the build in ${script.env.BUILD_MODE} mode.. ",'INFO')
-                    /* Download Visualizer Starter feature XML*/
+                    /* Download Iris Starter feature XML*/
                     if (script.env.IS_STARTER_PROJECT.equals("true")) {
                         /* Added the check to use update site link for v9 prod if project version is :9.X.X  */
                         def updateSiteVersion = Pattern.matches("^9\\.\\d+\\.\\d+\$", script.env["visualizerVersion"]) ? "90" : "80"

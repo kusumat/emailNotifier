@@ -68,8 +68,8 @@ class ArtifactHelper implements Serializable {
         else {
             /**
              * Check the URL is from the current jenkins master artifact URL, if so retrive exact jobName, buildID and artifactName from the given link.
-             * Eg - artifactURL passed: https://a100000005001.ci.dev-temenos-cloud.net/job/Test2599/job/Visualizer/job/Builds/job/Channels/job/buildAndroid/59/artifact/100000005/Test2599/Builds/AppFactoryServer/Android/Mobile/Native/59/Test2599_59.apk
-             * retrieve buildJob: Test2599/Visualizer/Builds/Channels/buildAndroid
+             * Eg - artifactURL passed: https://a100000005001.ci.dev-temenos-cloud.net/job/Test2599/job/Iris/job/Builds/job/Channels/job/buildAndroid/59/artifact/100000005/Test2599/Builds/AppFactoryServer/Android/Mobile/Native/59/Test2599_59.apk
+             * retrieve buildJob: Test2599/Iris/Builds/Channels/buildAndroid
              * retrieve buildID: 59
              * retrieve buildArtifactName: 100000005/Test2599/Builds/AppFactoryServer/Android/Mobile/Native/59/Test2599_59.apk
              */
