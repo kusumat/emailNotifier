@@ -409,16 +409,13 @@ class DesktopWebTests extends RunTests implements Serializable {
         def publishedAppUrlParameters = (!buildParameters[webAppUrlParamName]) ? [:] : [webAppUrlParamName: buildParameters[webAppUrlParamName]]
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.equals('PROJECT_SOURCE_CODE_BRANCH') && it.value }
-         /* Combine desktopWeb binaries build parameters */
-        def urlParameters = testBinaryUrlParameter + publishedAppUrlParameters
-
-       /* Combine Web binaries build parameters */
+        /* Combine Web binaries build parameters */
         def urlParameters = publishedAppUrlParameters
 
         if (!scmParameters) {
             throw new AppFactoryException("Please provide SCM branch details to checkout test scripts source from GIT repository to run the test.",'ERROR')
         }
-          
+
         /* Fail build if testBinaryUrlParameter been provided without publishedAppUrlParameters */
         if (scmParameters && !publishedAppUrlParameters) {
             throw new AppFactoryException("Please provide Web application URL!",'ERROR')
