@@ -1286,7 +1286,7 @@ class BuildHelper implements Serializable {
             script.writeFile file: "environmentInfo.txt", text: getEnvironmentInfo(script)
             script.writeFile file: "ParamInputs.txt", text: getInputParamsAsString(script)
             if(buildType.toString().equals("Iris")) {
-                AwsHelper.downloadChildJobMustHavesFromS3(script, mustHaveArtifacts)
+                downloadChildJobMustHaves(script, mustHaveArtifacts)
 
             } else {
                 /* We copy the Custom Hooks logs for Foundry only, because for Viz, they would have 

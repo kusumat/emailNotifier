@@ -409,19 +409,16 @@ class DesktopWebTests extends RunTests implements Serializable {
         def publishedAppUrlParameters = (!buildParameters[webAppUrlParamName]) ? [:] : [webAppUrlParamName: buildParameters[webAppUrlParamName]]
         /* Filter all SCM build parameters */
         def scmParameters = buildParameters.findAll { it.key.equals('PROJECT_SOURCE_CODE_BRANCH') && it.value }
-        /* Filter desktopWeb test binaries build parameter */
-        def testBinaryUrlParameter = (!buildParameters['DESKTOPWEB_TESTS_URL']) ? [:] : ['DESKTOPWEB_TESTS_URL': buildParameters['DESKTOPWEB_TESTS_URL']]
-        /* Combine desktopWeb binaries build parameters */
+         /* Combine desktopWeb binaries build parameters */
         def urlParameters = testBinaryUrlParameter + publishedAppUrlParameters
 
-        if (scmParameters && testBinaryUrlParameter) {
-            throw new AppFactoryException("Please provide only one option for the source of test scripts: GIT or TESTS_URL",'ERROR')
+       /* Combine Web binaries build parameters */
+        def urlParameters = publishedAppUrlParameters
+
+        if (!scmParameters) {
+            throw new AppFactoryException("Please provide SCM branch details to checkout test scripts source from GIT repository to run the test.",'ERROR')
         }
-        /* Same if none of the options provided */
-        else if (!scmParameters && !testBinaryUrlParameter) {
-            throw new AppFactoryException("Please provide at least one source of test binaries",'ERROR')
-        }
-        
+          
         /* Fail build if testBinaryUrlParameter been provided without publishedAppUrlParameters */
         if (scmParameters && !publishedAppUrlParameters) {
             throw new AppFactoryException("Please provide Web application URL!",'ERROR')

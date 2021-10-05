@@ -45,8 +45,8 @@ class WebChannel extends Channel {
                 this.script, 'com/kony/appfactory/configurations/common.properties'
         )
         this.hookHelper = new CustomHookHelper(script, BuildType.Iris)
-        selectedSpaChannels = getSelectedSpaChannels(this.script.params)
-        /* Expose SPA and DESKTOP_WEB build parameters to environment variables to use it in HeadlessBuild.properties */
+        /* Expose web build parameters to environment variables to use it in HeadlessBuild.properties */
+
         this.script.env['APP_VERSION'] = webAppVersion
         fabricCliFileName = libraryProperties.'fabric.cli.file.name'
         secureJsFileName = libraryProperties.'web_protected.obfuscation.file.name'
@@ -181,8 +181,6 @@ class WebChannel extends Channel {
 
                         script.stage('Build') {
                             if(buildMode == libraryProperties.'buildmode.release.protected.type') {
-                                script.echoCustom("For Iris 9.2.0 below projects release-protected mode is not applicable for DesktopWeb channel build." +
-                                            " It will build as Release mode only.", 'WARN')
                                 if(webProtectionID) {
                                     def securejsFullPath = [workspace, projectWorkspaceFolderName, "temp", projectName, libraryProperties.'web.protection.securejs.log.folder.path'].join(separator)
                                     mustHaveArtifacts.add([name: "securejs.log", path: securejsFullPath])
@@ -249,9 +247,6 @@ class WebChannel extends Channel {
                         script.stage('Publish to Foundry') {
                             /* Publish Foundry application if PUBLISH_FABRIC_APP/PUBLISH_WEB_APP set to true */
                             if (publishWebApp) {
-                                if (webChannelType.equalsIgnoreCase("WEB")) {
-                                    script.echoCustom("As you are building both SPA and DesktopWeb channels and PUBLISH_TO_FABRIC checkbox is selected, a combined archive will be generated and published to the Foundry environment you've chosen.")
-                                }
                                 FabricHelper.fetchFabricCli(script, libraryProperties, libraryProperties.'fabric.cli.version')
                                 FabricHelper.fetchFabricConsoleVersion(script, fabricCliFileName, fabricCredentialsID, script.env.FABRIC_ACCOUNT_ID, script.env.FABRIC_ENV_NAME, isUnixNode)
                                 
