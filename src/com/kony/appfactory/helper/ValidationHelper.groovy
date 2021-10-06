@@ -147,7 +147,7 @@ class ValidationHelper implements Serializable {
                 case ['ANDROID_MOBILE_APP_ID', 'ANDROID_TABLET_APP_ID', 'ANDROID_UNIVERSAL_APP_ID', 'IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID', 'IOS_UNIVERSAL_APP_ID']:
                     regex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+[0-9a-zA-Z_]?$/
                     break
-                case ['ANDROID_APP_VERSION', 'IOS_APP_VERSION', 'IOS_BUNDLE_VERSION', 'SPA_APP_VERSION', 'APP_VERSION', 'WEB_APP_VERSION']:
+                case ['ANDROID_APP_VERSION', 'IOS_APP_VERSION', 'IOS_BUNDLE_VERSION', 'APP_VERSION', 'WEB_APP_VERSION']:
                     regex = /^(\d+\.)(\d+\.)(\*|\d+)$/
                     break
                 case 'ANDROID_VERSION_CODE':
@@ -161,6 +161,9 @@ class ValidationHelper implements Serializable {
                     break
                 case 'CUSTOM_PROTECTION_PATH' :
                     regex = /.*(\.json)$/
+                    break
+                case 'MICROSERVICE_BASE_URL':
+                    regex = /^http(s)?:(\/\/)(.*\/ms-genericconfig-api\/api\/)(v(\d+\.)(\d+\.)(\*|\d+))(\/)?$/
                     break
                 default:
                     regex = /.*/
@@ -189,7 +192,7 @@ class ValidationHelper implements Serializable {
                 case ['IOS_MOBILE_APP_ID', 'IOS_TABLET_APP_ID', 'IOS_UNIVERSAL_APP_ID']:
                     parameter_message = it.key + ' : ' + 'Expecting something like <domain_name>.<org_name>.<app_name>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Native -> iPhone/iPad/Watch -> Bundle Identifier".' + '\n' + 'For Example : com.konyappfactory.KitchenSink'
                     break
-                case ['ANDROID_APP_VERSION', 'IOS_APP_VERSION', 'SPA_APP_VERSION', 'APP_VERSION', 'WEB_APP_VERSION']:
+                case ['ANDROID_APP_VERSION', 'IOS_APP_VERSION', 'APP_VERSION', 'WEB_APP_VERSION']:
                     parameter_message = it.key + ' : ' + 'Expecting standard versioning format like <major>.<minor>.<patch>' + '\n' + 'It is the value you generally enter in build UI mode at "Project Settings -> Application -> Version".' + '\n' + 'For Example : 1.0.1 '
                     break
                 case ['IOS_BUNDLE_VERSION']:
@@ -209,6 +212,9 @@ class ValidationHelper implements Serializable {
                     break
                 case 'EXCLUDE_LIST_PATH':
                     parameter_message = it.key + ' : ' + 'Please enter valid exclude list file path as specified in parameter description. Expecting EXCLUDE_LIST_PATH in the .txt extension format.The path must be relative to the root of the repository.' + '\n' + 'For Example.: exclude_files_for_protection.txt)'
+                    break
+                case 'MICROSERVICE_BASE_URL' :
+                    parameter_message = it.key + ' : ' + 'Please enter valid microservice base url as specified in parameter description. Expecting something like http(s)://<hostname>:<port>/ms-genericconfig-api/api/<api-version>/'
                     break
                 default:
                     parameter_message = parameter_message = it.key + ' : ' + 'The parameter expects a string value.'

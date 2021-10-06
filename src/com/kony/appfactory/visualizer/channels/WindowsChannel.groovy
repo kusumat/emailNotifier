@@ -1,6 +1,6 @@
 package com.kony.appfactory.visualizer.channels
 
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.helper.ValidationHelper
 
@@ -73,7 +73,7 @@ class WindowsChannel extends Channel {
                                         script.echoCustom('Build artifacts were not found!','ERROR')
                             }
 
-                            script.stage("Publish artifacts to S3") {
+                            script.stage("Publish artifacts") {
                                 /* Rename artifacts for publishing */
                                 artifacts = renameArtifacts(buildArtifacts)
 
@@ -83,10 +83,10 @@ class WindowsChannel extends Channel {
                                 artifacts?.each { artifact ->
                                     String artifactName = artifact.name
                                     String artifactPath = artifact.path
-                                    String artifactUrl = AwsHelper.publishToS3 bucketPath: s3ArtifactPath,
-                                            sourceFileName: artifactName, sourceFilePath: artifactPath, script
+                                    String artifactUrl = ArtifactHelper.publishArtifact sourceFileName: artifactName,
+                                            sourceFilePath: artifactPath, destinationPath: destinationArtifactPath, script
 
-                                    String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true);
+                                    String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true);
 
                                     channelArtifacts.add([
                                             channelPath: channelPath, name: artifactName, url: artifactUrl, authurl: authenticatedArtifactUrl

@@ -141,6 +141,8 @@ public class InvokeJasmineTests {
                 driver = androiddriver;
             } else {
                 capabilities.setCapability("automationName", "XCUITest");
+                // We are not reinstalling the app if it is installed during the device setup phase.
+                capabilities.setCapability("noReset", true);
                 capabilities.setCapability(IOSMobileCapabilityType.AUTO_ACCEPT_ALERTS, true);
                 capabilities.setCapability(IOSMobileCapabilityType.WDA_LAUNCH_TIMEOUT, 120000);
                 capabilities.setCapability(IOSMobileCapabilityType.WDA_STARTUP_RETRIES, 4);

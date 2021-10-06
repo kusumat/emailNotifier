@@ -12,6 +12,7 @@ import com.kony.appfactory.visualizer.BuildStatus
 import com.kony.appfactory.helper.AppFactoryException
 import com.kony.appfactory.helper.ValidationHelper
 import com.kony.appfactory.helper.CloudBuildHelper
+import com.kony.appfactory.helper.ArtifactHelper
 
 /**
  * Implements logic for all channel builds.
@@ -365,10 +366,10 @@ class AllChannels implements Serializable {
                                             android_channel.artifacts = android_channel.buildArtifacts.first()
 
                                             /* Publish Android artifact to S3 */
-                                            String artifactUrl = AwsHelper.publishToS3 bucketPath: android_channel.s3ArtifactPath,
-                                                    sourceFileName: android_channel.artifacts.name, sourceFilePath: android_channel.artifacts.path, script
+                                            String artifactUrl = ArtifactHelper.publishArtifact sourceFileName: android_channel.artifacts.name,
+                                                    sourceFilePath: android_channel.artifacts.path, destinationPath: android_channel.destinationArtifactPath, script
 
-                                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
+                                            String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true)
 
                                             String binaryFormat = android_channel.getArtifactBinaryFormat(android_channel.artifacts.name)
                                             if(!android_channel.artifacts.name.contains('_FAT_APK_')) {
@@ -377,7 +378,7 @@ class AllChannels implements Serializable {
                                                 ])
                                             }
 
-                                            String artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, android_channel.s3ArtifactPath, android_channel.artifacts.name].join('/')
+                                            String artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, android_channel.destinationArtifactPath, android_channel.artifacts.name].join('/')
                                             buildStatus.updateSuccessBuildStatusOnS3(ChannelType.valueOf(android_channel_id), artifactPath)
                                         }
                                     }
@@ -417,10 +418,10 @@ class AllChannels implements Serializable {
                                             ios_channel.ipaArtifact = foundArtifacts.first()
 
                                             /* Publish iOS ipa artifact to S3 */
-                                            ios_channel.ipaArtifactUrl = AwsHelper.publishToS3 bucketPath: ios_channel.s3ArtifactPath,
-                                                    sourceFileName: ios_channel.ipaArtifact.name, sourceFilePath: ios_channel.ipaArtifact.path, script
+                                            ios_channel.ipaArtifactUrl = ArtifactHelper.publishArtifact sourceFileName: ios_channel.ipaArtifact.name,
+                                                    sourceFilePath: ios_channel.ipaArtifact.path, destinationPath: ios_channel.destinationArtifactPath, script
 
-                                            ios_channel.authenticatedIPAArtifactUrl = BuildHelper.createAuthUrl(ios_channel.ipaArtifactUrl, script, false)
+                                            ios_channel.authenticatedIPAArtifactUrl = ArtifactHelper.createAuthUrl(ios_channel.ipaArtifactUrl, script, false)
 
                                             /* Get plist artifact */
                                             ios_channel.plistArtifact = ios_channel.createPlist(ios_channel.authenticatedIPAArtifactUrl)
@@ -429,10 +430,10 @@ class AllChannels implements Serializable {
                                             String artifactPath = ios_channel.plistArtifact.path
 
                                             /* Publish iOS plist artifact to S3 */
-                                            String artifactUrl = AwsHelper.publishToS3 bucketPath: ios_channel.s3ArtifactPath,
-                                                    sourceFileName: artifactName, sourceFilePath: artifactPath, script
+                                            String artifactUrl = ArtifactHelper.publishArtifact sourceFileName: artifactName,
+                                                    sourceFilePath: artifactPath, destinationPath: ios_channel.destinationArtifactPath, script
 
-                                            String authenticatedArtifactUrl = BuildHelper.createAuthUrl(artifactUrl, script, true)
+                                            String authenticatedArtifactUrl = ArtifactHelper.createAuthUrl(artifactUrl, script, true)
                                             String plistArtifactOTAUrl = authenticatedArtifactUrl
 
                                             if(ios_channel.ipaArtifact.name)
@@ -443,7 +444,7 @@ class AllChannels implements Serializable {
                                                     channelPath: ios_channel.channelPath, name: artifactName, url: artifactUrl, authurl: plistArtifactOTAUrl, extension: 'OTA'
                                             ])
 
-                                            artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.s3ArtifactPath, ios_channel.ipaArtifact.name].join('/')
+                                            artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.destinationArtifactPath, ios_channel.ipaArtifact.name].join('/')
                                             buildStatus.updateSuccessBuildStatusOnS3(ChannelType.valueOf(ios_channel_id), artifactPath)
                                         }
                                     }
@@ -454,7 +455,7 @@ class AllChannels implements Serializable {
 
                                         /* Place KAR file into StatusJson file */
                                         ios_channel.pipelineWrapper {
-                                            def artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.s3ArtifactPath, ios_channel.karArtifact.name].join('/')
+                                            def artifactPath = [script.env['CLOUD_ACCOUNT_ID'], projectName, ios_channel.destinationArtifactPath, ios_channel.karArtifact.name].join('/')
                                             buildStatus.updateDownloadLink(ChannelType.valueOf(ios_channel_id), artifactPath)
                                         }
 

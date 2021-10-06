@@ -8,6 +8,7 @@ import com.kony.appfactory.helper.CustomHookHelper
 import com.kony.appfactory.helper.ValidationHelper
 import groovy.json.JsonSlurper
 import com.kony.appfactory.enums.BuildType
+import com.kony.appfactory.helper.FabricHelper
 
 class RunTests implements Serializable {
     /* Pipeline object */
@@ -62,6 +63,11 @@ class RunTests implements Serializable {
 
     /*scm meta info like commitID ,commitLogs */
     protected scmMeta = [:]
+    protected baseAppName
+    /* List of apps (including parent app & child apps) */
+    protected appsList = []
+    /* Map with details of jasTestScriptUrl and jasTestScriptDeploymentPath for each app*/
+    protected appsTestScriptDeploymentInfo = [:]
 
     /**
      * Class constructor.
@@ -90,7 +96,7 @@ class RunTests implements Serializable {
     }
 
     /**
-     * Builds Test Automation scripts for Native and DesktopWeb.
+     * Builds Test Automation scripts for Native and Web.
      *
      * @param testChannel The channel for which you want to run the tests.
      * @param testFolder The folder in which you want to run the tests.
@@ -165,17 +171,62 @@ class RunTests implements Serializable {
         String testNGClass = resourceLocation + '/InvokeJasmineTests.java'
         String mavenPOM = resourceLocation + '/pom.xml'
         String testNGXML = resourceLocation + '/TestNG.xml'
-        String customReporter = [projectFullPath, 'testresources', 'Jasmine', 'Common', 'customReporter.js'].join(separator)
+        String appTestResourcesPath = [projectFullPath, 'testresources'].join(separator)
+        String customReporterRelativePath = ['Jasmine', 'Common', 'customReporter.js'].join(separator)
+        String customReporter = [appTestResourcesPath, customReporterRelativePath].join(separator)
+        String integrationTestJsonFileName = 'IntegrationTests.json'
+        String metaInfoJsonFileName= 'metaInfo.json'
+        boolean isMultiAppTest = false
         def formFactors = []
+        /* List of child apps */
+        def childAppsList = []
+        /* Map with details of scriptUrl and protocloType for each app*/
+        def appsTestScriptUrlInfo = [:]
 
         script.dir(projectFullPath) {
+            
+            /* Read the parent app name from projectproperties.json file */
+            def projectPropsJsonFile = [projectFullPath, libraryProperties.'project.props.json.file.name'].join(separator)
+            if(script.fileExists(projectPropsJsonFile)) {
+                def projectPropJsonContent = script.readJSON file: projectPropsJsonFile
+                baseAppName = projectPropJsonContent['appidkey']
+                appsList << baseAppName
+            } else {
+                throw new AppFactoryException("Failed to find ${libraryProperties.'project.props.json.file.name'} at path ${projectFullPath} , please check your Iris project source!!", 'ERROR')
+            }
 
-            // Appending the appfactory reporting js code to retrieve the jasmine results as json.
-            String customReporting = script.readFile file: customReporter
-            String appfactoryReporting = script.libraryResource(appfactoryReporter)
-            script.writeFile file: customReporter, text: customReporting + appfactoryReporting, encoding: 'UTF-8'
+            /* Check the repo contain "JasmineIntegrationTests" folder at app source "/testresources" path  */
+            def jasIntegrationTestRelativePath = ['testresources', 'JasmineIntegrationTests'].join(separator)
+            def jasIntegrationTestPath = [projectFullPath, jasIntegrationTestRelativePath].join(separator)
+            def jasIntegrationTestJsonFile = [jasIntegrationTestPath, integrationTestJsonFileName].join(separator)
+            isMultiAppTest = BuildHelper.isDirExist(script, jasIntegrationTestRelativePath, true)
 
-            if (channelType.equalsIgnoreCase("DesktopWeb")) {
+            if (channelType.equalsIgnoreCase("Web") && isMultiAppTest) {
+                /* Get the apps list including parent app if test run is for Web */
+                childAppsList = BuildHelper.getSubDirectories(script, true, jasIntegrationTestRelativePath)
+                appsList = appsList + childAppsList
+
+                /* Checking the 'IntegrationTests.json' file exist or not*/
+                if (!script.fileExists("${jasIntegrationTestJsonFile}")) {
+                    throw new AppFactoryException("Failed to find ${integrationTestJsonFileName} at path ${jasIntegrationTestJsonFile} , please check your test resources!!", 'ERROR')
+                }
+            }
+
+            /* Appending the appfactory reporting js code for all apps to retrieve the jasmine results as json. */
+            appsList?.each { appName ->
+                def customReporteFilePath
+                if(appName == baseAppName) {
+                    customReporteFilePath = [appTestResourcesPath, customReporterRelativePath].join(separator)
+                } else {
+                    customReporteFilePath = [jasIntegrationTestPath, appName, customReporterRelativePath].join(separator)
+                }
+                String customReporting = script.readFile file: customReporteFilePath
+                String appfactoryReporting = script.libraryResource(appfactoryReporter)
+                script.writeFile file: customReporteFilePath, text: customReporting + appfactoryReporting, encoding: 'UTF-8'
+            }
+            
+            if (channelType.equalsIgnoreCase("Web")) {
+                /* Rename the custom test plan name for parent app with default testPlan.js */
                 copyTestPlanFile('Desktop')
             } else {
                 def nativeDevices
@@ -202,26 +253,117 @@ class RunTests implements Serializable {
 
                 /* Run node generateJasmineArtifacts.js */
                 script.catchErrorCustom('Error while packaging the Jasmine test scripts') {
-                    def nodePkgScript = 'node generateJasmineArtifacts.js --output-dir ' + jasminePkgFolder
+                    /* Building Base app test script */
+                    def nodePkgScript = 'node generateJasmineArtifacts.js --output-dir ' + [jasminePkgFolder, baseAppName].join(separator)
                     script.shellCustom(nodePkgScript, true)
+                    
+                    /* Building Child apps test script */
+                    /* Generating Jasmine test artifacts for web channel if child app exist
+                     * Note: Currently, As a work around to generate the jasmine test artifact moving each child app's jasmine artifacts
+                     * at viz project's 'testresources' path to run and generate the jasmine test artifacts, because 'generateJasmineArtifacts.js' file
+                     * looks at specific path to generate the jasmine artifacts so making each child app as parent app test resources.
+                     * */
+                    if(channelType.equalsIgnoreCase("Web") && isMultiAppTest) {
+                        script.shellCustom("set +x;mv ${appTestResourcesPath}/Jasmine ${appTestResourcesPath}/Jasmine_${baseAppName}", true)
+                        childAppsList?.each { appName ->
+                            script.shellCustom("set +x;mv ${jasIntegrationTestPath}/${appName}/Jasmine ${appTestResourcesPath}", true)
+                            def jasmineChildAppPkgFolder = [jasminePkgFolder, appName].join(separator)
+                            def nodePkgChildAppScript = 'node generateJasmineArtifacts.js --output-dir ' + jasmineChildAppPkgFolder
+                            script.shellCustom(nodePkgChildAppScript, true)
+                            script.shellCustom("set +x;mv ${appTestResourcesPath}/Jasmine ${appTestResourcesPath}/Jasmine_${appName}", true)
+                        }
+                    }
                 }
             })
+            
+            // Only in the case Web, we will be hosting the jasmine test scripts through jetty server.
+            if(channelType.equalsIgnoreCase("Web")) {
+                /* Test script deployment path: <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<EPOCH_TIME>/
+                 * or <jettyWebAppsFolder><ACCOUNT_ID>/<APPFACTORY_PROJECT_NAME>_<WedBuildNo>/
+                 * "eg: /opt/jetty/webapps/testresources/100000005/RsTestOnly_1612446923377/" 
+                 */
+                String fullPathToCopyScripts = jettyWebAppsFolder + script.env.JASMINE_TEST_URL.split('testresources')[-1]
+                
+                def jasScriptDeploymentInfo = [:]
+                jasScriptDeploymentInfo.put('jasTestScriptUrl', script.env.JASMINE_TEST_URL)
+                jasScriptDeploymentInfo.put('jasTestScriptDeploymentPath', fullPathToCopyScripts)
+                appsTestScriptDeploymentInfo.put(baseAppName, jasScriptDeploymentInfo)
 
-            // Only in the case DesktopWeb, we will be hosting the jasmine test scripts through jetty server.
-            if(channelType.equalsIgnoreCase("DesktopWeb")) {
-                String fullPathToCopyScripts = jettyWebAppsFolder + script.params.JASMINE_TEST_URL.split('testresources')[-1]
+                /* If child app exist iterate for each child app & generate the script deployment info */
+                childAppsList?.each { appName ->
+                    def testScriptSubPath = script.env.CLOUD_ACCOUNT_ID + '/' + appName + '_' + new Date().time + '/'
+                    def childAppJasTestScriptUrl = libraryProperties.'test.automation.jasmine.base.host.url' + testScriptSubPath
+                    String fullPathToCopyChildAppScripts = [jettyWebAppsFolder, testScriptSubPath].join(separator)
 
-                // Copying the Desktop jasmine test scripts in the jetty webapps folder
-                script.shellCustom("set +x;mkdir -p $fullPathToCopyScripts", true)
-                script.shellCustom("set +x;cp -R ${jasminePkgFolder}/Desktop ${fullPathToCopyScripts}", true)
+                    def childAppJasTestScriptDeploymentInfo = [:]
+                    childAppJasTestScriptDeploymentInfo.put('jasTestScriptUrl', childAppJasTestScriptUrl)
+                    childAppJasTestScriptDeploymentInfo.put('jasTestScriptDeploymentPath', fullPathToCopyChildAppScripts)
+                    appsTestScriptDeploymentInfo.put(appName, childAppJasTestScriptDeploymentInfo)
+                }
+                /* Populate a map with script url info for updating integrationTest.josn and metaInfo.json file for each app */
+                appsList?.each { appName ->
+                    def jasScriptUrl = appsTestScriptDeploymentInfo[appName].get('jasTestScriptUrl')
+                    def (protocolType, scriptUrl)  = jasScriptUrl?.split('://')
+                    
+                    def testScriptUrlInfo = [:]
+                    testScriptUrlInfo.put('protocolType', protocolType)
+                    testScriptUrlInfo.put('scriptUrl', scriptUrl)
+                    appsTestScriptUrlInfo.put(appName, testScriptUrlInfo)
+                }
+
+                if(isMultiAppTest) {
+                    /* Updating the jasmineIntegrationTest.json file */
+                    def integrationTestJsonFileContent
+                    script.dir(jasIntegrationTestRelativePath) {
+                        integrationTestJsonFileContent = script.readJSON file: integrationTestJsonFileName
+                        boolean isBaseAppInfoExist = integrationTestJsonFileContent.containsKey(baseAppName)
+                        /* if base app json object exist update it with latest script URL info generated */
+                        def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
+                        if(isBaseAppInfoExist) {
+                            integrationTestJsonFileContent[baseAppName]['URL'] = script.params[webAppUrlParamName]
+                            integrationTestJsonFileContent[baseAppName]['protocol'] = appsTestScriptUrlInfo[baseAppName].get('protocolType')
+                            integrationTestJsonFileContent[baseAppName]['ScriptURL'] = appsTestScriptUrlInfo[baseAppName].get('scriptUrl')
+                        } else {
+                            /* Add a json object with base app's script URL info in existing json file */
+                            def parentAppScriptInfo = [:]
+                            parentAppScriptInfo.put("URL", script.params[webAppUrlParamName])
+                            parentAppScriptInfo.put("protocol", appsTestScriptUrlInfo[baseAppName].get('protocolType'))
+                            parentAppScriptInfo.put("ScriptURL", appsTestScriptUrlInfo[baseAppName].get('scriptUrl'))
+                            integrationTestJsonFileContent.putAt(baseAppName, parentAppScriptInfo)
+                        }
+
+                        /* Updating child app's script info in integrationTest.json file*/
+                        childAppsList?.each { appName ->
+                            integrationTestJsonFileContent[appName]['protocol'] = appsTestScriptUrlInfo[appName].get('protocolType')
+                            integrationTestJsonFileContent[appName]['ScriptURL'] = appsTestScriptUrlInfo[appName].get('scriptUrl')
+                        }
+                        script.writeJSON file: integrationTestJsonFileName, json: integrationTestJsonFileContent
+                    }
+
+                    /* Update meta info.json file for each child app with integrationTest.json object */
+                    def metaInfoJsonContent
+                    appsList?.each { appName ->
+                        def appMetaInfoJsonFile = [jasminePkgFolder, appName, 'Desktop', metaInfoJsonFileName].join(separator)
+                        metaInfoJsonContent = script.readJSON file: appMetaInfoJsonFile
+                        metaInfoJsonContent << [IntegrationTests: integrationTestJsonFileContent]
+                        script.writeJSON file: appMetaInfoJsonFile, json: metaInfoJsonContent
+                    }
+                }
+
+                /* Copying app's Desktop channel jasmine test artifacts in the jetty webapps folder for deployment */
+                appsList?.each { appName ->
+                    def appScriptDeploymentPath = appsTestScriptDeploymentInfo[appName].get('jasTestScriptDeploymentPath')
+                    script.shellCustom("set +x;mkdir -p $appScriptDeploymentPath", true)
+                    script.shellCustom("set +x;cp -R ${jasminePkgFolder}/${appName}/Desktop ${appScriptDeploymentPath}", true)
+                }
             } else {
                 script.dir(deviceFarmWorkingFolder) {
-                    prepareExtraDataPackage("Mobile")
-                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Mobile/AndroidJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Android_Mobile_TestExtraDataPkg.zip", true)
-                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Mobile/iOSJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_iOS_Mobile_TestExtraDataPkg.zip", true)
-                    prepareExtraDataPackage("Tablet")
-                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Tablet/AndroidJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Android_Tablet_TestExtraDataPkg.zip", true)
-                    script.shellCustom("set +x;cp ${jasminePkgFolder}/Tablet/iOSJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_iOS_Tablet_TestExtraDataPkg.zip", true)
+                    prepareExtraDataPackage("Mobile", baseAppName)
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/${baseAppName}/Mobile/AndroidJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Android_Mobile_TestExtraDataPkg.zip", true)
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/${baseAppName}/Mobile/iOSJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_iOS_Mobile_TestExtraDataPkg.zip", true)
+                    prepareExtraDataPackage("Tablet", baseAppName)
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/${baseAppName}/Tablet/AndroidJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_Android_Tablet_TestExtraDataPkg.zip", true)
+                    script.shellCustom("set +x;cp ${jasminePkgFolder}/${baseAppName}/Tablet/iOSJasmineScripts.zip ${deviceFarmWorkingFolder}/${projectName}_iOS_Tablet_TestExtraDataPkg.zip", true)
                 }
             }
         }
@@ -257,46 +399,42 @@ class RunTests implements Serializable {
      */
     protected void copyTestPlanFile(String formFactor) {
         if (formFactor.equalsIgnoreCase("Desktop")) {
-            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)
+            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", "testPlan.js")
         } else {
-            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", null)
+            jasmineTestPlan = BuildHelper.getParamValueOrDefault(script, "NATIVE_TEST_PLAN", "testPlan.js")
         }
         String testPlanBasePath = ['testresources', 'Jasmine', formFactor, 'Test Plans'].join(separator)
         String defaultTestPlan = [testPlanBasePath, 'testPlan.js'].join(separator)
-            if(jasmineTestPlan.equals("") || jasmineTestPlan.equals("testPlan.js")){
-                if (!script.fileExists("${defaultTestPlan}")) {
-                    throw new AppFactoryException("Failed to find ${defaultTestPlan}, please check your application!!", 'ERROR')
-                }
-                jasmineTestPlan = "testPlan.js"
-            } else {
-                String testPlanFile = [testPlanBasePath, jasmineTestPlan].join(separator)
-                if (script.fileExists("${testPlanFile}")) {
-                    defaultTestPlan = BuildHelper.addQuotesIfRequired(defaultTestPlan)
-                    testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
-                    script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestPlan}", true)
-                } else {
-                    throw new AppFactoryException("Failed to find ${testPlanFile}, please provide valid TEST_PLAN!!", 'ERROR')
-                }
-            }
+        String testPlanFile = [testPlanBasePath, jasmineTestPlan].join(separator)
 
+        if (script.fileExists("${testPlanFile}")) {
+            if(!testPlanFile.equals(defaultTestPlan)) {
+                defaultTestPlan = BuildHelper.addQuotesIfRequired(defaultTestPlan)
+                testPlanFile = BuildHelper.addQuotesIfRequired(testPlanFile)
+                script.shellCustom("set +x;cp -f ${testPlanFile} ${defaultTestPlan}", true)
+            }
+        } else {
+            throw new AppFactoryException("Failed to find ${testPlanFile}, please provide valid TEST_PLAN!!", 'ERROR')
+        }
     }
 
 
     /*
      * This method prepares the extra data package in which the jasmine scripts will be placed in the way the frameworks expects.
      * @param testInvokerFolder is the path of the folder in which we will be creating the TestNG Project for running the Jasmine tests
+     * @param appName is the viz project app name for which test execution is triggered(value read from "appidkey" of projectProperties.json)
      */
-    protected final prepareExtraDataPackage(formFactor) {
-        def targetFolder = [jasminePkgFolder, formFactor].join(separator)
+    protected final prepareExtraDataPackage(formFactor, appName) {
+        def targetFolder = [jasminePkgFolder, appName, formFactor].join(separator)
         script.dir(targetFolder){
             // Android Packaging
             script.shellCustom("set +x;mkdir ${targetFolder}/JasmineTests ", true)
-            script.shellCustom("set +x;cp ${jasminePkgFolder}/${formFactor}/automationScripts.zip ${targetFolder}/JasmineTests/ ", true)
+            script.shellCustom("set +x;cp ${jasminePkgFolder}/${appName}/${formFactor}/automationScripts.zip ${targetFolder}/JasmineTests/ ", true)
             script.shellCustom("set +x;zip -r AndroidJasmineScripts.zip JasmineTests", true)
 
             // iOS Packaging
             script.shellCustom("set +x;mkdir ${targetFolder}/AutomationScripts ", true)
-            script.unzip zipFile: "${jasminePkgFolder}/${formFactor}/automationScripts.zip", dir: "${targetFolder}/AutomationScripts/"
+            script.unzip zipFile: "${jasminePkgFolder}/${appName}/${formFactor}/automationScripts.zip", dir: "${targetFolder}/AutomationScripts/"
             script.shellCustom("set +x;zip -r iOSJasmineScripts.zip AutomationScripts", true)
         }
 

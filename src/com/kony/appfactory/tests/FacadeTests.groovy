@@ -14,13 +14,13 @@ import java.util.*
 /**
  * Implements logic for runTests job.
  *
- * runTests job responsible for Test Automation scripts build and scheduling Device Farm test runs and DesktopWeb tests with provided
+ * runTests job responsible for Test Automation scripts build and scheduling Device Farm test runs and Web tests with provided
  *  application binaries, device pools and fabric app URLs.
  *
- * Test run and Test Automation scripts artifacts are stored on S3 according with approved folder structure.
+ * Test run and Test Automation scripts artifacts are stored on artifactStorage according with approved folder structure.
  *
  * E-mail notification template and JSON file for App Factory console,
- *  also stored on S3 according with approved folder structure.
+ *  also stored on artifactStorage according with approved folder structure.
  */
 class FacadeTests implements Serializable {
     /* Pipeline object */
@@ -60,8 +60,9 @@ class FacadeTests implements Serializable {
     private projectRoot
     private runCustomHook = script.params.RUN_CUSTOM_HOOKS
 
-    /* Parameters used to differentiate Native and DesktopWeb apps */
-    public isDesktopWebApp = script.params.findAll { it.key == 'FABRIC_APP_URL' && it.value }
+    /* Parameters used to differentiate Native and Web apps */
+    def webAppUrlParamName = BuildHelper.getCurrentParamName(script, 'WEB_APP_URL', 'FABRIC_APP_URL')
+    public isWebApp = script.params.findAll { it.key == webAppUrlParamName && it.value }
     public isNativeApp = script.params.findAll { it.key.contains('NATIVE_BINARY_URL') && it.value }
 
     /* List of run Results, used for setting up final result of the runTests job */
@@ -71,11 +72,15 @@ class FacadeTests implements Serializable {
     DesktopWebTests desktopWebTests
     NativeAWSDeviceFarmTests nativeAWSDeviceFarmTests
 
-    /* Outputs that get generated when we trigger child jobs(Native and DesktopWeb)*/
+    /* Outputs that get generated when we trigger child jobs(Native and Web)*/
     def nativeTestsJob
     def desktopWebTestsJob
     def testsJob
     def testsJobOutput = [:]
+
+    /* Web TestAutomation build parameters */
+    private final webTestsArgumentsParamName = BuildHelper.getCurrentParamName(script, 'RUN_WEB_TESTS_ARGUMENTS', 'RUN_DESKTOPWEB_TESTS_ARGUMENTS')
+    private final runWebTestsJobName =  (webTestsArgumentsParamName == "RUN_WEB_TESTS_ARGUMENTS")? "runWebTests" : "runDesktopWebTests"
 
     /* To maintain backward compatibility, we are checking whether 'Channels' folder is present under 'Tests' folder or not and then modifying the subject of mail accordingly */
     String testAutomationJobBasePath = "${script.env.JOB_NAME}" -
@@ -112,7 +117,7 @@ class FacadeTests implements Serializable {
     }
 
     /**
-     * This method returns Test Automation job build parameters that are common for both Native and DesktopWeb.
+     * This method returns Test Automation job build parameters that are common for both Native and Web.
      *
      * @return Test Automation job common build parameters.
      */
@@ -155,18 +160,17 @@ class FacadeTests implements Serializable {
     }
 
     /**
-     * This method returns Test Automation job common build parameters along with the parameters that are specific to DesktopWeb channel.
+     * This method returns Test Automation job common build parameters along with the parameters that are specific to Web channel.
      *
-     * @return Test Automation job common build parameters along with DesktopWeb channel specific parameters.
+     * @return Test Automation job common build parameters along with Web channel specific parameters.
      */
     private final getDesktopWebTestAutomationJobParameters() {
         getTestAutomationCommonJobParameters() + getDesktopWebTestAutomationArtifactURLParameter() +
                 [
-                        script.string(name: 'FABRIC_APP_URL', value: script.params.FABRIC_APP_URL),
-                        script.string(name: 'DESKTOPWEB_TESTS_URL', value: script.params.DESKTOPWEB_TESTS_URL),
+                        script.string(name: webAppUrlParamName, value: script.params[webAppUrlParamName]),
                         script.string(name: 'AVAILABLE_BROWSERS', value: script.params.AVAILABLE_BROWSERS),
-                        script.string(name: 'RUN_DESKTOPWEB_TESTS_ARGUMENTS', value: script.params.RUN_DESKTOPWEB_TESTS_ARGUMENTS),
-                        script.string(name: 'JASMINE_TEST_URL', value: script.params.JASMINE_TEST_URL?.trim()),
+                        script.string(name: "${webTestsArgumentsParamName}", value: script.params[webTestsArgumentsParamName]),
+                        script.string(name: 'JASMINE_TEST_URL', value: BuildHelper.getParamValueOrDefault(script, "JASMINE_TEST_URL", "")?.trim()),
                         script.string(name: 'WEB_TEST_PLAN',  value: BuildHelper.getParamValueOrDefault(script, "WEB_TEST_PLAN", null)),
                         script.string(name: 'SCREEN_RESOLUTION', value: "${screenResolution}")
 
@@ -175,9 +179,9 @@ class FacadeTests implements Serializable {
     }
 
     /**
-     * This method returns Desktopweb Test Artifact S3 url parameter.
+     * This method returns Desktopweb Test Artifact artifactStorage url parameter.
      *
-     * @return Desktopweb Test Artifact S3 url parameter.
+     * @return Desktopweb Test Artifact artifactStorage url parameter.
      */
     private final getDesktopWebTestAutomationArtifactURLParameter() {
         !script.params.containsKey('DESKTOPWEB_ARTIFACT_URL') ? [] :
@@ -198,9 +202,9 @@ class FacadeTests implements Serializable {
                 parametersForRunningTests += ["Native Tests": ["jobName"   : nativeTestAutomationJobName,
                                                                "parameters": getNativeTestAutomationJobParameters()]]
                 break
-            case ~/^.*DesktopWeb.*$/:
-                String dWebTestAutomationJobName = "${testAutomationJobBasePath}runDesktopWebTests"
-                parametersForRunningTests += ["DesktopWeb Tests": ["jobName"   : dWebTestAutomationJobName,
+            case ~/^.*Web.*$/:
+                String dWebTestAutomationJobName = "${testAutomationJobBasePath}" + "${runWebTestsJobName}"
+                parametersForRunningTests += ["Web Tests": ["jobName"   : dWebTestAutomationJobName,
                                                                    "parameters": getDesktopWebTestAutomationJobParameters()]]
                 break
             default:
@@ -218,8 +222,8 @@ class FacadeTests implements Serializable {
 
         if (isNativeApp)
             testsChannelsToRun += ["Native Tests"]
-        if (isDesktopWebApp)
-            testsChannelsToRun += ["DesktopWeb Tests"]
+        if (isWebApp)
+            testsChannelsToRun += ["Web Tests"]
 
         testsChannelsToRun.each {
             def parametersForRunningTests = getParamsForTests("${it.value}")
@@ -258,8 +262,8 @@ class FacadeTests implements Serializable {
     protected final void createPipeline() {
         desktopWebTests = new DesktopWebTests(script)
         nativeAWSDeviceFarmTests = new NativeAWSDeviceFarmTests(script)
-        if(!isNativeApp && !isDesktopWebApp)
-            throw new AppFactoryException("Please provide atleast one of the Native Binary URLs or FABRIC_APP_URL to proceed with the build.", 'ERROR')
+        if(!isNativeApp && !isWebApp)
+            throw new AppFactoryException("Please provide atleast one of the Native Binary URLs or ${webAppUrlParamName} to proceed with the build.", 'ERROR')
         /* Allocate a slave for the run */
         script.node(libraryProperties.'facade.node.label') {
             try {
@@ -270,7 +274,7 @@ class FacadeTests implements Serializable {
                             script.stage('Validate parameters') {
                                 if (isNativeApp)
                                     nativeAWSDeviceFarmTests.validateBuildParameters(script.params)
-                                if (isDesktopWebApp)
+                                if (isWebApp)
                                     desktopWebTests.validateBuildParameters(script.params)
                             }
                                 prepareRun()
@@ -282,8 +286,7 @@ class FacadeTests implements Serializable {
                                     /* Set job result to 'UNSTABLE' if above check is true */
                                     script.currentBuild.result = 'UNSTABLE'
                                     TestsHelper.PrepareMustHaves(script, runCustomHook, "Tests_${script.env.BUILD_NUMBER}", libraryProperties, mustHaveArtifacts)
-                                    if (TestsHelper.isBuildDescriptionNeeded(script))
-                                        TestsHelper.setBuildDescription(script)
+                                    TestsHelper.setBuildDescription(script)
                                 } else {
                                     /* Set job result to 'SUCCESS' if above check is false */
                                     script.currentBuild.result = 'SUCCESS'
@@ -328,15 +331,13 @@ class FacadeTests implements Serializable {
             script.timestamps {
                 /* Wrapper for colorize the console output in a pipeline build */
                 script.ansiColor('xterm') {
-
-                    if (isDesktopWebApp)
+                    if (isWebApp)
                         desktopWebTests.createPipeline()
                     if (isNativeApp)
                         nativeAWSDeviceFarmTests.createPipeline()
                     if (script.currentBuild.result != 'SUCCESS' && script.currentBuild.result != 'ABORTED') {
                         TestsHelper.PrepareMustHaves(script, runCustomHook, "Tests_${script.env.BUILD_NUMBER}", libraryProperties)
-                        if (TestsHelper.isBuildDescriptionNeeded(script))
-                            TestsHelper.setBuildDescription(script)
+                        TestsHelper.setBuildDescription(script)
                     }
                 }
             }
