@@ -45,7 +45,7 @@ class Flyway implements Serializable {
     List of artifacts to be captured for the must haves to debug
    */
     protected mustHaveArtifacts = []
-    protected String s3MustHaveAuthUrl
+    protected String mustHaveAuthUrl
 
     /**
      * Class constructor.
@@ -179,9 +179,9 @@ class Flyway implements Serializable {
                         if (!successfulCommands)
                             script.currentBuild.result = 'FAILURE'
                         if (script.currentBuild.currentResult != 'SUCCESS' && script.currentBuild.currentResult != 'ABORTED') {
-                            s3MustHaveAuthUrl = BuildHelper.prepareMustHaves(script, "flyway", "FlywayMustHaves", "FlywayBuild.log", libraryProperties, mustHaveArtifacts)
+                            mustHaveAuthUrl = BuildHelper.prepareMustHaves(script, "flyway", "FlywayMustHaves", "FlywayBuild.log", libraryProperties, mustHaveArtifacts)
                         }
-                        BuildHelper.setBuildDescription(script, s3MustHaveAuthUrl)
+                        BuildHelper.setBuildDescription(script, mustHaveAuthUrl)
                         NotificationsHelper.sendEmail(script, 'flyway',
                                 [
                                         commands               : commands,

@@ -182,11 +182,13 @@ class CodeScanners implements Serializable {
                                 }
                                 String sonarLog = "sonarScanner.log"
                                 script.dir(projectFullPath) {
-                                    script.nodejs(nodeVersion) {
-                                        script.echoCustom("Initiating the Sonar scan...")
-                                        script.shellCustom("set +xe; ${scannerHome}/bin/sonar-scanner ${sonarOpts.cmdOptions} ${authToken} >> ${sonarLog}", true)
-                                        if (script.fileExists(sonarLog)) {
-                                            script.shellCustom("set +xe; cat ${sonarLog}", true)
+                                    script.withEnv(["JAVA_HOME=${script.tool 'mac-openjdk-11'}/Contents/Home", "PATH+JAVA=${script.tool 'mac-openjdk-11'}/Contents/Home/bin:${script.env.PATH}"]) {
+                                        script.nodejs(nodeVersion) {
+                                            script.echoCustom("Initiating the Sonar scan...")
+                                            script.shellCustom("set +xe; ${scannerHome}/bin/sonar-scanner ${sonarOpts.cmdOptions} ${authToken} >> ${sonarLog}", true)
+                                            if (script.fileExists(sonarLog)) {
+                                                script.shellCustom("set +xe; cat ${sonarLog}", true)
+                                            }
                                         }
                                     }
                                     String status = getScanResultsStatus(sonarLog)

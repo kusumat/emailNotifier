@@ -90,6 +90,8 @@ class Fabric implements Serializable {
      * for backward compatibility for older project.*/
     private boolean isScmUrlParamExistInCurrentProject
     private final appUnzipTempDir = "appUnzipTempDir"
+    boolean isScmUrlOfTypeHttps
+    private fabricAppDir
 
     /**
      * Class constructor.
@@ -126,6 +128,7 @@ class Fabric implements Serializable {
                 this.script, 'PROJECT_SOURCE_CODE_REPOSITORY_CREDENTIALS_ID', 'PROJECT_EXPORT_REPOSITORY_CREDENTIALS_ID'), 'SCM_CREDENTIALS')
         exportRepositoryCredentialsId = this.script.env[sourceCodeRepoCredentialParamName]
         isScmUrlParamExistInCurrentProject = BuildHelper.doesAnyParamExistFromProbableParamList(this.script, fabricScmUrlProbableParams)
+        fabricAppDir = (script.params.FABRIC_DIR) ? (script.params.FABRIC_DIR).trim() : ((script.env.FABRIC_APP_ROOT_FOLDER) ? script.env.FABRIC_APP_ROOT_FOLDER.trim() : "")
     }
 
     /**
@@ -406,10 +409,16 @@ class Fabric implements Serializable {
         String errorMessage = 'Failed to push changes to remote git repository'
 
         script.catchErrorCustom(errorMessage, successMessage) {
-            /* Escape special characters in git username and password, to be able to use them in push step */
-            String gitUsername = URLEncoder.encode(script.env.GIT_USERNAME)
-            String gitPassword = URLEncoder.encode(script.env.GIT_PASSWORD)
-            String pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}@")
+            String pushUrl
+            if(isScmUrlOfTypeHttps) {
+                /* Escape special characters in git username and password, to be able to use them in push step */
+                String gitUsername = URLEncoder.encode(script.env.GIT_USERNAME)
+                String gitPassword = URLEncoder.encode(script.env.GIT_PASSWORD)
+                pushUrl = exportRepositoryUrl.replaceFirst("//", "//${gitUsername}:${gitPassword}@")
+            } else {
+                pushUrl = exportRepositoryUrl
+            }
+            
             /*
                 Because of need to escape special characters in git username and password,
                 we have URLEncoder.encode() call which modifies the values from credentials parameter,
@@ -418,8 +427,8 @@ class Fabric implements Serializable {
             */
             String hideShellOutput = '#!/bin/sh -e\n'
             String checkoutCommand = "git checkout \"$exportRepositoryBranch\""
-            String commitCommand = "git commit -m \"$commitMessage\" || error=true"
-            String pushCommand = "git push \"$pushUrl\" || error=true"
+            String commitCommand = "git commit -m \"$commitMessage\""
+            String pushCommand = "git push \"$pushUrl\""
 
             if(ignoreJarsForExport) {
                 String jarsDirPath = (exportFolder?.isEmpty()) ? "Apps/_JARs/*" : "${exportFolder}/Apps/_JARs/*"
@@ -449,13 +458,20 @@ class Fabric implements Serializable {
      * @param closure block of code.
      */
     private final void gitCredentialsWrapper(closure) {
-        script.withCredentials([
+        isScmUrlOfTypeHttps = exportRepositoryUrl.startsWith("http://") || exportRepositoryUrl.startsWith("https://")
+        if(isScmUrlOfTypeHttps) {
+            script.withCredentials([
                 [$class          : 'UsernamePasswordMultiBinding',
                  credentialsId   : exportRepositoryCredentialsId,
                  passwordVariable: 'GIT_PASSWORD',
                  usernameVariable: 'GIT_USERNAME']
-        ]) {
-            closure()
+            ]){
+                closure()
+            }
+        } else {
+            script.sshagent([exportRepositoryCredentialsId]) {
+                closure()
+            }
         }
     }
 
@@ -465,13 +481,17 @@ class Fabric implements Serializable {
      * @param itemsToExpose list of the items to expose.
      */
     private final void setBuildDescription(itemsToExpose) {
-        String descriptionItems = itemsToExpose ? itemsToExpose.findResults {
-            item -> if(item.value) "<p>${item.key}: ${item.value}</p>"
-        }?.join('\n') : ""
+        String descriptionItems = ""
+        buildDescriptionItems?.each { k, v ->
+            descriptionItems = descriptionItems + "<p>${k}: ${v}<p>"
+        }
 
         script.currentBuild.description = """\
             <div id="build-description">
                 ${descriptionItems}
+                <p>Rebuild:<a href='${script.env.BUILD_URL}rebuild' class="task-icon-link">
+                <img src="/static/b33030df/images/24x24/clock.png" style="width: 24px; height: 24px; margin: 2px;"
+                class="icon-clock icon-md"></a></p>
             </div>\
             """.stripIndent()
     }
@@ -577,11 +597,11 @@ class Fabric implements Serializable {
                         commitMessage         : commitMessage,
                         commandName           : 'EXPORT'
                 ]
-
-                /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR param not exist in Export Job.
-                 * If Foundry_DIR param exist and its value is empty, then set root directory as FABRIC_DIR.
+                /* Folder name for storing exported application. Set default export folder for projects where FABRIC_DIR/IGNORE_JARS param does not exist
+                 * in Export Job for older DSL param. If FABRIC_DIR/PROJECT PATH param or value exist, then set fabric app dir as path given.
+                 * Note: Here below using the 'IGNORE_JARS' param in place of "FABRIC_DIR" to identify as new DSL project as we are removing from V9SP3.
                  */
-                String fabricAppDir = BuildHelper.getParamValueOrDefault(script, 'FABRIC_DIR', "export")
+                fabricAppDir = script.params.containsKey('IGNORE_JARS') ? fabricAppDir : "export"
                 boolean ignoreJarsForExport = BuildHelper.getParamValueOrDefault(script, 'IGNORE_JARS', false)
                 
                 String projectName = script.env.PROJECT_NAME
@@ -695,7 +715,7 @@ class Fabric implements Serializable {
                             /* If user selects Ignore Jars flag as true but if '_JARs' dir doesn't exist in fabric app set the flag as false */
                             if(ignoreJarsForExport) {
                                 def appJarsDirAbsolutePath = [workspace, appUnzipTempDir, 'Apps', '_JARs'].join(separator)
-                                boolean isPathExistForAppJars = FabricHelper.isDirExist(script, appJarsDirAbsolutePath, isUnixNode)
+                                boolean isPathExistForAppJars = BuildHelper.isDirExist(script, appJarsDirAbsolutePath, isUnixNode)
                                 if(!isPathExistForAppJars) {
                                     script.echoCustom("${fabricAppName}(${fabricAppVersion}) does not contain '_JARs' dir, so by default export jars will be skipped.")
                                     ignoreJarsForExport = false
@@ -811,7 +831,6 @@ class Fabric implements Serializable {
         script.timestamps {
             /* Wrapper for colorize the console output in a pipeline build */
             script.ansiColor('xterm') {
-
                 /* Data for e-mail notification */
                 emailData = [
                         commandName          : 'PUBLISH'
@@ -821,7 +840,7 @@ class Fabric implements Serializable {
 
                 script.stage('Check provided parameters') {
                     def mandatoryParameters = [
-                            fabricCredentialsParamName
+                        fabricCredentialsParamName
                     ]
                     if(script.params.FABRIC_CREDENTIALS) {
                         script.env[fabricCredentialsParamName] = script.params.FABRIC_CREDENTIALS
@@ -1190,10 +1209,8 @@ class Fabric implements Serializable {
             publishJobParameters << script.string(name: 'FABRIC_CONSOLE_URL', value: consoleUrl) <<
                     script.string(name: 'FABRIC_IDENTITY_URL', value: identityUrl)
         }
-
         publishJob = script.build job: "Publish", parameters: publishJobParameters
     }
-
     /**
      * To implement few backward compatibility checks for FABRIC_CONSOLE_URL
      */

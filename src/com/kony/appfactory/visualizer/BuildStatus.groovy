@@ -6,7 +6,7 @@ import com.kony.appfactory.dto.buildstatus.PlatformsDTO
 import com.kony.appfactory.dto.buildstatus.BuildStatusDTO
 import com.kony.appfactory.enums.Status
 import com.kony.appfactory.enums.ChannelType
-import com.kony.appfactory.helper.AwsHelper
+import com.kony.appfactory.helper.ArtifactHelper
 import com.kony.appfactory.helper.BuildHelper
 import com.kony.appfactory.sanitizers.RegexSanitizer
 import com.kony.appfactory.sanitizers.RemoveLinesSanitizer
@@ -293,7 +293,7 @@ class BuildStatus implements Serializable {
         String resultJson = buildJson.toString()
         script.writeFile file: BUILD_STATUS_FILE_NAME, text: resultJson
         script.echoCustom("The status url path is ${statusUrl} and ${resultJson}")
-        AwsHelper.publishToS3 sourceFileName: BUILD_STATUS_FILE_NAME,
+        ArtifactHelper.publishArtifact sourceFileName: BUILD_STATUS_FILE_NAME,
                 sourceFilePath: "./", statusUrl, script
     }
 
@@ -337,13 +337,13 @@ class BuildStatus implements Serializable {
         String sanitizedLogs = sanitizer.sanitize(buildLog + '\n' + ExceptionMsg)
         script.writeFile file: CLOUD_BUILD_LOG_FILENAME, text: sanitizedLogs, encoding: 'UTF-8'
         String s3ArtifactPath = [script.env.CLOUD_ACCOUNT_ID, script.env.PROJECT_NAME, 'Builds', 'logs', script.env.BUILD_NUMBER].join('/')
-        String s3Url = AwsHelper.publishToS3 sourceFileName: CLOUD_BUILD_LOG_FILENAME,
+        String s3Url = ArtifactHelper.publishArtifact sourceFileName: CLOUD_BUILD_LOG_FILENAME,
                 sourceFilePath: "./", s3ArtifactPath, script
 
         updateLogsLink(s3ArtifactPath + "/" + CLOUD_BUILD_LOG_FILENAME)
         updateBuildStatusOnS3()
 
-        return BuildHelper.createAuthUrl(s3Url, script, true)
+        return ArtifactHelper.createAuthUrl(s3Url, script, true)
     }
 
     /**
