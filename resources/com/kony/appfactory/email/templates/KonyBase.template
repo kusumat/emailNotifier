@@ -234,8 +234,8 @@
             <td>
                 <table role="presentation" cellspacing="0" cellpadding="5" style="width:100%;">
                     <tr style="background:#35414d">
-                         <td valign:"middle" style="width:150px">
-                         <img style="width:80%;height:40px" height="40" alt="Volt MX" src="http://ec2-18-212-31-146.compute-1.amazonaws.com/email-template-icon/temenos_logo_white.png">
+                         <td valign:"middle" style="width:200px">
+                         <img style="width:80%;height:40px" height="40" alt="Volt MX" src="https://download.hclvoltmx.com/appfactory/public/HCL_Volt_MX.png">
                          </td>
                          <td style="color:#fff;margin-left:0px;border-left: 0.5pt solid #fff;" align="center" valign="middle">$productName</td>
                     </tr>
