@@ -1,4 +1,4 @@
-package com.kony.appfactory.helper
+package com.hcl.voltmx.helper
 
 class EmailBuilder {
 
