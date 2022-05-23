@@ -94,7 +94,7 @@ class NotificationsHelper implements Serializable {
         /* Get template content depending on templateType(job name) */
         
         String templateContent = getTemplateContent(script)
-        def productName = "${script.currentBuild.getBuildCauses()[0].upstreamProject}"
+        def productName = "${script.env.JOB_NAME}"
         /* Populate binding values in the base template */
         String body = BuildHelper.populateTemplate(baseTemplate, [title: subject, contentTable: templateContent, productName: productName])
         /* Return e-mail data */
@@ -122,7 +122,7 @@ class NotificationsHelper implements Serializable {
                         number  : script.currentBuild.number,
                         result  : script.currentBuild.currentResult,
                         url     : script.env.BUILD_URL,
-
+                        branch  : script.BRANCH_NAME,
                         started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
                                 System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100),
