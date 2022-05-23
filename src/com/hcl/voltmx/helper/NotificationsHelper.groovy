@@ -116,7 +116,7 @@ class NotificationsHelper implements Serializable {
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
-                projectName       : script.env.PROJECT_NAME,
+                projectName       : script.env.JOB_NAME,
                 build             : [
                         duration: script.currentBuild.rawBuild.getTimestampString(),
                         number  : script.currentBuild.number,
