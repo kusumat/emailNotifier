@@ -16,7 +16,7 @@ class NotificationsHelper implements Serializable {
      * @param templateData job specific data for the e-mail notification.
      * @param storeBody flag that used for storing content of the e-mail on workspace.
      */
-    protected static final void sendEmail(script, templateType, templateData = [:], storeBody = false) {
+    protected static final void sendEmail(script, templateType) {
         /* Check required arguments */
         (script) ?: script.echoCustom("script argument can't be null",'ERROR')
 
@@ -66,7 +66,7 @@ class NotificationsHelper implements Serializable {
      * @param templateData job specific data for the e-mail notification.
      * @return e-mail data(body, title, recipients).
      */
-    private static Map getEmailData(script, templateType, templateData) {
+    private static Map getEmailData(script) {
         /* Check required arguments */
         (script) ?: script.echoCustom("script argument can't be null",'ERROR')
         /* Location of the base template */

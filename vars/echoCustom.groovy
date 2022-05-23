@@ -1,4 +1,4 @@
-import com.kony.appfactory.helper.AppFactoryException
+
 
 def call(String printMsg, String logType = 'INFO', boolean isExit = true) {
     def ANSI_PREFIX = '';
@@ -18,7 +18,7 @@ def call(String printMsg, String logType = 'INFO', boolean isExit = true) {
             break
     }
     if (logType.equals("ERROR") && isExit)
-        throw new AppFactoryException(printMsg, 'ERROR')
+        throw new Exception(printMsg, 'ERROR')
     else
         echo "$ANSI_PREFIX [$logType] $printMsg $ANSI_PREFIX_NO_COLOR"
 }

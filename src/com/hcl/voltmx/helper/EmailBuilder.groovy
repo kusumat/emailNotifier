@@ -11,7 +11,7 @@ class EmailBuilder {
 
     @NonCPS
     static void addBuildSummaryRow(htmlBuilder, key, value) {
-        htmlBuilder.tr {
+        htmlBuilder.tr {e
             td(style: "width:280px;text-align:left;color: #858484;padding-bottom: 3px !important;", key)
             td(class: "table-value", style:"padding-bottom: 3px !important;",value)
         }

@@ -1,6 +1,6 @@
 package com.hcl.voltmx.email
 
-import com.kony.appfactory.helper.NotificationsHelper
+import com.hcl.voltmx.helper.NotificationsHelper
 
 /**
  * Implements logic for flyway builds.
@@ -26,11 +26,10 @@ class VoltMXEmailer implements Serializable {
                 /* Wrapper for colorize the console output in a pipeline build */
                 script.ansiColor('xterm') {
 
-                    script.node(j1mac2) {
+                    script.node('j1mac2') {
                         NotificationsHelper.sendEmail(script)
                     }
                 }
             }
         }
-
 }
