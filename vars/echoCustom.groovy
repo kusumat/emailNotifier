@@ -18,7 +18,7 @@ def call(String printMsg, String logType = 'INFO', boolean isExit = true) {
             break
     }
     if (logType.equals("ERROR") && isExit)
-        throw new Exception(printMsg, 'ERROR')
+        throw new Exception(printMsg)
     else
         echo "$ANSI_PREFIX [$logType] $printMsg $ANSI_PREFIX_NO_COLOR"
 }
