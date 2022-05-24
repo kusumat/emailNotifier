@@ -24,10 +24,10 @@ class BuildHelper implements Serializable {
         (template) ? template.toString() : null
     }
 
-    @NonCPS
-    protected  static String getBranchName(){
-        ${BRANCH_NAME}
-    }
+//    @NonCPS
+//    protected static String getBranchName(){
+//      return ${BRANCH_NAME}
+//    }
 
     /**
      * Gets the root cause of the build.

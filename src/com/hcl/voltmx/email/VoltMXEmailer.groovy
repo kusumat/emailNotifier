@@ -26,10 +26,11 @@ class VoltMXEmailer implements Serializable {
                 /* Wrapper for colorize the console output in a pipeline build */
                 script.ansiColor('xterm') {
 
-                    script.node('j1mac2') {
+                    script.node('Fabric_Slave') {
                         NotificationsHelper.sendEmail(script)
                     }
                 }
             }
         }
+
 }
