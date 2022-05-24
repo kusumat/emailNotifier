@@ -113,8 +113,8 @@ class NotificationsHelper implements Serializable {
         String templateContent
         /* Common properties for content */
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
-        String branchName = script.params.BRANCH_NAME
-        script.echoCustom("Branch name is : ${branchName}  branchName")
+        String branchName = script.params.BRANCH_NAME;
+        script.echoCustom("Branch name is : ${branchName}  branchName");
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
