@@ -71,8 +71,15 @@ class EmailTemplateHelper implements Serializable {
                     }
                 } else {
                     tr {
-                        td(style: "text-align:left", class: "text-color") {
-                            h4(class: "subheading", 'Build Information')
+//                        td(style: "text-align:left", class: "text-color") {
+//                            h4(class: "subheading", 'Build Information')
+//
+//                        }
+                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
+                            h4(style: "margin-bottom:0", 'Console Output')
+                            binding.build.log.each { line ->
+                                p(style:"width:950px;",line)
+                            }
                         }
                     }
 //                    tr {
