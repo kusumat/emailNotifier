@@ -124,7 +124,7 @@ class NotificationsHelper implements Serializable {
                         number  : script.currentBuild.number,
                         result  : script.currentBuild.currentResult,
                         url     : script.env.BUILD_URL,
-                        projectSourceCodeBranch  : branchName,
+                        branch  : branchName,
                         started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
                                 System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100),

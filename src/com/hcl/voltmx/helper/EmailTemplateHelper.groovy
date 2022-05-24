@@ -49,7 +49,7 @@ class EmailTemplateHelper implements Serializable {
                             if (binding.triggeredBy)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
 
-                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.projectSourceCodeBranch)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project Branch:', binding.branch)
                             EmailBuilder.addBuildSummaryAnchorRow(htmlBuilder, 'Build URL:', binding.build.url, binding.build.number)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build number:', "#" + binding.build.number)
 
