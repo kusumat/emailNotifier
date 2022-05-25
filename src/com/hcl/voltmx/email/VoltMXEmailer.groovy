@@ -9,9 +9,11 @@ class VoltMXEmailer implements Serializable {
     /* Pipeline object */
     private script
     def scmMeta = [:]
+    private boolean isUnixNode
+    private separator
     private final projectName = script.env.PROJECT_NAME
     String projectWorkspacePath = script.env.WORKSPACE
-    def checkoutRelativeTargetFolder = [projectWorkspacePath, projectName].join(separator)
+
     /**
      * Class constructor.
      *
@@ -33,7 +35,10 @@ class VoltMXEmailer implements Serializable {
                     script.node('Fabric_Slave') {
                         script.stage('Source checkout') {
                             String branchName = script.params.BRANCH_NAME;
+                            isUnixNode = script.isUnix()
+                            separator = isUnixNode ? '/' : '\\'
 
+                            def checkoutRelativeTargetFolder = [projectWorkspacePath, projectName].join(separator)
                             scmMeta = BuildHelper.checkoutProject script: script,
                                     projectRelativePath: checkoutRelativeTargetFolder,
                                     scmBranch: ${branchName},
