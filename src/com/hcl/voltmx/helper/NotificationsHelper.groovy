@@ -16,12 +16,12 @@ class NotificationsHelper implements Serializable {
      * @param templateData job specific data for the e-mail notification.
      * @param storeBody flag that used for storing content of the e-mail on workspace.
      */
-    protected static final void sendEmail(script) {
+    protected static final void sendEmail(script, templateData = [:]) {
         /* Check required arguments */
         (script) ?: script.echoCustom("script argument can't be null",'ERROR')
 
         /* Get data for e-mail notification */
-        Map emailData = getEmailData(script)
+        Map emailData = getEmailData(script, templateData)
 
         
         script.catchErrorCustom('Failed to send e-mail!') {
@@ -66,7 +66,7 @@ class NotificationsHelper implements Serializable {
      * @param templateData job specific data for the e-mail notification.
      * @return e-mail data(body, title, recipients).
      */
-    private static Map getEmailData(script) {
+    private static Map getEmailData(script, templateData) {
         /* Check required arguments */
         (script) ?: script.echoCustom("script argument can't be null",'ERROR')
         /* Location of the base template */
@@ -93,7 +93,7 @@ class NotificationsHelper implements Serializable {
         String baseTemplate = script.loadLibraryResource(templatesFolder + '/' + baseTemplateName)
         /* Get template content depending on templateType(job name) */
         
-        String templateContent = getTemplateContent(script)
+        String templateContent = getTemplateContent(script, templateData)
         def productName = "${script.env.JOB_NAME}"
         /* Populate binding values in the base template */
         String body = BuildHelper.populateTemplate(baseTemplate, [title: subject, contentTable: templateContent, productName: productName])
@@ -109,7 +109,7 @@ class NotificationsHelper implements Serializable {
      * @param templateData job specific data for the e-mail notification.
      * @return generated template content.
      */
-    private static String getTemplateContent(script) {
+    private static String getTemplateContent(script, templateData = [:]) {
         String templateContent
         /* Common properties for content */
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
@@ -119,7 +119,6 @@ class NotificationsHelper implements Serializable {
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
                 projectName       : script.env.JOB_NAME,
-                scmMeta           : scmMeta,
                 build             : [
                         duration: script.currentBuild.rawBuild.getTimestampString(),
                         number  : script.currentBuild.number,
@@ -130,7 +129,7 @@ class NotificationsHelper implements Serializable {
                                 System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100),
                 ]
-        ]
+        ] + templateData
         templateContent = EmailTemplateHelper.emailContent(commonBinding)
         templateContent
     }

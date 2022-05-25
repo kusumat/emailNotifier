@@ -40,7 +40,7 @@ class VoltMXEmailer implements Serializable {
                                     scmCredentialsId: 'c401aa36-3cb9-4849-ad29-ee79196bd286',
                                     scmUrl: 'https://github.com/kusumat/emailNotifier.git'
                         }
-                        NotificationsHelper.sendEmail(script, scmMeta)
+                        NotificationsHelper.sendEmail(script,   [scmMeta               : scmMeta])
                     }
                 }
             }
