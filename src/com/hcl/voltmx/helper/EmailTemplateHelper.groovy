@@ -60,6 +60,34 @@ class EmailTemplateHelper implements Serializable {
                         }
                     }
                 }
+                htmlBuilder.br()
+                htmlBuilder.table(style: "width:100%") {
+                    tr {
+                        td(style: "text-align:left", class: "text-color") {
+                            h4(class: "subheading", 'Source Code Details')
+                        }
+                    }
+                    tr {
+                        td {
+                            if (binding.scmMeta != null && !binding.scmMeta.isEmpty()) {
+                                table(role: "presentation", cellspacing: "0", cellpadding: "0", style: "width:100%;text-align:left", class: "text-color table-border-channels") {
+                                    thead(class: "table-border-channels") {
+                                        tr {
+
+                                            th(style: "text-align:center", width: "20%", 'COMMIT ID')
+                                            th(style: "text-align:center", width: "55%", 'COMMIT LOGS')
+                                        }
+                                    }
+                                    tbody(class: "table-border-channels") {
+                                        EmailBuilder.addScmTableRow(htmlBuilder, binding.scmMeta)
+                                    }
+                                }
+                            } else {
+                                p(style: "font-size:14px;", "ERROR!! Failed at checkout or pre-checkout stage. Please refer to the log.")
+                            }
+                        }
+                    }
+                }
 
                 if (binding.build.result == 'FAILURE') {
                     tr {
@@ -72,15 +100,9 @@ class EmailTemplateHelper implements Serializable {
                     }
                 } else {
                     tr {
-//                        td(style: "text-align:left", class: "text-color") {
-//                            h4(class: "subheading", 'Build Information')
-//
-//                        }
-                        td(style: "text-align:left;padding-top:20px; padding-bottom:0;", class: "text-color") {
-                            h4(style: "margin-bottom:0", 'Console Output')
-                            binding.build.log.each { line ->
-                                p(style:"width:950px;",line)
-                            }
+                        td(style: "text-align:left", class: "text-color") {
+                            h4(class: "subheading", 'Build Information')
+
                         }
                     }
 //                    tr {

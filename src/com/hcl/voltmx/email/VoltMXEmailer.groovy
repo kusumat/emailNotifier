@@ -8,6 +8,10 @@ import com.hcl.voltmx.helper.NotificationsHelper
 class VoltMXEmailer implements Serializable {
     /* Pipeline object */
     private script
+    def scmMeta = [:]
+    private final projectName = script.env.PROJECT_NAME
+    String projectWorkspacePath = script.env.WORKSPACE
+    def checkoutRelativeTargetFolder = [projectWorkspacePath, projectName].join(separator)
     /**
      * Class constructor.
      *
@@ -27,7 +31,16 @@ class VoltMXEmailer implements Serializable {
                 script.ansiColor('xterm') {
 
                     script.node('Fabric_Slave') {
-                        NotificationsHelper.sendEmail(script)
+                        script.stage('Source checkout') {
+                            String branchName = script.params.BRANCH_NAME;
+
+                            scmMeta = BuildHelper.checkoutProject script: script,
+                                    projectRelativePath: checkoutRelativeTargetFolder,
+                                    scmBranch: ${branchName},
+                                    scmCredentialsId: 'c401aa36-3cb9-4849-ad29-ee79196bd286',
+                                    scmUrl: 'https://github.com/kusumat/emailNotifier.git'
+                        }
+                        NotificationsHelper.sendEmail(script, scmMeta)
                     }
                 }
             }

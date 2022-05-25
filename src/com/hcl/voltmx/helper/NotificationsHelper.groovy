@@ -119,6 +119,7 @@ class NotificationsHelper implements Serializable {
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
                 projectName       : script.env.JOB_NAME,
+                scmMeta           : scmMeta,
                 build             : [
                         duration: script.currentBuild.rawBuild.getTimestampString(),
                         number  : script.currentBuild.number,
