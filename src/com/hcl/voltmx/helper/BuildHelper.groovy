@@ -106,7 +106,7 @@ class BuildHelper implements Serializable {
                 }
             }
             scmMeta = getScmDetails(script, scmBranch, scmVars, scmUrl)
-
+        script.echoCustom("$scmMeta",'INFO')
         scmMeta
     }
     @NonCPS
@@ -134,6 +134,7 @@ class BuildHelper implements Serializable {
                     for (entry in entries) {
                         for (file in entry.affectedFiles) {
                             logsList.add(file.editType.name + ": " + file.path)
+                            script.echoCustom("file path $file.path",'INFO')
                         }
                     }
                 }
