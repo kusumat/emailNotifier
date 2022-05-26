@@ -38,12 +38,12 @@ class VoltMXEmailer implements Serializable {
                             isUnixNode = script.isUnix()
                             separator = isUnixNode ? '/' : '\\'
 
-                            def checkoutRelativeTargetFolder = [projectWorkspacePath, "$TARGET_DIR"].join(separator)
+                            def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
                             scmMeta = BuildHelper.checkoutProject script: script,
                                     projectRelativePath: checkoutRelativeTargetFolder,
-                                    scmBranch: "${BRANCH_NAME}",
+                                    scmBranch: "${script.params.BRANCH_NAME}",
                                     scmCredentialsId: "${SCM_CREDENTIALS}",
-                                    scmUrl: "$REPO_URL"
+                                    scmUrl: "$script.env.REPO_URL"
                         }
                         NotificationsHelper.sendEmail(script,   [scmMeta               : scmMeta])
                     }
