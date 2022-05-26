@@ -116,6 +116,7 @@ class BuildHelper implements Serializable {
             logsList.add("Previous Build is unavailable, to fetch the diff.")
         else {
             String previousBuildBranch = script.currentBuild.getPreviousBuild().getRawBuild().actions.find { it instanceof ParametersAction }?.parameters.find { it.name == currentBuildBranch }?.value
+            script.echoCustom("previousBuildBranch $previousBuildBranch",'INFO')
             if (!currentBuildBranch.equals(previousBuildBranch))
                 logsList.add("Unable to fetch diff, your previous build is on a different branch.")
             else if (script.currentBuild.changeSets.isEmpty())
