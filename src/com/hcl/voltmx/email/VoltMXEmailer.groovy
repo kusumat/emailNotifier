@@ -38,14 +38,15 @@ class VoltMXEmailer implements Serializable {
                             isUnixNode = script.isUnix()
                             separator = isUnixNode ? '/' : '\\'
 
-                            def checkoutRelativeTargetFolder = [projectWorkspacePath, projectName].join(separator)
+                            def checkoutRelativeTargetFolder = [projectWorkspacePath, "$TARGET_DIR"].join(separator)
                             scmMeta = BuildHelper.checkoutProject script: script,
                                     projectRelativePath: checkoutRelativeTargetFolder,
-                                    scmBranch: "${branchName}",
-                                    scmCredentialsId: 'c401aa36-3cb9-4849-ad29-ee79196bd286',
-                                    scmUrl: 'https://github.com/kusumat/emailNotifier.git'
+                                    scmBranch: "${BRANCH_NAME}",
+                                    scmCredentialsId: "${SCM_CREDENTIALS}",
+                                    scmUrl: "$REPO_URL"
                         }
-                        NotificationsHelper.sendEmail(script,   [scmMeta               : scmMeta])
+                        NotificationsHelper.sendEmail(script,   [scmMeta               : scmMeta,
+                                                                 artifacts              :])
                     }
                 }
             }
