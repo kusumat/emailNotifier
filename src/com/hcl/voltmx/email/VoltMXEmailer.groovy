@@ -36,7 +36,7 @@ class VoltMXEmailer implements Serializable {
                         script.stage('Source checkout') {
                             String branchName = script.params.BRANCH_NAME;
                             String credentialID = script.env.SCM_CREDENTIALS
-                            String repo = script.env.REPO_URL
+                            String repoURL = script.env.REPO_URL
 
                             isUnixNode = script.isUnix()
                             separator = isUnixNode ? '/' : '\\'
