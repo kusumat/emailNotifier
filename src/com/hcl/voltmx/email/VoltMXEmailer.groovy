@@ -45,8 +45,7 @@ class VoltMXEmailer implements Serializable {
                                     scmCredentialsId: "${SCM_CREDENTIALS}",
                                     scmUrl: "$REPO_URL"
                         }
-                        NotificationsHelper.sendEmail(script,   [scmMeta               : scmMeta,
-                                                                 artifacts              :])
+                        NotificationsHelper.sendEmail(script,   [scmMeta               : scmMeta])
                     }
                 }
             }
