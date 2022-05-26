@@ -109,13 +109,20 @@ class BuildHelper implements Serializable {
 
         scmMeta
     }
+    @NonCPS
+    private static getCurrentParamName(script, newParam, oldParam) {
+        def paramName = script.params.containsKey(newParam) ? newParam : oldParam
+        return paramName
+    }
+
     private static getScmDetails(script, currentBuildBranch, scmVars, scmUrl) {
-       // def sourceCodeBranchParamName = getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
+        def sourceCodeBranchParamName = "BRANCH_NAME"
+                //getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
         List<String> logsList = new ArrayList<String>();
         if (script.currentBuild.getPreviousBuild() == null)
             logsList.add("Previous Build is unavailable, to fetch the diff.")
         else {
-            String previousBuildBranch = script.currentBuild.getPreviousBuild().getRawBuild().actions.find { it instanceof ParametersAction }?.parameters.find { it.name == currentBuildBranch }?.value
+            String previousBuildBranch = script.currentBuild.getPreviousBuild().getRawBuild().actions.find { it instanceof ParametersAction }?.parameters.find { it.name == sourceCodeBranchParamName }?.value
             script.echoCustom("previousBuildBranch $previousBuildBranch",'INFO')
             if (!currentBuildBranch.equals(previousBuildBranch))
                 logsList.add("Unable to fetch diff, your previous build is on a different branch.")
