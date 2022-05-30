@@ -124,6 +124,7 @@ class NotificationsHelper implements Serializable {
             filename = it.getFileName()
             msg += "- [${filename}](${artifactUrl}${it.getFileName()})\n"
         }
+        script.echoCustom("artifacts : ${msg} ");
 
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
