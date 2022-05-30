@@ -117,7 +117,8 @@ class NotificationsHelper implements Serializable {
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
         String branchName = script.params.BRANCH_NAME;
         script.echoCustom("Branch name is : ${branchName}  branchName");
-        def filename, msg
+        def filename
+        def msg = ''
         def artifactUrl = script.env.BUILD_URL + "artifact/" + script.env.ARTIFACT_PREPATH + "/"
         script.currentBuild.rawBuild.getArtifacts().each {
             filename = it.getFileName()
