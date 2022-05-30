@@ -8,7 +8,7 @@ import com.hcl.voltmx.helper.BuildHelper
 class VoltMXEmailer implements Serializable {
     /* Pipeline object */
     private script
-    def scmMeta = [:]
+
     private boolean isUnixNode
     private separator
     private final projectName = script.env.PROJECT_NAME
@@ -27,28 +27,33 @@ class VoltMXEmailer implements Serializable {
          * This method is called from the job and contains whole job's pipeline logic.
          */
         protected final void runPipeline() {
+            def scmMeta = [:]
             /* Wrapper for injecting timestamp to the build console output */
             script.timestamps {
                 /* Wrapper for colorize the console output in a pipeline build */
                 script.ansiColor('xterm') {
 
                     script.node('Fabric_Slave') {
-                        script.stage('Source checkout') {
-                            String branchName = script.params.BRANCH_NAME;
-                            String credentialID = script.params.SCM_CREDENTIALS
-                            String repoURL = script.env.REPO_URL
+                        try {
+                            script.stage('Source checkout') {
+                                String branchName = script.params.BRANCH_NAME;
+                                String credentialID = script.params.SCM_CREDENTIALS
+                                String repoURL = script.env.REPO_URL
 
-                            isUnixNode = script.isUnix()
-                            separator = isUnixNode ? '/' : '\\'
+                                isUnixNode = script.isUnix()
+                                separator = isUnixNode ? '/' : '\\'
 
-                            def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
-                            scmMeta = BuildHelper.checkoutProject script: script,
-                                    projectRelativePath: checkoutRelativeTargetFolder,
-                                    scmBranch: branchName,
-                                    scmCredentialsId: credentialID,
-                                    scmUrl: repoURL
+                                def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
+                                scmMeta = BuildHelper.checkoutProject script: script,
+                                        projectRelativePath: checkoutRelativeTargetFolder,
+                                        scmBranch: branchName,
+                                        scmCredentialsId: credentialID,
+                                        scmUrl: repoURL
+                            }
                         }
-                        NotificationsHelper.sendEmail(script,   [scmMeta               : scmMeta])
+                        finally {
+                            NotificationsHelper.sendEmail(script, [scmMeta: scmMeta])
+                        }
                     }
                 }
             }

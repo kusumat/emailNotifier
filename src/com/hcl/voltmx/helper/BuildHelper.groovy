@@ -129,7 +129,7 @@ class BuildHelper implements Serializable {
             else if (script.currentBuild.changeSets.isEmpty())
                 logsList.add("No diff is available")
             else {
-                def changeLogSets = script.currentBuild.previousBuild.changeSets
+                def changeLogSets = script.currentBuild.rawBuild.changeSets
                 for (entries in changeLogSets) {
                     for (entry in entries) {
                         for (file in entry.affectedFiles) {
