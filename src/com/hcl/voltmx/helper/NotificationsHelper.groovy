@@ -118,11 +118,10 @@ class NotificationsHelper implements Serializable {
         String branchName = script.params.BRANCH_NAME;
         script.echoCustom("Branch name is : ${branchName}  branchName");
         def filename, msg
-        def artifactUrl = script.env.BUILD_URL + "artifact/" + script.env.ARTIFACT_PREPATH
-        msg += "\n **Artifacts:**\n"
+        def artifactUrl = script.env.BUILD_URL + "artifact/" + script.env.ARTIFACT_PREPATH + "/"
         script.currentBuild.rawBuild.getArtifacts().each {
             filename = it.getFileName()
-            msg += "(${artifactUrl}${it.getFileName()})\n"
+            msg += "${artifactUrl}${it.getFileName()}\n"
         }
         script.echoCustom("artifacts : ${msg} ");
 
