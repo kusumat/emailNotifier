@@ -52,7 +52,7 @@ class VoltMXEmailer implements Serializable {
                             }
                         }
                         finally {
-                            NotificationsHelper.sendEmail(script, [scmMeta: scmMeta])
+                           NotificationsHelper.sendEmail(script, [scmMeta: scmMeta])
                         }
                     }
                 }

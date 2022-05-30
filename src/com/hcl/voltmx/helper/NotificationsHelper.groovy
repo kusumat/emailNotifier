@@ -117,6 +117,14 @@ class NotificationsHelper implements Serializable {
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
         String branchName = script.params.BRANCH_NAME;
         script.echoCustom("Branch name is : ${branchName}  branchName");
+        def filename, msg
+        def artifactUrl = env.BUILD_URL + "artifact/"
+        msg += "\n **Artifacts:**\n"
+        script.currentBuild.rawBuild.getArtifacts().each {
+            filename = it.getFileName()
+            msg += "- [${filename}](${artifactUrl}${it.getFileName()})\n"
+        }
+
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
                 triggeredBy       : BuildHelper.getBuildCause(script.currentBuild.rawBuild.getCauses()),
@@ -130,6 +138,7 @@ class NotificationsHelper implements Serializable {
                         started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
                                 System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100),
+                        artifact     : msg
                 ]
         ] + templateData
         templateContent = EmailTemplateHelper.emailContent(commonBinding)
