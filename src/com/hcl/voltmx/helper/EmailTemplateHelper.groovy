@@ -46,6 +46,7 @@ class EmailTemplateHelper implements Serializable {
                     td {
                         table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%", class: "text-color table-border cell-spacing") {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Project:', binding.projectName)
+                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build Status:', binding.build.result)
                             if (binding.triggeredBy)
                                 EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Triggered by:', binding.triggeredBy)
 
@@ -105,8 +106,8 @@ class EmailTemplateHelper implements Serializable {
 
                         }
                     }
-//                    tr {
-//                        td {
+                    tr {
+                        td {
 //                            if(binding.flywayResults != null && !binding.flywayResults.isEmpty()) {
 //                                table(role :"presentation", cellspacing :"0", cellpadding :"0", style: "width:100%;text-align:left", class: "text-color table-border-channels") {
 //                                    thead(class:"table-border-channels") {
@@ -120,8 +121,8 @@ class EmailTemplateHelper implements Serializable {
 //                                    }
 //                                }
 //                            }
-//                        }
-//                    }
+                        }
+                    }
                 }
             }
         }
