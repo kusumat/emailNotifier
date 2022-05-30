@@ -80,7 +80,8 @@ class NotificationsHelper implements Serializable {
             Person who is responsible for provisioning of the environment will have a field for providing value for
             DEFAULT_RECIPIENTS property.
          */
-        String recipients = (script.params.containsKey("RECIPIENTS_LIST")) ? ((script.params.RECIPIENTS_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS') : script.env["RECIPIENTS_LIST"]
+        String recipients = script.env.RECIPIENTS_LIST
+        //String recipients = (script.params.containsKey("RECIPIENTS_LIST")) ? ((script.params.RECIPIENTS_LIST?.trim()) ?: '$DEFAULT_RECIPIENTS') : script.env["RECIPIENTS_LIST"]
         /*
             Subject of the e-mail, is generated from BUILD_TAG(jenkins-${JOB_NAME}-${BUILD_NUMBER}) environment name
             and result status of the job.
