@@ -36,7 +36,7 @@ class VoltMXEmailer implements Serializable {
                     script.node('Fabric_Slave') {
                         try {
                             script.stage('Source checkout') {
-                                String branchName = script.params.BRANCH_NAME || script.params.Branch_Name
+                                String branchName = script.params.BRANCH_NAME || script.params.Branch_Name || script.params.GIT_BRANCH
                                 String credentialID = script.params.SCM_CREDENTIALS
                                 String repoURL = script.env.REPO_URL
 
@@ -52,9 +52,9 @@ class VoltMXEmailer implements Serializable {
                             }
                         }
                         finally {
+                            def branchinfo = [:]
                            if(projectName.contains("VisualizerStarter")){
-                               def branchinfo = [:]
-                               def addedfileBranch = "Added-file"
+                              def addedfileBranch = "Added-file"
                                branchinfo.put("KONYIQ_BRANCH", script.params.KONYIQ_BRANCH)
                                branchinfo.put("Branch_Name_Installer", script.params.Branch_Name_Installer)
                                branchinfo.put("HIKES_BRANCH", script.params.HIKES_BRANCH)
