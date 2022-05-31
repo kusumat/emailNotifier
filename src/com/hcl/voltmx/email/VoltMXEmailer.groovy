@@ -36,7 +36,7 @@ class VoltMXEmailer implements Serializable {
                     script.node('Fabric_Slave') {
                         try {
                             script.stage('Source checkout') {
-                                String branchName = script.params.BRANCH_NAME;
+                                String branchName = script.params.BRANCH_NAME || script.params.Branch_Name
                                 String credentialID = script.params.SCM_CREDENTIALS
                                 String repoURL = script.env.REPO_URL
 
@@ -44,7 +44,6 @@ class VoltMXEmailer implements Serializable {
                                 separator = isUnixNode ? '/' : '\\'
 
                                 def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
-
                                 scmMeta = BuildHelper.checkoutProject script: script,
                                         projectRelativePath: checkoutRelativeTargetFolder,
                                         scmBranch: branchName,
@@ -53,7 +52,18 @@ class VoltMXEmailer implements Serializable {
                             }
                         }
                         finally {
-                           NotificationsHelper.sendEmail(script, [scmMeta: scmMeta])
+                           if(projectName.contains("VisualizerStarter")){
+                               def branchinfo = [:]
+                               def addedfileBranch = "Added-file"
+                               branchinfo.put("KONYIQ_BRANCH", script.params.KONYIQ_BRANCH)
+                               branchinfo.put("Branch_Name_Installer", script.params.Branch_Name_Installer)
+                               branchinfo.put("HIKES_BRANCH", script.params.HIKES_BRANCH)
+                               branchinfo.put("AUTOMATIONRECORDERADDON_BRANCH", script.params.AUTOMATIONRECORDERADDON_BRANCH)
+                               branchinfo.put("KONYCOP_BRANCH", script.params.KONYCOP_BRANCH)
+                               branchinfo.put("Added-file", script.params.addedfileBranch)
+                           }
+
+                            NotificationsHelper.sendEmail(script, [scmMeta: scmMeta, branchinfo : branchinfo])
                         }
                     }
                 }

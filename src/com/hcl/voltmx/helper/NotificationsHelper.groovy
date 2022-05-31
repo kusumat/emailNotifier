@@ -121,6 +121,8 @@ class NotificationsHelper implements Serializable {
         def msg = ''
         def artifactUrl = script.env.BUILD_URL + "artifact/"
       //  def artifacts = script.currentBuild.rawBuild.getArtifacts()
+        String projName = script.env.PROJECT_NAME
+
 
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
