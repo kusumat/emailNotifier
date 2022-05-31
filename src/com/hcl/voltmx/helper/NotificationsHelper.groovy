@@ -120,11 +120,7 @@ class NotificationsHelper implements Serializable {
         def filename
         def msg = ''
         def artifactUrl = script.env.BUILD_URL + "artifact/" + script.env.ARTIFACT_PREPATH + "/"
-        script.currentBuild.rawBuild.getArtifacts().each {
-            filename = it.getFileName()
-            msg += "${artifactUrl}${it.getFileName()}\n"
-        }
-        script.echoCustom("artifacts : ${msg} ");
+        def artifacts = script.currentBuild.rawBuild.getArtifacts()
 
         Map commonBinding = [
                 notificationHeader: modifiedBuildTag,
@@ -139,7 +135,7 @@ class NotificationsHelper implements Serializable {
                         started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
                                 System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100),
-                        artifact     : msg
+                        artifact     : artifacts
                 ]
         ] + templateData
         templateContent = EmailTemplateHelper.emailContent(commonBinding)

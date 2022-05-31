@@ -102,9 +102,12 @@ class EmailTemplateHelper implements Serializable {
                 } else {
                     tr {
                         td(style: "text-align:left", class: "text-color") {
-                            h4(class: "subheading", 'Build Information')
-                            p(style:"width:950px;",binding.build.artifact)
-
+                            h4(class: "subheading", 'Build Artifacts')
+                            binding.build.artifact..each {
+                                tr {
+//                                   th(style: "text-align:center", "${artifactUrl}${it.getFileName()}")
+                                }
+                            }
                         }
                     }
                     tr {
