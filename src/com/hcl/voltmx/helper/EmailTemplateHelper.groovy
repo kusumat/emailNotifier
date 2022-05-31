@@ -103,6 +103,7 @@ class EmailTemplateHelper implements Serializable {
                     tr {
                         td(style: "text-align:left", class: "text-color") {
                             h4(class: "subheading", 'Build Artifacts URL')
+
                             p(style:"width:950px;",binding.build.artifactUrl)
 
                         }
