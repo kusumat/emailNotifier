@@ -11,7 +11,7 @@ class VoltMXEmailer implements Serializable {
 
     private boolean isUnixNode
     private separator
-    private final projectName = script.env.PROJECT_NAME
+    private final projectName = script.env.JOB_NAME
     String projectWorkspacePath = script.env.WORKSPACE
 
     /**
