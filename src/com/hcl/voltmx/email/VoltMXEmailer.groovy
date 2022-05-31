@@ -36,7 +36,9 @@ class VoltMXEmailer implements Serializable {
                     script.node('Fabric_Slave') {
                         try {
                             script.stage('Source checkout') {
-                                String branchName = script.params.BRANCH_NAME || script.params.Branch_Name || script.params.GIT_BRANCH
+                                def paramsList = ['Branch_Name','GIT_BRANCH']
+                                def branchName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, paramsList, 'BRANCH_NAME')
+                                String branch = script.params.branchName
                                 String credentialID = 'c401aa36-3cb9-4849-ad29-ee79196bd286'
                                 String repoURL = script.env.REPO_URL
 
@@ -46,7 +48,7 @@ class VoltMXEmailer implements Serializable {
                                 def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
                                 scmMeta = BuildHelper.checkoutProject script: script,
                                         projectRelativePath: checkoutRelativeTargetFolder,
-                                        scmBranch: branchName,
+                                        scmBranch: branch,
                                         scmCredentialsId: credentialID,
                                         scmUrl: repoURL
                             }

@@ -114,7 +114,15 @@ class BuildHelper implements Serializable {
         def paramName = script.params.containsKey(newParam) ? newParam : oldParam
         return paramName
     }
-
+    @NonCPS
+    private static getParamNameOrDefaultFromProbableParamList(script, paramList = [], defaultParam) {
+        for (param in paramList) {
+            if (script.params.containsKey(param)) {
+                return param
+            }
+        }
+        return defaultParam
+    }
     private static getScmDetails(script, currentBuildBranch, scmVars, scmUrl) {
         def sourceCodeBranchParamName = "BRANCH_NAME"
                 //getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
@@ -157,6 +165,7 @@ class BuildHelper implements Serializable {
 
         (template) ? template.toString() : null
     }
+
 
 //    @NonCPS
 //    protected static String getBranchName(){

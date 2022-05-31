@@ -115,8 +115,11 @@ class NotificationsHelper implements Serializable {
         String templateContent
         /* Common properties for content */
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
-        String branchName = script.params.BRANCH_NAME;
-        script.echoCustom("Branch name is : ${branchName}  branchName");
+        def paramsList = ['Branch_Name','GIT_BRANCH']
+        def branchName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, paramsList, 'BRANCH_NAME')
+        String branch = script.params.branchName
+       // String branchName = script.params.BRANCH_NAME;
+        script.echoCustom("Branch name is : ${branch}  branch");
         def filename
         def msg = ''
         def artifactUrl = script.env.BUILD_URL + "artifact/"
@@ -133,7 +136,7 @@ class NotificationsHelper implements Serializable {
                         number  : script.currentBuild.number,
                         result  : script.currentBuild.currentResult,
                         url     : script.env.BUILD_URL,
-                        branch  : branchName,
+                        branch  : branch,
                         started : script.currentBuild.rawBuild.getTime().toLocaleString() + ' ' +
                                 System.getProperty('user.timezone').toUpperCase(),
                         log     : script.currentBuild.rawBuild.getLog(100),
