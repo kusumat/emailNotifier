@@ -111,8 +111,9 @@ class BuildHelper implements Serializable {
         scmMeta
     }
 
-    private static getScmDetails(script, scmVars) {
+    private static getScmInfo(script, scmVars) {
         def sourceCodeBranchParamName = 'BRANCH_NAME'
+        script.echoCustom("")
         def branch = scmVars.GIT_BRANCH
         script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
         //getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
@@ -146,9 +147,11 @@ class BuildHelper implements Serializable {
         args.script.echoCustom("args details $args",'INFO')
         def script = args.script
         def scmMeta = [:]
-        def scmvars = args.scmVars
+        def scmvars  = [:]
+        scmvars = args.scmVars
         script.echoCustom("scmvars ${scmvars}",'INFO')
-        scmMeta = getScmDetails(script, scmvars )
+        scmvars.each {key,value -> script.echoCustom($key,)}
+        scmMeta = getScmInfo(script, scmvars)
         script.echoCustom("scmmeta ${scmMeta}",'INFO')
         scmMeta
     }
