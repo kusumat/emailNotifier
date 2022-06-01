@@ -39,14 +39,14 @@ class VoltMXEmailer implements Serializable {
 //                                def paramsList = ['Branch_Name','GIT_BRANCH']
 //                                def branchName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, paramsList, 'BRANCH_NAME')
                                 //script.echoCustom("branch param is $branchName",'INFO')
-                                def branch = null
-                                if(script.env.BRANCH_NAME != null)
-                                     branch = script.env.BRANCH_NAME
-                                else if (script.env.GIT_BRANCH !=null)
-                                    branch = script.env.GIT_BRANCH
-                                else if (script.env.Branch_Name !=null)
-                                    branch = script.env.Branch_Name
-
+//                                def branch
+//                                if(script.env.BRANCH_NAME != null)
+//                                     branch = script.env.BRANCH_NAME
+//                                else if (script.env.GIT_BRANCH !=null)
+//                                    branch = script.env.GIT_BRANCH
+//                                else if (script.env.Branch_Name !=null)
+//                                    branch = script.env.Branch_Name
+                                String branchName = script.params.BRANCH_NAME || script.params.Branch_Name || script.params.GIT_BRANCH
                                 script.echoCustom("branch  is $branch",'INFO')
                                 String credentialID = script.params.SCM_CREDENTIALS
                                 String repoURL = script.env.REPO_URL
