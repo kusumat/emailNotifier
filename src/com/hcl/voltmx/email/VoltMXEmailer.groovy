@@ -36,6 +36,10 @@ class VoltMXEmailer implements Serializable {
                     script.node('Fabric_Slave') {
                         try {
                             script.stage('Source checkout') {
+                                script.params.each { key, value ->
+                                    script.echoCustom("key is $key",'INFO')
+                                    script.echoCustom("value is $value",'INFO')
+                                }
 //                                def paramsList = ['Branch_Name','GIT_BRANCH']
 //                                def branchName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, paramsList, 'BRANCH_NAME')
                                 //script.echoCustom("branch param is $branchName",'INFO')
