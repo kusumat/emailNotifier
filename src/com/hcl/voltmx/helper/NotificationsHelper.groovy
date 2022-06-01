@@ -117,7 +117,7 @@ class NotificationsHelper implements Serializable {
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
         def paramsList = ['Branch_Name','GIT_BRANCH']
         def branchName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, paramsList, 'BRANCH_NAME')
-        String branch = script.params.branchName
+        String branch = script.env.branchName
        // String branchName = script.params.BRANCH_NAME;
         script.echoCustom("Branch name is : ${branch}  branch");
         def filename
