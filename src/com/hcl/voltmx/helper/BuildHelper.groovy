@@ -125,7 +125,7 @@ class BuildHelper implements Serializable {
         return defaultParam
     }
     private static getScmDetails(script, currentBuildBranch, scmVars, scmUrl) {
-        def sourceCodeBranchParamName = currentBuildBranch
+        def sourceCodeBranchParamName = 'BRANCH_NAME'
         script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
                 //getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
         List<String> logsList = new ArrayList<String>();
