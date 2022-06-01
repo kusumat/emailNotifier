@@ -57,7 +57,7 @@ class VoltMXEmailer implements Serializable {
                                 def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
                                 scmMeta = BuildHelper.checkoutProject script: script,
                                         projectRelativePath: checkoutRelativeTargetFolder,
-                                        scmBranch: branch,
+                                        scmBranch: branchName,
                                         scmCredentialsId: credentialID,
                                         scmUrl: repoURL
                             }
