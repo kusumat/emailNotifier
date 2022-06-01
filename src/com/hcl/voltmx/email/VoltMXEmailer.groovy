@@ -39,7 +39,7 @@ class VoltMXEmailer implements Serializable {
 //                                def paramsList = ['Branch_Name','GIT_BRANCH']
 //                                def branchName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, paramsList, 'BRANCH_NAME')
                                 //script.echoCustom("branch param is $branchName",'INFO')
-                                String branch = script.env.BRANCH_NAME
+                                String branch = script.env.BRANCH_NAME || script.env.GIT_BRANCH || script.env.Branch_Name
                                 script.echoCustom("branch  is $branch",'INFO')
                                 String credentialID = script.params.SCM_CREDENTIALS
                                 String repoURL = script.env.REPO_URL
@@ -59,12 +59,12 @@ class VoltMXEmailer implements Serializable {
                             def branchinfo = [:]
                            if(projectName.contains("VisualizerStarter")){
                               def addedfileBranch = "Added-file"
-                               branchinfo.put("KONYIQ_BRANCH", script.params.KONYIQ_BRANCH)
-                               branchinfo.put("Branch_Name_Installer", script.params.Branch_Name_Installer)
-                               branchinfo.put("HIKES_BRANCH", script.params.HIKES_BRANCH)
-                               branchinfo.put("AUTOMATIONRECORDERADDON_BRANCH", script.params.AUTOMATIONRECORDERADDON_BRANCH)
-                               branchinfo.put("KONYCOP_BRANCH", script.params.KONYCOP_BRANCH)
-                               branchinfo.put("Added-file", script.params.addedfileBranch)
+                               branchinfo.put("KONYIQ_BRANCH", script.env.KONYIQ_BRANCH)
+                               branchinfo.put("Branch_Name_Installer", script.env.Branch_Name_Installer)
+                               branchinfo.put("HIKES_BRANCH", script.env.HIKES_BRANCH)
+                               branchinfo.put("AUTOMATIONRECORDERADDON_BRANCH", script.env.AUTOMATIONRECORDERADDON_BRANCH)
+                               branchinfo.put("KONYCOP_BRANCH", script.env.KONYCOP_BRANCH)
+                               branchinfo.put("Added-file", script.env.addedfileBranch)
                            }
 
                             NotificationsHelper.sendEmail(script, [scmMeta: scmMeta, branchinfo : branchinfo])
