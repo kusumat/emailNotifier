@@ -26,7 +26,8 @@ class NotificationsHelper implements Serializable {
         
         script.catchErrorCustom('Failed to send e-mail!') {
             /* Send e-mail notification with provided values */
-            script.emailext body: emailData.body, recipientProviders: [requestor()], subject: emailData.subject, to: emailData.recipients
+            script.emailext body: emailData.body, recipientProviders: [$class: 'RequesterRecipientProvider'], subject: emailData.subject, to: emailData.recipients
+
         }
     }
 
