@@ -95,6 +95,7 @@ class BuildHelper implements Serializable {
             String scmCredentialsId = args.scmCredentialsId
             String scmUrl = args.scmUrl
             String scmBranch = args.scmBranch
+        script.echoCustom("scmBranch  is $scmBranch",'INFO')
             script.catchErrorCustom('Failed to checkout the project') {
                 // re-try 3 times in case code checkout fails due to various reasons.
                 script.retry(3) {
@@ -125,6 +126,7 @@ class BuildHelper implements Serializable {
     }
     private static getScmDetails(script, currentBuildBranch, scmVars, scmUrl) {
         def sourceCodeBranchParamName = currentBuildBranch
+        script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
                 //getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
         List<String> logsList = new ArrayList<String>();
         if (script.currentBuild.getPreviousBuild() == null)

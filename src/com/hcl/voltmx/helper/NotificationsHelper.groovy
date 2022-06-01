@@ -26,7 +26,7 @@ class NotificationsHelper implements Serializable {
         
         script.catchErrorCustom('Failed to send e-mail!') {
             /* Send e-mail notification with provided values */
-            script.emailext body: emailData.body, subject: emailData.subject, to: emailData.recipients
+            script.emailext body: emailData.body, recipientProviders: [requestor()], subject: emailData.subject, to: emailData.recipients
         }
     }
 
@@ -115,8 +115,7 @@ class NotificationsHelper implements Serializable {
         String templateContent
         /* Common properties for content */
         String modifiedBuildTag = script.env.BUILD_TAG.minus("jenkins-");
-        def paramsList = ['Branch_Name','GIT_BRANCH']
-        def branchName = BuildHelper.getParamNameOrDefaultFromProbableParamList(script, paramsList, 'BRANCH_NAME')
+
         String branch = script.env.BRANCH_NAME
        // String branchName = script.params.BRANCH_NAME;
         script.echoCustom("Branch name is : ${branch}  branch");
