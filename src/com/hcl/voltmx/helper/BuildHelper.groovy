@@ -145,7 +145,9 @@ class BuildHelper implements Serializable {
         args.script.echoCustom("args details $args",'INFO')
         def script = args.script
         def scmMeta = [:]
-        scmMeta = getScmDetails(script, args.scmVars)
+        def scmvars = args.scmVars
+        script.echoCustom("scmvars ${scmvars}",'INFO')
+        scmMeta = getScmDetails(script, scmvars )
         script.echoCustom("scmmeta ${scmMeta}",'INFO')
         scmMeta
     }
