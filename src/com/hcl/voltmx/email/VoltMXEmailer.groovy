@@ -47,7 +47,7 @@ class VoltMXEmailer implements Serializable {
 //                                else if (script.env.Branch_Name !=null)
 //                                    branch = script.env.Branch_Name
                                 String branchName = script.params.BRANCH_NAME || script.params.Branch_Name || script.params.GIT_BRANCH
-                                script.echoCustom("branch  is $branch",'INFO')
+                                script.echoCustom("branch  is $branchName",'INFO')
                                 String credentialID = script.params.SCM_CREDENTIALS
                                 String repoURL = script.env.REPO_URL
 
