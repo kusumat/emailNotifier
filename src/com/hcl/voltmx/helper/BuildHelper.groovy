@@ -142,11 +142,11 @@ class BuildHelper implements Serializable {
 
 
     protected static void prepareScmDetails(Map args) {
-        script.echoCustom("args details $args",'INFO')
+        args.script.echoCustom("args details $args",'INFO')
         def script = args.script
-        def scmVars = null
+        def scmMeta = [:]
         scmMeta = getScmDetails(script, args.scmVars)
-        script.echoCustom("scmmeta $scmMeta",'INFO')
+        script.echoCustom("scmmeta ${scmMeta}",'INFO')
         scmMeta
     }
     @NonCPS
