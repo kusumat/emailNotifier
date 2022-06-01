@@ -35,7 +35,7 @@ class VoltMXEmailer implements Serializable {
 
                     script.node('Fabric_Slave') {
                         try {
-                            script.stage('Source checkout') {
+                            script.stage('Preparing Email') {
 //
                                 String branchName = script.env.BRANCH_NAME
                                 script.echoCustom("branch  is $branchName",'INFO')
@@ -45,12 +45,18 @@ class VoltMXEmailer implements Serializable {
                                 isUnixNode = script.isUnix()
                                 separator = isUnixNode ? '/' : '\\'
 
+
+                                def details = script.env.checkoutDetails
+                                script.echoCustom("checkout details $details",'INFO')
                                 def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
-                                scmMeta = BuildHelper.checkoutProject script: script,
+                                /*scmMeta = BuildHelper.checkoutProject script: script,
                                         projectRelativePath: checkoutRelativeTargetFolder,
                                         scmBranch: branchName,
                                         scmCredentialsId: credentialID,
-                                        scmUrl: repoURL
+                                        scmUrl: repoURL*/
+                                scmMeta = BuildHelper.prepareScmDetails script: script,
+                                          scmVars: script.env.checkoutDetails
+
                             }
                         }
                         finally {

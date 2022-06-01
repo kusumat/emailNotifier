@@ -106,8 +106,47 @@ class BuildHelper implements Serializable {
                     )
                 }
             }
-            scmMeta = getScmDetails(script, scmBranch, scmVars, scmUrl)
+         //   scmMeta = getScmDetails(script, scmVars)
         script.echoCustom("$scmMeta",'INFO')
+        scmMeta
+    }
+
+    private static getScmDetails(script, scmVars) {
+        def sourceCodeBranchParamName = 'BRANCH_NAME'
+        script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
+        //getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
+        List<String> logsList = new ArrayList<String>();
+        if (script.currentBuild.getPreviousBuild() == null)
+            logsList.add("Previous Build is unavailable, to fetch the diff.")
+        else {
+            String previousBuildBranch = script.currentBuild.getPreviousBuild().getRawBuild().actions.find { it instanceof ParametersAction }?.parameters.find { it.name == sourceCodeBranchParamName }?.value
+            script.echoCustom("previousBuildBranch $previousBuildBranch",'INFO')
+            if (!scmVars.GIT_BRANCH.equals(previousBuildBranch))
+                logsList.add("Unable to fetch diff, your previous build is on a different branch.")
+            else if (script.currentBuild.changeSets.isEmpty())
+                logsList.add("No diff is available")
+            else {
+                def changeLogSets = script.currentBuild.rawBuild.changeSets
+                for (entries in changeLogSets) {
+                    for (entry in entries) {
+                        for (file in entry.affectedFiles) {
+                            logsList.add(file.editType.name + ": " + file.path)
+                            script.echoCustom("file path $file.path",'INFO')
+                        }
+                    }
+                }
+            }
+        }
+        return [commitID: scmVars.GIT_COMMIT, scmUrl: scmVars.GIT_URL, commitLogs: logsList]
+    }
+
+
+    protected static void prepareScmDetails(Map args) {
+        script.echoCustom("args details $args",'INFO')
+        def script = args.script
+        def scmVars = null
+        scmMeta = getScmDetails(script, args.scmVars)
+        script.echoCustom("scmmeta $scmMeta",'INFO')
         scmMeta
     }
     @NonCPS
