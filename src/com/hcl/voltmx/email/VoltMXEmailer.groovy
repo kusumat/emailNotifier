@@ -33,11 +33,13 @@ class VoltMXEmailer implements Serializable {
                     script.node('Fabric_Slave') {
                         try {
                             script.stage('Preparing Email') {
-                                def kmsmeta = script.env.SCM_META_MAP
+                                def kmsmeta = [:]
+                                kmsmeta = script.env.SCM_META_MAP
                                 script.echoCustom("kms meta"+kmsmeta)
-                                for(def mapobj in kmsmeta){
-                                    script.echoCustom("key = ${mapobj.key}, value = ${mapobj.value}")
+                                kmsmeta.each {
+                                    script.echoCustom("key ="+${it.key}+","+"Value="+${it.value})
                                 }
+
                                 SCM_META = BuildHelper.prepareScmDetails script: script,
                                           scmVars: kmsmeta.KMS
                             }
