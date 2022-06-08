@@ -57,16 +57,6 @@ class EmailTemplateHelper implements Serializable {
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'SCM Branch:', binding.build.branch)
-                            if(binding.branchinfo != null && !binding.branchinfo.isEmpty()){
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'KONYIQ  Branch:', binding.branchinfo.KONYIQ_BRANCH)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Installer Branch:', binding.branchinfo.Branch_Name_Installer)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Hikes Branch:', binding.branchinfo.HIKES_BRANCH)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Automation Recorder AddOn Branch:', binding.branchinfo.AUTOMATIONRECORDERADDON_BRANCH)
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Kony Cop Branch:', binding.branchinfo.KONYCOP_BRANCH)
-                                def addedfileBranch = "Added-file"
-                                EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Added File Branch:', binding.branchinfo.addedfileBranch)
-                            }
-
                         }
                     }
                 }

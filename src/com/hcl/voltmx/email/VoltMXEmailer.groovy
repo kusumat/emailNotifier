@@ -27,51 +27,19 @@ class VoltMXEmailer implements Serializable {
          * This method is called from the job and contains whole job's pipeline logic.
          */
         protected final void runPipeline() {
-            def scmMeta = [:]
-            /* Wrapper for injecting timestamp to the build console output */
+            def SCM_META = [:]
             script.timestamps {
-                /* Wrapper for colorize the console output in a pipeline build */
                 script.ansiColor('xterm') {
-
                     script.node('Fabric_Slave') {
                         try {
                             script.stage('Preparing Email') {
-//
-                                String branchName = script.env.BRANCH_NAME
-                                script.echoCustom("branch  is $branchName",'INFO')
-                                String credentialID = script.params.SCM_CREDENTIALS
-                                String repoURL = script.env.REPO_URL
-
-                                isUnixNode = script.isUnix()
-                                separator = isUnixNode ? '/' : '\\'
-
-
-                                def details = script.env.checkoutDetails
-                                script.echoCustom("checkout details $details",'INFO')
-                                def checkoutRelativeTargetFolder = [projectWorkspacePath, "$script.env.TARGET_DIR"].join(separator)
-                                /*scmMeta = BuildHelper.checkoutProject script: script,
-                                        projectRelativePath: checkoutRelativeTargetFolder,
-                                        scmBranch: branchName,
-                                        scmCredentialsId: credentialID,
-                                        scmUrl: repoURL*/
-                                scmMeta = BuildHelper.prepareScmDetails script: script,
-                                          scmVars: script.env.checkoutDetails
-
+                                def kmsmeta = script.env.SCM_META_MAP
+                                SCM_META = BuildHelper.prepareScmDetails script: script,
+                                          scmVars: kmsmeta.KMS
                             }
                         }
                         finally {
-                            def branchinfo = [:]
-                           if(projectName.contains("VisualizerStarter")){
-                              def addedfileBranch = "Added-file"
-                               branchinfo.put("KONYIQ_BRANCH", script.env.KONYIQ_BRANCH)
-                               branchinfo.put("Branch_Name_Installer", script.env.Branch_Name_Installer)
-                               branchinfo.put("HIKES_BRANCH", script.env.HIKES_BRANCH)
-                               branchinfo.put("AUTOMATIONRECORDERADDON_BRANCH", script.env.AUTOMATIONRECORDERADDON_BRANCH)
-                               branchinfo.put("KONYCOP_BRANCH", script.env.KONYCOP_BRANCH)
-                               branchinfo.put("Added-file", script.env.addedfileBranch)
-                           }
-
-                            NotificationsHelper.sendEmail(script, [scmMeta: scmMeta, branchinfo : branchinfo])
+                            NotificationsHelper.sendEmail(script, [scmMeta: SCM_META])
                         }
                     }
                 }
