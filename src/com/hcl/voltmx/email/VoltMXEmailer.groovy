@@ -74,13 +74,9 @@ class VoltMXEmailer implements Serializable {
                                     map.put(entry[0].trim(), getMap(entry[1].trim()));          //add them to the hashmap and trim whitespaces
                                 }
                                 def branchInfo = [:]
-                                map.each {
-                                    script.echoCustom ("${it.key} = ${it.value}\n")
-                                    def branchEntry = Eval.me(${it.value})
-                                    script.echoCustom("value is branchEntry")
-                                    def branch = branchEntry.get("GIT_BRANCH")
-                                    script.echoCustom("branch  is $branch")
-                                       branchInfo.put(${it.key}, branch)
+                                map.each {k,v ->
+                                    branchInfo.put(k, v["GIT_BRANCH"])
+                                    script.echoCustom ("$k = $v\n")
                                 }
 //                                SCM_META = BuildHelper.prepareScmDetails script: script,
 //                                          scmVars: map
