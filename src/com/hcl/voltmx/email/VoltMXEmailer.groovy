@@ -76,7 +76,7 @@ class VoltMXEmailer implements Serializable {
                                 }
 
                                 map.each {k,v ->
-                                    String branch = v["GIT_BRANCH"]
+                                    String branch = v["GIT_BRANCH"] - 'origin/'
                                     branchInfo.put(k, branch)
                                     script.echoCustom ("$k = $branch\n")
                                 }
