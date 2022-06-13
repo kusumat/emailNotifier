@@ -13,6 +13,7 @@ class VoltMXEmailer implements Serializable {
     private separator
     private final projectName = script.env.JOB_NAME
     String projectWorkspacePath = script.env.WORKSPACE
+    private branchInfo = [:]
 
     /**
      * Class constructor.
@@ -73,7 +74,7 @@ class VoltMXEmailer implements Serializable {
 
                                     map.put(entry[0].trim(), getMap(entry[1].trim()));          //add them to the hashmap and trim whitespaces
                                 }
-                                def branchInfo = [:]
+
                                 map.each {k,v ->
                                     String branch = v["GIT_BRANCH"]
                                     branchInfo.put(k, branch)
