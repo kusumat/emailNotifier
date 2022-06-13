@@ -27,17 +27,17 @@ class VoltMXEmailer implements Serializable {
 
         scmVars = scmVars.substring(1, scmVars.length()-1);           //remove curly brackets
         String[] keyValuePairs = scmVars.split(",");              //split the string to creat key-value pairs
-        Map<String,String> map = new HashMap<>();
+        Map<String,String> gitMap = new HashMap<>();
 
         for(String pair : keyValuePairs)                        //iterate over the pairs
         {
             String[] entry = pair.split("=");                   //split the pairs to get key and value
-            map.put(entry[0].trim(), entry[1].trim());          //add them to the hashmap and trim whitespaces
+            gitMap.put(entry[0].trim(), entry[1].trim());          //add them to the hashmap and trim whitespaces
         }
-        map.each {
+        gitMap.each {
             script.echoCustom ("${it.key} = ${it.value}\n")
         }
-        return map
+        return gitMap
     }
         /**
          * Creates job pipeline.
@@ -73,15 +73,24 @@ class VoltMXEmailer implements Serializable {
 
                                     map.put(entry[0].trim(), getMap(entry[1].trim()));          //add them to the hashmap and trim whitespaces
                                 }
+                                def branchInfo = [:]
                                 map.each {
                                     script.echoCustom ("${it.key} = ${it.value}\n")
+                                    def branch = ${it.value}.get("GIT_BRANCH")
+                                    script.echoCustom("value is ${it.value}")
+                                    script.echoCustom("branch  is $branch")
+                                       branchInfo.put(${it.key}, branch)
                                 }
-                                SCM_META = BuildHelper.prepareScmDetails script: script,
-                                          scmVars: map
+//                                SCM_META = BuildHelper.prepareScmDetails script: script,
+//                                          scmVars: map
+
+
+
                             }
                         }
                         finally {
-                          //  NotificationsHelper.sendEmail(script, [scmMeta: SCM_META])
+                           // NotificationsHelper.sendEmail(script, [branch: branches,
+                                                                   scmMeta: SCM_META])
                         }
                     }
                 }
