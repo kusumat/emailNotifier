@@ -76,8 +76,9 @@ class VoltMXEmailer implements Serializable {
                                 def branchInfo = [:]
                                 map.each {
                                     script.echoCustom ("${it.key} = ${it.value}\n")
-                                    def branch = ${it.value}.get("GIT_BRANCH")
-                                    script.echoCustom("value is ${it.value}")
+                                    def branchEntry = Eval.me(${it.value})
+                                    script.echoCustom("value is branchEntry")
+                                    def branch = branchEntry.get("GIT_BRANCH")
                                     script.echoCustom("branch  is $branch")
                                        branchInfo.put(${it.key}, branch)
                                 }
