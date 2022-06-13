@@ -47,9 +47,9 @@ class VoltMXEmailer implements Serializable {
                                 script.echoCustom("tenant "+ script.env.tenantvars)
                                 script.echoCustom("ten "+ varsList)
 
-//                                script.env.kms.each {
-//                                    script.echoCustom ("${it.key} = ${it.value}\n")
-//                                }
+                                script.env.kms.each {
+                                    script.echoCustom ("${it.key} = ${it.value}\n")
+                                }
 //                                def tenantmap = evaluate(script.env.tenantvars.inspect())
 //                                tenantmap.each {
 //                                    script.echoCustom ("${it.key} = ${it.value}\n")
