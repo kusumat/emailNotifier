@@ -23,7 +23,7 @@ class VoltMXEmailer implements Serializable {
         this.script = script
     }
 
-    private getKMSMap(def kmsmap){
+    private getKMSMap(Closure closure){
    Closure map = Eval.me(kmsmap)
         return map
       // return (kmsmap) ? Eval.me(kmsmap) : [GIT_BRANCH:'',GIT_CHECKOUT_DIR:'',GIT_COMMIT:'',GIT_PREVIOUS_COMMIT:'',GIT_PREVIOUS_SUCCESSFUL_COMMIT:'',GIT_URL:'']
@@ -43,11 +43,11 @@ class VoltMXEmailer implements Serializable {
                                 varsList = script.env.varslist
                                 script.echoCustom("vars "+ varsList)
                                 def kmmap = script.env.kmsvars
-                                script.echoCustom("kms "+ getKMSMap(kmmap))
+                                script.echoCustom("kms "+ script.env.kms)
                                 script.echoCustom("tenant "+ script.env.tenantvars)
                                 script.echoCustom("ten "+ varsList)
 
-//                                script.env.kmsvars.each {
+//                                script.env.kms.each {
 //                                    script.echoCustom ("${it.key} = ${it.value}\n")
 //                                }
 //                                def tenantmap = evaluate(script.env.tenantvars.inspect())
