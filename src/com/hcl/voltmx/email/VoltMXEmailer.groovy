@@ -26,7 +26,7 @@ class VoltMXEmailer implements Serializable {
     private getMap(String scmVars){
 
         scmVars = scmVars.substring(1, scmVars.length()-1);           //remove curly brackets
-        String[] keyValuePairs = value.split(",");              //split the string to creat key-value pairs
+        String[] keyValuePairs = scmVars.split(",");              //split the string to creat key-value pairs
         Map<String,String> map = new HashMap<>();
 
         for(String pair : keyValuePairs)                        //iterate over the pairs
