@@ -50,11 +50,14 @@ class VoltMXEmailer implements Serializable {
                                 script.echoCustom("value is "+ value)
                                 //remove curly brackets
                                 String mapString = value.replace("},{","}:{")
-                                String[] keyValuePairs = mapString.split(":");              //split the string to creat key-value pairs
+                                script.echoCustom("mapString"+mapString)
+                                String[] keyValuePairs = mapString.split(":")              //split the string to creat key-value pairs
                                 Map<String,Map<String,String>> map = new HashMap<>();
                                 script.echoCustom("keyValuePairs size is "+ keyValuePairs.length)
-                                for(String pair : keyValuePairs)                        //iterate over the pairs
+                                for(String pair : keyValuePairs)
+                                    script.echoCustom("pair"+pair)//iterate over the pairs
                                 {   String mapEntry = pair.replace("={",":{")
+                                    script.echoCustom("mapEntry"+mapEntry)
                                     String[] entry = mapEntry.split("=");
                                     script.echoCustom("entry size is "+ entry.length)//split the pairs to get key and value
                                     map.put(entry[0].trim(), entry[1].trim());          //add them to the hashmap and trim whitespaces
