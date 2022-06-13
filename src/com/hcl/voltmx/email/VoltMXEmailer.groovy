@@ -23,10 +23,21 @@ class VoltMXEmailer implements Serializable {
         this.script = script
     }
 
-    private getKMSMap(Closure closure){
-   Closure map = Eval.me(kmsmap)
+    private getMap(String scmVars){
+
+        scmVars = scmVars.substring(1, scmVars.length()-1);           //remove curly brackets
+        String[] keyValuePairs = value.split(",");              //split the string to creat key-value pairs
+        Map<String,String> map = new HashMap<>();
+
+        for(String pair : keyValuePairs)                        //iterate over the pairs
+        {
+            String[] entry = pair.split("=");                   //split the pairs to get key and value
+            map.put(entry[0].trim(), entry[1].trim());          //add them to the hashmap and trim whitespaces
+        }
+        map.each {
+            script.echoCustom ("${it.key} = ${it.value}\n")
+        }
         return map
-      // return (kmsmap) ? Eval.me(kmsmap) : [GIT_BRANCH:'',GIT_CHECKOUT_DIR:'',GIT_COMMIT:'',GIT_PREVIOUS_COMMIT:'',GIT_PREVIOUS_SUCCESSFUL_COMMIT:'',GIT_URL:'']
     }
         /**
          * Creates job pipeline.
@@ -58,33 +69,15 @@ class VoltMXEmailer implements Serializable {
 
                                     String[] entry = mapEntry.split("#");
 
-                                    map.put(entry[0].trim(), entry[1].trim());          //add them to the hashmap and trim whitespaces
+
+
+                                    map.put(entry[0].trim(), getMap(entry[1].trim()));          //add them to the hashmap and trim whitespaces
                                 }
                                 map.each {
                                     script.echoCustom ("${it.key} = ${it.value}\n")
                                 }
-
-//                                script.echoCustom("tenant "+ script.env.tenantvars)
-//                                script.echoCustom("ten "+ varsList)
-
-//                                script.env.kms.each {
-//                                    script.echoCustom ("${it.key} = ${it.value}\n")
-//                                }
-//                                def tenantmap = evaluate(script.env.tenantvars.inspect())
-//                                tenantmap.each {
-//                                    script.echoCustom ("${it.key} = ${it.value}\n")
-//                                }
-//                                script.env.varmap.each {
-//                                    script.echoCustom ("${it.key} = ${it.value}\n")
-//                                }
-//                                kmsmeta.each {
-//                                    script.echoCustom(${it.key})
-//                                    script.echoCustom(${it.value})
-
-//                                }
-//
-//                                SCM_META = BuildHelper.prepareScmDetails script: script,
-//                                          scmVars: kmsmeta.get("KMS")
+                                SCM_META = BuildHelper.prepareScmDetails script: script,
+                                          scmVars: map
                             }
                         }
                         finally {
