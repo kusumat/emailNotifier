@@ -56,7 +56,13 @@ class EmailTemplateHelper implements Serializable {
 
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Date of build:', binding.build.started)
                             EmailBuilder.addBuildSummaryRow(htmlBuilder, 'Build duration:', binding.build.duration)
-                            EmailBuilder.addBuildSummaryRow(htmlBuilder, 'SCM Branch:', binding.build.branch)
+                           // EmailBuilder.addBuildSummaryRow(htmlBuilder, 'SCM Branch:', binding.build.branch)
+                            binding.branchInfo.each { k,v ->
+                                String branchName = k+" Branch"
+                                String branch = v
+                                EmailBuilder.addBuildSummaryRow(htmlBuilder, branchName , branch)
+                            }
+
                         }
                     }
                 }
