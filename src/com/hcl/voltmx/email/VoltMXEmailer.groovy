@@ -22,6 +22,11 @@ class VoltMXEmailer implements Serializable {
     VoltMXEmailer(script) {
         this.script = script
     }
+
+    private getKMSMap(def kmsmap){
+       return Eval.me(kmsmap)
+        (kmsmap) ? Eval.me(kmsmap) : [GIT_BRANCH:'',GIT_CHECKOUT_DIR:'',GIT_COMMIT:'',GIT_PREVIOUS_COMMIT:'',GIT_PREVIOUS_SUCCESSFUL_COMMIT:'',GIT_URL:'']
+    }
         /**
          * Creates job pipeline.
          * This method is called from the job and contains whole job's pipeline logic.
@@ -36,7 +41,8 @@ class VoltMXEmailer implements Serializable {
                                 def varsList = []
                                 varsList = script.env.varslist
                                 script.echoCustom("vars "+ varsList)
-                                script.echoCustom("kms "+ Eval.me(script.env.kmsvars))
+                                def kmmap = script.env.kmsvars
+                                script.echoCustom("kms "+ getKMSMap(kmmap))
                                 script.echoCustom("tenant "+ script.env.tenantvars)
                                 script.echoCustom("ten "+ varsList)
 
