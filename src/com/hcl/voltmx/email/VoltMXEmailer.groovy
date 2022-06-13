@@ -34,7 +34,7 @@ class VoltMXEmailer implements Serializable {
                         try {
                             script.stage('Preparing Email') {
                                 def kmsmeta = [:]
-                                kmsmeta = script.env.kms_map
+                                kmsmeta = script.env.scmVars
                                 script.echoCustom("kms meta"+ kmsmeta)
 //                                kmsmeta.each {
 //                                    script.echoCustom(${it.key})
@@ -42,12 +42,12 @@ class VoltMXEmailer implements Serializable {
 
 //                                }
 //
-                                SCM_META = BuildHelper.prepareScmDetails script: script,
-                                          scmVars: kmsmeta.get("KMS")
+//                                SCM_META = BuildHelper.prepareScmDetails script: script,
+//                                          scmVars: kmsmeta.get("KMS")
                             }
                         }
                         finally {
-                            NotificationsHelper.sendEmail(script, [scmMeta: SCM_META])
+                          //  NotificationsHelper.sendEmail(script, [scmMeta: SCM_META])
                         }
                     }
                 }
