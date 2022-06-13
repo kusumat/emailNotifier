@@ -49,7 +49,7 @@ class VoltMXEmailer implements Serializable {
                                 value = value.substring(1, value.length()-1);
                                 script.echoCustom("value is "+ value)
                                 //remove curly brackets
-                                String[] keyValuePairs = value.split("},{");              //split the string to creat key-value pairs
+                                String[] keyValuePairs = value.split(",");              //split the string to creat key-value pairs
                                 Map<String,Map<String,String>> map = new HashMap<>();
 
                                 for(String pair : keyValuePairs)                        //iterate over the pairs
