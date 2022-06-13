@@ -36,6 +36,9 @@ class VoltMXEmailer implements Serializable {
                                 def varsList = []
                                 varsList = script.env.varslist
                                 script.echoCustom("kms meta"+ varsList)
+                                script.env.varmap.each {
+                                    k, v -> script.echoCustom ("${k}:${v}")
+                                }
 //                                kmsmeta.each {
 //                                    script.echoCustom(${it.key})
 //                                    script.echoCustom(${it.value})
