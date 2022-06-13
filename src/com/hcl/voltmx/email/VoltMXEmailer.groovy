@@ -43,12 +43,12 @@ class VoltMXEmailer implements Serializable {
                                 varsList = script.env.varslist
                                 script.echoCustom("vars "+ varsList)
 
-                             def kmsmap = script.env.kmsvars
+                             def kmsmap = script.env.varmap
                               String value = kmsmap
                                 script.echoCustom("kmsmap "+ value)
                                 value = value.substring(1, value.length()-1);           //remove curly brackets
                                 String[] keyValuePairs = value.split(",");              //split the string to creat key-value pairs
-                                Map<String,String> map = new HashMap<>();
+                                Map<String,Map<String,String>> map = new HashMap<>();
 
                                 for(String pair : keyValuePairs)                        //iterate over the pairs
                                 {
@@ -59,9 +59,8 @@ class VoltMXEmailer implements Serializable {
                                     script.echoCustom ("${it.key} = ${it.value}\n")
                                 }
 
-                                script.echoCustom("kms "+ script.env.kms)
-                                script.echoCustom("tenant "+ script.env.tenantvars)
-                                script.echoCustom("ten "+ varsList)
+//                                script.echoCustom("tenant "+ script.env.tenantvars)
+//                                script.echoCustom("ten "+ varsList)
 
 //                                script.env.kms.each {
 //                                    script.echoCustom ("${it.key} = ${it.value}\n")
