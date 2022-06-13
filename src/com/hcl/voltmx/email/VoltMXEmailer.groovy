@@ -45,23 +45,19 @@ class VoltMXEmailer implements Serializable {
 
                              def kmsmap = script.env.varmap
                               String value = kmsmap
-                                script.echoCustom("kmsmap "+ value)
-                                script.echoCustom("colonmap "+ script.env.varmapcolon)
                                 value = value.substring(1, value.length()-1);
-                                script.echoCustom("value is "+ value)
-                                //remove curly brackets
-                                String mapString = value.replace("}, ","}: ")
+                                String mapString = value.replace("}, ","}# ")
                                 script.echoCustom("mapString"+mapString)
 
-                                String[] keyValuePairs = mapString.split(":")              //split the string to creat key-value pairs
+                                String[] keyValuePairs = mapString.split("#")              //split the string to creat key-value pairs
                                 Map<String,Map<String,String>> map = new HashMap<>();
-                                script.echoCustom("keyValuePairs size is "+keyValuePairs.length)
+
                                 for(String pair : keyValuePairs)
-                                {   script.echoCustom("pair"+pair)//iterate over the pairs
-                                   String mapEntry = pair.replace("={",":{")
-                                    script.echoCustom("mapEntry"+mapEntry)
-                                    String[] entry = mapEntry.split("=");
-                                    script.echoCustom("entry size is "+ entry.length)//split the pairs to get key and value
+                                {
+                                   String mapEntry = pair.replace("={","#{")
+
+                                    String[] entry = mapEntry.split("#");
+
                                     map.put(entry[0].trim(), entry[1].trim());          //add them to the hashmap and trim whitespaces
                                 }
                                 map.each {
