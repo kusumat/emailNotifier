@@ -33,9 +33,9 @@ class VoltMXEmailer implements Serializable {
                     script.node('Fabric_Slave') {
                         try {
                             script.stage('Preparing Email') {
-                                def kmsmeta = [:]
-                                kmsmeta = script.env.scmVars
-                                script.echoCustom("kms meta"+ kmsmeta)
+                                def varsList = []
+                                varsList = script.env.varslist
+                                script.echoCustom("kms meta"+ varsList)
 //                                kmsmeta.each {
 //                                    script.echoCustom(${it.key})
 //                                    script.echoCustom(${it.value})
