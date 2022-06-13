@@ -24,8 +24,9 @@ class VoltMXEmailer implements Serializable {
     }
 
     private getKMSMap(def kmsmap){
-
-       return (kmsmap) ? Eval.me(kmsmap) : [GIT_BRANCH:'',GIT_CHECKOUT_DIR:'',GIT_COMMIT:'',GIT_PREVIOUS_COMMIT:'',GIT_PREVIOUS_SUCCESSFUL_COMMIT:'',GIT_URL:'']
+   Closure map = Eval.me(kmsmap)
+        return map
+      // return (kmsmap) ? Eval.me(kmsmap) : [GIT_BRANCH:'',GIT_CHECKOUT_DIR:'',GIT_COMMIT:'',GIT_PREVIOUS_COMMIT:'',GIT_PREVIOUS_SUCCESSFUL_COMMIT:'',GIT_URL:'']
     }
         /**
          * Creates job pipeline.
