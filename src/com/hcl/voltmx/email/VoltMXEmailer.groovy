@@ -54,7 +54,7 @@ class VoltMXEmailer implements Serializable {
 
                                 for(String pair : keyValuePairs)                        //iterate over the pairs
                                 {
-                                    String[] entry = pair.split("=");                   //split the pairs to get key and value
+                                    String[] entry = pair.split("},{");                   //split the pairs to get key and value
                                     map.put(entry[0].trim(), entry[1].trim());          //add them to the hashmap and trim whitespaces
                                 }
                                 script.echoCustom("map size"+map.size())
