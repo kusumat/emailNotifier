@@ -119,12 +119,12 @@ class BuildHelper implements Serializable {
         def branch = scmVars.GIT_BRANCH
         script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
         List<String> logsList = new ArrayList<String>();
-//
+        String COMMIT = scmVars.GIT_COMMIT
                 def changeLogSets = script.currentBuild.rawBuild.changeSets
                 for (entries in changeLogSets) {
                     for (entry in entries) {
                         for (file in entry.affectedFiles) {
-                            if(scmVars.GIT_COMMIT.equal(entry.commitId)) {
+                            if(COMMIT.equals(entry.commitId)) {
                                 logsList.add(file.editType.name + ": " + file.path)
                                 script.echoCustom("file path $file.path", 'INFO')
                             }
