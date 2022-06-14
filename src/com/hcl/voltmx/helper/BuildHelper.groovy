@@ -113,11 +113,7 @@ class BuildHelper implements Serializable {
     }
 
     private static getScmInfo(script, scmVars) {
-        def b = script.currentBuild.rawBuild.getPreviousBuild()
-        def actions = b.getActions(hudson.plugins.git.util.BuildData.class)
-        if(action.getRemoteUrls().contains(scmVars.GIT_URL)) {
 
-        }
         def sourceCodeBranchParamName = scmVars.get['GIT_BRANCH']
         script.echoCustom("")
         def branch = scmVars.GIT_BRANCH

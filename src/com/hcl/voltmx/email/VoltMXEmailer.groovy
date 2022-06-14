@@ -59,7 +59,7 @@ class VoltMXEmailer implements Serializable {
                              def kmsmap = script.env.varmap
                               String value = kmsmap
                                 value = value.substring(1, value.length()-1);
-                                String mapString = value.replace("], ","]# ")
+                                String mapString = value.replace("}, ","}# ")
                                 script.echoCustom("mapString"+mapString)
 
                                 String[] keyValuePairs = mapString.split("#")              //split the string to creat key-value pairs
@@ -67,7 +67,7 @@ class VoltMXEmailer implements Serializable {
 
                                 for(String pair : keyValuePairs)
                                 {
-                                   String mapEntry = pair.replace("=[","#[")
+                                   String mapEntry = pair.replace("={","#{")
 
                                     String[] entry = mapEntry.split("#");
                                     map.put(entry[0].trim(), getMap(entry[1].trim()));          //add them to the hashmap and trim whitespaces
