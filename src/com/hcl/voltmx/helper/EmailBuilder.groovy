@@ -69,8 +69,9 @@ class EmailBuilder {
                 }
                 td(style: "border-right: 1px solid #e8e8e8") {
                     def logsList = scmMeta.commitLogs
+
                     for (def pathIndex = 0; pathIndex < 10 && pathIndex < logsList.size(); pathIndex++)
-                        mkp.yield(style: "font-size:12px;", logsList[pathIndex])
+                        p(style: "font-size:12px;", logsList[pathIndex])
                 }
             } else {
                 td(style: "color:red", colspan: "2") {
