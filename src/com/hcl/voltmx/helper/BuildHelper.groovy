@@ -2,6 +2,7 @@ package com.hcl.voltmx.helper
 
 import jenkins.model.Jenkins
 import groovy.text.SimpleTemplateEngine
+
 /**
  * Implements logic related to channel build process.
  */
@@ -112,11 +113,15 @@ class BuildHelper implements Serializable {
     }
 
     private static getScmInfo(script, scmVars) {
-        def sourceCodeBranchParamName = 'BRANCH_NAME'
+        def b = script.currentBuild.rawBuild.getPreviousBuild()
+        def actions = b.getActions(hudson.plugins.git.util.BuildData.class)
+        if(action.getRemoteUrls().contains(scmVars.GIT_URL)) {
+
+        }
+        def sourceCodeBranchParamName = scmVars.get['GIT_BRANCH']
         script.echoCustom("")
         def branch = scmVars.GIT_BRANCH
         script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
-        //getCurrentParamName(script, 'SCM_BRANCH', getCurrentParamName(script, 'PROJECT_SOURCE_CODE_BRANCH', 'PROJECT_EXPORT_BRANCH'))
         List<String> logsList = new ArrayList<String>();
         if (script.currentBuild.getPreviousBuild() == null)
             logsList.add("Previous Build is unavailable, to fetch the diff.")

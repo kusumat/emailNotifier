@@ -14,6 +14,7 @@ class VoltMXEmailer implements Serializable {
     private final projectName = script.env.JOB_NAME
     String projectWorkspacePath = script.env.WORKSPACE
     private branchInfo = [:]
+    private scmMetaList = []
 
     /**
      * Class constructor.
@@ -58,7 +59,7 @@ class VoltMXEmailer implements Serializable {
                              def kmsmap = script.env.varmap
                               String value = kmsmap
                                 value = value.substring(1, value.length()-1);
-                                String mapString = value.replace("}, ","}# ")
+                                String mapString = value.replace("], ","]# ")
                                 script.echoCustom("mapString"+mapString)
 
                                 String[] keyValuePairs = mapString.split("#")              //split the string to creat key-value pairs
@@ -66,12 +67,9 @@ class VoltMXEmailer implements Serializable {
 
                                 for(String pair : keyValuePairs)
                                 {
-                                   String mapEntry = pair.replace("={","#{")
+                                   String mapEntry = pair.replace("=[","#[")
 
                                     String[] entry = mapEntry.split("#");
-
-
-
                                     map.put(entry[0].trim(), getMap(entry[1].trim()));          //add them to the hashmap and trim whitespaces
                                 }
 
@@ -80,8 +78,15 @@ class VoltMXEmailer implements Serializable {
                                     branchInfo.put(k, branch)
                                     script.echoCustom ("$k = $branch\n")
                                 }
-//                                SCM_META = BuildHelper.prepareScmDetails script: script,
-//                                          scmVars: map
+
+                                map.each { k, v ->
+                                    SCM_META = BuildHelper.prepareScmDetails script: script,
+                                            scmVars: v
+                                    scmMetaList.add(SCM_META)
+                                }
+                                scmMetaList.each {
+                                    k -> script.echoCustom("meta list is $k\n")
+                                }
 
 
 
@@ -90,7 +95,8 @@ class VoltMXEmailer implements Serializable {
                         finally {
 //                            NotificationsHelper.sendEmail(script, [branch: branchInfo,
 //                                                                   scmMeta: SCM_META])
-                            NotificationsHelper.sendEmail(script, [branch: branchInfo])
+//                            NotificationsHelper.sendEmail(script, [branch: branchInfo,
+//                            scmMeta: scmMetaList])
                         }
                     }
                 }
