@@ -74,6 +74,7 @@ class VoltMXEmailer implements Serializable {
                                    String mapEntry = pair.replace("={","#{")
 
                                     String[] entry = mapEntry.split("#");
+
                                     script.echoCustom("map entry is .........."+ entry)
                                     map.put(entry[0].trim(), getMap(entry[1]));          //add them to the hashmap and trim whitespaces
                                 }
@@ -88,7 +89,9 @@ class VoltMXEmailer implements Serializable {
                                     v.'GIT_LOG'.each {log ->commits.add(log)
                                             script.echoCustom("log is -------------> $log")
                                             }
-                                     entry = [commitID: v["GIT_COMMIT"], scmUrl: v["GIT_URL"], commitLogs: commits]
+                                    // entry = [commitID: v["GIT_COMMIT"], scmUrl: v["GIT_URL"], commitLogs: commits]
+                                    entry = BuildHelper.prepareScmDetails script: script,
+                                            scmVars: v
                                     scmMetaList.add(entry)
                                 }
 
