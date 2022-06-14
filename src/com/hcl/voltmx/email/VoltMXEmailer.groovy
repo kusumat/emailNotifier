@@ -77,16 +77,21 @@ class VoltMXEmailer implements Serializable {
                                     String branch = v["GIT_BRANCH"] - 'origin/'
                                     branchInfo.put(k, branch)
                                     script.echoCustom ("$k = $branch\n")
+                                    def entry = [:]
+                                     entry = [commitID: v["GIT_COMMIT"], scmUrl: v["GIT_URL"], v: v["GIT_LOG"]]
+                                    scmMetaList.add(entry)
                                 }
 
-                                map.each { k, v ->
-                                    SCM_META = BuildHelper.prepareScmDetails script: script,
-                                            scmVars: v
-                                    scmMetaList.add(SCM_META)
-                                }
-                                scmMetaList.each {
-                                    k -> script.echoCustom("meta list is $k\n")
-                                }
+
+
+//                                map.each { k, v ->
+//                                    SCM_META = BuildHelper.prepareScmDetails script: script,
+//                                            scmVars: v
+//                                    scmMetaList.add(SCM_META)
+//                                }
+//                                scmMetaList.each {
+//                                    k -> script.echoCustom("meta list is $k\n")
+//                                }
 
 
 
@@ -95,8 +100,8 @@ class VoltMXEmailer implements Serializable {
                         finally {
 //                            NotificationsHelper.sendEmail(script, [branch: branchInfo,
 //                                                                   scmMeta: SCM_META])
-//                            NotificationsHelper.sendEmail(script, [branch: branchInfo,
-//                            scmMeta: scmMetaList])
+                            NotificationsHelper.sendEmail(script, [branch: branchInfo,
+                            scmMeta: scmMetaList])
                         }
                     }
                 }

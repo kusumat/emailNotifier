@@ -140,23 +140,28 @@ class EmailBuilder {
     }
     
     @NonCPS
-    static void addFabricAppBuildScmTableRow(htmlBuilder, scmMeta) {
+    static void addFabricAppBuildScmTableRow(htmlBuilder, scmMetaList) {
+
         htmlBuilder.tr {
-            if (scmMeta && scmMeta.scmUrl && scmMeta.commitID && scmMeta.commitLogs) {
-                td(style: "text-align:center; border-right: 1px solid #e8e8e8; width: 65px") {
-                    String commitIdUrl = scmMeta.scmUrl.replace(".git", "/commit/") + scmMeta.commitID
-                    a(href: commitIdUrl, target: '_blank', scmMeta.commitID.substring(0, 7))
-                }
-                td(style: "border-right: 1px solid #e8e8e8") {
-                    def logsList = scmMeta.commitLogs
-                    for (def pathIndex = 0; pathIndex < 10 && pathIndex < logsList.size(); pathIndex++)
-                        p(style: "font-size:12px;", logsList[pathIndex])
-                }
-            } else {
-                td(style: "color:red", colspan: "2") {
-                    mkp.yield("Checkout failed")
+            scmMetaList.each {
+                scmMeta ->
+                if (scmMeta && scmMeta.scmUrl && scmMeta.commitID && scmMeta.commitLogs) {
+                    td(style: "text-align:center; border-right: 1px solid #e8e8e8; width: 65px") {
+                        String commitIdUrl = scmMeta.scmUrl.replace(".git", "/commit/") + scmMeta.commitID
+                        a(href: commitIdUrl, target: '_blank', scmMeta.commitID.substring(0, 7))
+                    }
+                    td(style: "border-right: 1px solid #e8e8e8") {
+                        def logsList = scmMeta.commitLogs
+                        for (def pathIndex = 0; pathIndex < 10 && pathIndex < logsList.size(); pathIndex++)
+                            p(style: "font-size:12px;", logsList[pathIndex])
+                    }
+                } else {
+                    td(style: "color:red", colspan: "2") {
+                        mkp.yield("Checkout failed")
+                    }
                 }
             }
+
         }
     }
 
