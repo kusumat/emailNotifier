@@ -84,35 +84,13 @@ class VoltMXEmailer implements Serializable {
                                     branchInfo.put(k, branch)
                                     script.echoCustom ("$k = $branch\n")
                                     def entry = [:]
-                                    List<String> commits = new ArrayList<>();
-
-                                    v.'GIT_LOG'.each {log ->commits.add(log)
-                                            script.echoCustom("log is -------------> $log")
-                                            }
-                                    // entry = [commitID: v["GIT_COMMIT"], scmUrl: v["GIT_URL"], commitLogs: commits]
                                     entry = BuildHelper.prepareScmDetails script: script,
                                             scmVars: v
                                     scmMetaList.add(entry)
                                 }
-
-
-
-//                                map.each { k, v ->
-//                                    SCM_META = BuildHelper.prepareScmDetails script: script,
-//                                            scmVars: v
-//                                    scmMetaList.add(SCM_META)
-//                                }
-//                                scmMetaList.each {
-//                                    k -> script.echoCustom("meta list is $k\n")
-//                                }
-
-
-
                             }
                         }
                         finally {
-//                            NotificationsHelper.sendEmail(script, [branch: branchInfo,
-//                                                                   scmMeta: SCM_META])
                             NotificationsHelper.sendEmail(script, [branch: branchInfo,
                             scmMeta: scmMetaList])
                         }
