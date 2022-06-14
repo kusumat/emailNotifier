@@ -27,8 +27,12 @@ class VoltMXEmailer implements Serializable {
 
     private getMap(String scmVars){
 
-        scmVars = scmVars.substring(1, scmVars.length()-1);           //remove curly brackets
-        String[] keyValuePairs = scmVars.split(",");              //split the string to creat key-value pairs
+        scmVars = scmVars.substring(1, scmVars.length()-1);
+        //remove curly brackets
+
+
+        String splitVars = scmVars.replace(", GIT","! GIT")
+        String[] keyValuePairs = splitVars.split("!");              //split the string to creat key-value pairs
         Map<String,String> gitMap = new HashMap<>();
 
         for(String pair : keyValuePairs)                        //iterate over the pairs
