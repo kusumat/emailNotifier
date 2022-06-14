@@ -114,7 +114,7 @@ class BuildHelper implements Serializable {
 
     private static getScmInfo(script, scmVars) {
 
-        def sourceCodeBranchParamName = scmVars.get['GIT_BRANCH']
+        def sourceCodeBranchParamName = scmVars.'GIT_BRANCH' - 'origin/'
         script.echoCustom("")
         def branch = scmVars.GIT_BRANCH
         script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
