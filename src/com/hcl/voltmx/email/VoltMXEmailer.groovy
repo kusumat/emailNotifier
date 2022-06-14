@@ -70,7 +70,8 @@ class VoltMXEmailer implements Serializable {
                                    String mapEntry = pair.replace("={","#{")
 
                                     String[] entry = mapEntry.split("#");
-                                    map.put(entry[0].trim(), getMap(entry[1].trim()));          //add them to the hashmap and trim whitespaces
+                                    script.echoCustom("map entry is .........."+ entry)
+                                    map.put(entry[0].trim(), getMap(entry[1]));          //add them to the hashmap and trim whitespaces
                                 }
 
                                 map.each {k,v ->
