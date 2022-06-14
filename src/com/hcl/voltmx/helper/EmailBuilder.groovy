@@ -148,7 +148,7 @@ class EmailBuilder {
                 if (scmMeta && scmMeta.scmUrl && scmMeta.commitID && scmMeta.commitLogs) {
                     td(style: "text-align:center; border-right: 1px solid #e8e8e8; width: 65px") {
                         String scmurl = scmMeta.scmUrl
-                        String pathscmurl = httpscmurl.replaceFirst (':',"//")
+                        String pathscmurl = scmurl.replaceFirst (':',"//")
                         String httpscmurl = pathscmurl.replace("git@",  "https://")
 
                         String commitIdUrl = httpscmurl.replace(".git", "/commit/") + scmMeta.commitID
