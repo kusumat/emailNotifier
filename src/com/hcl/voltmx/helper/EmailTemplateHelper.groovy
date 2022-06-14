@@ -84,8 +84,9 @@ class EmailTemplateHelper implements Serializable {
                                             th(style: "text-align:center", width: "55%", 'COMMIT LOGS')
                                         }
                                     }
+                                    binding.scmMeta.each { meta->
                                     tbody(class: "table-border-channels") {
-                                        binding.scmMeta.each { meta->
+
                                             EmailBuilder.addFabricAppBuildScmTableRow(htmlBuilder, meta)
                                         }
                                     }
