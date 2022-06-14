@@ -119,27 +119,21 @@ class BuildHelper implements Serializable {
         def branch = scmVars.GIT_BRANCH
         script.echoCustom("sourceCodeBranchParamName  is $sourceCodeBranchParamName",'INFO')
         List<String> logsList = new ArrayList<String>();
-        if (script.currentBuild.getPreviousBuild() == null)
-            logsList.add("Previous Build is unavailable, to fetch the diff.")
-        else {
-            String previousBuildBranch = script.currentBuild.getPreviousBuild().getRawBuild().actions.find { it instanceof ParametersAction }?.parameters.find { it.name == sourceCodeBranchParamName }?.value
-            script.echoCustom("previousBuildBranch $previousBuildBranch",'INFO')
-            if (!branch.equals(previousBuildBranch))
-                logsList.add("Unable to fetch diff, your previous build is on a different branch.")
-            else if (script.currentBuild.changeSets.isEmpty())
-                logsList.add("No diff is available")
-            else {
+//
                 def changeLogSets = script.currentBuild.rawBuild.changeSets
                 for (entries in changeLogSets) {
                     for (entry in entries) {
                         for (file in entry.affectedFiles) {
-                            logsList.add(file.editType.name + ": " + file.path)
-                            script.echoCustom("file path $file.path",'INFO')
+                            if(scmVars.GIT_COMMIT.equal(entry.commitId)) {
+                                logsList.add(file.editType.name + ": " + file.path)
+                                script.echoCustom("file path $file.path", 'INFO')
+                            }
                         }
                     }
                 }
-            }
-        }
+//
+        if(logsList.size() == 0)
+            logsList.add("No changes")
         return [commitID: scmVars.GIT_COMMIT, scmUrl: scmVars.GIT_URL, commitLogs: logsList]
     }
 
