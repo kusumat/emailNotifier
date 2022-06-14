@@ -78,7 +78,7 @@ class VoltMXEmailer implements Serializable {
                                     branchInfo.put(k, branch)
                                     script.echoCustom ("$k = $branch\n")
                                     def entry = [:]
-                                     entry = [commitID: v["GIT_COMMIT"], scmUrl: v["GIT_URL"], v: v["GIT_LOG"]]
+                                     entry = [commitID: v["GIT_COMMIT"], scmUrl: v["GIT_URL"], commitLogs: v["GIT_LOG"]]
                                     scmMetaList.add(entry)
                                 }
 

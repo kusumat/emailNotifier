@@ -144,6 +144,7 @@ class NotificationsHelper implements Serializable {
                 ]
         ] + templateData
         script.echoCustom("templateData ${templateData} ");
+        script.echoCustom("templateData ${templateData.scmMeta} ");
         templateContent = EmailTemplateHelper.emailContent(commonBinding)
         templateContent
     }
