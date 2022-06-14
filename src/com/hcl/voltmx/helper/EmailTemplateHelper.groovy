@@ -85,7 +85,9 @@ class EmailTemplateHelper implements Serializable {
                                         }
                                     }
                                     tbody(class: "table-border-channels") {
-                                        EmailBuilder.addFabricAppBuildScmTableRow(htmlBuilder, binding.scmMeta)
+                                        binding.scmMeta.each { scmMeta
+                                            EmailBuilder.addFabricAppBuildScmTableRow(htmlBuilder,scmMeta)
+                                        }
                                     }
                                 }
                             } else {
