@@ -143,6 +143,7 @@ class NotificationsHelper implements Serializable {
                         artifactUrl     : artifactUrl
                 ]
         ] + templateData
+        script.echoCustom("templateData ${templateData} ");
         templateContent = EmailTemplateHelper.emailContent(commonBinding)
         templateContent
     }
